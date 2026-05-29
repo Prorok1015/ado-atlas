@@ -44,6 +44,21 @@ The PAT is stored in `chrome.storage.local` on this machine only — it is not
 synced via your Google account. Reopen the modal any time with the **⚙** button
 in the toolbar (e.g. to rotate the PAT or switch to another org/project).
 
+If the PAT expires or is revoked while you're working, the next request returns
+HTTP 401 and the setup modal reopens automatically asking for a fresh token.
+
+## Views & filters
+
+- **Tree / Graph / Board** toggle in the toolbar. The Board groups cards **by
+  Sprint**, **by State** (a classic Kanban — drag a card between columns to
+  change its state), or **by Assignee**. Dragging also works to change sprint
+  (by-Sprint) or reassign (by-Assignee).
+- **Filters** (chip panel): State, Type, Priority, Assigned, **Sprint**, and
+  **Tags**. State and Tag values are read from your project, sprints from its
+  iterations. Click a chip once to include, again to exclude.
+- Large result sets are capped at 2000 items; when that happens the status bar
+  shows `· capped, narrow the filters` so you know you're not seeing everything.
+
 ## What's inside
 
 | File | Purpose |

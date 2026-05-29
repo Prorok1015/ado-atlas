@@ -13,6 +13,13 @@ const PRIO_COLOR={1:'#e74c3c',2:'#e67e22',3:'#f1c40f',4:'#95a5a6'};   // P1 urge
 const prioColor=p=>PRIO_COLOR[p]||'#5b6b7d';
 const STATE_COLOR={New:'#6b7785',Active:'#2f6fed',Resolved:'#1e7a44',Closed:'#5b6b7d',Removed:'#9b2c2c',Done:'#1e7a44'};
 const stateColor=s=>STATE_COLOR[s]||'#6b7785';
+// Canonical left-to-right order for the by-State board and the State filter
+// chips; states not listed here keep their discovered order, appended after.
+const STATE_ORDER=['New','Proposed','To Do','Approved','Active','Doing','In Progress','Committed','Resolved','Done','Closed','Removed'];
+function orderStates(list){const seen=new Set(),out=[];
+  STATE_ORDER.forEach(s=>{if(list.includes(s)&&!seen.has(s)){seen.add(s);out.push(s);}});
+  list.forEach(s=>{if(!seen.has(s)){seen.add(s);out.push(s);}});
+  return out;}
 const TYPES=['Epic','Feature','User Story','Bug','Task','Issue'];
 const $=id=>document.getElementById(id);
 let cy=null, mode='tree', edgeMode='hierarchy', rankDir='LR', cur=null, orig={}, selRow=null;
@@ -20,12 +27,17 @@ let depCache={}, renderToken=0, boardToken=0;   // tokens drop superseded async 
 let boardBusy=false;                            // true while a card move PATCH is in flight
 let pdrag=null, suppressClick=false;            // custom pointer-based drag for board cards
 let boardScroll=null;                           // saved board scroll to restore from the sprint view
-let boardGroup='sprint';                        // board grouping: 'sprint' | 'assignee'
+let boardGroup='sprint';                        // board grouping: 'sprint' | 'assignee' | 'state'
 let tzOffset=Math.round(-new Date().getTimezoneOffset()/60);   // UTC offset for work-hours (default: browser TZ)
 let sprintGroup='none';                         // expanded-sprint grouping: 'none' | 'assignee'
 let currentUser='';                      // display name of the PAT owner (for the "me" shortcuts)
 let projectName='';                      // configured ADO project (root path = "no sprint" fallback)
 let assignees=[];                        // participant names (for the Assigned filter chips + datalist)
+let projectStates=[];                    // real states fetched from the project (State filter chips)
+let tagList=[];                          // distinct tags seen on recent items (Tags filter chips)
+let sprintPaths=[];                      // iteration paths for the Sprint filter (chip value = path)
+let sprintNames={};                      // iteration path -> short sprint name (chip label)
+let listCapped=false;                    // true when the last list() hit LIST_CAP (UI warns)
 // client-side mirror of already-loaded data; BOTH views render from THIS store.
 // `expanded` is the shared expand/collapse state, so tree and graph stay in sync.
 const store={nodes:{},kids:{},roots:[],expanded:new Set(),parent:{}};
@@ -42,6 +54,7 @@ async function ensureKids(id){            // load children once, cache in the st
 }
 
 function setStatus(t,err){const s=$('status');if(!s)return;s.textContent=t;s.style.color=err?'#e06c75':'var(--muted)';}
+function capNote(){return listCapped?' · capped, narrow the filters':'';}   // appended to count statuses when LIST_CAP was hit
 // ---- loading indicator (refcounted: top progress bar shows while any async work runs) ----
 let _loads=0;
 function loadStart(label){_loads++;const l=$('loading');if(l)l.classList.add('on');if(label)setStatus(label);}
@@ -50,10 +63,12 @@ async function withLoad(label,fn){loadStart(label);try{return await fn();}finall
 /* ---------- extensible chip filters (data-driven) ----------
    Add a field: one entry here + one in FILTER_FIELDS in api.js. */
 const FILTERS=[
-  {key:'state',label:'State',values:()=>['New','Active','Resolved','Closed','Removed']},
+  {key:'state',label:'State',values:()=>projectStates.length?projectStates:['New','Active','Resolved','Closed','Removed']},
   {key:'type',label:'Type',values:()=>TYPES},
   {key:'priority',label:'Priority',values:()=>[1,2,3,4],fmt:v=>'P'+v},
   {key:'assigned',label:'Assigned',values:()=>['me',...assignees]},
+  {key:'iteration',label:'Sprint',values:()=>sprintPaths,fmt:p=>sprintNames[p]||p},
+  {key:'tags',label:'Tags',values:()=>tagList},
 ];
 const fstate={};                          // key -> { value : 'in' | 'out' }
 function cycleChip(key,val){
@@ -72,9 +87,11 @@ function updateFilterCount(){const n=filterCount();$('filt_count').textContent=n
 function renderFilters(){
   const el=$('filterpanel');el.innerHTML='';
   FILTERS.forEach(f=>{
+    const vals=f.values()||[];
+    if(!vals.length&&!Object.keys(fstate[f.key]||{}).length)return;   // skip empty rows (e.g. tags/sprints not loaded yet)
     const row=document.createElement('div');row.className='frow';
     const lab=document.createElement('span');lab.className='fl';lab.textContent=f.label;row.appendChild(lab);
-    (f.values()||[]).forEach(v=>{
+    vals.forEach(v=>{
       const ch=document.createElement('span');ch.className='chip';
       const st=(fstate[f.key]||{})[String(v)];if(st)ch.classList.add(st);
       ch.textContent=f.fmt?f.fmt(v):v;
@@ -138,7 +155,7 @@ function renderTree(){
   const ul=document.createElement('ul');ul.className='tree';
   (store.top||store.roots).forEach(id=>{if(store.nodes[id])ul.appendChild(treeNode(store.nodes[id]));});
   el.appendChild(ul);
-  setStatus(store.roots.length+' item(s)');
+  setStatus(store.roots.length+' item(s)'+capNote());
 }
 
 /* ---------- graph ---------- */
@@ -286,7 +303,8 @@ async function renderBoard(){
   const today=new Date().toISOString().slice(0,10);
   const info={},finish={};iters.forEach(it=>{info[it.path]=it;finish[it.path]=it.finish;});
   const items=store.roots.map(id=>store.nodes[id]).filter(Boolean);   // SAME data as tree/graph
-  if(boardGroup==='assignee'){renderBoardByAssignee(el,items);setStatus(`${items.length} items`);annotateBoardTimes();return;}
+  if(boardGroup==='assignee'){renderBoardByAssignee(el,items);setStatus(`${items.length} items`+capNote());annotateBoardTimes();return;}
+  if(boardGroup==='state'){renderBoardByState(el,items);setStatus(`${items.length} items`+capNote());annotateBoardTimes();return;}
   const groups=new Map();
   items.forEach(n=>{const k=finish[n.iteration]?n.iteration:'__none__';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
   groups.forEach(arr=>arr.sort((a,b)=>((a.priority||9)-(b.priority||9))||(a.id-b.id)));  // priority within column
@@ -308,7 +326,7 @@ async function renderBoard(){
     col.dataset.field='iteration';col.dataset.val=(k==='__none__')?root:k;   // drop = change sprint
     col.append(h,wrap);el.appendChild(col);
   });
-  setStatus(`${items.length} items`);annotateBoardTimes();
+  setStatus(`${items.length} items`+capNote());annotateBoardTimes();
 }
 function renderBoardByAssignee(el,items){
   const groups=new Map();
@@ -324,6 +342,24 @@ function renderBoardByAssignee(el,items){
     const wrap=document.createElement('div');wrap.className='bcards';
     arr.forEach(n=>wrap.appendChild(boardCard(n,null,'')));   // no overdue colouring in assignee view
     col.dataset.field='assigned';col.dataset.val=k;   // drop = reassign
+    col.append(h,wrap);el.appendChild(col);
+  });
+}
+function renderBoardByState(el,items){
+  const today=new Date().toISOString().slice(0,10);
+  const groups=new Map();
+  items.forEach(n=>{const k=n.state||'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
+  groups.forEach(arr=>arr.sort((a,b)=>((a.priority||9)-(b.priority||9))||(a.id-b.id)));
+  const cols=orderStates([...groups.keys()].filter(k=>k));
+  if(groups.has(''))cols.push('');                  // items with no state last (rare)
+  cols.forEach(k=>{
+    const arr=groups.get(k)||[];
+    const col=document.createElement('div');col.className='bcol';
+    const h=document.createElement('div');h.className='bhead';
+    h.innerHTML=(k?`<span class="sbadge" style="background:${stateColor(k)}">${esc(k)}</span>`:'(no state)')+'<br>'+colMeta(arr);
+    const wrap=document.createElement('div');wrap.className='bcards';
+    arr.forEach(n=>wrap.appendChild(boardCard(n,null,today)));   // overdue colouring by target date
+    col.dataset.field='state';col.dataset.val=k;   // drop = change state
     col.append(h,wrap);el.appendChild(col);
   });
 }
@@ -343,13 +379,13 @@ function boardCard(n,finish,today){
   c.onclick=()=>{if(suppressClick)return;openItem(n.id);};                          // suppressed right after a drag
   return c;
 }
-async function moveCard(id,field,val){            // field: 'iteration' | 'assigned'
+async function moveCard(id,field,val){            // field: 'iteration' | 'assigned' | 'state'
   boardBusy=true;loadStart('moving #'+id+'…');
   const card=document.querySelector('.bcard[data-id="'+id+'"]');if(card)card.classList.add('moving');
   try{
     const body={};body[field]=val;
     const r=await api.updateItem(id,body);
-    if(store.nodes[id])store.nodes[id][field==='assigned'?'assigned':'iteration']=val;   // keep store in sync
+    if(store.nodes[id])store.nodes[id][field]=val;   // node uses the same key names (iteration/assigned/state)
     setStatus('#'+id+' moved → rev '+r.rev);
   }catch(e){setStatus('ERROR: '+e.message,true);}
   boardBusy=false;loadEnd();
@@ -386,7 +422,7 @@ document.addEventListener('mouseup',()=>{
   suppressClick=true;setTimeout(()=>{suppressClick=false;},30);   // swallow the click that follows a drag
   const col=d.hot;if(!col)return;
   const field=col.dataset.field,val=col.dataset.val||'';
-  const node=store.nodes[d.id],curVal=field==='assigned'?(node&&node.assigned||''):(node&&node.iteration||'');
+  const node=store.nodes[d.id],curVal=node?(node[field]||''):'';   // field: iteration | assigned | state
   if(val===curVal)return;
   if(field==='iteration'){const it=_sprint(val),fin=it&&it.finish?it.finish.slice(0,10):null,today=new Date().toISOString().slice(0,10);
     if(fin&&fin<today&&!confirm(`Sprint "${it.name}" ended ${fin}. Move #${d.id} there anyway?`))return;}
@@ -513,6 +549,7 @@ async function refresh(){
 }
 async function _refresh(){
   const items=await currentItems();
+  listCapped=!!items.truncated;          // list() hit LIST_CAP → status lines warn
   store.roots=items.map(n=>n.id);        // flat list — board uses this
   items.forEach(n=>{store.nodes[n.id]=n;delete n.via;});
   // RESET hierarchy caches — stale entries from a previous filter would leak via
@@ -704,6 +741,22 @@ function showSetup(cancellable){
 }
 function hideSetup(){$('setup-overlay').classList.remove('show');}
 
+// api.js dispatches 'ado-401' on any HTTP 401 — the PAT expired or was revoked
+// mid-session. Reopen setup with a clear message instead of spraying errors.
+function handle401(){
+  if($('setup-overlay').classList.contains('show'))return;   // already prompting — don't stack
+  showSetup(true);
+  $('setup-err').textContent='Authentication failed (HTTP 401) — your PAT is expired or revoked. Paste a new one.';
+}
+// One-time nudge when the recorded PAT expiry is within 3 days (or already past).
+async function warnIfPatExpiring(){
+  let exp='';try{exp=(await api.getConfig()).patExpiry||'';}catch(e){}
+  const n=patDaysLeft(exp);
+  if(n===null||n>3)return;
+  setStatus(n<0?`⚠ PAT expired ${-n} day(s) ago — update it via ⚙`
+               :(n===0?'⚠ PAT expires today — update it via ⚙':`⚠ PAT expires in ${n} day(s) — update it via ⚙`),true);
+}
+
 /* ---------- setup picker: list the orgs / projects a PAT can access ----------
    Lets the user CHOOSE an org/project after pasting a PAT instead of typing.
    Both calls can legitimately fail for a narrowly-scoped PAT, so the inputs
@@ -802,6 +855,7 @@ async function saveSetup(){
 
 /* ---------- one-time wiring done before the PAT exists ---------- */
 function wireSetup(){
+  window.addEventListener('ado-401',handle401);   // PAT expired/revoked mid-session → reopen setup
   $('setup-save').onclick=saveSetup;
   $('setup-load').onclick=loadSetupOrgs;
   $('setup-pat').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadSetupOrgs();}});  // Enter on PAT loads orgs
@@ -817,8 +871,8 @@ function wireSetup(){
 let _booted=false;
 async function initialBoot(postSetup){
   if(_booted){                           // settings re-save: just reload data
-    iterCache=null;depCache={};assignees=[];
-    await loadIdentity();await refresh();return;
+    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};
+    await loadIdentity();await refresh();warnIfPatExpiring();return;
   }
   _booted=true;
 
@@ -894,7 +948,7 @@ async function initialBoot(postSetup){
   }catch(e){}
   const p=new URLSearchParams(location.search),root=p.get('root');
   if(root){await openItem(parseInt(root));}
-  refresh();
+  refresh().then(warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
 }
 
 async function loadIdentity(){
@@ -903,7 +957,25 @@ async function loadIdentity(){
   catch(e){assignees=[];}
   $('assignees').innerHTML=['me',...assignees].map(a=>`<option value="${String(a).replace(/"/g,'&quot;')}">`).join('');
   renderFilters();                          // re-render so Assigned chips include people
+  loadFilterData().then(renderFilters);     // states/tags/sprints fill in async (don't block first paint)
   if(currentUser)$('s_me').title='assign to me ('+currentUser+')';
+}
+// Populate the data-driven filter chips from the project itself (in parallel):
+//   - State: union of states across all work-item types (falls back to a static list)
+//   - Tags:  distinct tags sampled from recent items
+//   - Sprint: dated iterations (chip value = path, label = short name)
+async function loadFilterData(){
+  await Promise.all([
+    (async()=>{try{
+      const per=await Promise.all(TYPES.map(t=>api.states(t).catch(()=>[])));
+      const all=[];per.forEach(arr=>arr.forEach(s=>{if(!all.includes(s))all.push(s);}));
+      projectStates=all.length?orderStates(all):[];
+    }catch(e){projectStates=[];}})(),
+    (async()=>{try{tagList=await api.tags();}catch(e){tagList=[];}})(),
+    (async()=>{try{const its=await getIterations();sprintPaths=its.map(i=>i.path);
+      sprintNames={};its.forEach(i=>{sprintNames[i.path]=i.name;});}
+      catch(e){sprintPaths=[];sprintNames={};}})(),
+  ]);
 }
 
 /* ---------- boot ---------- */

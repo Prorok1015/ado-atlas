@@ -4,6 +4,7 @@
 // changes take effect without a reload).
 
 const API_VERSION = "api-version=7.1";
+const LIST_CAP = 2000;   // max work items a single list() query returns (guards unfiltered queries)
 
 const FIELD_ALIASES = {
   title: "System.Title",
@@ -37,6 +38,7 @@ const DEFAULT_FIELDS = [
   "Microsoft.VSTS.Scheduling.TargetDate",
   "Microsoft.VSTS.Scheduling.DueDate",
   "Microsoft.VSTS.Scheduling.OriginalEstimate",
+  "System.Tags",
 ];
 
 const AC_TYPES = new Set(["User Story", "Feature", "Epic", "Issue", "Product Backlog Item"]);
@@ -44,10 +46,12 @@ const AC_TYPES = new Set(["User Story", "Feature", "Epic", "Issue", "Product Bac
 // Same filter registry the chip UI uses. Mirrors FILTER_FIELDS in the old
 // Flask backend — change one place when you add a column.
 const FILTER_FIELDS = {
-  type:     { ref: "System.WorkItemType" },
-  state:    { ref: "System.State" },
-  priority: { ref: "Microsoft.VSTS.Common.Priority", num: true },
-  assigned: { ref: "System.AssignedTo", identity: true },
+  type:      { ref: "System.WorkItemType" },
+  state:     { ref: "System.State" },
+  priority:  { ref: "Microsoft.VSTS.Common.Priority", num: true },
+  assigned:  { ref: "System.AssignedTo", identity: true },
+  iteration: { ref: "System.IterationPath" },
+  tags:      { ref: "System.Tags", contains: true },   // semicolon-list field → CONTAINS, not IN
 };
 
 // ---------- storage (PAT + org/project) ----------
@@ -104,6 +108,11 @@ async function req(method, url, body, ctype) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!resp.ok) {
+    // A 401 mid-session means the PAT expired or was revoked. Let the UI react
+    // (reopen setup) instead of just spraying errors into the status bar.
+    if (resp.status === 401 && typeof window !== "undefined") {
+      try { window.dispatchEvent(new CustomEvent("ado-401")); } catch (_) { /* no window */ }
+    }
     let detail = await resp.text();
     try { detail = JSON.parse(detail).message || detail; } catch (_) { /* keep raw */ }
     throw new Error(`HTTP ${resp.status}: ${detail.slice(0, 500)}`);
@@ -180,6 +189,7 @@ function nodeOf(w) {
     start: f["Microsoft.VSTS.Scheduling.StartDate"],
     est: f["Microsoft.VSTS.Scheduling.OriginalEstimate"],
     target: f["Microsoft.VSTS.Scheduling.TargetDate"] || f["Microsoft.VSTS.Scheduling.DueDate"],
+    tags: f["System.Tags"] || "",
   };
 }
 
@@ -191,7 +201,7 @@ function buildClauses(filters) {
     const spec = FILTER_FIELDS[key];
     const f = filters[key] || {};
     const inc = f.in || [], exc = f.not || [];
-    const { ref, identity, num } = spec;
+    const { ref, identity, num, contains } = spec;
     const lit = v => {
       if (num) {
         const n = parseInt(v, 10);
@@ -199,6 +209,13 @@ function buildClauses(filters) {
       }
       return "'" + wiqlQuote(v) + "'";
     };
+    // Semicolon-list fields (e.g. System.Tags) can't use IN — each value is a
+    // separate CONTAINS, OR-ed for include and AND-ed (NOT CONTAINS) for exclude.
+    if (contains) {
+      if (inc.length) clauses.push("(" + inc.map(v => `[${ref}] CONTAINS '${wiqlQuote(v)}'`).join(" OR ") + ")");
+      if (exc.length) clauses.push("(" + exc.map(v => `[${ref}] NOT CONTAINS '${wiqlQuote(v)}'`).join(" AND ") + ")");
+      continue;
+    }
     if (inc.length) {
       const parts = [];
       const names = inc.filter(v => !(identity && v === "me"));
@@ -253,9 +270,14 @@ async function list({ wtype, parent, text, order, filters } = {}) {
     ? "[Microsoft.VSTS.Common.Priority], [System.Id]"
     : "[System.Id]";
   const wiql = "SELECT [System.Id] FROM WorkItems WHERE " + where.join(" AND ") + " ORDER BY " + orderBy;
-  const ids = await wiqlIds(wiql, 2000);   // 2000 cap guards unfiltered queries
+  const ids = await wiqlIds(wiql, LIST_CAP);
   const items = await batchFetch(ids);
-  return items.map(nodeOf);
+  const out = items.map(nodeOf);
+  // Flag (don't hide) when the LIST_CAP guard kicked in so the UI can warn the
+  // user that they're not seeing everything.
+  out.truncated = ids.length >= LIST_CAP;
+  out.cap = LIST_CAP;
+  return out;
 }
 
 // ---------- single-purpose endpoints ----------
@@ -331,6 +353,26 @@ async function assignees() {
       }
     } catch (_) { /* leave empty */ }
   }
+  return [...names].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+}
+
+// Distinct tags seen on recent items (no dedicated tag endpoint exists for a
+// PAT, so we sample the most-recently-changed items and split their Tags).
+async function tags() {
+  const names = new Set();
+  try {
+    const ids = await wiqlIds(
+      "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project ORDER BY [System.ChangedDate] DESC",
+      500,
+    );
+    const items = await batchFetch(ids, ["System.Tags"]);
+    for (const w of items) {
+      for (const part of String((w.fields || {})["System.Tags"] || "").split(";")) {
+        const s = part.trim();
+        if (s) names.add(s);
+      }
+    }
+  } catch (_) { /* leave empty */ }
   return [...names].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 }
 
@@ -632,7 +674,7 @@ window.api = {
   // setup picker (org / project discovery)
   orgs, projects,
   // primitives
-  me, iterations, states, assignees, browserUrl,
+  me, iterations, states, assignees, tags, browserUrl,
   // list / search / children / parents
   roots: ({ text, order, filters } = {}) => list({ text, order, filters }),
   search: ({ text, order, filters } = {}) => list({ text, order, filters }),
