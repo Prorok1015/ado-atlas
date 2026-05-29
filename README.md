@@ -34,6 +34,12 @@ too narrowly to enumerate them, just type the org/project names in directly.
 All three fields are required — the extension ships with no built-in defaults,
 so it is not tied to any particular organization or project.
 
+- **PAT expiry** *(optional)* — copy the expiration date shown on the token
+  page. The toolbar then displays a validity countdown (e.g. `PAT: 12d`) that
+  turns amber within 14 days and red within 3 days / once expired. Azure DevOps
+  can't report a PAT's expiry to a PAT-authenticated request, so this date is
+  recorded locally; it does not change anything if left blank.
+
 The PAT is stored in `chrome.storage.local` on this machine only — it is not
 synced via your Google account. Reopen the modal any time with the **⚙** button
 in the toolbar (e.g. to rotate the PAT or switch to another org/project).

@@ -695,6 +695,7 @@ function showSetup(cancellable){
   const cfg=api.getConfig();   // promise — fill async
   cfg.then(c=>{
     $('setup-pat').value=c.pat||'';$('setup-org').value=c.org||'';$('setup-project').value=c.project||'';
+    $('setup-expiry').value=c.patExpiry||'';updateSetupExpiryInfo();
     if(c.pat&&c.org)loadSetupProjects();   // reopening settings: populate the project dropdown for the saved org
   });
   $('setup-err').textContent='';
@@ -742,10 +743,41 @@ async function loadSetupProjects(){
   catch(e){/* project dropdown is optional — manual entry still works */}
 }
 
+/* ---------- PAT validity countdown ----------
+   ADO can't tell a PAT-authenticated request when the PAT expires (the Token
+   Lifecycle API needs an Entra token), so the user optionally records the
+   expiry date and we count down from it. */
+function patDaysLeft(expiry){
+  if(!expiry)return null;
+  const exp=Date.parse(expiry);if(!Number.isFinite(exp))return null;
+  const today=Date.parse(new Date().toISOString().slice(0,10));   // local midnight
+  return Math.round((exp-today)/86400000);
+}
+function patDaysLabel(n){return n>=60?(Math.round(n/30)+'mo'):(n+'d');}
+async function updatePatBadge(){
+  const el=$('patbadge');if(!el)return;
+  let exp='';try{exp=(await api.getConfig()).patExpiry||'';}catch(e){}
+  const n=patDaysLeft(exp);
+  el.classList.remove('patok','patwarn','patbad');
+  if(n===null){el.style.display='none';el.textContent='';el.title='';return;}
+  el.style.display='inline-block';
+  let cls,text,tip;
+  if(n<0){cls='patbad';text='PAT expired';tip=`Personal Access Token expired ${-n} day(s) ago (${exp}).`;}
+  else if(n===0){cls='patbad';text='PAT: today';tip=`Personal Access Token expires today (${exp}).`;}
+  else{cls=n<=3?'patbad':(n<=14?'patwarn':'patok');text='PAT: '+patDaysLabel(n);tip=`Personal Access Token valid for ${n} day(s) (until ${exp}).`;}
+  el.textContent=text;el.classList.add(cls);el.title=tip+' Click to update.';
+}
+function updateSetupExpiryInfo(){
+  const t=$('setup-expiry-info');if(!t)return;
+  const n=patDaysLeft($('setup-expiry').value);
+  t.textContent=n===null?'':(n<0?`expired ${-n} day(s) ago`:(n===0?'expires today':`${n} day(s) left`));
+}
+
 async function saveSetup(){
   const pat=$('setup-pat').value.trim();
   const org=$('setup-org').value.trim();
   const project=$('setup-project').value.trim();
+  const patExpiry=$('setup-expiry').value;   // optional "YYYY-MM-DD" or ""
   if(!pat){$('setup-err').textContent='PAT is required.';return;}
   if(!org){$('setup-err').textContent='Organization is required.';return;}
   if(!project){$('setup-err').textContent='Project is required.';return;}
@@ -754,10 +786,11 @@ async function saveSetup(){
   try{
     // Persist first so api.me() picks up the new values; if it fails we surface
     // a clear error and let the user fix the PAT instead of leaving stale state.
-    await api.setConfig({pat,org,project});
+    await api.setConfig({pat,org,project,patExpiry});
     const name=await api.me();
     if(!name)throw new Error('PAT did not authenticate (no display name returned)');
     currentUser=name;projectName=project;
+    updatePatBadge();
     hideSetup();
     btn.disabled=false;btn.textContent='Save & Connect';
     await initialBoot(/*postSetup*/true);
@@ -773,8 +806,11 @@ function wireSetup(){
   $('setup-load').onclick=loadSetupOrgs;
   $('setup-pat').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadSetupOrgs();}});  // Enter on PAT loads orgs
   $('setup-org').addEventListener('change',loadSetupProjects);   // org chosen → fetch its projects
+  $('setup-expiry').addEventListener('change',updateSetupExpiryInfo);
+  $('setup-expiry').addEventListener('input',updateSetupExpiryInfo);
   $('setup-cancel').onclick=hideSetup;
   $('settingsbtn').onclick=()=>showSetup(true);
+  $('patbadge').onclick=()=>showSetup(true);
 }
 
 /* ---------- main init (runs after PAT is verified) ---------- */
@@ -845,7 +881,7 @@ async function initialBoot(postSetup){
     const bg=localStorage.getItem('ado.boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
     const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
-  buildLegend();renderFilters();updateFilterCount();
+  buildLegend();renderFilters();updateFilterCount();updatePatBadge();
   await loadIdentity();
   try{
     const savedTheme=localStorage.getItem('ado.theme');

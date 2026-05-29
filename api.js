@@ -54,7 +54,11 @@ const FILTER_FIELDS = {
 // Org and project are required and entered by the user in the setup modal —
 // there are no built-in defaults, so the extension is not tied to any one
 // Azure DevOps organization or project.
-const STORE_KEYS = ["pat", "org", "project"];
+// patExpiry is an optional "YYYY-MM-DD" the user copies from the PAT creation
+// page. ADO can't report a PAT's expiry to a PAT-authenticated request (the
+// Token Lifecycle API needs an Entra token), so we store the date and count
+// down from it locally.
+const STORE_KEYS = ["pat", "org", "project", "patExpiry"];
 
 async function getConfig() {
   const r = await chrome.storage.local.get(STORE_KEYS);
@@ -62,6 +66,7 @@ async function getConfig() {
     pat: r.pat || "",
     org: r.org || "",
     project: r.project || "",
+    patExpiry: r.patExpiry || "",
   };
 }
 async function setConfig(patch) {

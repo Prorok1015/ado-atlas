@@ -24,6 +24,7 @@
   <button class="btn" id="searchbtn">Search</button>
   <button class="btn" id="refreshbtn" title="reload from server (drop caches)">⟳</button>
   <button class="btn" id="fit" title="fit graph">Fit</button>
+  <span class="patbadge" id="patbadge" title="PAT validity"></span>
   <button class="btn" id="settingsbtn" title="settings (PAT / org / project)">⚙</button>
   <button class="btn" id="theme">◐</button>
   <span class="legend" id="legend"></span>
@@ -102,6 +103,11 @@
     <div class="row">
       <div><label>Organization</label><input id="setup-org" list="setup-orglist" placeholder="your-org" autocomplete="off"><datalist id="setup-orglist"></datalist></div>
       <div><label>Project</label><input id="setup-project" list="setup-projlist" placeholder="your-project" autocomplete="off"><datalist id="setup-projlist"></datalist></div>
+    </div>
+    <label>PAT expiry <span style="color:var(--muted);font-weight:400">(optional — copy from the token page for a validity countdown)</span></label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="setup-expiry" type="date" style="flex:0 0 auto">
+      <span id="setup-expiry-info" style="color:var(--muted);font-size:12px"></span>
     </div>
     <div id="setup-err"></div>
     <div id="setup-actions">
