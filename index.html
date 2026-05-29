@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADO Work Items</title>
+<link rel="stylesheet" href="app.css">
+<script src="vendor/cytoscape.min.js"></script>
+<script src="vendor/dagre.min.js"></script>
+<script src="vendor/cytoscape-dagre.js"></script>
+</head>
+<body>
+<div id="bar">
+  <h1>ADO</h1>
+  <div class="seg" id="mode"><button data-m="tree" class="on">Tree</button><button data-m="graph">Graph</button><button data-m="board">Board</button></div>
+  <div class="seg" id="emode" style="display:none"><button data-e="hierarchy" class="on" title="just hierarchy (compound boxes)">Hier</button><button data-e="dep" title="add dependency arrows">+ Deps</button></div>
+  <div class="seg" id="dir" style="display:none"><button data-d="TB">↕ V</button><button data-d="LR" class="on">↔ H</button></div>
+  <div class="seg" id="grp" style="display:none"><button data-g="sprint" class="on">by Sprint</button><button data-g="assignee">by Assignee</button></div>
+  <button class="btn" id="empty_btn" title="show empty sprints" style="display:none">∅ empty</button>
+  <button class="btn" id="filt_btn" title="filters">Filters <span id="filt_count"></span></button>
+  <select id="f_sort" title="sort order"><option value="">sort: id</option><option value="priority">sort: priority</option></select>
+  <select id="f_tz" title="timezone for work-hours"></select>
+  <input id="search" placeholder="search id / title">
+  <button class="btn" id="searchbtn">Search</button>
+  <button class="btn" id="refreshbtn" title="reload from server (drop caches)">⟳</button>
+  <button class="btn" id="fit" title="fit graph">Fit</button>
+  <button class="btn" id="settingsbtn" title="settings (PAT / org / project)">⚙</button>
+  <button class="btn" id="theme">◐</button>
+  <span class="legend" id="legend"></span>
+</div>
+<div id="loading"></div>
+<div id="filterpanel" style="display:none"></div>
+<datalist id="assignees"></datalist>
+<div id="main">
+  <div id="left">
+    <div id="tree" class="show"></div>
+    <div id="cy"></div>
+    <div id="board"></div>
+    <div id="sprintview"></div>
+  </div>
+  <div id="resizer"></div>
+  <div id="side" class="hidden">
+    <div class="shead">
+      <span id="s_hdr" class="ttl">—</span>
+      <a class="btn icon" id="s_link" target="_blank" title="open in Azure DevOps">↗</a>
+      <button class="btn icon" id="s_close" title="close (Esc)">✕</button>
+    </div>
+    <div id="s_ctx"></div>
+    <label>Title</label><input id="s_title">
+    <div class="row">
+      <div><label>State</label><select id="s_state" style="width:100%"></select></div>
+      <div style="max-width:96px"><label>Priority</label><select id="s_prio" style="width:100%"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+      <div><label>Assigned</label><div style="display:flex;gap:4px"><input id="s_assigned" list="assignees" style="flex:1"><button class="btn" id="s_me" title="assign to me" style="padding:6px 9px">me</button></div></div>
+    </div>
+    <label>Sprint</label><select id="s_iter" style="width:100%"></select>
+    <div class="row">
+      <div><label>Start</label><input id="s_start" type="date"></div>
+      <div><label>Target</label><input id="s_target" type="date"></div>
+      <div><label>Due</label><input id="s_due" type="date"></div>
+      <div style="max-width:70px"><label>Est h</label><input id="s_est" type="number" min="0" step="0.5"></div>
+    </div>
+    <div id="s_time" class="stime"></div>
+    <label>Description <a id="s_desc_toggle" class="mdlink">preview</a></label>
+    <textarea id="s_desc"></textarea>
+    <div id="s_desc_prev" class="mdview" style="display:none"></div>
+    <div id="ac_wrap"><label>Acceptance Criteria</label><textarea id="s_ac"></textarea></div>
+    <div class="actions">
+      <button class="btn save" id="s_save" title="Ctrl/Cmd+S">Save</button>
+      <button class="btn" id="s_comment">💬 Comment</button>
+      <button class="btn" id="s_childbtn">+ Child</button>
+    </div>
+    <div id="comment_form">
+      <textarea id="cm_text" placeholder="add a comment…" style="min-height:64px"></textarea>
+      <div class="actions"><button class="btn save" id="cm_post">Post</button><button class="btn" id="cm_cancel">Cancel</button></div>
+    </div>
+    <div id="child_form">
+      <div class="row"><select id="c_type" style="width:100%"></select>
+        <select id="c_prio" style="max-width:78px"><option value="">P —</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+      <input id="c_title" placeholder="new child title">
+      <div class="row" style="gap:4px"><input id="c_assigned" list="assignees" placeholder="assignee (optional)" style="flex:1"><button class="btn" id="c_me" title="assign to me" style="padding:4px 8px">me</button></div>
+      <div class="actions"><button class="btn save" id="c_create">Create</button><button class="btn" id="c_cancel">Cancel</button></div>
+    </div>
+    <div id="status"></div>
+  </div>
+</div>
+
+<!-- First-run / settings modal. The whole UI is invisible until the PAT
+     check passes (handled by app.js boot). -->
+<div id="setup-overlay">
+  <div id="setup-box">
+    <h1>Connect to Azure DevOps</h1>
+    <p>The extension needs a Personal Access Token to talk to Azure DevOps.
+       Create one at <a href="https://dev.azure.com/_usersSettings/tokens" target="_blank">dev.azure.com → User settings → Personal access tokens</a>
+       with at least <b>Work Items (Read &amp; Write)</b> and <b>Project and Team (Read)</b> scopes. The PAT is stored in
+       <code>chrome.storage.local</code> on this machine only.</p>
+    <label>Personal Access Token</label>
+    <input id="setup-pat" type="password" placeholder="Paste your PAT here">
+    <div class="row">
+      <div><label>Organization</label><input id="setup-org" placeholder="your-org"></div>
+      <div><label>Project</label><input id="setup-project" placeholder="your-project"></div>
+    </div>
+    <div id="setup-err"></div>
+    <div id="setup-actions">
+      <button class="btn save" id="setup-save">Save &amp; Connect</button>
+      <button class="btn" id="setup-cancel" style="display:none">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
