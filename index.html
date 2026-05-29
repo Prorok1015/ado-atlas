@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ADO Work Items</title>
+<title>ADO Atlas</title>
 <link rel="stylesheet" href="app.css">
 <script src="vendor/cytoscape.min.js"></script>
 <script src="vendor/dagre.min.js"></script>
@@ -11,7 +11,7 @@
 </head>
 <body>
 <div id="bar">
-  <h1>ADO</h1>
+  <h1>ADO Atlas</h1>
   <div class="seg" id="mode"><button data-m="tree" class="on">Tree</button><button data-m="graph">Graph</button><button data-m="board">Board</button></div>
   <div class="seg" id="emode" style="display:none"><button data-e="hierarchy" class="on" title="just hierarchy (compound boxes)">Hier</button><button data-e="dep" title="add dependency arrows">+ Deps</button></div>
   <div class="seg" id="dir" style="display:none"><button data-d="TB">↕ V</button><button data-d="LR" class="on">↔ H</button></div>
@@ -94,10 +94,14 @@
        with at least <b>Work Items (Read &amp; Write)</b> and <b>Project and Team (Read)</b> scopes. The PAT is stored in
        <code>chrome.storage.local</code> on this machine only.</p>
     <label>Personal Access Token</label>
-    <input id="setup-pat" type="password" placeholder="Paste your PAT here">
+    <div style="display:flex;gap:6px">
+      <input id="setup-pat" type="password" placeholder="Paste your PAT here" style="flex:1">
+      <button class="btn" id="setup-load" title="list organizations & projects this PAT can access">Load</button>
+    </div>
+    <p class="hint" id="setup-load-hint">Paste a PAT and click <b>Load</b> to pick your organization and project from the dropdowns, or just type them in.</p>
     <div class="row">
-      <div><label>Organization</label><input id="setup-org" placeholder="your-org"></div>
-      <div><label>Project</label><input id="setup-project" placeholder="your-project"></div>
+      <div><label>Organization</label><input id="setup-org" list="setup-orglist" placeholder="your-org" autocomplete="off"><datalist id="setup-orglist"></datalist></div>
+      <div><label>Project</label><input id="setup-project" list="setup-projlist" placeholder="your-project" autocomplete="off"><datalist id="setup-projlist"></datalist></div>
     </div>
     <div id="setup-err"></div>
     <div id="setup-actions">

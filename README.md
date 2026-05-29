@@ -1,4 +1,4 @@
-# ADO Work Items (Chrome Extension)
+# ADO Atlas (Chrome Extension)
 
 Tree / Graph / Board / Sprint Gantt over Azure DevOps work items.
 Talks to `dev.azure.com` directly from the browser — no local server, no Python.
@@ -12,7 +12,7 @@ project, and a Personal Access Token on first run.
 2. Open `chrome://extensions` in Chrome / Edge / Brave.
 3. Toggle **Developer mode** (top-right).
 4. Click **Load unpacked**, pick the unzipped folder.
-5. Pin the extension icon (puzzle-piece menu → 📌 next to "ADO Work Items").
+5. Pin the extension icon (puzzle-piece menu → 📌 next to "ADO Atlas").
 
 ## First run
 
@@ -25,6 +25,11 @@ Click the toolbar icon → a new tab opens. The setup overlay asks for:
     - **Project and team** — Read (used for the Assigned filter / "me" shortcut)
 - **Organization** — your ADO org (the `<org>` in `dev.azure.com/<org>/...`).
 - **Project** — the ADO project (the `<project>` in `dev.azure.com/<org>/<project>/...`).
+
+After pasting the PAT, click **Load** (or press Enter): the extension lists the
+organizations that PAT can access and the projects inside the org you pick, so
+you can choose them from the dropdowns instead of typing. If your PAT is scoped
+too narrowly to enumerate them, just type the org/project names in directly.
 
 All three fields are required — the extension ships with no built-in defaults,
 so it is not tied to any particular organization or project.
@@ -45,12 +50,12 @@ in the toolbar (e.g. to rotate the PAT or switch to another org/project).
 | `app.js` | Tree / Graph / Board / Sprint / Editor logic |
 | `vendor/` | Cytoscape + dagre + cytoscape-dagre (bundled, no CDN) |
 | `icons/` | Toolbar icons (16/48/128) |
-| `build.bat` | One-shot zip into `dist/ado-work-items-extension.zip` |
+| `build.bat` | One-shot zip into `dist/ado-atlas-extension.zip` |
 
 ## Build (only when sharing)
 
 Double-click `build.bat` on Windows (or run `powershell Compress-Archive ...`
-on any OS). Result lands in `dist\ado-work-items-extension.zip`.
+on any OS). Result lands in `dist\ado-atlas-extension.zip`.
 
 ## Troubleshooting
 

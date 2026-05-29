@@ -329,6 +329,37 @@ async function assignees() {
   return [...names].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 }
 
+// ---------- account / project discovery (setup picker) ----------
+// Used by the setup modal to let the user PICK an org/project after pasting a
+// PAT instead of typing them. Both require the PAT to be persisted first
+// (authHeader reads it from storage). Either may legitimately fail for a
+// narrowly-scoped PAT — callers fall back to manual text entry.
+
+// Organizations (accounts) the PAT owner can access, sorted by name.
+async function orgs() {
+  const prof = await req("GET", `https://app.vssps.visualstudio.com/_apis/profile/profiles/me?${API_VERSION}`);
+  const memberId = prof.publicAlias || prof.id;
+  if (!memberId) return [];
+  const res = await req("GET", `https://app.vssps.visualstudio.com/_apis/accounts?memberId=${encodeURIComponent(memberId)}&${API_VERSION}`);
+  return (res.value || [])
+    .map(a => a.accountName)
+    .filter(Boolean)
+    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+}
+
+// Project names within a given org, sorted. Takes the org explicitly so it
+// works during setup before the org is saved to config.
+async function projects(org) {
+  org = (org || "").trim();
+  if (!org) return [];
+  const url = `https://dev.azure.com/${encodeURIComponent(org)}/_apis/projects?stateFilter=wellFormed&$top=1000&${API_VERSION}`;
+  const res = await req("GET", url);
+  return (res.value || [])
+    .map(p => p.name)
+    .filter(Boolean)
+    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+}
+
 // Dependency edges among the given ids (both endpoints in the set).
 async function deps(ids) {
   ids = ids.map(Number).filter(Number.isFinite);
@@ -593,6 +624,8 @@ async function timeline(wid, offset) {
 window.api = {
   // config
   getConfig, setConfig, clearConfig,
+  // setup picker (org / project discovery)
+  orgs, projects,
   // primitives
   me, iterations, states, assignees, browserUrl,
   // list / search / children / parents

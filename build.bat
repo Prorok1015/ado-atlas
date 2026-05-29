@@ -1,6 +1,6 @@
 @echo off
 REM Bundle the extension into a single zip for distribution.
-REM Result: dist\ado-work-items-extension.zip — share with colleagues.
+REM Result: dist\ado-atlas-extension.zip — share with colleagues.
 REM
 REM Install on the colleague's machine:
 REM   1. Unzip the archive.
@@ -11,7 +11,7 @@ REM   4. Click the icon, paste a PAT on first run.
 setlocal
 cd /d "%~dp0"
 
-set OUT=dist\ado-work-items-extension.zip
+set OUT=dist\ado-atlas-extension.zip
 
 if exist dist rmdir /s /q dist
 mkdir dist

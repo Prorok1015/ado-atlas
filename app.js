@@ -691,13 +691,56 @@ function buildLegend(){$('legend').innerHTML=Object.entries(TYPE_COLOR).map(([k,
 
 /* ---------- setup modal (replaces /setup page) ---------- */
 function showSetup(cancellable){
+  $('setup-load-hint').innerHTML=SETUP_HINT;
   const cfg=api.getConfig();   // promise — fill async
-  cfg.then(c=>{$('setup-pat').value=c.pat||'';$('setup-org').value=c.org||'';$('setup-project').value=c.project||'';});
+  cfg.then(c=>{
+    $('setup-pat').value=c.pat||'';$('setup-org').value=c.org||'';$('setup-project').value=c.project||'';
+    if(c.pat&&c.org)loadSetupProjects();   // reopening settings: populate the project dropdown for the saved org
+  });
   $('setup-err').textContent='';
   $('setup-cancel').style.display=cancellable?'inline-block':'none';
   $('setup-overlay').classList.add('show');
 }
 function hideSetup(){$('setup-overlay').classList.remove('show');}
+
+/* ---------- setup picker: list the orgs / projects a PAT can access ----------
+   Lets the user CHOOSE an org/project after pasting a PAT instead of typing.
+   Both calls can legitimately fail for a narrowly-scoped PAT, so the inputs
+   stay free-text and we just fall back to manual entry on error. */
+const SETUP_HINT='Paste a PAT and click <b>Load</b> to pick your organization and project from the dropdowns, or just type them in.';
+function fillDatalist(id,items){
+  const dl=$(id);if(!dl)return;
+  dl.innerHTML=(items||[]).map(v=>`<option value="${String(v).replace(/"/g,'&quot;')}"></option>`).join('');
+}
+let _loadingOrgs=false;
+async function loadSetupOrgs(){
+  const pat=$('setup-pat').value.trim();
+  if(!pat){$('setup-err').textContent='Paste a PAT first.';return;}
+  if(_loadingOrgs)return;_loadingOrgs=true;
+  const btn=$('setup-load');btn.disabled=true;btn.textContent='Loading…';$('setup-err').textContent='';
+  try{
+    await api.setConfig({pat});                       // persist so the API can authenticate
+    const list=await api.orgs();
+    fillDatalist('setup-orglist',list);
+    if(list.length){
+      $('setup-load-hint').textContent=`Found ${list.length} organization(s) — pick one, then choose a project.`;
+      if(!$('setup-org').value.trim()&&list.length===1)$('setup-org').value=list[0];   // single org → preselect
+      if($('setup-org').value.trim())await loadSetupProjects();
+    }else{
+      $('setup-load-hint').textContent='No organizations returned for this PAT — type the org name manually.';
+    }
+  }catch(e){
+    $('setup-load-hint').textContent='Could not list organizations ('+e.message+') — type the org and project manually.';
+  }finally{
+    btn.disabled=false;btn.textContent='Load';_loadingOrgs=false;
+  }
+}
+async function loadSetupProjects(){
+  const org=$('setup-org').value.trim();
+  if(!org)return;
+  try{fillDatalist('setup-projlist',await api.projects(org));}
+  catch(e){/* project dropdown is optional — manual entry still works */}
+}
 
 async function saveSetup(){
   const pat=$('setup-pat').value.trim();
@@ -727,7 +770,9 @@ async function saveSetup(){
 /* ---------- one-time wiring done before the PAT exists ---------- */
 function wireSetup(){
   $('setup-save').onclick=saveSetup;
-  $('setup-pat').addEventListener('keydown',e=>{if(e.key==='Enter')saveSetup();});
+  $('setup-load').onclick=loadSetupOrgs;
+  $('setup-pat').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadSetupOrgs();}});  // Enter on PAT loads orgs
+  $('setup-org').addEventListener('change',loadSetupProjects);   // org chosen → fetch its projects
   $('setup-cancel').onclick=hideSetup;
   $('settingsbtn').onclick=()=>showSetup(true);
 }
