@@ -57,10 +57,10 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
   background-size:24px 24px;background-position:0 0}
 /* per-view controls legend (bottom-left), collapsible — styled as an
    Excalidraw "island": rounded card, soft layered shadow, hand-drawn font */
-#viewhelp{position:absolute;left:14px;bottom:14px;z-index:5;display:none;background:var(--panel);
+#viewhelp{position:absolute;left:14px;bottom:14px;z-index:5;display:none;flex-direction:column-reverse;background:var(--panel);
   border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.12),0 6px 18px rgba(0,0,0,.14);
   font-family:'Segoe Print','Bradley Hand','Comic Sans MS',cursive;font-size:12px;color:var(--muted);max-width:300px;overflow:hidden}
-#viewhelp.show{display:block}
+#viewhelp.show{display:flex}   /* column-reverse: header pinned at the bottom, body expands upward when shown */
 .vhh{padding:5px 10px 5px 6px;font-weight:700;color:var(--txt);user-select:none;display:flex;align-items:center;gap:4px}
 .vhh .vhctrl{flex:1;cursor:pointer;padding:2px 4px;border-radius:6px}
 .vhh .vhctrl:hover{background:var(--panel2)}
