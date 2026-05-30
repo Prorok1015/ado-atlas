@@ -49,9 +49,10 @@ minutes. After that, signing in is one click.
 
 1. App registration → **Overview** → copy the **Application (client) ID**.
 2. In the extension's **Microsoft sign-in** tab, paste the **Application (client)
-   ID** and pick the **Account type / tenant** from the dropdown:
-   *Work or school* (`organizations`), *Any work/school account* (`common`), or
-   *Specific tenant ID* (paste a tenant GUID to pin one organization).
+   ID** and pick the **Account type / tenant**: *Work or school account*
+   (`organizations`) or *Specific tenant ID* (paste a tenant GUID to pin one
+   organization). (Personal accounts aren't offered — Azure DevOps OAuth doesn't
+   support them.)
 3. Click **Sign in with Microsoft**, complete the Microsoft prompt and consent.
 4. Pick your **organization** and **project** (they auto-populate after sign-in)
    → **Save & Connect**.

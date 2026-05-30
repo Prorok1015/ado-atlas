@@ -140,12 +140,11 @@
       <input id="oauth-client" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off">
       <label>Account type / tenant</label>
       <select id="oauth-tenant-mode" style="width:100%">
-        <option value="organizations">Work or school account (organizations)</option>
-        <option value="common">Any work/school account (common)</option>
+        <option value="organizations">Work or school account</option>
         <option value="custom">Specific tenant ID…</option>
       </select>
       <input id="oauth-tenant-id" placeholder="tenant ID (GUID)" autocomplete="off" style="display:none">
-      <p class="hint">Microsoft sign-in works with <b>work/school (Microsoft Entra)</b> accounts. Personal Microsoft accounts aren't supported by Azure DevOps OAuth — use the <b>Token</b> tab (PAT) instead.</p>
+      <p class="hint"><b>⚠ Work/school (Microsoft Entra) accounts only.</b> Personal Microsoft accounts (outlook/hotmail/live), including a personal account that owns an Azure DevOps org, <b>cannot</b> use OAuth — Azure DevOps has no OAuth resource for them. Use the <b>Token</b> tab (PAT) instead; it works with any account.</p>
       <label>Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact value in your Entra app)</span></label>
       <div style="display:flex;gap:6px">
         <input id="oauth-redirect" readonly style="flex:1">
