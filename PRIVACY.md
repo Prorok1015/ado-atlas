@@ -1,6 +1,6 @@
 # Privacy Policy — ADO Atlas
 
-**Effective date:** 2026-05-30
+**Effective date:** 2026-05-31
 
 ADO Atlas ("the extension") is an independent browser extension that displays and
 manages your Azure DevOps work items. This policy explains exactly what data the
@@ -46,6 +46,28 @@ These hosts are the only ones the extension is permitted to contact (enforced by
 its Content Security Policy). The extension contains **no analytics, no
 telemetry, no advertising, and no third-party servers.** No data is ever
 transmitted to the developer.
+
+### Files you attach to a work item
+
+When you paste, drop, or pick a file inside the **Description** editor, the
+file's bytes are uploaded **directly to your Azure DevOps organization**
+(`https://dev.azure.com/<org>/_apis/wit/attachments`) and linked to the open
+work item as an `AttachedFile` relation — the same path the Azure DevOps web UI
+uses. The extension does not keep a local copy of the file bytes, does not send
+them to the developer, and does not transmit them to any third-party service.
+Image previews displayed inside the editor are re-fetched from Azure DevOps in
+the same authenticated session (the raw URLs require your access token, so the
+bytes can't be exposed by a plain `<img src>`).
+
+### Identity lookups for @-mentions
+
+When you type `@` followed by a name inside the description editor, the
+extension sends that partial query to your Azure DevOps organization's identity
+endpoint (`https://dev.azure.com/<org>/_apis/IdentityPicker/Identities`) to
+populate the autocomplete list. Results are not cached, are used only to draw
+the typeahead dropdown for that keystroke, and never leave the extension. If
+that endpoint is unavailable on your tenant the extension falls back to the
+team-roster already loaded for the work-item editor.
 
 ## How your data is used
 

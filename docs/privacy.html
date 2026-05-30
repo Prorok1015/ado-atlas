@@ -25,7 +25,7 @@
 <div class="wrap">
   <a class="back" href="index.html">&larr; ADO Atlas</a>
   <h1>Privacy Policy — ADO Atlas</h1>
-  <p class="eff"><b>Effective date:</b> 2026-05-30</p>
+  <p class="eff"><b>Effective date:</b> 2026-05-31</p>
 
   <p>ADO Atlas ("the extension") is an independent browser extension that displays and
      manages your Azure DevOps work items. This policy explains exactly what data the
@@ -61,6 +61,23 @@
   <p>These hosts are the only ones the extension is permitted to contact (enforced by its Content Security Policy).
      The extension contains <b>no analytics, no telemetry, no advertising, and no third-party servers.</b>
      No data is ever transmitted to the developer.</p>
+
+  <h3>Files you attach to a work item</h3>
+  <p>When you paste, drop, or pick a file inside the <b>Description</b> editor, the file's bytes are uploaded
+     <b>directly to your Azure DevOps organization</b>
+     (<code>https://dev.azure.com/&lt;org&gt;/_apis/wit/attachments</code>) and linked to the open work item as an
+     <code>AttachedFile</code> relation — the same path the Azure DevOps web UI uses. The extension does not keep a
+     local copy of the file bytes, does not send them to the developer, and does not transmit them to any third-party
+     service. Image previews displayed inside the editor are re-fetched from Azure DevOps in the same authenticated
+     session (the raw URLs require your access token, so the bytes can't be exposed by a plain <code>&lt;img src&gt;</code>).</p>
+
+  <h3>Identity lookups for @-mentions</h3>
+  <p>When you type <code>@</code> followed by a name inside the description editor, the extension sends that partial
+     query to your Azure DevOps organization's identity endpoint
+     (<code>https://dev.azure.com/&lt;org&gt;/_apis/IdentityPicker/Identities</code>) to populate the autocomplete list.
+     Results are not cached, are used only to draw the typeahead dropdown for that keystroke, and never leave the
+     extension. If that endpoint is unavailable on your tenant the extension falls back to the team-roster already loaded
+     for the work-item editor.</p>
 
   <h2>How your data is used</h2>
   <p>Your token and settings are used solely to provide the extension's single purpose: viewing and managing your own
