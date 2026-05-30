@@ -168,7 +168,8 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 #bulkbar #bulk_count{font-weight:700;color:var(--accent)}
 #bulkbar .bulk_hint{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
 #bulkbar select,#bulkbar input{font-size:12px}
-.tcheck{margin:0 4px 0 0;flex:none;cursor:pointer}
+/* native checkbox size — opt out of the generic full-width `input` rule above */
+.tcheck{flex:none;cursor:pointer;width:14px;height:14px;margin:0 4px 0 0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox}
 .trow.bulksel{background:rgba(47,111,237,0.14)}
 
 /* ---- command palette (Ctrl/Cmd+K) ---- */
