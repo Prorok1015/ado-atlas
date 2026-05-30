@@ -117,13 +117,8 @@ function filterCount(){let n=0;for(const k in fstate)n+=Object.keys(fstate[k]).l
 function updateFilterCount(){const n=filterCount();$('filt_count').textContent=n?('('+n+')'):'';}
 function renderFilters(){
   const el=$('filterchips');el.innerHTML='';
-  // "Clear all" — only when at least one filter has a selection
-  if(filterCount()>0){
-    const all=document.createElement('button');
-    all.className='fclear fclear-all';all.title='clear all filters';all.textContent='✕ Clear all';
-    all.onclick=()=>{for(const k in fstate)delete fstate[k];renderFilters();updateFilterCount();scheduleApply();};
-    el.appendChild(all);
-  }
+  // toggle the static "✕ Clear all" in the Find row — shown only when any filter is active
+  const all=$('filt_clear_all');if(all)all.style.display=filterCount()>0?'inline-flex':'none';
   FILTERS.forEach(f=>{
     const vals=f.values()||[];
     if(!vals.length&&!Object.keys(fstate[f.key]||{}).length)return;   // skip empty rows (e.g. tags/sprints not loaded yet)
@@ -2495,6 +2490,7 @@ async function initialBoot(postSetup){
     if(e.shiftKey){e.preventDefault();bulkRange(id);return;}                    // Shift: range from anchor
     openItem(id);});
   $('filt_btn').onclick=()=>{const p=$('filterpanel');const show=p.style.display==='none';p.style.display=show?'flex':'none';$('filt_btn').classList.toggle('on',show);};
+  $('filt_clear_all').onclick=()=>{for(const k in fstate)delete fstate[k];renderFilters();updateFilterCount();scheduleApply();};
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
   const moreP=$('morepanel'),moreB=$('morebtn');
   const closeMore=()=>{moreP.style.display='none';moreB.classList.remove('on');};
