@@ -318,5 +318,7 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .czrow.dragging{opacity:.45}
 .czrow .czgrip{cursor:grab;color:var(--muted);user-select:none;font-size:13px}
 .czrow .czlab{display:flex;align-items:center;gap:7px;font-size:13px;flex:1;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* native, fixed-size checkbox — opt out of the generic full-width input rule so they all line up */
+.czrow .czlab input[type=checkbox]{flex:none;width:14px;height:14px;margin:0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox}
 #customize-actions{display:flex;gap:8px;margin-top:14px}
 #customize-actions .btn{flex:1;padding:7px 12px;font-size:13px}
