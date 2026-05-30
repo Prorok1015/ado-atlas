@@ -62,6 +62,12 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - **Auto-refresh** dropdown re-fetches the list every 1 / 5 / 15 min (paused
   while you have unsaved edits, are dragging a card, or the tab is hidden).
 - **Theme** button cycles dark → light → **auto** (follows your OS setting).
+- **Bulk edit** (Tree view): tick the checkboxes on tree rows — a bar appears
+  letting you set State, Sprint, Priority, or Assignee on every selected item at
+  once (applied in parallel, then the list refreshes).
+- **Command palette** — press **Ctrl/Cmd-K** to fuzzy-find any loaded item by id
+  or title, or run a quick command (switch view, refresh, export, theme,
+  settings). ↑/↓ to navigate, Enter to open, Esc to close.
 
 ## Editing a work item
 

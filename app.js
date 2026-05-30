@@ -41,6 +41,7 @@ let listCapped=false;                    // true when the last list() hit LIST_C
 // client-side mirror of already-loaded data; BOTH views render from THIS store.
 // `expanded` is the shared expand/collapse state, so tree and graph stay in sync.
 const store={nodes:{},kids:{},roots:[],expanded:new Set(),parent:{}};
+const bulkSel=new Set();                  // ids checked in the tree for bulk edit
 function reachable(){const out=new Set(),st=[...(store.top||store.roots)];
   while(st.length){const id=st.pop();if(out.has(id))continue;out.add(id);
     if(store.expanded.has(id))(store.kids[id]||[]).forEach(c=>st.push(c));}
@@ -100,6 +101,7 @@ function renderFilters(){
     });
     el.appendChild(row);
   });
+  buildBulkControls();                      // keep the bulk-bar dropdowns in sync with loaded data
 }
 let applyTimer=null;
 function saveFilters(){try{localStorage.setItem('ado.filters',JSON.stringify(fstate));}catch(e){}}
@@ -115,6 +117,10 @@ function childrenUl(id){
 function treeNode(n){
   const li=document.createElement('li');
   const row=document.createElement('div');row.className='trow';
+  if(bulkSel.has(n.id))row.classList.add('bulksel');
+  const cb=document.createElement('input');cb.type='checkbox';cb.className='tcheck';cb.checked=bulkSel.has(n.id);
+  cb.title='select for bulk edit';
+  cb.onclick=e=>{e.stopPropagation();toggleBulk(n.id,cb.checked);row.classList.toggle('bulksel',cb.checked);};
   const open=store.expanded.has(n.id);
   const tog=document.createElement('span');tog.className='tog';tog.textContent=open?'▾':'▸';
   tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};
@@ -123,7 +129,7 @@ function treeNode(n){
   if(n.via&&n.via.length){const m=document.createElement('span');m.className='skip';m.textContent=' ↗';
     m.title='via '+n.via.map(i=>'#'+i).join(' → ')+' (not in filter)';lab.appendChild(m);}
   const bdg=document.createElement('span');bdg.className='badge';bdg.textContent=n.state;
-  row.append(tog,dot,lab,bdg);
+  row.append(cb,tog,dot,lab,bdg);
   if(n.priority){const pc=document.createElement('span');pc.className='prio';pc.textContent='P'+n.priority;
     pc.style.background=prioColor(n.priority);pc.title='priority '+n.priority;row.insertBefore(pc,bdg);}
   if(n.id===cur){row.classList.add('sel');selRow=row;}   // keep highlight across re-renders
@@ -156,6 +162,32 @@ function renderTree(){
   (store.top||store.roots).forEach(id=>{if(store.nodes[id])ul.appendChild(treeNode(store.nodes[id]));});
   el.appendChild(ul);
   setStatus(store.roots.length+' item(s)'+capNote());
+}
+
+/* ---------- bulk multi-select (tree) ---------- */
+function toggleBulk(id,on){if(on)bulkSel.add(id);else bulkSel.delete(id);updateBulkBar();}
+function clearBulk(){bulkSel.clear();updateBulkBar();
+  document.querySelectorAll('#tree .trow.bulksel').forEach(r=>r.classList.remove('bulksel'));
+  document.querySelectorAll('#tree .tcheck').forEach(c=>{c.checked=false;});}
+function updateBulkBar(){const n=bulkSel.size;$('bulkbar').style.display=n?'flex':'none';$('bulk_count').textContent=n+' selected';}
+function buildBulkControls(){            // (re)fill the bar's dropdowns from loaded project data
+  const st=$('bulk_state');if(st){st.innerHTML='<option value="">State…</option>'+
+    (projectStates.length?projectStates:['New','Active','Resolved','Closed','Removed']).map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');}
+  const it=$('bulk_iter');if(it){it.innerHTML='<option value="">Sprint…</option>'+
+    sprintPaths.map(p=>`<option value="${esc(p)}">${esc(sprintNames[p]||p)}</option>`).join('');}
+}
+async function bulkApply(field,val){     // field: state | iteration | assigned | priority
+  const ids=[...bulkSel];if(!ids.length)return;
+  if(field==='assigned'&&val==='me')val=currentUser||'me';
+  let ok=0,fail=0,idx=0;
+  loadStart(`updating ${ids.length} item(s)…`);
+  const worker=async()=>{while(idx<ids.length){const id=ids[idx++];
+    try{const body={};body[field]=(field==='priority'?Number(val):val);await api.updateItem(id,body);ok++;}
+    catch(e){fail++;}}};
+  await Promise.all(Array.from({length:Math.min(6,ids.length)},worker));   // 6-wide pool
+  loadEnd();
+  setStatus(`bulk ${field}: ${ok} updated`+(fail?`, ${fail} failed`:''),!!fail);
+  await refresh();                       // rebuild from server (prunes selection to what still matches)
 }
 
 /* ---------- graph ---------- */
@@ -570,6 +602,8 @@ async function _refresh(){
     if(store.nodes[id])store.nodes[id].via=a.via;}
   store.top=items.filter(n=>!(n.parent&&inSet.has(n.parent))&&!anc[n.id]).map(n=>n.id);
   Object.keys(kidsOf).forEach(pid=>{store.kids[pid]=kidsOf[pid];store.expanded.add(+pid);});  // auto-expand to show hierarchy
+  for(const id of [...bulkSel])if(!inSet.has(id))bulkSel.delete(id);   // drop selections that no longer match the filter
+  updateBulkBar();
   renderTree();                          // keep the tree DOM current (cheap, from store)
   if(mode==='graph')renderGraph({relayout:true,fit:true});
   else if(mode==='board')renderBoard();
@@ -809,6 +843,55 @@ function setAutoRefresh(sec){
   sec=parseInt(sec,10)||0;
   if(sec>0)autoTimer=setInterval(autoTick,sec*1000);
 }
+function switchMode(m){setMode(m);try{localStorage.setItem('ado.mode',m);}catch(e){}
+  if(m==='graph')renderGraph({fit:true});else if(m==='board')renderBoard();else renderTree();}
+
+/* ---------- command palette (Ctrl/Cmd+K) ---------- */
+let palItems=[],palIdx=0;
+const PALETTE_ACTIONS=[
+  {kind:'cmd',title:'Refresh list',run:()=>refresh()},
+  {kind:'cmd',title:'View: Tree',run:()=>switchMode('tree')},
+  {kind:'cmd',title:'View: Graph',run:()=>switchMode('graph')},
+  {kind:'cmd',title:'View: Board',run:()=>switchMode('board')},
+  {kind:'cmd',title:'Export CSV',run:()=>exportView('csv')},
+  {kind:'cmd',title:'Export JSON',run:()=>exportView('json')},
+  {kind:'cmd',title:'Toggle theme',run:()=>cycleTheme()},
+  {kind:'cmd',title:'Open settings',run:()=>showSetup(true)},
+  {kind:'cmd',title:'Clear bulk selection',run:()=>clearBulk()},
+];
+function openPalette(){$('palette').classList.add('show');const i=$('palette-input');i.value='';renderPalette('');i.focus();}
+function closePalette(){$('palette').classList.remove('show');}
+function paletteMatches(q){
+  q=(q||'').trim().toLowerCase();
+  const toks=q.split(/\s+/).filter(Boolean),out=[];
+  if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);out.push({kind:'open',title:'Open #'+id,run:()=>openItem(id)});}
+  if(toks.length){                         // only match items once the user has typed something
+    let n=0;
+    for(const node of Object.values(store.nodes)){
+      const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
+      if(toks.every(t=>hay.includes(t))){out.push({kind:node.type||'item',title:`#${node.id} ${node.title||''}`,state:node.state,run:()=>openItem(node.id)});if(++n>=40)break;}
+    }
+  }
+  for(const a of PALETTE_ACTIONS){if(!toks.length||toks.every(t=>a.title.toLowerCase().includes(t)))out.push(a);}
+  return out.slice(0,50);
+}
+function renderPalette(q){palItems=paletteMatches(q);palIdx=0;drawPalette();}
+function drawPalette(){
+  const list=$('palette-list');
+  if(!palItems.length){list.innerHTML='<div class="prow"><span class="ptitle" style="color:var(--muted)">no matches</span></div>';return;}
+  list.innerHTML=palItems.map((it,i)=>{
+    const badge=it.state?`<span class="pbadge" style="background:${stateColor(it.state)}">${esc(it.state)}</span>`:'';
+    return `<div class="prow${i===palIdx?' on':''}" data-i="${i}"><span class="pkind">${esc(it.kind)}</span><span class="ptitle">${esc(it.title)}</span>${badge}</div>`;
+  }).join('');
+  list.querySelectorAll('.prow[data-i]').forEach(r=>{
+    r.onclick=()=>{palIdx=+r.dataset.i;runPalette();};
+    r.onmousemove=()=>{if(palIdx!==+r.dataset.i){palIdx=+r.dataset.i;highlightPalette();}};
+  });
+}
+function highlightPalette(){$('palette-list').querySelectorAll('.prow[data-i]').forEach(r=>r.classList.toggle('on',+r.dataset.i===palIdx));}
+function movePalette(d){if(!palItems.length)return;palIdx=(palIdx+d+palItems.length)%palItems.length;highlightPalette();
+  const el=$('palette-list').querySelector('.prow.on');if(el)el.scrollIntoView({block:'nearest'});}
+function runPalette(){const it=palItems[palIdx];if(!it)return;closePalette();try{it.run();}catch(e){setStatus('ERROR: '+e.message,true);}}
 
 /* ---------- setup modal (replaces /setup page) ---------- */
 function showSetup(cancellable){
@@ -963,9 +1046,7 @@ async function initialBoot(postSetup){
   TYPES.forEach(t=>{const o=document.createElement('option');o.value=o.textContent=t;$('c_type').appendChild(o);});
   $('c_type').value='Task';
   // switching view is render-only (no API): graph draws from the store, tree DOM persists
-  $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>{setMode(b.dataset.m);
-    const m=b.dataset.m;try{localStorage.setItem('ado.mode',m);}catch(e){}
-    if(m==='graph')renderGraph({fit:true});else if(m==='board')renderBoard();else renderTree();});
+  $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>switchMode(b.dataset.m));
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderGraph();});
   $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.rankDir',rankDir);}catch(e){}renderGraph({relayout:true,fit:true});});
   $('f_sort').onchange=()=>{try{localStorage.setItem('ado.sort',$('f_sort').value);}catch(e){}refresh();};
@@ -991,6 +1072,23 @@ async function initialBoot(postSetup){
   try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')applyTheme('auto');});}catch(e){}
   $('export').querySelectorAll('button').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
   $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}setAutoRefresh(s);};
+  // bulk action bar (tree multi-select)
+  $('bulk_state').onchange=e=>{const v=e.target.value;e.target.value='';if(v)bulkApply('state',v);};
+  $('bulk_iter').onchange=e=>{const v=e.target.value;e.target.value='';if(v)bulkApply('iteration',v);};
+  $('bulk_prio').onchange=e=>{const v=e.target.value;e.target.value='';if(v)bulkApply('priority',v);};
+  $('bulk_assign_btn').onclick=()=>{const v=$('bulk_assigned').value.trim();if(v){bulkApply('assigned',v);$('bulk_assigned').value='';}};
+  $('bulk_clear').onclick=clearBulk;
+  // command palette (Ctrl/Cmd+K)
+  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();
+    $('palette').classList.contains('show')?closePalette():openPalette();}});
+  $('palette-input').addEventListener('input',e=>renderPalette(e.target.value));
+  $('palette-input').addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'){e.preventDefault();e.stopPropagation();movePalette(1);}
+    else if(e.key==='ArrowUp'){e.preventDefault();e.stopPropagation();movePalette(-1);}
+    else if(e.key==='Enter'){e.preventDefault();e.stopPropagation();runPalette();}
+    else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closePalette();}
+  });
+  $('palette').addEventListener('mousedown',e=>{if(e.target===$('palette'))closePalette();});
   (function(){const rz=$('resizer'),side=$('side');let drag=false;     // resizable Work Item panel
     rz.addEventListener('mousedown',e=>{drag=true;rz.classList.add('active');document.body.style.cursor='col-resize';e.preventDefault();});
     document.addEventListener('mousemove',e=>{if(!drag)return;

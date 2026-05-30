@@ -152,6 +152,27 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .chip.out{background:#9b2c2c;border-color:#9b2c2c;color:#fff;text-decoration:line-through}
 #filt_count{color:var(--accent);font-weight:700}
 
+/* ---- bulk action bar (tree multi-select) ---- */
+#bulkbar{background:var(--panel);border-bottom:1px solid var(--line);padding:7px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#bulkbar #bulk_count{font-weight:700;color:var(--accent)}
+#bulkbar .bulk_hint{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+#bulkbar select,#bulkbar input{font-size:12px}
+.tcheck{margin:0 4px 0 0;flex:none;cursor:pointer}
+.trow.bulksel{background:rgba(47,111,237,0.14)}
+
+/* ---- command palette (Ctrl/Cmd+K) ---- */
+#palette{position:fixed;inset:0;background:rgba(8,11,15,0.6);z-index:10001;display:none;justify-content:center;align-items:flex-start}
+#palette.show{display:flex}
+#palette-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:12vh;width:600px;max-width:92vw;box-shadow:0 12px 40px rgba(0,0,0,.5);overflow:hidden}
+#palette-input{width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--txt);font-size:15px;padding:13px 16px;outline:none}
+#palette-list{max-height:46vh;overflow:auto}
+.prow{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;font-size:13px}
+.prow.on{background:rgba(47,111,237,0.18)}
+.prow .pkind{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);flex:none;width:46px}
+.prow .ptitle{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .pbadge{font-size:10px;border-radius:10px;padding:1px 7px;color:#fff;flex:none}
+#palette-foot{border-top:1px solid var(--line);padding:6px 16px;color:var(--muted);font-size:11px}
+
 /* ---- setup modal (first-run / "Settings" gear) ---- */
 #setup-overlay{position:fixed;inset:0;background:rgba(8,11,15,0.85);z-index:10000;display:none;align-items:center;justify-content:center}
 #setup-overlay.show{display:flex}

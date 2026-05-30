@@ -33,6 +33,15 @@
 </div>
 <div id="loading"></div>
 <div id="filterpanel" style="display:none"></div>
+<div id="bulkbar" style="display:none">
+  <span id="bulk_count">0 selected</span>
+  <span class="bulk_hint">bulk set:</span>
+  <select id="bulk_state" title="set state on selected"><option value="">State…</option></select>
+  <select id="bulk_iter" title="set sprint on selected"><option value="">Sprint…</option></select>
+  <select id="bulk_prio" title="set priority on selected"><option value="">Priority…</option><option value="1">P1</option><option value="2">P2</option><option value="3">P3</option><option value="4">P4</option></select>
+  <span style="display:flex;gap:4px"><input id="bulk_assigned" list="assignees" placeholder="assignee…" style="width:140px"><button class="btn" id="bulk_assign_btn">set</button></span>
+  <button class="btn" id="bulk_clear" title="clear selection">✕ clear</button>
+</div>
 <datalist id="assignees"></datalist>
 <div id="main">
   <div id="left">
@@ -123,6 +132,15 @@
       <button class="btn save" id="setup-save">Save &amp; Connect</button>
       <button class="btn" id="setup-cancel" style="display:none">Cancel</button>
     </div>
+  </div>
+</div>
+
+<!-- Command palette (Ctrl/Cmd+K): fuzzy-find loaded items + quick actions. -->
+<div id="palette">
+  <div id="palette-box">
+    <input id="palette-input" placeholder="Jump to an item (#id or title) or run a command…" autocomplete="off">
+    <div id="palette-list"></div>
+    <div id="palette-foot"><span>↑↓ navigate · ↵ open · esc close</span></div>
   </div>
 </div>
 
