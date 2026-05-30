@@ -24,6 +24,7 @@ const TYPES=['Epic','Feature','User Story','Bug','Task','Issue'];
 const $=id=>document.getElementById(id);
 let cy=null, mode='tree', edgeMode='hierarchy', rankDir='LR', cur=null, orig={}, selRow=null;
 let depCache={}, renderToken=0, boardToken=0;   // tokens drop superseded async renders
+let openToken=0;                                // drops superseded openItem() calls
 let boardBusy=false;                            // true while a card move PATCH is in flight
 let pdrag=null, suppressClick=false;            // custom pointer-based drag for board cards
 let boardScroll=null;                           // saved board scroll to restore from the sprint view
@@ -38,6 +39,7 @@ let tagList=[];                          // distinct tags seen on recent items (
 let sprintPaths=[];                      // iteration paths for the Sprint filter (chip value = path)
 let sprintNames={};                      // iteration path -> short sprint name (chip label)
 let listCapped=false;                    // true when the last list() hit LIST_CAP (UI warns)
+let treeEverLoaded=false;                // false only before the very first successful list load
 // client-side mirror of already-loaded data; BOTH views render from THIS store.
 // `expanded` is the shared expand/collapse state, so tree and graph stay in sync.
 const store={nodes:{},kids:{},roots:[],expanded:new Set(),parent:{}};
@@ -305,6 +307,7 @@ function colMeta(items){const se=items.reduce((s,n)=>s+(n.est||0),0);
     `<div class="bfoot">`+(se?`<div class="tbar cbar"><div class="tfill"></div></div>`:'')+
     `<span class="tlabel colact">${se?'Σest '+(Math.round(se*10)/10)+'h':''}</span></div>`;}
 async function annotateBoardTimes(){      // fill actual (active wall-clock) time per card + column Σ
+  const token=boardToken;                 // current render's token — bail if a newer render starts
   const cards=[...document.querySelectorAll('#board .bcard[data-id]')];
   if(!cards.length)return;
   const ids=cards.map(c=>+c.dataset.id);
@@ -318,6 +321,7 @@ async function annotateBoardTimes(){      // fill actual (active wall-clock) tim
   if(ids.length>BOARD_TIME_CAP){setStatus(cards.length+' cards — filter to ≤'+BOARD_TIME_CAP+' to load actual time');
     cards.forEach(c=>setCard(c,null));return;}
   let t;try{t=await api.times(ids,tzOffset);}catch(e){return;}
+  if(token!==boardToken)return;            // a newer renderBoard superseded us — don't write stale times
   cards.forEach(c=>{const sec=t[c.dataset.id];if(sec==null){setCard(c,null);return;}c.dataset.act=sec;setCard(c,sec/3600);});
   document.querySelectorAll('#board .bcol').forEach(col=>{let sa=0,se=0;
     col.querySelectorAll('.bcard[data-id]').forEach(c=>{sa+=+(c.dataset.act||0);se+=(c.dataset.est?+c.dataset.est:0);});
@@ -519,12 +523,13 @@ function renderSprint(path){
   $('g_back').onclick=backToBoard;
   $('g_group').onclick=()=>{sprintGroup=sprintGroup==='assignee'?'none':'assignee';
     try{localStorage.setItem('ado.sprintGroup',sprintGroup);}catch(e){}renderSprint(path);};
-  annotateSprintTimes(items.map(n=>n.id));
+  annotateSprintTimes(items.map(n=>n.id),path);
   return true;
 }
-async function annotateSprintTimes(ids){
+async function annotateSprintTimes(ids,path){
   if(!ids.length||ids.length>BOARD_TIME_CAP){const t=$('g_act');if(t)t.textContent='Σ⏱ —';return;}
   let t;try{t=await api.times(ids,tzOffset);}catch(e){return;}
+  if(path!==openSprintPath)return;         // the open sprint changed — don't write stale times
   let tot=0;const byGroup={};
   document.querySelectorAll('#sprintview .grow[data-id]').forEach(r=>{
     const sec=t[r.dataset.id],g=r.querySelector('.gact');
@@ -586,6 +591,7 @@ async function _refresh(){
   items.forEach(n=>{store.nodes[n.id]=n;delete n.via;});
   // RESET hierarchy caches — stale entries from a previous filter would leak via
   // auto-expand (e.g. cached Task children of an Epic when filter is "Epic only").
+  const prevExpanded=store.expanded;const firstLoad=!treeEverLoaded;treeEverLoaded=true;
   store.kids={};store.expanded=new Set();
   // Build hierarchy WITHIN the filtered set so tree/graph nest correctly (no duplicates).
   // store.top = items whose parent is NOT in the set (true roots); other items become
@@ -601,10 +607,12 @@ async function _refresh(){
     (kidsOf[a.target]||(kidsOf[a.target]=[])).push(id);
     if(store.nodes[id])store.nodes[id].via=a.via;}
   store.top=items.filter(n=>!(n.parent&&inSet.has(n.parent))&&!anc[n.id]).map(n=>n.id);
-  Object.keys(kidsOf).forEach(pid=>{store.kids[pid]=kidsOf[pid];store.expanded.add(+pid);});  // auto-expand to show hierarchy
+  Object.keys(kidsOf).forEach(pid=>{store.kids[pid]=kidsOf[pid];if(firstLoad||prevExpanded.has(+pid))store.expanded.add(+pid);});  // auto-expand first load; otherwise preserve manual expand/collapse
   for(const id of [...bulkSel])if(!inSet.has(id))bulkSel.delete(id);   // drop selections that no longer match the filter
   updateBulkBar();
+  const ts=$('tree').scrollTop;
   renderTree();                          // keep the tree DOM current (cheap, from store)
+  $('tree').scrollTop=ts;                // preserve scroll across the rebuild
   if(mode==='graph')renderGraph({relayout:true,fit:true});
   else if(mode==='board')renderBoard();
   if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);   // live-update open sprint
@@ -635,11 +643,13 @@ async function loadTimeline(id){
     `<span><span class="sbadge" style="background:${stateColor(s)};font-size:9px">${esc(s)}</span> <b>${fmtDur(sec)}</b></span>`).join('');
 }
 async function openItem(id){
+  const myToken=++openToken;
   if(cur!=null&&id!==cur&&dirty()&&!confirm('Discard unsaved changes to #'+cur+'?'))return;  // guard against silent loss
   $('s_time').innerHTML='';
   loadStart('loading #'+id+'…');
   let d;try{d=await api.item(id);}catch(e){setStatus('ERROR: '+e.message,true);loadEnd();return;}
   loadEnd();
+  if(myToken!==openToken)return;                  // a newer openItem() superseded this one
   cur=id;$('side').classList.remove('hidden');$('resizer').style.display='block';$('child_form').style.display='none';$('comment_form').style.display='none';
   $('s_activity').classList.remove('show');$('s_activity').innerHTML='';   // collapse activity for the new item
   $('s_hdr').innerHTML=`<i class="dot" style="background:${TYPE_COLOR[d.type]||'#95a5a6'}"></i>#${d.id} ${esc(d.type)}`+
@@ -653,11 +663,13 @@ async function openItem(id){
   $('ac_wrap').style.display=d.has_ac?'block':'none';$('s_ac').value=d.ac;
   const sel=$('s_state');sel.innerHTML='';
   let states;try{states=await api.states(d.type);}catch(e){states=['New','Active','Resolved','Closed','Removed'];}
+  if(myToken!==openToken)return;                  // a newer openItem() superseded this one
   if(!states.includes(d.state))states.unshift(d.state);
   states.forEach(s=>{const o=document.createElement('option');o.value=o.textContent=s;sel.appendChild(o);});
   sel.value=d.state;
   // sprint dropdown (manual iteration change) + planning dates
   const iters=await getIterations();
+  if(myToken!==openToken)return;                  // a newer openItem() superseded this one
   const isel=$('s_iter');isel.innerHTML='';
   const root=iters[0]?iters[0].path.split('\\')[0]:projectName;
   isel.appendChild(new Option('(no sprint)',root));
@@ -688,7 +700,7 @@ function refreshDirty(){const d=dirty();const b=$('s_save');b.disabled=!d;b.text
 function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:$('s_desc').value,ac:$('s_ac').value,prio:$('s_prio').value,
   iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};}
 async function save(){
-  if(cur==null)return;const v=editorValues();const body={};
+  if(cur==null)return;const id=cur;const v=editorValues();const body={};
   if(v.title!==orig.title)body.title=v.title;
   if(v.state!==orig.state)body.state=v.state;
   if(v.assigned!==orig.assigned)body.assigned=(v.assigned==='me'?(currentUser||v.assigned):v.assigned);
@@ -706,21 +718,21 @@ async function save(){
   const sv=$('s_save');sv.disabled=true;sv.textContent='Saving…';loadStart('saving…');
   let r;
   try{
-    if(Object.keys(body).length)r=await api.updateItem(cur,body);
-    if(parentChanged)await api.setParent(cur,v.parent);   // v.parent==='' detaches (makes it a root)
+    if(Object.keys(body).length)r=await api.updateItem(id,body);
+    if(parentChanged)await api.setParent(id,v.parent);   // v.parent==='' detaches (makes it a root)
   }catch(e){setStatus('ERROR: '+e.message,true);refreshDirty();loadEnd();return;}
   loadEnd();
-  if(cy){const n=cy.getElementById(String(cur));if(n.nonempty()){if(body.title)n.data('title',body.title);if(body.state)n.data('state',body.state);if('priority'in body)n.data('priority',body.priority);}}
-  if(selRow&&body.title)selRow.querySelector('.lab').textContent=`#${cur} ${body.title}`;
+  if(cy){const n=cy.getElementById(String(id));if(n.nonempty()){if(body.title)n.data('title',body.title);if(body.state)n.data('state',body.state);if('priority'in body)n.data('priority',body.priority);}}
+  if(selRow&&body.title)selRow.querySelector('.lab').textContent=`#${id} ${body.title}`;
   if(selRow&&body.state)selRow.querySelector('.badge').textContent=body.state;
   if(selRow&&('priority'in body)){let pc=selRow.querySelector('.prio');if(!pc){pc=document.createElement('span');pc.className='prio';selRow.insertBefore(pc,selRow.querySelector('.badge'));}pc.textContent='P'+body.priority;pc.style.background=prioColor(body.priority);}
-  if(store.nodes[cur]){const s=store.nodes[cur];s.title=v.title;s.state=v.state;
+  if(store.nodes[id]){const s=store.nodes[id];s.title=v.title;s.state=v.state;
     if('priority'in body)s.priority=body.priority;
     if('iteration'in body)s.iteration=body.iteration;
     if('target'in body)s.target=v.target;
     if('estimate'in body)s.est=(v.est===''?null:Number(v.est));}
   orig={...orig,...v};if('priority'in body)orig.priority=body.priority;
-  refreshDirty();setStatus(`#${cur} saved`+(r?` → rev ${r.rev}`:''));
+  refreshDirty();setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
   // Auto-reload the list when the change can shift WHERE the item appears: sprint
   // moves it across board columns, assignee shifts its grouping, and a re-parent
   // changes the tree/graph hierarchy. Otherwise a board re-render + store update suffice.
@@ -919,7 +931,9 @@ function hideSetup(){$('setup-overlay').classList.remove('show');}
 function handle401(){
   if($('setup-overlay').classList.contains('show'))return;   // already prompting — don't stack
   showSetup(true);
-  $('setup-err').textContent='Authentication failed (HTTP 401) — your PAT is expired or revoked. Paste a new one.';
+  $('setup-err').textContent=(cur!=null&&dirty())
+    ?'Authentication failed (HTTP 401) — your PAT is expired or revoked. Paste a new one. (Your unsaved changes to #'+cur+' are preserved.)'
+    :'Authentication failed (HTTP 401) — your PAT is expired or revoked. Paste a new one.';
 }
 // One-time nudge when the recorded PAT expiry is within 3 days (or already past).
 async function warnIfPatExpiring(){
