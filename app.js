@@ -66,7 +66,7 @@ let treeEverLoaded=false;                // false only before the very first suc
 // `expanded` is the shared expand/collapse state, so tree and graph stay in sync.
 const store={nodes:{},kids:{},roots:[],expanded:new Set(),parent:{}};
 const bulkSel=new Set();                  // ids checked in the tree for bulk edit
-let bulkAnchor=null;                       // last toggled row — the pivot for Shift-click range select
+let bulkAnchor=null,bulkAnchorOn=true;     // pivot for Shift-range + whether that action selected (true) or deselected (false)
 function reachable(){const out=new Set(),st=[...(store.top||store.roots)];
   while(st.length){const id=st.pop();if(out.has(id))continue;out.add(id);
     if(store.expanded.has(id))(store.kids[id]||[]).forEach(c=>st.push(c));}
@@ -146,7 +146,7 @@ function treeNode(n){
   row.dataset.id=n.id;                                  // for Shift-click range selection
   const cb=document.createElement('input');cb.type='checkbox';cb.className='tcheck';cb.checked=bulkSel.has(n.id);
   cb.title='select for bulk edit  (or Ctrl-click the row; Shift-click for a range)';
-  cb.onclick=e=>{e.stopPropagation();bulkSet([n.id],cb.checked);bulkAnchor=n.id;};
+  cb.onclick=e=>{e.stopPropagation();bulkSet([n.id],cb.checked);bulkAnchor=n.id;bulkAnchorOn=cb.checked;};
   const open=store.expanded.has(n.id);
   const tog=document.createElement('span');tog.className='tog';tog.textContent=open?'▾':'▸';
   tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};
@@ -201,12 +201,12 @@ function syncBulkRows(){                    // reflect bulkSel onto the rendered
     const cb=r.querySelector('.tcheck');if(cb)cb.checked=on;});
 }
 function bulkSet(ids,on){ids.forEach(id=>{if(on)bulkSel.add(id);else bulkSel.delete(id);});updateBulkBar();syncBulkRows();}
-function bulkToggle(id){bulkSet([id],!bulkSel.has(id));bulkAnchor=id;}
-function bulkRange(toId){                    // select every visible row between the anchor and toId
+function bulkToggle(id){const on=!bulkSel.has(id);bulkSet([id],on);bulkAnchor=id;bulkAnchorOn=on;}
+function bulkRange(toId){                    // apply the anchor's action (select OR deselect) to the whole range
   const ids=[...document.querySelectorAll('#tree .trow[data-id]')].map(r=>+r.dataset.id);
   const b=ids.indexOf(toId);if(b<0)return;
   let a=bulkAnchor!=null?ids.indexOf(bulkAnchor):-1;if(a<0){a=b;bulkAnchor=toId;}
-  bulkSet(ids.slice(Math.min(a,b),Math.max(a,b)+1),true);
+  bulkSet(ids.slice(Math.min(a,b),Math.max(a,b)+1),bulkAnchorOn);
 }
 function clearBulk(){bulkSel.clear();bulkAnchor=null;updateBulkBar();syncBulkRows();}
 function updateBulkBar(){const n=bulkSel.size;$('bulkbar').style.display=n?'flex':'none';$('bulk_count').textContent=n+' selected';}
