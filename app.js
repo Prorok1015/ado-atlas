@@ -22,6 +22,13 @@ function orderStates(list){const seen=new Set(),out=[];
   STATE_ORDER.forEach(s=>{if(list.includes(s)&&!seen.has(s)){seen.add(s);out.push(s);}});
   list.forEach(s=>{if(!seen.has(s)){seen.add(s);out.push(s);}});
   return out;}
+// Card ordering that honours the toolbar Sort selector (id by default, or
+// priority then id). Used by the board columns and the sprint detail so Sort
+// works there too — not just in the tree.
+function cmpBySort(a,b){
+  if(($('f_sort')&&$('f_sort').value)==='priority')return ((a.priority||9)-(b.priority||9))||(a.id-b.id);
+  return a.id-b.id;
+}
 // Offline fallback only — the real types come from ADO (api.workItemTypes),
 // loaded into `typeList` at boot. Used if that call ever fails.
 const TYPES=['Epic','Feature','User Story','Bug','Task','Issue'];
@@ -348,7 +355,7 @@ async function renderBoard(){
   if(boardGroup==='state'){renderBoardByState(el,items);setStatus(`${items.length} items`+capNote());annotateBoardTimes();return;}
   const groups=new Map();
   items.forEach(n=>{const k=finish[n.iteration]?n.iteration:'__none__';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
-  groups.forEach(arr=>arr.sort((a,b)=>((a.priority||9)-(b.priority||9))||(a.id-b.id)));  // priority within column
+  groups.forEach(arr=>arr.sort(cmpBySort));  // order within column = toolbar Sort
   const root=iters[0]?iters[0].path.split('\\')[0]:projectName;   // project root = "no sprint"
   const order=iters.map(it=>it.path);   // ALL dated sprints (empties revealed while dragging)
   if(groups.has('__none__'))order.push('__none__');
@@ -372,7 +379,7 @@ async function renderBoard(){
 function renderBoardByAssignee(el,items){
   const groups=new Map();
   items.forEach(n=>{const k=n.assigned||'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
-  groups.forEach(arr=>arr.sort((a,b)=>((a.priority||9)-(b.priority||9))||(a.id-b.id)));
+  groups.forEach(arr=>arr.sort(cmpBySort));
   const names=[...groups.keys()].filter(k=>k).sort((a,b)=>a.localeCompare(b));
   if(groups.has(''))names.push('');                 // Unassigned last
   names.forEach(k=>{
@@ -390,7 +397,7 @@ function renderBoardByState(el,items){
   const today=new Date().toISOString().slice(0,10);
   const groups=new Map();
   items.forEach(n=>{const k=n.state||'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
-  groups.forEach(arr=>arr.sort((a,b)=>((a.priority||9)-(b.priority||9))||(a.id-b.id)));
+  groups.forEach(arr=>arr.sort(cmpBySort));
   const cols=orderStates([...groups.keys()].filter(k=>k));
   if(groups.has(''))cols.push('');                  // items with no state last (rare)
   cols.forEach(k=>{
@@ -517,7 +524,7 @@ function renderSprint(path){
     const groups=new Map();items.forEach(n=>{const k=n.assigned||'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
     const names=[...groups.keys()].filter(k=>k).sort((a,b)=>a.localeCompare(b));if(groups.has(''))names.push('');
     names.forEach(k=>{
-      const arr=groups.get(k).sort((a,b)=>((a.priority||9)-(b.priority||9))||(a.id-b.id));
+      const arr=groups.get(k).sort(cmpBySort);
       const ge=arr.reduce((s,n)=>s+(n.est||0),0);
       const gh=document.createElement('div');gh.className='ggroup';gh.dataset.group=k;
       gh.innerHTML=`<span>${k?esc(k):'Unassigned'} · ${arr.length}${ge?' · Σest '+(Math.round(ge*10)/10)+'h':''}</span><span class="gact">⏱ …</span>`;
