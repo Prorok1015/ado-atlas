@@ -695,11 +695,13 @@ async function renderTimeline(){
     rows+=`<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">No dates · ${undated.length}</div><div class="tlgrouptrack" style="width:${W}px"></div></div>`;
     undated.sort((a,b)=>a.id-b.id).forEach(n=>{rows+=`<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
   }
+  const prevScroll=el.scrollLeft;                  // preserve horizontal scroll across re-renders
   el.innerHTML=`<div class="tlcanvas">`+
     `<div class="tlhead"><div class="tlcorner" style="width:${LW}px">${months.length} mo · ${dated.length} scheduled</div><div class="tlaxis" style="width:${W}px">${axis}${ticks}</div></div>`+
     `<div class="tlbody"><div class="tlgrid" style="left:${LW}px;width:${W}px">${grid}</div>${rows}</div></div>`;
   setStatus(`${dated.length} scheduled · ${undated.length} no dates`+capNote());
-  if(today>=r0&&today<=r1)el.scrollLeft=Math.max(0,xOf(today)-Math.round(el.clientWidth*0.35));   // centre on today
+  if(prevScroll>0)el.scrollLeft=prevScroll;        // keep the user's position on a re-render
+  else if(today>=r0&&today<=r1)el.scrollLeft=Math.max(0,xOf(today)-Math.round(el.clientWidth*0.35));   // first paint: centre on today
 }
 
 /* ---------- mode / refresh ---------- */
@@ -1021,15 +1023,22 @@ async function save(){
   if(store.nodes[id]){const s=store.nodes[id];s.title=v.title;s.state=v.state;
     if('priority'in body)s.priority=body.priority;
     if('iteration'in body)s.iteration=body.iteration;
-    if('target'in body)s.target=v.target;
+    if('start'in body)s.start=v.start;            // keep the store's schedule dates in sync so the
+    if('target'in body)s.target=v.target;         // timeline / sprint Gantt reflect edits on re-render
+    if('due'in body)s.due=v.due;
     if('estimate'in body)s.est=(v.est===''?null:Number(v.est));}
   orig={...orig,...v};if('priority'in body)orig.priority=body.priority;
   refreshDirty();setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
   // Auto-reload the list when the change can shift WHERE the item appears: sprint
   // moves it across board columns, assignee shifts its grouping, and a re-parent
-  // changes the tree/graph hierarchy. Otherwise a board re-render + store update suffice.
+  // changes the tree/graph hierarchy. Otherwise re-render the current view from the
+  // (now updated) store so date/title/priority edits show without a full reload.
   if('iteration'in body||'assigned'in body||parentChanged)refresh();
-  else if(mode==='board')renderBoard();         // reflect date/title/priority on the board
+  else{
+    if(mode==='board')renderBoard();
+    else if(mode==='timeline')renderTimeline();
+    if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);
+  }
 }
 function toggleComment(){const f=$('comment_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';if(show)$('cm_text').focus();}
 async function postComment(){
