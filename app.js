@@ -944,7 +944,7 @@ async function openItem(id){
     ` <span style="color:var(--muted);font-weight:400;font-size:11px">rev${d.rev}</span>`;
   $('s_ctx').innerHTML=d.parent?`↑ parent <a id="s_par">#${d.parent}</a>`:'';
   if(d.parent)$('s_par').onclick=()=>openItem(d.parent);
-  $('s_link').href=d.url;$('s_title').value=d.title;$('s_assigned').value=d.assigned;$('s_desc').value=d.desc;
+  $('s_link').href=d.url;$('s_title').value=d.title;assignedEditor.set(d.assigned||'',/*silent*/true);$('s_desc').value=d.desc;
   showDescPreview(true);                          // open in preview; click "edit" to modify
   $('s_prio').value=d.priority?String(d.priority):'';
   $('ac_wrap').style.display=d.has_ac?'block':'none';$('s_ac').value=d.ac;
@@ -985,32 +985,28 @@ function refreshDirty(){const d=dirty();const b=$('s_save');b.disabled=!d;b.text
 function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:$('s_desc').value,ac:$('s_ac').value,prio:$('s_prio').value,
   iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};}
 
-/* ---------- reusable parent field: current-parent card + searchable picker ----------
-   One instance per place that edits a parent (the item editor, the New-item modal).
+/* ---------- reusable searchable picker: chosen-value card + dropdown ----------
+   One instance per place that picks a value (parent item, assignee, …).
    Elements are looked up by id from `base`: <base> (hidden value), <base>_card,
-   <base>_pick, <base>_search, <base>_results, and optional <base>_open. */
+   <base>_pick, <base>_search, <base>_results, and optional <base>_open.
+   `opts.provider` plugs in the data source and how each row/card is rendered. */
 function parentCardHtml(n){
   return `<i class="dot" style="background:${tyColor(n.type)}"></i>`+
     `<span class="pcid">#${n.id}</span><span class="pctitle">${esc(n.title||'')}</span>`+
     (n.state?`<span class="pcstate" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'');
 }
-function createParentField(base,opts){
+function createPickerField(base,opts){
   opts=opts||{};
   const onChange=opts.onChange||(()=>{});
-  const getExclude=opts.getExcludeId||(()=>null);   // id that can't be the parent (e.g. the item itself)
+  const prov=opts.provider;
   const V=()=>$(base),Card=()=>$(base+'_card'),Pick=()=>$(base+'_pick'),
         Search=()=>$(base+'_search'),Results=()=>$(base+'_results'),Open=()=>$(base+'_open');
   let idx=0,rows=[],searchTimer=null,searchTok=0,searching=false;
   function render(){
     const v=V().value.trim(),card=Card(),openBtn=Open();
-    if(!v){card.innerHTML='<span class="pcnone">(no parent)</span>';if(openBtn)openBtn.style.visibility='hidden';return;}
-    if(openBtn)openBtn.style.visibility='visible';
-    const n=store.nodes[v];
-    if(n){card.innerHTML=parentCardHtml(n);return;}
-    card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span><span class="pctitle pcnone">loading…</span>`;
-    const want=v;                                   // resolve the title for a parent that isn't in the loaded tree
-    api.item(v).then(it=>{if(V().value.trim()!==want)return;store.nodes[it.id]=store.nodes[it.id]||it;card.innerHTML=parentCardHtml(it);})
-      .catch(()=>{if(V().value.trim()===want)card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>`;});
+    card.dataset.val=v;                              // lets the provider drop stale async card renders
+    if(openBtn)openBtn.style.visibility=(v&&prov.openValue)?'visible':'hidden';
+    prov.renderCard(v,card);
   }
   function set(v,silent){V().value=(v==null?'':String(v));render();close();if(!silent)onChange();}
   function get(){return V().value.trim();}
@@ -1018,52 +1014,24 @@ function createParentField(base,opts){
     p.style.display='block';const i=Search();i.value='';results('');i.focus();}
   function close(){const p=Pick();if(p)p.style.display='none';}
   function isOpen(){const p=Pick();return !!p&&p.style.display!=='none';}
-  function matches(q){
-    q=(q||'').trim().toLowerCase();const toks=q.split(/\s+/).filter(Boolean),out=[{none:true}],ex=getExclude();
-    if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);if(id!==ex&&!store.nodes[id])out.push({rawId:id});}
-    let n=0;
-    for(const node of Object.values(store.nodes)){
-      if(ex!=null&&node.id===ex)continue;           // an item can't be its own parent
-      const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
-      if(!toks.length||toks.every(t=>hay.includes(t))){out.push({node});if(++n>=40)break;}
-    }
-    return out;
-  }
-  // Look up items the local tree hasn't loaded: a numeric query fetches that id,
-  // otherwise a server-side title search.
-  async function apiSearch(term){
-    const m=term.match(/^#?(\d+)$/);
-    if(m){try{const it=await api.item(parseInt(m[1],10));return it?[it]:[];}catch(e){return [];}}
-    try{return (await api.search({text:term}))||[];}catch(e){return [];}
-  }
   function results(q){
-    rows=matches(q);idx=0;
+    rows=prov.localRows(q);idx=0;
     clearTimeout(searchTimer);const tok=++searchTok;searching=false;
-    const term=(q||'').trim();
-    if(term.length>=2||/^#?\d+$/.test(term)){          // hit the API for anything not loaded locally
+    const run=prov.apiExpand?prov.apiExpand(q,rows):null;   // null → no server lookup for this query
+    if(run){
       searching=true;
       searchTimer=setTimeout(async()=>{
-        const found=await apiSearch(term);
-        if(tok!==searchTok)return;                     // a newer query superseded this one
-        const ex=getExclude(),have=new Set(rows.filter(r=>r.node).map(r=>r.node.id));
-        found.slice(0,30).forEach(it=>{if(!it||!it.id||it.id===ex)return;
-          store.nodes[it.id]=store.nodes[it.id]||it;
-          if(!have.has(it.id)){rows.push({node:it});have.add(it.id);}});
-        rows=rows.filter(r=>!(r.rawId!=null&&have.has(r.rawId)));   // drop "Use #id" once the item is resolved
-        idx=Math.max(0,Math.min(idx,rows.length-1));searching=false;draw();
+        const next=await run();
+        if(tok!==searchTok)return;                   // a newer query superseded this one
+        rows=next;idx=Math.max(0,Math.min(idx,rows.length-1));searching=false;draw();
       },300);
     }
     draw();
   }
   function draw(){
     const list=Results();
-    list.innerHTML=rows.map((r,i)=>{
-      const on=i===idx?' on':'';
-      if(r.none)return `<div class="prow${on}" data-i="${i}"><span class="pkind">—</span><span class="ptitle pcnone">(no parent)</span></div>`;
-      if(r.rawId!=null)return `<div class="prow${on}" data-i="${i}"><span class="pkind">id</span><span class="ptitle">Use #${r.rawId}</span></div>`;
-      const n=r.node,badge=n.state?`<span class="pbadge" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'';
-      return `<div class="prow${on}" data-i="${i}"><span class="pkind">${esc(n.type||'item')}</span><span class="ptitle">#${n.id} ${esc(n.title||'')}</span>${badge}</div>`;
-    }).join('')+(searching?'<div class="prow"><span class="pkind"></span><span class="ptitle pcnone">searching…</span></div>':'');
+    list.innerHTML=rows.map((r,i)=>`<div class="prow${i===idx?' on':''}" data-i="${i}">${r.html}</div>`).join('')
+      +(searching?'<div class="prow"><span class="pkind"></span><span class="ptitle pcnone">searching…</span></div>':'');
     list.querySelectorAll('.prow[data-i]').forEach(r=>{
       r.onmousedown=e=>{e.preventDefault();idx=+r.dataset.i;pick();};
       r.onmousemove=()=>{if(idx!==+r.dataset.i){idx=+r.dataset.i;highlight();}};
@@ -1074,7 +1042,7 @@ function createParentField(base,opts){
   function highlight(){Results().querySelectorAll('.prow[data-i]').forEach(r=>r.classList.toggle('on',+r.dataset.i===idx));}
   function move(d){if(!rows.length)return;idx=(idx+d+rows.length)%rows.length;highlight();
     const el=Results().querySelector('.prow.on');if(el)el.scrollIntoView({block:'nearest'});}
-  function pick(){const r=rows[idx];if(!r)return;if(r.none)return set('');if(r.rawId!=null)return set(r.rawId);set(r.node.id);}
+  function pick(){const r=rows[idx];if(!r)return;set(r.value);}
   function wire(){
     Card().onclick=open;
     Search().addEventListener('input',e=>results(e.target.value));
@@ -1084,13 +1052,98 @@ function createParentField(base,opts){
       else if(e.key==='Enter'){e.preventDefault();pick();}
       else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();Card().focus();}
     });
-    const ob=Open();if(ob)ob.onclick=()=>{const p=get();if(/^\d+$/.test(p))openItem(parseInt(p));};
+    const ob=Open();if(ob)ob.onclick=()=>{const v=get();if(prov.openValue)prov.openValue(v);};
     document.addEventListener('mousedown',e=>{if(isOpen()&&!Pick().contains(e.target)&&!Card().contains(e.target))close();});
   }
   return {set,get,render,open,close,isOpen,wire};
 }
+
+/* --- provider: parent / any work-item (id+title, with server-side search) --- */
+function itemRow(n){const badge=n.state?`<span class="pbadge" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'';
+  return {value:String(n.id),html:`<span class="pkind">${esc(n.type||'item')}</span><span class="ptitle">#${n.id} ${esc(n.title||'')}</span>${badge}`};}
+async function itemApiSearch(term){            // look up items the local tree hasn't loaded
+  const m=term.match(/^#?(\d+)$/);
+  if(m){try{const it=await api.item(parseInt(m[1],10));return it?[it]:[];}catch(e){return [];}}
+  try{return (await api.search({text:term}))||[];}catch(e){return [];}
+}
+function itemPickerProvider(getExclude){
+  getExclude=getExclude||(()=>null);
+  return {
+    openValue(v){if(/^\d+$/.test(v))openItem(parseInt(v,10));},
+    renderCard(v,card){
+      if(!v){card.innerHTML='<span class="pcnone">(no parent)</span>';return;}
+      const n=store.nodes[v];
+      if(n){card.innerHTML=parentCardHtml(n);return;}
+      card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span><span class="pctitle pcnone">loading…</span>`;
+      const want=v;                               // resolve the title for an item that isn't in the loaded tree
+      api.item(v).then(it=>{if(card.dataset.val!==want)return;store.nodes[it.id]=store.nodes[it.id]||it;card.innerHTML=parentCardHtml(it);})
+        .catch(()=>{if(card.dataset.val===want)card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>`;});
+    },
+    localRows(q){
+      q=(q||'').trim().toLowerCase();const toks=q.split(/\s+/).filter(Boolean),ex=getExclude();
+      const out=[{value:'',html:`<span class="pkind">—</span><span class="ptitle pcnone">(no parent)</span>`}];
+      if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);if(id!==ex&&!store.nodes[id])out.push({value:String(id),raw:true,html:`<span class="pkind">id</span><span class="ptitle">Use #${id}</span>`});}
+      let n=0;
+      for(const node of Object.values(store.nodes)){
+        if(ex!=null&&node.id===ex)continue;         // an item can't be its own parent
+        const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
+        if(!toks.length||toks.every(t=>hay.includes(t))){out.push(itemRow(node));if(++n>=40)break;}
+      }
+      return out;
+    },
+    apiExpand(q,rows){
+      const term=(q||'').trim();
+      if(!(term.length>=2||/^#?\d+$/.test(term)))return null;   // too short → local matches only
+      const ex=getExclude();
+      return async()=>{
+        const found=await itemApiSearch(term);
+        const have=new Set(rows.filter(r=>r.value&&!r.raw).map(r=>r.value)),extra=[];
+        found.slice(0,30).forEach(it=>{if(!it||!it.id||it.id===ex)return;
+          store.nodes[it.id]=store.nodes[it.id]||it;
+          const k=String(it.id);if(!have.has(k)){extra.push(itemRow(it));have.add(k);}});
+        return rows.filter(r=>!(r.raw&&have.has(r.value))).concat(extra);   // drop "Use #id" once it resolved
+      };
+    },
+  };
+}
+
+/* --- provider: assignee / person (team roster is fully loaded in `assignees`) --- */
+function personColor(name){let h=0;name=String(name);for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;return `hsl(${h%360} 52% 45%)`;}
+function personInitials(name){const p=String(name).trim().split(/\s+/).filter(Boolean);return (((p[0]||'')[0]||'')+(p.length>1?(p[p.length-1][0]||''):'')).toUpperCase()||'?';}
+function personChip(name){return `<i class="pav" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}
+function assigneePeople(){const seen=new Set(),out=[];   // current user first, then the deduped roster
+  [currentUser,...assignees].forEach(a=>{if(a&&!seen.has(a)){seen.add(a);out.push(a);}});return out;}
+function assigneePickerProvider(){
+  return {
+    renderCard(v,card){
+      if(!v){card.innerHTML='<span class="pcnone">(unassigned)</span>';return;}
+      card.innerHTML=`${personChip(v)}<span class="pctitle">${esc(v)}</span>`;
+    },
+    localRows(q){
+      q=(q||'').trim().toLowerCase();
+      const out=[{value:'',html:`<i class="pav pav0"></i><span class="ptitle pcnone">(unassigned)</span>`}];
+      if(currentUser&&(!q||currentUser.toLowerCase().includes(q)))
+        out.push({value:currentUser,html:`${personChip(currentUser)}<span class="ptitle">${esc(currentUser)} <span class="pcnone">· me</span></span>`});
+      let n=0;
+      for(const a of assigneePeople()){
+        if(a===currentUser)continue;
+        if(q&&!a.toLowerCase().includes(q))continue;
+        out.push({value:a,html:`${personChip(a)}<span class="ptitle">${esc(a)}</span>`});
+        if(++n>=40)break;
+      }
+      return out;
+    },
+    // no apiExpand — the project roster is already loaded into `assignees`
+  };
+}
+
+function createParentField(base,opts){opts=opts||{};return createPickerField(base,{onChange:opts.onChange,provider:itemPickerProvider(opts.getExcludeId)});}
+function createAssigneeField(base,opts){opts=opts||{};return createPickerField(base,{onChange:opts.onChange,provider:assigneePickerProvider()});}
 const parentEditor=createParentField('s_parent',{onChange:refreshDirty,getExcludeId:()=>cur});
 const parentNew=createParentField('n_parent',{getExcludeId:()=>null});
+const assignedEditor=createAssigneeField('s_assigned',{onChange:refreshDirty});
+const assignedChild=createAssigneeField('c_assigned',{});
+const assignedNew=createAssigneeField('n_assigned',{});
 
 /* ---------- undo / redo (Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z or Ctrl+Y) ----------
    Each mutating action pushes a command with matching undo()/redo() functions,
@@ -1268,7 +1321,7 @@ function denyOnForbidden(e,what){
 let _newIterRoot='';                               // sentinel path for "(no sprint)"
 async function showNewItem(parentId){
   $('newitem-err').textContent='';
-  $('n_title').value='';$('n_prio').value='';$('n_assigned').value='';
+  $('n_title').value='';$('n_prio').value='';assignedNew.set('',/*silent*/true);
   parentNew.set(parentId!=null?String(parentId):'',/*silent*/true);   // render the parent card + close any open picker
   fillTypeSelect('n_type','Task');           // ensure options match the project's real types
   // sprint dropdown — same source as the editor's, default to "(no sprint)"
@@ -1281,7 +1334,7 @@ async function showNewItem(parentId){
   $('newitem-overlay').classList.add('show');
   $('n_title').focus();
 }
-function closeNewItem(){parentNew.close();$('newitem-overlay').classList.remove('show');}
+function closeNewItem(){parentNew.close();assignedNew.close();$('newitem-overlay').classList.remove('show');}
 async function createNew(){
   const type=$('n_type').value,title=$('n_title').value.trim();
   if(!title){$('newitem-err').textContent='Title is required.';$('n_title').focus();return;}
@@ -1908,16 +1961,20 @@ async function initialBoot(postSetup){
   $('s_save').onclick=save;$('s_comment').onclick=toggleComment;$('s_close').onclick=closePanel;
   $('s_desc_toggle').onclick=()=>showDescPreview($('s_desc').style.display!=='none');
   $('cm_post').onclick=postComment;$('cm_cancel').onclick=()=>{$('comment_form').style.display='none';};
-  $('s_me').onclick=()=>{$('s_assigned').value=currentUser||'me';refreshDirty();};
+  $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
   $('s_actbtn').onclick=toggleActivity;
   parentEditor.wire();parentNew.wire();   // parent card + searchable picker (editor + New-item modal)
-  ['s_title','s_state','s_prio','s_assigned','s_desc','s_ac','s_iter','s_start','s_target','s_due','s_est'].forEach(id=>{
+  assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker
+  assignedEditor.render();assignedChild.render();assignedNew.render();   // show placeholder cards before first use
+  ['s_title','s_state','s_prio','s_desc','s_ac','s_iter','s_start','s_target','s_due','s_est'].forEach(id=>{
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
   document.addEventListener('keydown',e=>{
     const open=!$('side').classList.contains('hidden');
     if((e.ctrlKey||e.metaKey)&&e.code==='KeyS'&&!e.altKey){if(open){e.preventDefault();save();}}
     else if(e.key==='Escape'&&open){
       if(parentEditor.isOpen())parentEditor.close();
+      else if(assignedEditor.isOpen())assignedEditor.close();
+      else if(assignedChild.isOpen())assignedChild.close();
       else if($('comment_form').style.display==='flex')$('comment_form').style.display='none';
       else if($('child_form').style.display==='flex')$('child_form').style.display='none';
       else closePanel();
@@ -1925,17 +1982,17 @@ async function initialBoot(postSetup){
   });
   $('s_childbtn').onclick=()=>{const f=$('child_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';f.style.flexDirection='column';if(show)$('c_title').focus();};
   $('c_create').onclick=createChild;$('c_cancel').onclick=()=>$('child_form').style.display='none';
-  $('c_me').onclick=()=>{$('c_assigned').value=currentUser||'me';};
+  $('c_me').onclick=()=>assignedChild.set(currentUser||'me');
   $('c_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createChild();}});
   // new-item modal (create from scratch)
   $('newbtn').onclick=()=>showNewItem();
   $('undobtn').onclick=runUndo;$('redobtn').onclick=runRedo;
   $('n_create').onclick=createNew;$('n_cancel').onclick=closeNewItem;
-  $('n_me').onclick=()=>{$('n_assigned').value=currentUser||'me';};
+  $('n_me').onclick=()=>assignedNew.set(currentUser||'me');
   $('newitem-overlay').addEventListener('mousedown',e=>{if(e.target===$('newitem-overlay'))closeNewItem();});
   $('n_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createNew();}});
   $('newitem-box').addEventListener('keydown',e=>{
-    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(parentNew.isOpen())parentNew.close();else closeNewItem();}
+    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(parentNew.isOpen())parentNew.close();else if(assignedNew.isOpen())assignedNew.close();else closeNewItem();}
     else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();createNew();}});
   // new-sprint modal (Board → By Sprint "＋" column)
   $('sp_create').onclick=createSprintSubmit;$('sp_cancel').onclick=closeSprintModal;

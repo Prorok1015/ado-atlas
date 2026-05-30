@@ -87,7 +87,17 @@
     <div class="row">
       <div><label>State</label><select id="s_state" style="width:100%"></select></div>
       <div style="max-width:96px"><label>Priority</label><select id="s_prio" style="width:100%"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-      <div><label>Assigned</label><div style="display:flex;gap:4px"><input id="s_assigned" list="assignees" style="flex:1"><button class="btn" id="s_me" title="assign to me" style="padding:6px 9px">me</button></div></div>
+      <div><label>Assigned</label>
+        <input type="hidden" id="s_assigned">
+        <div class="prow-field">
+          <button type="button" class="btn pcard" id="s_assigned_card" title="click to change assignee"></button>
+          <button type="button" class="btn" id="s_me" title="assign to me" style="padding:6px 9px">me</button>
+        </div>
+        <div id="s_assigned_pick" class="ppick" style="display:none">
+          <input id="s_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+          <div id="s_assigned_results" class="presults"></div>
+        </div>
+      </div>
     </div>
     <label>Sprint</label><select id="s_iter" style="width:100%"></select>
     <label>Parent</label>
@@ -126,7 +136,15 @@
       <div class="row"><select id="c_type" style="width:100%"></select>
         <select id="c_prio" style="max-width:78px"><option value="">P —</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
       <input id="c_title" placeholder="new child title">
-      <div class="row" style="gap:4px"><input id="c_assigned" list="assignees" placeholder="assignee (optional)" style="flex:1"><button class="btn" id="c_me" title="assign to me" style="padding:4px 8px">me</button></div>
+      <input type="hidden" id="c_assigned">
+      <div class="prow-field">
+        <button type="button" class="btn pcard" id="c_assigned_card" title="click to choose an assignee"></button>
+        <button type="button" class="btn" id="c_me" title="assign to me" style="padding:4px 8px">me</button>
+      </div>
+      <div id="c_assigned_pick" class="ppick" style="display:none">
+        <input id="c_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+        <div id="c_assigned_results" class="presults"></div>
+      </div>
       <div class="actions"><button class="btn save" id="c_create">Create</button><button class="btn" id="c_cancel">Cancel</button></div>
     </div>
   </div>
@@ -144,7 +162,16 @@
     </div>
     <label>Title</label>
     <input id="n_title" placeholder="work item title" style="width:100%">
-    <div><label>Assigned</label><div style="display:flex;gap:4px"><input id="n_assigned" list="assignees" style="flex:1"><button class="btn" id="n_me" title="assign to me" style="padding:6px 9px">me</button></div></div>
+    <label>Assigned</label>
+    <input type="hidden" id="n_assigned">
+    <div class="prow-field">
+      <button type="button" class="btn pcard" id="n_assigned_card" title="click to choose an assignee"></button>
+      <button type="button" class="btn" id="n_me" title="assign to me" style="padding:6px 9px">me</button>
+    </div>
+    <div id="n_assigned_pick" class="ppick" style="display:none">
+      <input id="n_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+      <div id="n_assigned_results" class="presults"></div>
+    </div>
     <label>Parent</label>
     <input type="hidden" id="n_parent">
     <div class="prow-field">
