@@ -329,29 +329,38 @@ function gstyle(){return [
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'180px','font-size':'12px','text-valign':'center',
    'width':'210px','height':'label','padding':'12px',
-   // top-left badge row (child-count · priority · assignee bookmarks) + state pill top-right
-   'background-image':e=>[e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
+   // top-left: child-count · priority (bookmarks) · estimate; top-right: assignee avatar (round);
+   // bottom: state (left) · tags (centre) · sprint (right)
+   'background-image':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=tagDotsUri(e.data('tags'));return[
+     e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     e.data('assigned')?bookmarkUri(personColor(e.data('assigned')),personInitials(e.data('assigned')),'down'):BLANK_IMG,
-     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG],
+     (est!=null&&est!=='')?pillUri((+est)+'h','#5b6b7d',60):BLANK_IMG,
+     e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG,
+     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG,
+     tg?tg.uri:BLANK_IMG,
+     sp?pillUri(sprintShort(sp),'#7a6cc4',96):BLANK_IMG];},
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':e=>['18px','18px','20px',(e.data('state')?statePillW(e.data('state')):1)+'px'],
-   'background-height':['24px','24px','24px','22px'],
-   'background-position-x':['4px','23px','42px','100%'],'background-position-y':['0','0','0','2px'],
-   // Excalidraw sketch look: same-hue stroke (thicker for high priority)
+   'background-width':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=tagDotsUri(e.data('tags'));return[
+     '18px','18px',((est!=null&&est!=='')?pillW((+est)+'h',60):1)+'px','26px',
+     (e.data('state')?statePillW(e.data('state')):1)+'px',(tg?tg.w:1)+'px',(sp?pillW(sprintShort(sp),96):1)+'px'];},
+   'background-height':['24px','24px','20px','26px','22px','18px','20px'],
+   'background-position-x':['4px','23px','42px','100%','4px','50%','100%'],
+   'background-position-y':['0','0','0','3px','100%','100%','100%'],
+   // overdue → soft red halo (underlay); same-hue stroke (thicker for high priority)
+   'underlay-color':'#e0524d','underlay-padding':6,'underlay-opacity':e=>isOverdue(e.data())?0.22:0,
    'border-width':e=>((e.data('priority')||9)<=2?3.5:1.8),'border-color':e=>nodeStroke(e.data('type'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
-   // top-left badge row (child-count · priority · assignee bookmarks) + state pill top-right
+   // header strip: child-count · priority (bookmarks) · state pill (left), assignee avatar (right)
    'background-image':e=>[e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     e.data('assigned')?bookmarkUri(personColor(e.data('assigned')),personInitials(e.data('assigned')),'down'):BLANK_IMG,
-     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG],
+     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG,
+     e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':e=>['18px','18px','20px',(e.data('state')?statePillW(e.data('state')):1)+'px'],
-   'background-height':['24px','24px','24px','22px'],
-   'background-position-x':['4px','23px','42px','100%'],'background-position-y':['0','0','0','2px'],
+   'background-width':e=>['18px','18px',(e.data('state')?statePillW(e.data('state')):1)+'px','26px'],
+   'background-height':['24px','24px','22px','26px'],
+   'background-position-x':['4px','23px','42px','100%'],'background-position-y':['0','0','0','6px'],
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
@@ -1079,8 +1088,9 @@ async function openItem(id){
   $('s_target').value=(d.target||'').slice(0,10);
   $('s_due').value=(d.due||'').slice(0,10);
   $('s_est').value=(d.est!=null?d.est:'');
+  tagsEditor.set(d.tags||'',/*silent*/true);
   orig={title:d.title,state:d.state,assigned:d.assigned,desc:d.desc,ac:d.ac,has_ac:d.has_ac,priority:d.priority,
-        iter:curIt,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};
+        iter:curIt,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};
   refreshDirty();loadTimeline(id);
   setStatus('#'+id+' loaded');
 }
@@ -2163,7 +2173,10 @@ async function initialBoot(postSetup){
   parentEditor.wire();parentNew.wire();   // parent card + searchable picker (editor + New-item modal)
   assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker
   sprintEditor.wire();sprintNew.wire();                           // sprint card + iteration picker
-  assignedEditor.render();assignedChild.render();assignedNew.render();sprintEditor.render();sprintNew.render();   // placeholder cards before first use
+  assignedEditor.render();assignedChild.render();assignedNew.render();sprintEditor.render();sprintNew.render();tagsEditor.render();   // placeholder cards before first use
+  $('s_tagadd').addEventListener('keydown',e=>{                      // Enter or comma commits a tag
+    if(e.key==='Enter'||e.key===','){e.preventDefault();tagsEditor.add(e.target.value);e.target.value='';}});
+  $('s_tagadd').addEventListener('blur',e=>{if(e.target.value.trim()){tagsEditor.add(e.target.value);e.target.value='';}});
   ['s_title','s_state','s_prio','s_desc','s_ac','s_start','s_target','s_due','s_est'].forEach(id=>{
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
   document.addEventListener('keydown',e=>{
