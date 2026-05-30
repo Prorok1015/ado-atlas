@@ -1199,6 +1199,18 @@ async function loadTypes(){
   }
   fillTypeSelect('c_type','Task');fillTypeSelect('n_type','Task');
   buildLegend();
+  repaintTypes();                                  // colours just changed → repaint so defaults don't linger
+}
+// Re-apply the (now real) type colours to whatever view is showing. The first
+// paint can beat the async colour load on a page reload, leaving the hard-coded
+// defaults stuck until the next refresh — this fixes that without a full reload.
+function repaintTypes(){
+  if(!store.roots.length)return;                   // nothing painted yet; the next render will use the new colours
+  if(mode==='timeline')renderTimeline();
+  else if(mode==='board')renderBoard();
+  else if(mode==='graph'){if(cy)cy.style().update();}
+  else renderTree();
+  if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);
 }
 // (Re)populate a type <select> from the loaded types, keeping the current
 // choice if it's still valid, else falling back to `preferred` then the first.
