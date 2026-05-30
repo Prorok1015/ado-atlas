@@ -727,11 +727,12 @@ async function annotateSprintTimes(ids,path){
 function openSprint(path){
   if(!_sprint(path))return;
   boardScroll={l:$('board').scrollLeft,t:$('board').scrollTop};
-  if(renderSprint(path)){openSprintPath=path;$('board').classList.remove('show');$('sprintview').classList.add('show');}
+  if(renderSprint(path)){openSprintPath=path;$('board').classList.remove('show');$('sprintview').classList.add('show');renderViewHelp();}
 }
 function backToBoard(){
   openSprintPath=null;$('sprintview').classList.remove('show');$('board').classList.add('show');
   if(boardScroll){$('board').scrollLeft=boardScroll.l;$('board').scrollTop=boardScroll.t;}
+  renderViewHelp();
 }
 
 /* ---------- Timeline (project-wide Gantt — one continuous axis, no sprint cut-off) ---------- */
@@ -857,6 +858,29 @@ function setMode(m){
   $('grp').style.display=(m==='board')?'inline-flex':'none';
   $('tlzoom').style.display=(m==='timeline')?'inline-flex':'none';
   $('tl_group').style.display=(m==='timeline')?'inline-block':'none';
+  renderViewHelp();
+}
+// Per-view "what can I do here" legend, bottom-left. Each view has its own
+// non-obvious interactions (modifier-click to bulk-select, drag semantics, …);
+// this surfaces them. Collapsible, with the state remembered across sessions.
+const VIEW_HELP={
+  tree:[['Click','open item'],['Click ▸','expand / collapse'],['Ctrl-click','toggle select'],['Shift-click','select range'],['Drag','re-parent onto a row']],
+  graph:[['Click','open item'],['Double-click','expand / collapse children'],['Ctrl / Shift-click','toggle select'],['Drag node','move · background pans'],['Scroll','zoom']],
+  board:[['Click','open item'],['Ctrl / Shift-click','toggle / range select'],['Drag','move to another column'],['Drag → ＋','new sprint from cards']],
+  timeline:[['Click','open item'],['Ctrl-click','toggle select'],['Shift-click','select range']],
+};
+function viewHelpCollapsed(){try{return localStorage.getItem('ado.viewhelp')==='0';}catch(e){return false;}}
+function renderViewHelp(){
+  const box=$('viewhelp'),rows=VIEW_HELP[mode];
+  const show=!!rows&&!$('sprintview').classList.contains('show');   // hide over the sprint detail
+  box.classList.toggle('show',show);
+  if(!show)return;
+  const collapsed=viewHelpCollapsed();
+  box.classList.toggle('collapsed',collapsed);
+  box.innerHTML=`<div class="vhh" id="vhh">${collapsed?'▸':'▾'} Controls</div>`+
+    `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vk">${esc(r[0])}</span><span>${esc(r[1])}</span></div>`).join('')+
+    `<div class="vhnote">selecting items opens the bulk-edit bar</div></div>`;
+  $('vhh').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
 }
 async function resolveSkippedAncestors(skippers,inSet){
   // For each skipper (parent not in set), climb the chain until an in-set ancestor
@@ -2124,6 +2148,7 @@ async function initialBoot(postSetup){
     const savedMode=localStorage.getItem('ado.mode');
     if(savedMode&&savedMode!=='tree')setMode(savedMode);
   }catch(e){}
+  renderViewHelp();                          // show the controls legend for the initial view
   const p=new URLSearchParams(location.search),root=p.get('root');
   if(root){await openItem(parseInt(root));}
   if(mode==='tree')await loadSnapshot();   // paint last session's tree instantly while the network refresh runs
