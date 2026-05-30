@@ -98,10 +98,12 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - **Bulk edit** (Tree view): tick the checkboxes on tree rows — a bar appears
   letting you set State, Sprint, Priority, or Assignee on every selected item at
   once (applied in parallel, then the list refreshes).
-- **Undo** — press **Ctrl/Cmd-Z** (outside a text field) to revert the last
-  mutating action: an editor save (fields + re-parent), a board drag, a bulk
-  edit, or a create (the created item goes to ADO's Recycle Bin, so it stays
-  recoverable). Repeat to walk back the stack; also in the Command palette.
+- **Undo / Redo** — the **↶ / ↷** toolbar buttons (or **Ctrl/Cmd-Z** and
+  **Ctrl/Cmd-Shift-Z / Ctrl-Y**, outside a text field) walk a stack of mutating
+  actions: an editor save (fields + re-parent), a board drag, a bulk edit, or a
+  create (undo deletes the item to ADO's Recycle Bin, so it stays recoverable;
+  redo re-creates it). Shortcuts are keyed on the physical key, so they work on
+  non-Latin keyboard layouts too. Also in the Command palette.
 - **Command palette** — press **Ctrl/Cmd-K** to fuzzy-find any loaded item by id
   or title, or run a quick command (switch view, refresh, export, theme,
   settings, undo). ↑/↓ to navigate, Enter to open, Esc to close.
@@ -123,7 +125,8 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   item opens in the editor.
   Shortcuts: press **N** anywhere (when not typing) to open it, **Ctrl/Cmd+Enter**
   to submit, **Esc** to cancel. Also reachable from the **Command palette**
-  (Ctrl/Cmd-K → "New work item").
+  (Ctrl/Cmd-K → "New work item"). The **✚ New** and **+ Child** buttons hide
+  themselves for the session if a create is denied (HTTP 403 — no permission).
 - **+ Child** (item editor) — create an item already parented under the one
   you're viewing; the form stays open for rapid multi-create.
 

@@ -43,6 +43,7 @@ let pdrag=null, suppressClick=false;            // custom pointer-based drag for
 let boardScroll=null;                           // saved board scroll to restore from the sprint view
 let boardGroup='sprint';                        // board grouping: 'sprint' | 'assignee' | 'state'
 let canCreateSprint=true;                       // show the "add sprint" column until a create is denied (403)
+let canCreateItem=true;                         // show the New / + Child buttons until a create is denied (403)
 const newSprints=new Set();                     // sprint paths created this session — stay visible while still empty
 let tzOffset=Math.round(-new Date().getTimezoneOffset()/60);   // UTC offset for work-hours (default: browser TZ)
 let sprintGroup='none';                         // expanded-sprint grouping: 'none' | 'assignee'
@@ -202,10 +203,9 @@ async function bulkApply(field,val){     // field: state | iteration | assigned 
   const results=await api.pool(ids.map(wid=>async()=>{try{const body={};body[field]=(field==='priority'?Number(val):val);await api.updateItem(wid,body);return true;}catch(e){return false;}}),6);
   const ok=results.filter(Boolean).length,fail=results.length-ok;
   loadEnd();
-  if(ok)pushUndo(`bulk ${field} on ${ids.length} item(s)`,async()=>{
-    await api.pool(olds.map(o=>async()=>{try{const b={};b[field]=(o.old==null?'':o.old);await api.updateItem(o.id,b);}catch(e){}}),6);
-    await afterUndo(null);
-  });
+  if(ok)pushAction(`bulk ${field} on ${ids.length} item(s)`,
+    async()=>{await api.pool(olds.map(o=>async()=>{try{const b={};b[field]=(o.old==null?'':o.old);await api.updateItem(o.id,b);}catch(e){}}),6);await afterUndo(null);},
+    async()=>{await api.pool(ids.map(wid=>async()=>{try{const b={};b[field]=(field==='priority'?Number(val):val);await api.updateItem(wid,b);}catch(e){}}),6);await afterUndo(null);});
   setStatus(`bulk ${field}: ${ok} updated`+(fail?`, ${fail} failed`:''),!!fail);
   await refresh();                       // rebuild from server (prunes selection to what still matches)
   if(fail)setStatus('bulk '+field+': '+ok+' updated, '+fail+' failed',true);
@@ -447,7 +447,9 @@ async function moveCard(id,field,val){            // field: 'iteration' | 'assig
     const body={};body[field]=val;
     const r=await api.updateItem(id,body);
     if(store.nodes[id])store.nodes[id][field]=val;   // node uses the same key names (iteration/assigned/state)
-    pushUndo('move #'+id,async()=>{await api.updateItem(id,{[field]:(old==null?'':old)});await afterUndo(id);});
+    pushAction('move #'+id,
+      async()=>{await api.updateItem(id,{[field]:(old==null?'':old)});await afterUndo(id);},
+      async()=>{await api.updateItem(id,{[field]:val});await afterUndo(id);});
     setStatus('#'+id+' moved → rev '+r.rev);
   }catch(e){setStatus('ERROR: '+e.message,true);}
   boardBusy=false;loadEnd();
@@ -808,25 +810,41 @@ function createParentField(base,opts){
 const parentEditor=createParentField('s_parent',{onChange:refreshDirty,getExcludeId:()=>cur});
 const parentNew=createParentField('n_parent',{getExcludeId:()=>null});
 
-/* ---------- undo (Ctrl/Cmd+Z) ----------
-   Each mutating action (edit/save, bulk, board drag, create) pushes an inverse
-   onto the stack. Undo runs the inverse via the raw api (so it never re-records
-   itself) and then refreshes the view. Undoing a create deletes the item (it
-   goes to ADO's Recycle Bin, so it stays recoverable). */
-const undoStack=[];let undoBusy=false;
-function pushUndo(label,fn){undoStack.push({label,fn});if(undoStack.length>50)undoStack.shift();}
-async function afterUndo(id){await refresh();if(id!=null&&cur===id)openItem(id);}
-async function runUndo(){
-  if(undoBusy)return;
-  const e=undoStack.pop();
-  if(!e){setStatus('nothing to undo');return;}
-  undoBusy=true;loadStart('undoing: '+e.label+'…');
-  try{await e.fn();setStatus('undid: '+e.label);}
-  catch(err){setStatus('undo failed ('+e.label+'): '+err.message,true);}
-  finally{undoBusy=false;loadEnd();}
+/* ---------- undo / redo (Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z or Ctrl+Y) ----------
+   Each mutating action pushes a command with matching undo()/redo() functions,
+   run via the raw api (so they never re-record themselves). A new action clears
+   the redo stack. Undoing a create deletes the item (ADO Recycle Bin — still
+   recoverable); redoing it re-creates it (new id, rebound for a later undo). */
+const undoStack=[],redoStack=[];let undoBusy=false;
+function pushAction(label,undo,redo){
+  undoStack.push({label,undo,redo});if(undoStack.length>50)undoStack.shift();
+  redoStack.length=0;updateUndoButtons();
 }
-// Build the inverse of an editor save (restore the changed fields + parent).
-function recordEditUndo(id,body,parentChanged,before,beforeParent){
+async function afterUndo(id){await refresh();if(id!=null&&cur===id)openItem(id);}
+async function runStep(from,to,verb){
+  if(undoBusy)return;
+  const e=from.pop();
+  if(!e){setStatus('nothing to '+verb);return;}
+  undoBusy=true;loadStart(verb+'ing: '+e.label+'…');
+  try{await (verb==='undo'?e.undo:e.redo)();to.push(e);setStatus((verb==='undo'?'undid: ':'redid: ')+e.label);}
+  catch(err){from.push(e);setStatus(verb+' failed ('+e.label+'): '+err.message,true);}
+  finally{undoBusy=false;loadEnd();updateUndoButtons();}
+}
+const runUndo=()=>runStep(undoStack,redoStack,'undo');
+const runRedo=()=>runStep(redoStack,undoStack,'redo');
+function updateUndoButtons(){
+  const u=$('undobtn'),r=$('redobtn');
+  if(u)u.disabled=!undoStack.length;
+  if(r)r.disabled=!redoStack.length;
+}
+// Hide the create affordances (toolbar New, editor + Child) when the user has
+// been shown to lack work-item create permission (a create returned HTTP 403).
+function updateCreateButtons(){
+  const nb=$('newbtn');if(nb)nb.style.display=canCreateItem?'':'none';
+  const cb=$('s_childbtn');if(cb)cb.style.display=canCreateItem?'':'none';
+}
+// An editor save: undo restores the old fields/parent, redo re-applies the new.
+function recordEditUndo(id,body,parentChanged,before,beforeParent,newParent){
   const rev={};
   if('title'in body)rev.title=before.title;
   if('state'in body)rev.state=before.state;
@@ -839,13 +857,11 @@ function recordEditUndo(id,body,parentChanged,before,beforeParent){
   if('target'in body)rev.target=before.target;
   if('due'in body)rev.due=before.due;
   if('estimate'in body)rev.estimate=before.est;
-  const hasFields=Object.keys(rev).length>0;
-  if(!hasFields&&!parentChanged)return;
-  pushUndo('edit #'+id,async()=>{
-    if(hasFields)await api.updateItem(id,rev);
-    if(parentChanged)await api.setParent(id,beforeParent);
-    await afterUndo(id);
-  });
+  const hasRev=Object.keys(rev).length>0,hasFwd=Object.keys(body).length>0;
+  if(!hasRev&&!parentChanged)return;
+  pushAction('edit #'+id,
+    async()=>{if(hasRev)await api.updateItem(id,rev);if(parentChanged)await api.setParent(id,beforeParent);await afterUndo(id);},
+    async()=>{if(hasFwd)await api.updateItem(id,body);if(parentChanged)await api.setParent(id,newParent);await afterUndo(id);});
 }
 
 async function save(){
@@ -873,7 +889,7 @@ async function save(){
     if(parentChanged)await api.setParent(id,v.parent);   // v.parent==='' detaches (makes it a root)
   }catch(e){setStatus('ERROR: '+e.message,true);refreshDirty();loadEnd();return;}
   loadEnd();
-  recordEditUndo(id,body,parentChanged,before,beforeParent);
+  recordEditUndo(id,body,parentChanged,before,beforeParent,v.parent);
   if(cy){const n=cy.getElementById(String(id));if(n.nonempty()){if(body.title)n.data('title',body.title);if(body.state)n.data('state',body.state);if('priority'in body)n.data('priority',body.priority);}}
   if(selRow&&body.title)selRow.querySelector('.lab').textContent=`#${id} ${body.title}`;
   if(selRow&&body.state)selRow.querySelector('.badge').textContent=body.state;
@@ -935,13 +951,28 @@ async function createChild(){
   if(assigned)body.assigned=(assigned==='me'?(currentUser||assigned):assigned);
   if(prio)body.priority=Number(prio);
   loadStart('creating…');
-  let r;try{r=await api.createItem(body);}catch(e){setStatus('ERROR: '+e.message,true);loadEnd();return;}
+  let r;try{r=await api.createItem(body);}catch(e){denyOnForbidden(e,'create work items');setStatus('ERROR: '+e.message,true);loadEnd();return;}
   loadEnd();
   delete store.kids[cur];                          // parent's child list is now stale → reloads on next expand
-  pushUndo(`create #${r.id}`,async()=>{await api.deleteItem(r.id);if(cur===r.id)closePanel(true);await afterUndo(null);});
+  recordCreateUndo(r.id,body);
   $('c_title').value='';$('c_title').focus();       // keep form open for rapid multi-create
   setStatus(`created #${r.id} (${type}) under #${cur}`);
   refresh();
+}
+// create undo/redo: undo deletes the item; redo re-creates it (new id, rebound).
+function recordCreateUndo(id,createBody){
+  const ref={id},cbody={...createBody};
+  pushAction(`create #${id}`,
+    async()=>{await api.deleteItem(ref.id);if(cur===ref.id)closePanel(true);await afterUndo(null);},
+    async()=>{const nn=await api.createItem(cbody);ref.id=nn.id;await afterUndo(null);});
+}
+// On an HTTP 403 from a create, remember the user lacks the right and hide the
+// matching create affordance for the session.
+function denyOnForbidden(e,what){
+  if(!/HTTP 403/.test(e.message||''))return false;
+  if(what==='create work items'){canCreateItem=false;updateCreateButtons();}
+  setStatus("you don't have permission to "+what,true);
+  return true;
 }
 
 /* ---------- create a brand-new item from scratch (no parent required) ---------- */
@@ -975,10 +1006,10 @@ async function createNew(){
   const iter=$('n_iter').value;if(iter&&iter!==_newIterRoot)body.iteration=iter;
   const btn=$('n_create');btn.disabled=true;btn.textContent='Creating…';loadStart('creating…');
   let r;try{r=await api.createItem(body);}
-  catch(e){$('newitem-err').textContent='ERROR: '+e.message;btn.disabled=false;btn.textContent='Create';loadEnd();return;}
+  catch(e){if(denyOnForbidden(e,'create work items')){closeNewItem();}else $('newitem-err').textContent='ERROR: '+e.message;btn.disabled=false;btn.textContent='Create';loadEnd();return;}
   btn.disabled=false;btn.textContent='Create';loadEnd();
   if(body.parent!=null)delete store.kids[body.parent];   // parent's child list is now stale
-  pushUndo(`create #${r.id}`,async()=>{await api.deleteItem(r.id);if(cur===r.id)closePanel(true);await afterUndo(null);});
+  recordCreateUndo(r.id,body);
   closeNewItem();
   setStatus(`created #${r.id} (${type})`+(body.parent!=null?` under #${body.parent}`:' (top-level)'));
   await refresh();
@@ -1115,6 +1146,7 @@ let palItems=[],palIdx=0;
 const PALETTE_ACTIONS=[
   {kind:'cmd',title:'New work item',run:()=>showNewItem()},
   {kind:'cmd',title:'Undo last change (Ctrl/Cmd+Z)',run:()=>runUndo()},
+  {kind:'cmd',title:'Redo (Ctrl/Cmd+Shift+Z)',run:()=>runRedo()},
   {kind:'cmd',title:'Refresh list',run:()=>refresh()},
   {kind:'cmd',title:'View: Tree',run:()=>switchMode('tree')},
   {kind:'cmd',title:'View: Graph',run:()=>switchMode('graph')},
@@ -1364,7 +1396,8 @@ let _booted=false;
 async function initialBoot(postSetup){
   updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
-    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;canCreateSprint=true;newSprints.clear();
+    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canCreateItem=true;newSprints.clear();
+    updateUndoButtons();updateCreateButtons();
     await loadIdentity();await refresh();warnIfPatExpiring();return;
   }
   _booted=true;
@@ -1419,18 +1452,22 @@ async function initialBoot(postSetup){
   $('bulk_assign_btn').onclick=()=>{const v=$('bulk_assigned').value.trim();if(v){bulkApply('assigned',v);$('bulk_assigned').value='';}};
   $('bulk_clear').onclick=clearBulk;
   // command palette (Ctrl/Cmd+K)
-  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();
+  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.code==='KeyK'&&!e.altKey){e.preventDefault();
     $('palette').classList.contains('show')?closePalette():openPalette();}});
-  // undo (Ctrl/Cmd+Z) — but let the browser handle native text-undo inside fields
+  // undo / redo — keyed on e.code (physical key), so it works on non-Latin
+  // keyboard layouts; native text-undo wins inside fields.
   document.addEventListener('keydown',e=>{
-    if(!((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')&&!e.shiftKey&&!e.altKey))return;
+    if(!(e.ctrlKey||e.metaKey)||e.altKey)return;
+    const isZ=e.code==='KeyZ',isY=e.code==='KeyY';
+    if(!isZ&&!isY)return;
     const t=e.target,tag=t&&t.tagName;
     if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(t&&t.isContentEditable))return;
-    if($('setup-overlay').classList.contains('show')||$('newitem-overlay').classList.contains('show')||$('palette').classList.contains('show'))return;
-    e.preventDefault();runUndo();});
+    if($('setup-overlay').classList.contains('show')||$('newitem-overlay').classList.contains('show')||$('sprint-overlay').classList.contains('show')||$('palette').classList.contains('show'))return;
+    e.preventDefault();
+    if(isY||(isZ&&e.shiftKey))runRedo();else runUndo();});
   // plain "N" opens the new-item modal — only when not typing and no modal/palette is up
   document.addEventListener('keydown',e=>{
-    if((e.key!=='n'&&e.key!=='N')||e.ctrlKey||e.metaKey||e.altKey)return;
+    if(e.code!=='KeyN'||e.ctrlKey||e.metaKey||e.altKey||!canCreateItem)return;
     const t=e.target,tag=t&&t.tagName;
     if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(t&&t.isContentEditable))return;
     if($('palette').classList.contains('show')||$('setup-overlay').classList.contains('show')||$('newitem-overlay').classList.contains('show'))return;
@@ -1459,7 +1496,7 @@ async function initialBoot(postSetup){
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
   document.addEventListener('keydown',e=>{
     const open=!$('side').classList.contains('hidden');
-    if((e.ctrlKey||e.metaKey)&&(e.key==='s'||e.key==='S')){if(open){e.preventDefault();save();}}
+    if((e.ctrlKey||e.metaKey)&&e.code==='KeyS'&&!e.altKey){if(open){e.preventDefault();save();}}
     else if(e.key==='Escape'&&open){
       if(parentEditor.isOpen())parentEditor.close();
       else if($('comment_form').style.display==='flex')$('comment_form').style.display='none';
@@ -1473,6 +1510,7 @@ async function initialBoot(postSetup){
   $('c_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createChild();}});
   // new-item modal (create from scratch)
   $('newbtn').onclick=()=>showNewItem();
+  $('undobtn').onclick=runUndo;$('redobtn').onclick=runRedo;
   $('n_create').onclick=createNew;$('n_cancel').onclick=closeNewItem;
   $('n_me').onclick=()=>{$('n_assigned').value=currentUser||'me';};
   $('newitem-overlay').addEventListener('mousedown',e=>{if(e.target===$('newitem-overlay'))closeNewItem();});
@@ -1494,7 +1532,7 @@ async function initialBoot(postSetup){
     const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
     const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;setAutoRefresh(au);}
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
-  buildLegend();renderFilters();updateFilterCount();updatePatBadge();
+  buildLegend();renderFilters();updateFilterCount();updatePatBadge();updateUndoButtons();updateCreateButtons();
   await loadIdentity();
   try{
     applyTheme(localStorage.getItem('ado.theme')||'dark');

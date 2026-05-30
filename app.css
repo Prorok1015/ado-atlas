@@ -36,6 +36,8 @@ body{background:var(--bg);color:var(--txt);font:13px/1.4 -apple-system,Segoe UI,
 #export button:hover{background:var(--panel2);color:var(--accent)}
 .btn{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer;font:inherit;font-size:12px}
 .btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn:disabled:hover{border-color:var(--line)}
 select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 7px;font:inherit;font-size:12px}
 #search{width:150px}
 #main{flex:1;display:flex;min-height:0}
