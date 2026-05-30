@@ -329,25 +329,25 @@ function gstyle(){return [
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'180px','font-size':'12px','text-valign':'center',
    'width':'210px','height':'label','padding':'12px',
-   // top-left badge row (cytoscape multi-background): child-count · priority · assignee
+   // top-left badge row (cytoscape multi-background): child-count · priority · assignee (all bookmarks)
    'background-image':e=>[e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG],
+     e.data('assigned')?bookmarkUri(personColor(e.data('assigned')),personInitials(e.data('assigned')),'down'):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':['18px','18px','22px'],'background-height':['24px','24px','22px'],
-   'background-position-x':['4px','23px','45px'],'background-position-y':['0','0','2px'],
+   'background-width':['18px','18px','20px'],'background-height':['24px','24px','24px'],
+   'background-position-x':['4px','23px','42px'],'background-position-y':['0','0','0'],
    // Excalidraw sketch look: same-hue stroke (thicker for high priority)
    'border-width':e=>((e.data('priority')||9)<=2?3.5:1.8),'border-color':e=>nodeStroke(e.data('type'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
-   // top-left badge row in the header strip: child-count · priority · assignee
+   // top-left badge row in the header strip: child-count · priority · assignee (all bookmarks)
    'background-image':e=>[e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG],
+     e.data('assigned')?bookmarkUri(personColor(e.data('assigned')),personInitials(e.data('assigned')),'down'):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':['18px','18px','22px'],'background-height':['24px','24px','22px'],
-   'background-position-x':['4px','23px','45px'],'background-position-y':['0','0','2px'],
+   'background-width':['18px','18px','20px'],'background-height':['24px','24px','24px'],
+   'background-position-x':['4px','23px','42px'],'background-position-y':['0','0','0'],
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
@@ -1219,12 +1219,6 @@ function personColor(name){let h=0;name=String(name);for(let i=0;i<name.length;i
 function personInitials(name){const p=String(name).trim().split(/\s+/).filter(Boolean);return (((p[0]||'')[0]||'')+(p.length>1?(p[p.length-1][0]||''):'')).toUpperCase()||'?';}
 function personChip(name){return `<i class="pav" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}
 function personChipT(name){return `<i class="pav pavsm" title="${esc(name)}" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}   // small, tooltipped — board cards
-function avatarDataUri(name){               // circular initials avatar (white ring) for graph nodes — cytoscape background-image
-  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44'>`+
-    `<circle cx='22' cy='22' r='19' fill='${personColor(name)}' stroke='#ffffff' stroke-width='2.5'/>`+
-    `<text x='22' y='29' font-size='18' font-family='sans-serif' font-weight='700' fill='#ffffff' text-anchor='middle'>${esc(personInitials(name))}</text></svg>`;
-  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
-}
 const BLANK_IMG="data:image/svg+xml;utf8,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'></svg>");   // transparent slot for an absent multi-background layer
 // Corner "bookmark" ribbon (a tag with a V-notch) carrying a short label — used
 // for the child-count and priority badges on graph nodes. dir 'down' = notch at
