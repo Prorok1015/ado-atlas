@@ -307,7 +307,7 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .fclear{width:22px;background:transparent;border:0;color:#e0524d;cursor:pointer;font:inherit;font-size:13px;line-height:1;padding:2px 0;border-radius:6px;font-weight:700;flex:none;text-align:center}
 .fclear:hover{background:rgba(224,82,77,0.16)}
 /* "✕ Clear all" — appears above the rows when any filter is active */
-.fclear-all{margin:0 0 6px 0;display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 9px;border:1px solid rgba(224,82,77,0.5)}
+.fclear-all{width:auto;margin:0 0 6px 0;display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 9px;border:1px solid rgba(224,82,77,0.5);white-space:nowrap}
 
 /* ---- bulk action bar (tree multi-select) ---- */
 #bulkbar{background:var(--panel);border-bottom:1px solid var(--line);padding:7px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
