@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Microsoft sign-in setup — ADO Atlas</title>
+<meta name="description" content="One-time Microsoft Entra ID app registration to use 'Sign in with Microsoft' in ADO Atlas instead of a Personal Access Token.">
+<style>
+  :root { --bg:#0f1216; --panel:#171c23; --line:#2a323d; --txt:#e6edf3; --muted:#9aa7b4; --accent:#4c8bf5; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.65 -apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:48px 20px 64px; }
+  h1 { font-size:28px; margin:0 0 8px; }
+  h2 { font-size:20px; margin:30px 0 8px; }
+  a { color:var(--accent); }
+  ol, ul { padding-left:22px; }
+  li { margin:6px 0; }
+  code { background:#0d1117; border:1px solid var(--line); border-radius:5px; padding:1px 5px; font-size:13px; }
+  .back { display:inline-block; margin-bottom:20px; }
+  .note { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; padding:10px 14px; margin:18px 0; color:var(--muted); font-size:14px; }
+  .note b { color:var(--txt); }
+  footer { margin-top:40px; border-top:1px solid var(--line); padding-top:16px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">&larr; ADO Atlas</a>
+  <h1>Microsoft sign-in (Entra ID OAuth) — setup</h1>
+
+  <p>ADO Atlas can authenticate with <b>Microsoft sign-in</b> instead of a Personal
+     Access Token: you click "Sign in with Microsoft" once, and the extension uses
+     an Entra ID access token that <b>refreshes itself</b> — no token to copy, no
+     expiry to babysit.</p>
+
+  <p>OAuth requires a <b>one-time app registration</b> in Microsoft Entra ID. It
+     takes ~3 minutes; after that, signing in is one click.</p>
+
+  <div class="note">Prefer zero setup? The PAT method still works — just stay on the
+     <b>Token</b> tab in the extension.</div>
+
+  <h2>1. Register an app in Entra ID</h2>
+  <ol>
+    <li>Open the <a href="https://portal.azure.com" target="_blank" rel="noopener noreferrer">Azure Portal</a>
+        → <b>Microsoft Entra ID</b> → <b>App registrations</b> → <b>New registration</b>.</li>
+    <li><b>Name:</b> anything (e.g. <code>ADO Atlas</code>).</li>
+    <li><b>Supported account types:</b> <i>Accounts in any organizational directory (multitenant)</i>
+        if you'll use the default <code>organizations</code> tenant. (Single-tenant if you only ever
+        sign in to one organization.)</li>
+    <li><b>Redirect URI:</b> leave blank for now → <b>Register</b>.</li>
+  </ol>
+
+  <h2>2. Add the redirect URI</h2>
+  <ol>
+    <li>Open the extension, go to <b>Microsoft sign-in</b>, and <b>copy the Redirect URI</b>
+        it shows (looks like <code>https://&lt;extension-id&gt;.chromiumapp.org/</code>).</li>
+    <li>In the app registration → <b>Authentication</b> → <b>Add a platform</b> → <b>Mobile and
+        desktop applications</b> → add a <b>custom redirect URI</b> with that exact value → <b>Configure</b>.</li>
+    <li>(Recommended) On the same page set <b>Allow public client flows</b> to <b>Yes</b> and save.
+        The extension is a public client using PKCE — there is <b>no client secret</b>.</li>
+  </ol>
+
+  <div class="note"><b>Why chromiumapp.org?</b> This redirect address is intercepted by Chrome to
+     capture the sign-in result; it is required by <code>chrome.identity</code> and cannot be a
+     website. The extension shows you the exact value to register.</div>
+
+  <h2>3. Grant Azure DevOps permission</h2>
+  <ol>
+    <li>App registration → <b>API permissions</b> → <b>Add a permission</b> → <b>Azure DevOps</b>
+        → <b>Delegated permissions</b> → check <b>user_impersonation</b> → <b>Add permissions</b>.</li>
+    <li>If your tenant requires admin approval, click <b>Grant admin consent</b> (or an admin approves
+        at first sign-in).</li>
+  </ol>
+
+  <h2>4. Connect the extension</h2>
+  <ol>
+    <li>App registration → <b>Overview</b> → copy the <b>Application (client) ID</b>.</li>
+    <li>In the extension's <b>Microsoft sign-in</b> tab, paste the <b>Application (client) ID</b>.
+        Leave <b>Tenant</b> as <code>organizations</code> (or enter your tenant ID to restrict to one org).</li>
+    <li>Click <b>Sign in with Microsoft</b>, complete the prompt and consent.</li>
+    <li>Pick your <b>organization</b> and <b>project</b> (they auto-populate after sign-in) → <b>Save &amp; Connect</b>.</li>
+  </ol>
+
+  <h2>Troubleshooting</h2>
+  <ul>
+    <li><b>The Redirect URI depends on the extension's ID.</b> A published Web Store extension has a
+        stable ID, so register it once. An unpacked dev build gets a new ID per machine unless pinned
+        with a <code>key</code> in <code>manifest.json</code> — the setup screen always shows the current value.</li>
+    <li><b><code>AADSTS50011</code> / redirect mismatch:</b> the URI in Entra must match the one shown in
+        the extension exactly (including the trailing <code>/</code>).</li>
+    <li><b><code>AADSTS65001</code> / consent required:</b> grant admin consent in step 3, or have an admin approve.</li>
+    <li><b>Org not listed after sign-in:</b> make sure your account is a member of the Azure DevOps
+        organization and that the org allows Entra-based access.</li>
+  </ul>
+
+  <p>Tokens (access + refresh) are stored locally and sent only to
+     <code>login.microsoftonline.com</code> and Azure DevOps — see the
+     <a href="privacy.html">Privacy Policy</a>.</p>
+
+  <footer>ADO Atlas — independent project, not affiliated with Microsoft.</footer>
+</div>
+</body>
+</html>

@@ -22,10 +22,13 @@ GitHub Pages site at `https://prorok1015.github.io/ado-atlas/`. If your username
 (lowercased in Pages URLs) or repo name differs, update these 5 spots before
 building:
 - `manifest.json` → `homepage_url`
-- `index.html` → the setup-modal Privacy link
+- `index.html` → the setup-modal Privacy link and the Microsoft-setup link
 - `docs/index.html` → the "Source on GitHub" link
 - `STORE_LISTING.md` → homepage + privacy URLs
 - `README.md` → the disclaimer block (repo-relative links are fine as-is)
+
+GitHub Pages serves `docs/` at the site root, so the pages are
+`…github.io/ado-atlas/`, `…/privacy.html`, and `…/oauth-setup.html`.
 
 ## Phase 1 — Developer account  **[you]**
 1. Go to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
