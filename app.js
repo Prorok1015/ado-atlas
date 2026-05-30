@@ -129,6 +129,15 @@ function renderFilters(){
     if(!vals.length&&!Object.keys(fstate[f.key]||{}).length)return;   // skip empty rows (e.g. tags/sprints not loaded yet)
     const row=document.createElement('div');row.className='frow';
     const lab=document.createElement('span');lab.className='fl';lab.textContent=f.label;row.appendChild(lab);
+    // per-row clear "✕" sits left of the chips. ALWAYS rendered so the chip
+    // alignment doesn't jump when it appears/disappears; visibility:hidden
+    // keeps the slot reserved when this filter has no selection.
+    const x=document.createElement('button');
+    x.className='fclear';x.title='clear this filter';x.textContent='✕';
+    if(Object.keys(fstate[f.key]||{}).length)
+      x.onclick=()=>{delete fstate[f.key];renderFilters();updateFilterCount();scheduleApply();};
+    else{x.style.visibility='hidden';x.tabIndex=-1;}
+    row.appendChild(x);
     vals.forEach(v=>{
       const ch=document.createElement('span');ch.className='chip';
       const st=(fstate[f.key]||{})[String(v)];if(st)ch.classList.add(st);
@@ -136,13 +145,6 @@ function renderFilters(){
       ch.onclick=()=>{cycleChip(f.key,v);renderFilters();updateFilterCount();scheduleApply();};
       row.appendChild(ch);
     });
-    // per-row clear "✕" — only when this filter has any selection
-    if(Object.keys(fstate[f.key]||{}).length){
-      const x=document.createElement('button');
-      x.className='fclear';x.title='clear this filter';x.textContent='✕';
-      x.onclick=()=>{delete fstate[f.key];renderFilters();updateFilterCount();scheduleApply();};
-      row.appendChild(x);
-    }
     el.appendChild(row);
   });
   buildBulkControls();                      // keep the bulk-bar dropdowns in sync with loaded data
