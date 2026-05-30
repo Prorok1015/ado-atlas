@@ -649,6 +649,13 @@ async function createItem({ type, title, parent, assigned, priority, iteration }
   return nodeOf(d);
 }
 
+// Delete a work item (the inverse of createItem, for undo). ADO moves it to the
+// project's Recycle Bin by default (destroy=false), so it stays recoverable.
+async function deleteItem(wid) {
+  const proj = await projUrl();
+  await req("DELETE", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`);
+}
+
 // Re-parent an item: remove its current Hierarchy-Reverse (parent) link and add
 // a new one. Pass newParentId="" / null to detach (make it a root). Uses a /rev
 // test op so a concurrent edit fails loudly instead of clobbering.
@@ -790,7 +797,7 @@ window.api = {
   // graph
   deps,
   // item ops
-  item, updateItem, comment, comments, history, createItem, setParent,
+  item, updateItem, comment, comments, history, createItem, deleteItem, setParent,
   // time
   times, timeline,
   // utils

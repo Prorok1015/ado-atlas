@@ -93,9 +93,13 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - **Bulk edit** (Tree view): tick the checkboxes on tree rows — a bar appears
   letting you set State, Sprint, Priority, or Assignee on every selected item at
   once (applied in parallel, then the list refreshes).
+- **Undo** — press **Ctrl/Cmd-Z** (outside a text field) to revert the last
+  mutating action: an editor save (fields + re-parent), a board drag, a bulk
+  edit, or a create (the created item goes to ADO's Recycle Bin, so it stays
+  recoverable). Repeat to walk back the stack; also in the Command palette.
 - **Command palette** — press **Ctrl/Cmd-K** to fuzzy-find any loaded item by id
   or title, or run a quick command (switch view, refresh, export, theme,
-  settings). ↑/↓ to navigate, Enter to open, Esc to close.
+  settings, undo). ↑/↓ to navigate, Enter to open, Esc to close.
 - **Work hours** (`N–N`, in the **⚙** menu next to the timezone): the local
   Mon–Fri window used to compute "active time" on cards and in the sprint Gantt.
 - Requests **retry automatically** on throttling (HTTP 429, honoring
