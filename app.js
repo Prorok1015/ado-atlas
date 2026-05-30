@@ -313,10 +313,10 @@ async function expandNode(id){
   // double-click a graph node -> toggle expansion in the shared store (same
   // api.children the tree uses); collapse if already expanded.
   id=Number(id);                          // keep id numeric to match store keys
-  if(store.expanded.has(id)){store.expanded.delete(id);renderGraph();return;}
+  if(store.expanded.has(id)){store.expanded.delete(id);renderGraph({fit:true});return;}
   loadStart('expanding #'+id+'…');
   try{const kids=await ensureKids(id);
-    store.expanded.add(id);renderGraph();
+    store.expanded.add(id);renderGraph({fit:true});
     setStatus(`#${id}: +${kids.length} child(ren)`);
   }finally{loadEnd();}
 }
@@ -512,8 +512,15 @@ document.addEventListener('mouseup',async()=>{
   await addDepLink(d.sourceId,target,'blocks');   // source → target (source "blocks" target)
 });
 function syncGraphBulk(){if(cy)cy.nodes().forEach(nd=>nd.toggleClass('bulk',bulkSel.has(Number(nd.data('id')))));}
-function runLayout(fit){cy.layout({name:'dagre',rankDir,ranker:'tight-tree',
-  nodeSep:55,rankSep:110,edgeSep:25,animate:true,animationDuration:250,fit:!!fit,padding:40}).run();}
+function runLayout(fit){
+  // cytoscape's own `fit:true` triggers fit at the START of the animation, so
+  // when expanding a node the camera zooms before the new children have moved
+  // into their final spots. Hook layoutstop instead and fit once nodes settle.
+  const l=cy.layout({name:'dagre',rankDir,ranker:'tight-tree',
+    nodeSep:55,rankSep:110,edgeSep:25,animate:true,animationDuration:250,fit:false,padding:40});
+  if(fit)l.one('layoutstop',()=>cy.animate({fit:{padding:40}},{duration:200}));
+  l.run();
+}
 async function renderGraph(opts){
   opts=opts||{};
   if(!cy)initCy();
