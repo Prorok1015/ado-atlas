@@ -100,7 +100,7 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   disappears for the session. The new sprint is also added to the project's
   default team (best-effort) so native ADO planning sees it, and immediately
   becomes selectable in the Sprint filter.
-- **Edit sprint dates** — open a sprint (double-click its board header) and use
+- **Edit sprint dates** — open a sprint (click its board header) and use
   **✎ dates** in the sprint view to change its start/finish. Needs "edit node"
   permission; on HTTP 403 the button hides for the session.
 - **Filters** (chip panel): State, Type, Priority, Assigned, **Sprint**, and

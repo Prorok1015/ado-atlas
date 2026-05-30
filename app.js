@@ -387,7 +387,7 @@ async function renderBoard(){
     if(it&&it.start&&it.finish&&today>=it.start.slice(0,10)&&today<=it.finish.slice(0,10))col.classList.add('current');
     const h=document.createElement('div');h.className='bhead';
     h.innerHTML=(k==='__none__'?'No sprint':`${esc(it.name)} <small>${(it.start||'').slice(0,10)}→${(fin||'').slice(0,10)}</small>`)+'<br>'+colMeta(colItems);
-    if(k!=='__none__'){h.style.cursor='pointer';h.title='double-click to open sprint';h.addEventListener('dblclick',()=>openSprint(k));}
+    if(k!=='__none__'){h.style.cursor='pointer';h.title='open sprint timeline';h.addEventListener('click',()=>openSprint(k));}
     const wrap=document.createElement('div');wrap.className='bcards';
     colItems.forEach(n=>wrap.appendChild(boardCard(n,fin,today)));
     if(!colItems.length&&k!=='__none__'){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
