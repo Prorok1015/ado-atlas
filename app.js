@@ -66,6 +66,7 @@ let treeEverLoaded=false;                // false only before the very first suc
 // `expanded` is the shared expand/collapse state, so tree and graph stay in sync.
 const store={nodes:{},kids:{},roots:[],expanded:new Set(),parent:{}};
 const bulkSel=new Set();                  // ids checked in the tree for bulk edit
+let bulkAnchor=null;                       // last toggled row — the pivot for Shift-click range select
 function reachable(){const out=new Set(),st=[...(store.top||store.roots)];
   while(st.length){const id=st.pop();if(out.has(id))continue;out.add(id);
     if(store.expanded.has(id))(store.kids[id]||[]).forEach(c=>st.push(c));}
@@ -142,9 +143,10 @@ function treeNode(n){
   const li=document.createElement('li');
   const row=document.createElement('div');row.className='trow';
   if(bulkSel.has(n.id))row.classList.add('bulksel');
+  row.dataset.id=n.id;                                  // for Shift-click range selection
   const cb=document.createElement('input');cb.type='checkbox';cb.className='tcheck';cb.checked=bulkSel.has(n.id);
-  cb.title='select for bulk edit';
-  cb.onclick=e=>{e.stopPropagation();toggleBulk(n.id,cb.checked);row.classList.toggle('bulksel',cb.checked);};
+  cb.title='select for bulk edit  (or Ctrl-click the row; Shift-click for a range)';
+  cb.onclick=e=>{e.stopPropagation();bulkSet([n.id],cb.checked);bulkAnchor=n.id;};
   const open=store.expanded.has(n.id);
   const tog=document.createElement('span');tog.className='tog';tog.textContent=open?'▾':'▸';
   tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};
@@ -157,7 +159,11 @@ function treeNode(n){
   if(n.priority){const pc=document.createElement('span');pc.className='prio';pc.textContent='P'+n.priority;
     pc.style.background=prioColor(n.priority);pc.title='priority '+n.priority;row.insertBefore(pc,bdg);}
   if(n.id===cur){row.classList.add('sel');selRow=row;}   // keep highlight across re-renders
-  row.onclick=()=>{if(selRow)selRow.classList.remove('sel');selRow=row;row.classList.add('sel');openItem(n.id);};
+  row.onclick=(e)=>{
+    if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(n.id);return;}        // Ctrl/Cmd: toggle in selection
+    if(e.shiftKey){e.preventDefault();bulkRange(n.id);return;}                    // Shift: select the range from the anchor
+    if(selRow)selRow.classList.remove('sel');selRow=row;row.classList.add('sel');openItem(n.id);   // plain click: open
+  };
   li.appendChild(row);
   if(open)li.appendChild(childrenUl(n.id));              // auto-expand from shared state
   return li;
@@ -188,11 +194,21 @@ function renderTree(){
   setStatus(store.roots.length+' item(s)'+capNote());
 }
 
-/* ---------- bulk multi-select (tree) ---------- */
-function toggleBulk(id,on){if(on)bulkSel.add(id);else bulkSel.delete(id);updateBulkBar();}
-function clearBulk(){bulkSel.clear();updateBulkBar();
-  document.querySelectorAll('#tree .trow.bulksel').forEach(r=>r.classList.remove('bulksel'));
-  document.querySelectorAll('#tree .tcheck').forEach(c=>{c.checked=false;});}
+/* ---------- bulk multi-select (tree): Ctrl/Cmd-click toggles, Shift-click ranges ---------- */
+function syncBulkRows(){                    // reflect bulkSel onto the rendered rows (class + checkbox)
+  document.querySelectorAll('#tree .trow[data-id]').forEach(r=>{
+    const on=bulkSel.has(+r.dataset.id);r.classList.toggle('bulksel',on);
+    const cb=r.querySelector('.tcheck');if(cb)cb.checked=on;});
+}
+function bulkSet(ids,on){ids.forEach(id=>{if(on)bulkSel.add(id);else bulkSel.delete(id);});updateBulkBar();syncBulkRows();}
+function bulkToggle(id){bulkSet([id],!bulkSel.has(id));bulkAnchor=id;}
+function bulkRange(toId){                    // select every visible row between the anchor and toId
+  const ids=[...document.querySelectorAll('#tree .trow[data-id]')].map(r=>+r.dataset.id);
+  const b=ids.indexOf(toId);if(b<0)return;
+  let a=bulkAnchor!=null?ids.indexOf(bulkAnchor):-1;if(a<0){a=b;bulkAnchor=toId;}
+  bulkSet(ids.slice(Math.min(a,b),Math.max(a,b)+1),true);
+}
+function clearBulk(){bulkSel.clear();bulkAnchor=null;updateBulkBar();syncBulkRows();}
 function updateBulkBar(){const n=bulkSel.size;$('bulkbar').style.display=n?'flex':'none';$('bulk_count').textContent=n+' selected';}
 function buildBulkControls(){            // (re)fill the bar's dropdowns from loaded project data
   const st=$('bulk_state');if(st){st.innerHTML='<option value="">State…</option>'+

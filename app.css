@@ -148,7 +148,7 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 #board.drag.showempty .bcol.empty-sprint:not(.dropover) .bcards{display:none}
 .btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;padding-left:18px}
-.trow{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.trow{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer;white-space:nowrap;user-select:none}
 .trow:hover{background:var(--panel2)}.trow.sel{background:var(--sel)}
 .tog{width:14px;text-align:center;color:var(--muted);cursor:pointer;user-select:none}
 .dot{width:10px;height:10px;border-radius:3px;flex:none}
@@ -241,7 +241,9 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 #bulkbar .bulk_hint{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
 #bulkbar select,#bulkbar input{font-size:12px}
 /* native checkbox size — opt out of the generic full-width `input` rule above */
-.tcheck{flex:none;cursor:pointer;width:14px;height:14px;margin:0 4px 0 0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox}
+/* checkbox is revealed only on row hover or when the row is selected (slot is reserved → no layout shift) */
+.tcheck{flex:none;cursor:pointer;width:14px;height:14px;margin:0 4px 0 0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox;opacity:0;transition:opacity .12s}
+.trow:hover .tcheck,.trow.bulksel .tcheck{opacity:1}
 .trow.bulksel{background:rgba(47,111,237,0.14)}
 
 /* ---- command palette (Ctrl/Cmd+K) ---- */

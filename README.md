@@ -121,9 +121,11 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   remembered (per browser). "Reset to default" restores the original layout.
 - **Auto-refresh** (in the **⚙** menu) re-fetches the list every 1 / 5 / 15 min
   (paused while you have unsaved edits, are dragging a card, or the tab is hidden).
-- **Bulk edit** (Tree view): tick the checkboxes on tree rows — a bar appears
-  letting you set State, Sprint, Priority, or Assignee on every selected item at
-  once (applied in parallel, then the list refreshes).
+- **Bulk edit** (Tree view): select rows with **Ctrl/Cmd-click** (toggle one) and
+  **Shift-click** (select a range), or hover a row and tick its checkbox (it only
+  appears on hover / when selected). A plain click still opens the item. A bar
+  appears letting you set State, Sprint, Priority, or Assignee on every selected
+  item at once (applied in parallel, then the list refreshes).
 - **Undo / Redo** — the **↶ / ↷** toolbar buttons (or **Ctrl/Cmd-Z** and
   **Ctrl/Cmd-Shift-Z / Ctrl-Y**, outside a text field) walk a stack of mutating
   actions: an editor save (fields + re-parent), a board drag, a bulk edit, or a
