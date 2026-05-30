@@ -573,11 +573,10 @@ function boardCard(n,finish,today){
   const c=document.createElement('div');c.className='bcard'+(overdue?' overdue':'')+(bulkSel.has(n.id)?' bulksel':'');
   c.style.borderLeftColor=tyColor(n.type);   // left marker = item TYPE colour
   c.dataset.id=n.id;c.dataset.est=(n.est!=null?n.est:'');
-  c.innerHTML=`<div class="bttl">#${n.id} ${esc(n.title)}</div>`+
+  c.innerHTML=`<div class="bttl">${n.assigned?personChipT(n.assigned):''}<span class="btxt">#${n.id} ${esc(n.title)}</span></div>`+
     `<div class="bmeta"><span>${esc(n.type)}</span>`+
     (n.priority?`<span class="prio" style="background:${prioColor(n.priority)}">P${n.priority}</span>`:'')+
-    `<span>${esc(n.state)}</span>`+(overdue?'<span class="od">overdue</span>':'')+
-    (n.assigned?`<span class="basg">${personChipT(n.assigned)}</span>`:'')+`</div>`+
+    `<span>${esc(n.state)}</span>`+(overdue?'<span class="od">overdue</span>':'')+`</div>`+
     `<div class="bfoot">`+(n.est!=null?`<div class="tbar"><div class="tfill"></div></div>`:'')+
     `<span class="tlabel">${n.est!=null?'est '+(+n.est)+'h':'⏱ …'}</span></div>`;
   c.addEventListener('mousedown',e=>{if(e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey)startCardDrag(e,n.id,c);});   // modifier = select, not drag
