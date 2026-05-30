@@ -22,7 +22,17 @@ project, and a Personal Access Token on first run.
 
 ## First run
 
-Click the toolbar icon → a new tab opens. The setup overlay asks for:
+Click the toolbar icon → a new tab opens. The setup overlay offers two ways to
+authenticate (pick the tab at the top):
+
+- **Microsoft sign-in** *(Entra ID OAuth)* — one click, no token to copy, and it
+  refreshes automatically. Requires a one-time Entra app registration — see
+  [OAUTH-SETUP.md](OAUTH-SETUP.md).
+- **Token** *(PAT)* — paste a Personal Access Token; zero external setup.
+
+Either way you then pick an **Organization** and **Project**.
+
+### Using a PAT (Token tab)
 
 - **Personal Access Token** — create at
   [dev.azure.com → User settings → Personal access tokens](https://dev.azure.com/_usersSettings/tokens).

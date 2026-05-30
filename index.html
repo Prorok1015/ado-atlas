@@ -109,24 +109,51 @@
 <div id="setup-overlay">
   <div id="setup-box">
     <h1>Connect to Azure DevOps</h1>
-    <p>The extension needs a Personal Access Token to talk to Azure DevOps.
-       Create one at <a href="https://dev.azure.com/_usersSettings/tokens" target="_blank">dev.azure.com → User settings → Personal access tokens</a>
-       with at least <b>Work Items (Read &amp; Write)</b> and <b>Project and Team (Read)</b> scopes. The PAT is stored in
-       <code>chrome.storage.local</code> on this machine only.</p>
-    <label>Personal Access Token</label>
-    <div style="display:flex;gap:6px">
-      <input id="setup-pat" type="password" placeholder="Paste your PAT here" style="flex:1">
-      <button class="btn" id="setup-load" title="list organizations & projects this PAT can access">Load</button>
+    <div class="seg" id="auth-mode" style="margin-bottom:10px">
+      <button data-am="pat" class="on">Token</button>
+      <button data-am="oauth">Microsoft sign-in</button>
     </div>
-    <p class="hint" id="setup-load-hint">Paste a PAT and click <b>Load</b> to pick your organization and project from the dropdowns, or just type them in.</p>
+
+    <div id="auth-pat">
+      <p>Talk to Azure DevOps with a Personal Access Token. Create one at
+         <a href="https://dev.azure.com/_usersSettings/tokens" target="_blank" rel="noopener noreferrer">dev.azure.com → User settings → Personal access tokens</a>
+         with at least <b>Work Items (Read &amp; Write)</b> and <b>Project and Team (Read)</b> scopes. The PAT is stored in
+         <code>chrome.storage.local</code> on this machine only.</p>
+      <label>Personal Access Token</label>
+      <div style="display:flex;gap:6px">
+        <input id="setup-pat" type="password" placeholder="Paste your PAT here" style="flex:1">
+        <button class="btn" id="setup-load" title="list organizations & projects this PAT can access">Load</button>
+      </div>
+      <p class="hint" id="setup-load-hint">Paste a PAT and click <b>Load</b> to pick your organization and project from the dropdowns, or just type them in.</p>
+      <label>PAT expiry <span style="color:var(--muted);font-weight:400">(optional — copy from the token page for a validity countdown)</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="setup-expiry" type="date" style="flex:0 0 auto">
+        <span id="setup-expiry-info" style="color:var(--muted);font-size:12px"></span>
+      </div>
+    </div>
+
+    <div id="auth-oauth" style="display:none">
+      <p>Sign in with your Microsoft (Entra ID) account — no token to copy, and it
+         refreshes automatically. A one-time app registration is required; see
+         <a href="https://github.com/Prorok1015/ado-atlas/blob/main/OAUTH-SETUP.md" target="_blank" rel="noopener noreferrer">OAUTH-SETUP.md</a>.</p>
+      <label>Application (client) ID</label>
+      <input id="oauth-client" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off">
+      <label>Tenant <span style="color:var(--muted);font-weight:400">(optional — default: organizations)</span></label>
+      <input id="oauth-tenant" placeholder="organizations" autocomplete="off">
+      <label>Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact value in your Entra app)</span></label>
+      <div style="display:flex;gap:6px">
+        <input id="oauth-redirect" readonly style="flex:1">
+        <button class="btn" id="oauth-copy" title="copy">copy</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <button class="btn save" id="oauth-signin">Sign in with Microsoft</button>
+        <span id="oauth-status" style="color:var(--muted);font-size:12px"></span>
+      </div>
+    </div>
+
     <div class="row">
       <div><label>Organization</label><input id="setup-org" list="setup-orglist" placeholder="your-org" autocomplete="off"><datalist id="setup-orglist"></datalist></div>
       <div><label>Project</label><input id="setup-project" list="setup-projlist" placeholder="your-project" autocomplete="off"><datalist id="setup-projlist"></datalist></div>
-    </div>
-    <label>PAT expiry <span style="color:var(--muted);font-weight:400">(optional — copy from the token page for a validity countdown)</span></label>
-    <div style="display:flex;gap:8px;align-items:center">
-      <input id="setup-expiry" type="date" style="flex:0 0 auto">
-      <span id="setup-expiry-info" style="color:var(--muted);font-size:12px"></span>
     </div>
     <div id="setup-err"></div>
     <div id="setup-actions">

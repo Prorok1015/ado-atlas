@@ -128,5 +128,34 @@ test("mdToHtml: angle-bracket injection is escaped", () => {
   assert.ok(!out.includes("<img"));
 });
 
+// ---- OAuth helpers ----
+test("base64UrlEncode: url-safe, no padding", () => {
+  // bytes [251,255] -> base64 "+/8=" -> base64url "-_8"
+  assert.strictEqual(lib.base64UrlEncode([251, 255]), "-_8");
+  assert.strictEqual(lib.base64UrlEncode([0]), "AA");
+});
+test("oauthAuthorizeUrl: contains the PKCE params", () => {
+  const u = lib.oauthAuthorizeUrl({ tenant: "organizations", clientId: "cid", redirectUri: "https://x.chromiumapp.org/", scope: "s1 s2", challenge: "chal", state: "st" });
+  assert.ok(u.startsWith("https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?"));
+  assert.ok(u.includes("client_id=cid"));
+  assert.ok(u.includes("code_challenge=chal"));
+  assert.ok(u.includes("code_challenge_method=S256"));
+  assert.ok(u.includes("response_type=code"));
+  assert.ok(u.includes("scope=s1+s2"));
+});
+test("oauthTokenBody: form-encodes and skips null", () => {
+  const b = lib.oauthTokenBody({ grant_type: "authorization_code", code: "a b", client_secret: null });
+  assert.ok(b.includes("grant_type=authorization_code"));
+  assert.ok(b.includes("code=a+b"));
+  assert.ok(!b.includes("client_secret"));
+});
+test("parseRedirectParams: extracts code/state/error", () => {
+  assert.deepStrictEqual(lib.parseRedirectParams("https://x.chromiumapp.org/?code=AAA&state=BBB"),
+    { code: "AAA", state: "BBB", error: null, error_description: null });
+  const e = lib.parseRedirectParams("https://x.chromiumapp.org/?error=access_denied&error_description=nope");
+  assert.strictEqual(e.error, "access_denied");
+  assert.strictEqual(e.code, null);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

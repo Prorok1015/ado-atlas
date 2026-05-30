@@ -913,13 +913,38 @@ function movePalette(d){if(!palItems.length)return;palIdx=(palIdx+d+palItems.len
 function runPalette(){const it=palItems[palIdx];if(!it)return;closePalette();try{it.run();}catch(e){setStatus('ERROR: '+e.message,true);}}
 
 /* ---------- setup modal (replaces /setup page) ---------- */
+let setupAuthMode='pat';                 // which auth pane is active in the setup modal
+function setAuthPane(mode){
+  setupAuthMode=(mode==='oauth')?'oauth':'pat';
+  $('auth-pat').style.display=setupAuthMode==='pat'?'block':'none';
+  $('auth-oauth').style.display=setupAuthMode==='oauth'?'block':'none';
+  $('auth-mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.am===setupAuthMode));
+}
+async function doOauthSignIn(){
+  const cid=$('oauth-client').value.trim(),tenant=$('oauth-tenant').value.trim();
+  if(!cid){$('oauth-status').textContent='Enter the Application (client) ID first.';return;}
+  const btn=$('oauth-signin');btn.disabled=true;btn.textContent='Signing in…';$('setup-err').textContent='';$('oauth-status').textContent='';
+  try{
+    const name=await api.oauthSignIn(cid,tenant);
+    currentUser=name||'';
+    $('oauth-status').textContent=name?('✓ Signed in as '+name):'✓ Signed in';
+    await loadSetupOrgs();                // populate org/project from the signed-in account
+  }catch(e){
+    $('oauth-status').textContent='Sign-in failed: '+e.message;
+  }finally{ btn.disabled=false;btn.textContent='Sign in with Microsoft'; }
+}
 function showSetup(cancellable){
   $('setup-load-hint').innerHTML=SETUP_HINT;
+  try{$('oauth-redirect').value=api.oauthRedirectUri();}catch(e){$('oauth-redirect').value='(available once the extension is loaded)';}
   const cfg=api.getConfig();   // promise — fill async
   cfg.then(c=>{
     $('setup-pat').value=c.pat||'';$('setup-org').value=c.org||'';$('setup-project').value=c.project||'';
     $('setup-expiry').value=c.patExpiry||'';updateSetupExpiryInfo();
-    if(c.pat&&c.org)loadSetupProjects();   // reopening settings: populate the project dropdown for the saved org
+    $('oauth-client').value=c.oauthClientId||'';$('oauth-tenant').value=c.oauthTenant||'';
+    setAuthPane(c.authMode==='oauth'?'oauth':'pat');
+    $('oauth-status').textContent=(c.authMode==='oauth'&&c.oauthAccess)?(currentUser?('✓ Signed in as '+currentUser):'✓ Signed in'):'';
+    const signedIn=(c.authMode==='oauth')?!!c.oauthAccess:!!c.pat;
+    if(c.org&&signedIn)loadSetupProjects();   // reopening settings: populate the project dropdown for the saved org
   });
   $('setup-err').textContent='';
   $('setup-cancel').style.display=cancellable?'inline-block':'none';
@@ -932,9 +957,8 @@ function hideSetup(){$('setup-overlay').classList.remove('show');}
 function handle401(){
   if($('setup-overlay').classList.contains('show'))return;   // already prompting — don't stack
   showSetup(true);
-  $('setup-err').textContent=(cur!=null&&dirty())
-    ?'Authentication failed (HTTP 401) — your PAT is expired or revoked. Paste a new one. (Your unsaved changes to #'+cur+' are preserved.)'
-    :'Authentication failed (HTTP 401) — your PAT is expired or revoked. Paste a new one.';
+  $('setup-err').textContent='Authentication failed (HTTP 401) — your token/session is invalid. Re-connect below'
+    +((cur!=null&&dirty())?(' (your unsaved changes to #'+cur+' are preserved).'):'.');
 }
 // One-time nudge when the recorded PAT expiry is within 3 days (or already past).
 async function warnIfPatExpiring(){
@@ -956,12 +980,11 @@ function fillDatalist(id,items){
 }
 let _loadingOrgs=false;
 async function loadSetupOrgs(){
-  const pat=$('setup-pat').value.trim();
-  if(!pat){$('setup-err').textContent='Paste a PAT first.';return;}
+  if(setupAuthMode==='pat'&&!$('setup-pat').value.trim()){$('setup-err').textContent='Paste a PAT first.';return;}
   if(_loadingOrgs)return;_loadingOrgs=true;
-  const btn=$('setup-load');btn.disabled=true;btn.textContent='Loading…';$('setup-err').textContent='';
+  const btn=$('setup-load');if(btn){btn.disabled=true;btn.textContent='Loading…';}$('setup-err').textContent='';
   try{
-    await api.setConfig({pat});                       // persist so the API can authenticate
+    if(setupAuthMode==='pat')await api.setConfig({authMode:'pat',pat:$('setup-pat').value.trim()});   // persist so the API can authenticate
     const list=await api.orgs();
     fillDatalist('setup-orglist',list);
     if(list.length){
@@ -974,7 +997,7 @@ async function loadSetupOrgs(){
   }catch(e){
     $('setup-load-hint').textContent='Could not list organizations ('+e.message+') — type the org and project manually.';
   }finally{
-    btn.disabled=false;btn.textContent='Load';_loadingOrgs=false;
+    if(btn){btn.disabled=false;btn.textContent='Load';}_loadingOrgs=false;
   }
 }
 async function loadSetupProjects(){
@@ -1010,21 +1033,24 @@ function updateSetupExpiryInfo(){
 }
 
 async function saveSetup(){
-  const pat=$('setup-pat').value.trim();
   const org=$('setup-org').value.trim();
   const project=$('setup-project').value.trim();
-  const patExpiry=$('setup-expiry').value;   // optional "YYYY-MM-DD" or ""
-  if(!pat){$('setup-err').textContent='PAT is required.';return;}
   if(!org){$('setup-err').textContent='Organization is required.';return;}
   if(!project){$('setup-err').textContent='Project is required.';return;}
+  if(setupAuthMode==='pat'&&!$('setup-pat').value.trim()){$('setup-err').textContent='PAT is required.';return;}
+  if(setupAuthMode==='oauth'){
+    const c=await api.getConfig();
+    if(!c.oauthAccess&&!c.oauthRefresh){$('setup-err').textContent='Sign in with Microsoft first.';return;}
+  }
   const btn=$('setup-save');btn.disabled=true;btn.textContent='Validating…';
   $('setup-err').textContent='';
   try{
-    // Persist first so api.me() picks up the new values; if it fails we surface
-    // a clear error and let the user fix the PAT instead of leaving stale state.
-    await api.setConfig({pat,org,project,patExpiry});
+    // Persist first so api.me() picks up the new values; if it fails we surface a
+    // clear error and let the user fix things instead of leaving stale state.
+    if(setupAuthMode==='oauth')await api.setConfig({authMode:'oauth',org,project});
+    else await api.setConfig({authMode:'pat',pat:$('setup-pat').value.trim(),org,project,patExpiry:$('setup-expiry').value});
     const name=await api.me();
-    if(!name)throw new Error('PAT did not authenticate (no display name returned)');
+    if(!name)throw new Error('authentication failed (no display name returned)');
     currentUser=name;projectName=project;
     updatePatBadge();
     hideSetup();
@@ -1045,6 +1071,9 @@ function wireSetup(){
   $('setup-org').addEventListener('change',loadSetupProjects);   // org chosen → fetch its projects
   $('setup-expiry').addEventListener('change',updateSetupExpiryInfo);
   $('setup-expiry').addEventListener('input',updateSetupExpiryInfo);
+  $('auth-mode').querySelectorAll('button').forEach(b=>b.onclick=()=>setAuthPane(b.dataset.am));
+  $('oauth-signin').onclick=doOauthSignIn;
+  $('oauth-copy').onclick=()=>{const i=$('oauth-redirect');try{navigator.clipboard.writeText(i.value);$('oauth-copy').textContent='copied';setTimeout(()=>{$('oauth-copy').textContent='copy';},1200);}catch(e){if(i.select)i.select();}};
   $('setup-cancel').onclick=hideSetup;
   $('settingsbtn').onclick=()=>showSetup(true);
   $('patbadge').onclick=()=>showSetup(true);
@@ -1195,13 +1224,14 @@ window.addEventListener('DOMContentLoaded',async()=>{
   wireSetup();
   const cfg=await api.getConfig();
   projectName=cfg.project;                  // "no sprint" root path fallback
-  if(!cfg.pat){showSetup(false);return;}    // first-run flow takes over
-  // Validate PAT before showing the UI: a stale/revoked token would otherwise
-  // surface as a wall of 401s after the first refresh.
+  const hasAuth=cfg.authMode==='oauth'?(!!cfg.oauthAccess||!!cfg.oauthRefresh):!!cfg.pat;
+  if(!hasAuth){showSetup(false);return;}    // first-run flow takes over
+  // Validate the stored credentials before showing the UI: a stale token would
+  // otherwise surface as a wall of 401s after the first refresh.
   try{
     const name=await api.me();
     if(!name)throw new Error('no display name');
     currentUser=name;
-  }catch(e){showSetup(false);$('setup-err').textContent='Stored PAT is invalid: '+e.message;return;}
+  }catch(e){showSetup(false);$('setup-err').textContent='Stored credentials are invalid: '+e.message;return;}
   initialBoot(false);
 });

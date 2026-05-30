@@ -40,7 +40,9 @@
      <code>chrome.storage.local</code> and <code>localStorage</code>) and is never sent to
      the developer or any third party:</p>
   <ul>
-    <li><b>Your Personal Access Token (PAT)</b> — entered by you, used to authenticate to Azure DevOps.</li>
+    <li><b>Your credentials</b> — either a Personal Access Token (PAT) you enter, or, if you use
+        <b>Microsoft sign-in</b>, the OAuth access and refresh tokens issued by Microsoft Entra ID
+        (plus the app client ID and tenant you configure). Used to authenticate to Azure DevOps.</li>
     <li><b>Connection settings</b> — your Azure DevOps organization and project, and an optional PAT expiry date.</li>
     <li><b>UI preferences</b> — theme, sort order, timezone/working hours, active view, filters, auto-refresh interval, panel width.</li>
     <li><b>A local cache</b> of recently viewed work items (titles, states, assignees, ids, dates, tags) used to render the
@@ -52,7 +54,9 @@
   <ul>
     <li><code>https://dev.azure.com</code> — to read and update your work items.</li>
     <li><code>https://app.vssps.visualstudio.com</code> — only when you click <b>Load</b> in setup, to list the
-        organizations and projects your PAT can access (a convenience; you can type them manually instead).</li>
+        organizations and projects your account can access (a convenience; you can type them manually instead).</li>
+    <li><code>https://login.microsoftonline.com</code> — <b>only if you use Microsoft sign-in</b>, to complete the
+        OAuth sign-in and refresh the access token. Not contacted at all when you authenticate with a PAT.</li>
   </ul>
   <p>These hosts are the only ones the extension is permitted to contact (enforced by its Content Security Policy).
      The extension contains <b>no analytics, no telemetry, no advertising, and no third-party servers.</b>

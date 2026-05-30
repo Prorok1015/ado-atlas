@@ -71,18 +71,26 @@ Azure DevOps REST API directly with the user's Personal Access Token.
   DevOps REST API on this host directly from the browser using the user's PAT.
   No data passes through any third-party server.
 - **Host permission `https://app.vssps.visualstudio.com/*`** — Used only to let
-  the user pick their organization and project after pasting a PAT (the Azure
-  DevOps profile/accounts endpoints live on this host). It is a convenience; the
-  user can also type the organization and project manually.
+  the user pick their organization and project (the Azure DevOps profile/accounts
+  endpoints live on this host). It is a convenience; the user can also type the
+  organization and project manually.
+- **identity** — Powers the optional "Sign in with Microsoft" alternative to a
+  PAT (`chrome.identity.launchWebAuthFlow`), so the user can authenticate with
+  their Microsoft Entra ID account.
+- **Host permission `https://login.microsoftonline.com/*`** — Microsoft sign-in
+  only: completes the OAuth (PKCE) sign-in and refreshes the access token. Not
+  contacted when the user authenticates with a PAT.
 
 ### Are you using remote code?
 **No.** All scripts (including the Cytoscape/dagre libraries) are bundled in the
 package; nothing is loaded from a remote URL and no `eval` is used.
 
 ### Data usage — what the item collects (disclosures)
-- **Authentication information** (the Personal Access Token): handled. Stored
-  locally on the device; transmitted only to Azure DevOps to authenticate the
-  user's own requests. Not sent to the developer or any third party.
+- **Authentication information** (the Personal Access Token, or the Microsoft
+  Entra ID OAuth access/refresh tokens): handled. Stored locally on the device;
+  transmitted only to Azure DevOps (and, for sign-in, to Microsoft's login
+  service) to authenticate the user's own requests. Not sent to the developer or
+  any third party.
 - **Website content** (the user's work-item data fetched from Azure DevOps):
   fetched from the user's Azure DevOps and cached locally on the device only.
 - The extension does **not** collect: personally identifiable information beyond

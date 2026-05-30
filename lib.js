@@ -156,5 +156,41 @@
     if (code) out += "<pre>" + h(buf) + "</pre>"; close(); return out;
   }
 
-  return { wiqlQuote, buildClauses, htmlEsc, htmlUnesc, htmlToText, textToHtml, businessSeconds, patDaysLeft, mdToHtml };
+  // ---- OAuth (Microsoft Entra ID) URL/encoding helpers ----
+  // Pure pieces of the PKCE flow; the crypto + chrome.identity bits live in api.js.
+
+  // base64url (no padding) of a byte array (Uint8Array or number[]).
+  function base64UrlEncode(bytes) {
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    const b64 = (typeof btoa !== "undefined") ? btoa(bin) : Buffer.from(bin, "binary").toString("base64");
+    return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  // Microsoft v2.0 authorize URL for the auth-code + PKCE flow.
+  function oauthAuthorizeUrl({ tenant, clientId, redirectUri, scope, challenge, state }) {
+    const p = new URLSearchParams({
+      client_id: clientId, response_type: "code", redirect_uri: redirectUri,
+      response_mode: "query", scope, code_challenge: challenge, code_challenge_method: "S256", state,
+    });
+    return `https://login.microsoftonline.com/${encodeURIComponent(tenant || "organizations")}/oauth2/v2.0/authorize?` + p.toString();
+  }
+
+  // x-www-form-urlencoded body for the token / refresh request (skips null/undefined).
+  function oauthTokenBody(params) {
+    const p = new URLSearchParams();
+    for (const k of Object.keys(params)) if (params[k] != null) p.append(k, params[k]);
+    return p.toString();
+  }
+
+  // Extract {code,state,error,error_description} from the redirect URL.
+  function parseRedirectParams(redirectUrl) {
+    try {
+      const q = new URL(redirectUrl).searchParams;
+      return { code: q.get("code"), state: q.get("state"), error: q.get("error"), error_description: q.get("error_description") };
+    } catch (_) { return {}; }
+  }
+
+  return { wiqlQuote, buildClauses, htmlEsc, htmlUnesc, htmlToText, textToHtml, businessSeconds, patDaysLeft, mdToHtml,
+           base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams };
 });

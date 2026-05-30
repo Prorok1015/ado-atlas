@@ -67,7 +67,17 @@ const FILTER_FIELDS = {
 // page. ADO can't report a PAT's expiry to a PAT-authenticated request (the
 // Token Lifecycle API needs an Entra token), so we store the date and count
 // down from it locally.
-const STORE_KEYS = ["pat", "org", "project", "patExpiry"];
+// authMode is "pat" (Basic auth with a PAT) or "oauth" (Bearer token from a
+// Microsoft Entra ID sign-in). The oauth* keys hold the configured app and the
+// current token set.
+const STORE_KEYS = ["pat", "org", "project", "patExpiry",
+  "authMode", "oauthClientId", "oauthTenant", "oauthAccess", "oauthRefresh", "oauthExpiresAt"];
+
+// Azure DevOps Entra resource id; ".default" requests the app's configured
+// delegated permission (Azure DevOps user_impersonation); offline_access yields
+// a refresh token for silent renewal.
+const OAUTH_RESOURCE = "499b84ac-1321-427f-aa17-267ca6975798";
+const OAUTH_SCOPE = OAUTH_RESOURCE + "/.default offline_access";
 
 async function getConfig() {
   const r = await chrome.storage.local.get(STORE_KEYS);
@@ -76,6 +86,12 @@ async function getConfig() {
     org: r.org || "",
     project: r.project || "",
     patExpiry: r.patExpiry || "",
+    authMode: r.authMode || "pat",
+    oauthClientId: r.oauthClientId || "",
+    oauthTenant: r.oauthTenant || "",
+    oauthAccess: r.oauthAccess || "",
+    oauthRefresh: r.oauthRefresh || "",
+    oauthExpiresAt: r.oauthExpiresAt || 0,
   };
 }
 async function setConfig(patch) {
@@ -89,10 +105,90 @@ async function clearConfig() {
 // ---------- HTTP ----------
 function resolveField(k) { return FIELD_ALIASES[k.toLowerCase()] || k; }
 
+// ---------- OAuth (Microsoft Entra ID, auth-code + PKCE) ----------
+function oauthRedirectUri() { return chrome.identity.getRedirectURL(); }   // https://<extid>.chromiumapp.org/
+function randB64Url(n) { const a = new Uint8Array(n); crypto.getRandomValues(a); return AdoLib.base64UrlEncode(a); }
+async function pkceChallenge(verifier) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return AdoLib.base64UrlEncode(new Uint8Array(digest));
+}
+
+// Raw POST to the Microsoft token endpoint (NOT through req() — no PAT/Bearer and
+// no ado-401 handling). Returns the parsed token response or throws.
+async function oauthTokenRequest(tenant, body) {
+  const url = `https://login.microsoftonline.com/${encodeURIComponent(tenant || "organizations")}/oauth2/v2.0/token`;
+  const resp = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+  const text = await resp.text();
+  let data = {}; try { data = JSON.parse(text); } catch (_) { /* keep */ }
+  if (!resp.ok) throw new Error("OAuth: " + (data.error_description || data.error || text.slice(0, 300)));
+  return data;
+}
+async function storeTokens(tok) {
+  const patch = { oauthAccess: tok.access_token || "", oauthExpiresAt: Date.now() + ((tok.expires_in || 3600) * 1000) };
+  if (tok.refresh_token) patch.oauthRefresh = tok.refresh_token;   // refresh token rotates — keep the newest
+  await setConfig(patch);
+}
+
+// Interactive sign-in: opens the Microsoft login, exchanges the code for tokens,
+// persists authMode=oauth + the app config. Returns the signed-in display name.
+async function oauthSignIn(clientId, tenant) {
+  clientId = (clientId || "").trim();
+  tenant = (tenant || "").trim() || "organizations";
+  if (!clientId) throw new Error("Application (client) ID is required");
+  const redirectUri = oauthRedirectUri();
+  const verifier = randB64Url(32);
+  const challenge = await pkceChallenge(verifier);
+  const state = randB64Url(16);
+  const url = AdoLib.oauthAuthorizeUrl({ tenant, clientId, redirectUri, scope: OAUTH_SCOPE, challenge, state });
+  const redirect = await new Promise((resolve, reject) => {
+    chrome.identity.launchWebAuthFlow({ url, interactive: true }, r => {
+      const err = chrome.runtime.lastError;
+      if (err || !r) return reject(new Error(err && err.message ? err.message : "Sign-in was cancelled"));
+      resolve(r);
+    });
+  });
+  const p = AdoLib.parseRedirectParams(redirect);
+  if (p.error) throw new Error("Sign-in: " + (p.error_description || p.error));
+  if (!p.code || p.state !== state) throw new Error("Sign-in failed (state mismatch)");
+  const tok = await oauthTokenRequest(tenant, AdoLib.oauthTokenBody({
+    client_id: clientId, grant_type: "authorization_code", code: p.code,
+    redirect_uri: redirectUri, code_verifier: verifier, scope: OAUTH_SCOPE,
+  }));
+  await setConfig({ authMode: "oauth", oauthClientId: clientId, oauthTenant: tenant });
+  await storeTokens(tok);
+  return await me();
+}
+
+// Silent refresh using the stored refresh token (no UI).
+async function oauthRefresh() {
+  const { oauthClientId, oauthTenant, oauthRefresh } = await getConfig();
+  if (!oauthRefresh) throw new Error("Session expired — sign in again");
+  const tok = await oauthTokenRequest(oauthTenant, AdoLib.oauthTokenBody({
+    client_id: oauthClientId, grant_type: "refresh_token", refresh_token: oauthRefresh, scope: OAUTH_SCOPE,
+  }));
+  await storeTokens(tok);
+}
+
+// A valid access token, refreshed if it's missing or within 2 min of expiry.
+async function getAccessToken() {
+  let cfg = await getConfig();
+  if (!cfg.oauthAccess && !cfg.oauthRefresh) throw new Error("Not signed in");
+  if (!cfg.oauthAccess || !cfg.oauthExpiresAt || Date.now() > cfg.oauthExpiresAt - 120000) {
+    await oauthRefresh();
+    cfg = await getConfig();
+  }
+  return cfg.oauthAccess;
+}
+
+async function signOut() {
+  await setConfig({ authMode: "pat", oauthAccess: "", oauthRefresh: "", oauthExpiresAt: 0 });
+}
+
 async function authHeader() {
-  const { pat } = await getConfig();
-  if (!pat) throw new Error("No PAT configured");
-  return "Basic " + btoa(":" + pat);
+  const cfg = await getConfig();
+  if (cfg.authMode === "oauth") return "Bearer " + (await getAccessToken());
+  if (!cfg.pat) throw new Error("No PAT configured");
+  return "Basic " + btoa(":" + cfg.pat);
 }
 
 async function projUrl() {
@@ -653,6 +749,8 @@ async function timeline(wid, offset) {
 window.api = {
   // config
   getConfig, setConfig, clearConfig,
+  // auth (Microsoft Entra ID OAuth)
+  oauthSignIn, signOut, oauthRedirectUri,
   // setup picker (org / project discovery)
   orgs, projects,
   // primitives

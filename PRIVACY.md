@@ -16,8 +16,10 @@ All of the following is stored **locally on your device** (Chrome
 `chrome.storage.local` and `localStorage`) and is never sent to the developer or
 any third party:
 
-- **Your Personal Access Token (PAT)** — entered by you, used to authenticate to
-  Azure DevOps.
+- **Your credentials** — either a Personal Access Token (PAT) you enter, or, if
+  you use **Microsoft sign-in**, the OAuth access and refresh tokens issued by
+  Microsoft Entra ID (plus the app client ID and tenant you configure). Used to
+  authenticate to Azure DevOps.
 - **Connection settings** — your Azure DevOps organization and project, and an
   optional PAT expiry date you can enter for a validity countdown.
 - **UI preferences** — theme, sort order, timezone/working hours, active view,
@@ -28,13 +30,17 @@ any third party:
 
 ## What the extension sends, and to whom
 
-The extension makes network requests **only** to Azure DevOps, over HTTPS,
-authenticated with your PAT:
+The extension makes network requests **only** to Azure DevOps (and, for Microsoft
+sign-in, the Microsoft login service), over HTTPS, authenticated with your
+credentials:
 
 - `https://dev.azure.com` — to read and update your work items.
 - `https://app.vssps.visualstudio.com` — only when you click **Load** in setup,
-  to list the organizations and projects your PAT can access (a convenience; you
-  can type them manually instead).
+  to list the organizations and projects your account can access (a convenience;
+  you can type them manually instead).
+- `https://login.microsoftonline.com` — **only if you use Microsoft sign-in**, to
+  complete the OAuth sign-in and to refresh the access token. Not contacted at
+  all when you authenticate with a PAT.
 
 These hosts are the only ones the extension is permitted to contact (enforced by
 its Content Security Policy). The extension contains **no analytics, no

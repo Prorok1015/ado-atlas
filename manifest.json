@@ -5,15 +5,16 @@
   "description": "Tree / Graph / Board / Sprint Gantt over Azure DevOps work items.",
   "author": "Zakhar Lebediuk",
   "homepage_url": "https://prorok1015.github.io/ado-atlas/",
-  "permissions": ["storage"],
+  "permissions": ["storage", "identity"],
   "host_permissions": [
     "https://dev.azure.com/*",
-    "https://app.vssps.visualstudio.com/*"
+    "https://app.vssps.visualstudio.com/*",
+    "https://login.microsoftonline.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
-  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; connect-src https://dev.azure.com https://app.vssps.visualstudio.com" },
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; connect-src https://dev.azure.com https://app.vssps.visualstudio.com https://login.microsoftonline.com" },
   "action": {
     "default_title": "ADO Atlas",
     "default_icon": {
