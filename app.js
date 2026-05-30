@@ -1237,13 +1237,33 @@ function bookmarkUri(color,text,dir){
 }
 // readable text colour for a coloured chip (black on light fills, white on dark)
 function idealText(hex){const[r,g,b]=hexToRgb(hex);return (0.299*r+0.587*g+0.114*b)>150?'#1b2330':'#ffffff';}
-// state "pill": a rounded tag whose width grows with the label (capped)
-function statePillW(text){return Math.round(Math.min(150,Math.max(34,14+String(text).length*7.2)));}
-function statePillUri(text,color){const w=statePillW(text);
+// rounded "pill" whose width grows with the label (capped). Used for state,
+// estimate and sprint chips on graph nodes.
+function pillW(text,max){return Math.round(Math.min(max||150,Math.max(30,12+String(text).length*7.2)));}
+function pillUri(text,color,max){const w=pillW(text,max);
   const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='22'>`+
     `<rect x='1' y='1' rx='10' ry='10' width='${w-2}' height='20' fill='${color}'/>`+
     `<text x='${w/2}' y='15.5' font-size='12' font-family='sans-serif' font-weight='700' fill='${idealText(color)}' text-anchor='middle'>${esc(text)}</text></svg>`;
   return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);}
+const statePillW=t=>pillW(t),statePillUri=(t,c)=>pillUri(t,c);
+function avatarDataUri(name){               // circular initials avatar (white ring), top-right of a graph node
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44'>`+
+    `<circle cx='22' cy='22' r='19' fill='${personColor(name)}' stroke='#ffffff' stroke-width='2.5'/>`+
+    `<text x='22' y='29' font-size='18' font-family='sans-serif' font-weight='700' fill='#ffffff' text-anchor='middle'>${esc(personInitials(name))}</text></svg>`;
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+}
+// node tags: parse the ";"-list, take the short name of an iteration path
+function tagList_(s){return String(s||'').split(/;\s*/).map(t=>t.trim()).filter(Boolean);}
+function sprintShort(path){if(!path)return '';return sprintNames[path]||String(path).split('\\').pop();}
+function isOverdue(n){const d=(n.target||n.due||'').slice(0,10);return !!d&&d<new Date().toISOString().slice(0,10)&&!DONE_STATES.includes(n.state);}
+// a row of coloured tag dots (max 5, "+N" overflow) as one image
+function tagDotsUri(tagsStr){const ts=tagList_(tagsStr);if(!ts.length)return null;
+  const show=ts.slice(0,5),extra=ts.length-show.length,gap=14,pad=3;
+  const w=pad*2+show.length*gap+(extra>0?20:0);
+  let x=pad+5,dots='';
+  for(const t of show){dots+=`<circle cx='${x}' cy='9' r='5' fill='${personColor(t)}' stroke='#ffffff' stroke-width='1'/>`;x+=gap;}
+  if(extra>0)dots+=`<text x='${x}' y='13' font-size='11' font-family='sans-serif' font-weight='700' fill='#888' text-anchor='start'>+${extra}</text>`;
+  return {uri:'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='18'>${dots}</svg>`),w};}
 function assigneePeople(){const seen=new Set(),out=[];   // current user first, then the deduped roster
   [currentUser,...assignees].forEach(a=>{if(a&&!seen.has(a)){seen.add(a);out.push(a);}});return out;}
 function assigneePickerProvider(){
