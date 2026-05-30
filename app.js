@@ -197,10 +197,10 @@ function renderTree(){
 }
 
 /* ---------- bulk multi-select (tree): Ctrl/Cmd-click toggles, Shift-click ranges ---------- */
-// Selectable elements of the active view (tree rows / board cards), in visual order.
-function bulkEls(){return [...document.querySelectorAll(mode==='board'?'#board .bcard[data-id]':'#tree .trow[data-id]')];}
+// Selectable elements of the active view (tree rows / board cards / timeline rows), in visual order.
+function bulkEls(){return [...document.querySelectorAll(mode==='board'?'#board .bcard[data-id]':mode==='timeline'?'#timeline .tlrow[data-id]':'#tree .trow[data-id]')];}
 function syncBulkRows(){                    // reflect bulkSel onto the rendered rows/cards (class + any checkbox)
-  document.querySelectorAll('#tree .trow[data-id], #board .bcard[data-id]').forEach(r=>{
+  document.querySelectorAll('#tree .trow[data-id], #board .bcard[data-id], #timeline .tlrow[data-id]').forEach(r=>{
     const on=bulkSel.has(+r.dataset.id);r.classList.toggle('bulksel',on);
     const cb=r.querySelector('.tcheck');if(cb)cb.checked=on;});
 }
@@ -794,7 +794,7 @@ async function renderTimeline(){
   // sp (optional) = the group's sprint window {s,e}; bars outside it are flagged.
   const rowHTML=(n,sp)=>{const t=n._tl,oos=sp&&(t.s<sp.s||t.e>sp.e);
     const tip=`${n.start||(t.soft?'sprint start':'?')} → ${(n.target||n.due)||(t.soft?'sprint finish':'?')}`+(oos?'  ⚠ dates fall outside the sprint':'');
-    return `<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
+    return `<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
   const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
   const groupHead=(k,arr,sp)=>{
     let label=esc(k)+' · '+arr.length,track;
@@ -816,7 +816,7 @@ async function renderTimeline(){
   }
   if(undated.length){
     rows+=`<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">No dates · ${undated.length}</div><div class="tlgrouptrack" style="width:${W}px"></div></div>`;
-    undated.sort((a,b)=>a.id-b.id).forEach(n=>{rows+=`<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
+    undated.sort((a,b)=>a.id-b.id).forEach(n=>{rows+=`<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
   }
   const prevScroll=el.scrollLeft;                  // preserve horizontal scroll across re-renders
   el.innerHTML=`<div class="tlcanvas">`+
@@ -1817,7 +1817,11 @@ async function initialBoot(postSetup){
   // timeline: zoom segment, group select, row click → editor
   $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.tlZoom',tlZoom);}catch(e){}renderTimeline();});
   $('tl_group').onchange=()=>{tlGroup=$('tl_group').value;try{localStorage.setItem('ado.tlGroup',tlGroup);}catch(e){}renderTimeline();};
-  $('timeline').addEventListener('click',e=>{const r=e.target.closest&&e.target.closest('.tlrow[data-id]');if(r)openItem(parseInt(r.dataset.id));});
+  $('timeline').addEventListener('click',e=>{const r=e.target.closest&&e.target.closest('.tlrow[data-id]');if(!r)return;
+    const id=+r.dataset.id;
+    if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(id);return;}        // Ctrl/Cmd: toggle in selection
+    if(e.shiftKey){e.preventDefault();bulkRange(id);return;}                    // Shift: range from anchor
+    openItem(id);});
   $('filt_btn').onclick=()=>{const p=$('filterpanel');const show=p.style.display==='none';p.style.display=show?'flex':'none';$('filt_btn').classList.toggle('on',show);};
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
   const moreP=$('morepanel'),moreB=$('morebtn');

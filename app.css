@@ -117,6 +117,9 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .tltoday{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#e74c3c;opacity:.75;z-index:1}
 .tlrow{display:flex;align-items:center;border-top:1px solid var(--line);min-height:28px;position:relative;z-index:1}
 .tlrow:hover{background:var(--panel2)}
+.tlrow.bulksel{background:rgba(47,111,237,0.14)}
+/* the sticky label must stay opaque (covers scrolled bars) → tint over panel */
+.tlrow.bulksel .tllabel{background:linear-gradient(rgba(47,111,237,0.14),rgba(47,111,237,0.14)),var(--panel)}
 .tllabel{position:sticky;left:0;z-index:2;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;align-items:center;gap:6px;padding:3px 8px;font-size:12px;white-space:nowrap;overflow:hidden;cursor:pointer}
 .tlrow:hover .tllabel{background:var(--panel2)}
 .tllab{overflow:hidden;text-overflow:ellipsis}

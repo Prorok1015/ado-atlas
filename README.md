@@ -121,9 +121,9 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   remembered (per browser). "Reset to default" restores the original layout.
 - **Auto-refresh** (in the **⚙** menu) re-fetches the list every 1 / 5 / 15 min
   (paused while you have unsaved edits, are dragging a card, or the tab is hidden).
-- **Bulk edit** (Tree, Board **and Graph**): **Ctrl/Cmd-click** toggles a
-  row/card/node in the selection; **Shift-click** in the tree/board applies your
-  last action to a whole range (select after selecting, or *deselect* after
+- **Bulk edit** (Tree, Board, Timeline **and Graph**): **Ctrl/Cmd-click** toggles a
+  row/card/node in the selection; **Shift-click** in the tree/board/timeline applies
+  your last action to a whole range (select after selecting, or *deselect* after
   deselecting). On the graph, **Ctrl/Cmd- or Shift-tap** a node to toggle it. (In
   the tree you can also hover a row and tick its checkbox, which only appears on
   hover / when selected.) A plain click still opens the item; a plain drag still
