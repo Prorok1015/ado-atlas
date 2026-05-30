@@ -324,6 +324,11 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .pav{width:20px;height:20px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;letter-spacing:.2px}
 .pav0{background:var(--line);color:var(--muted)}
 .pavsm{width:16px;height:16px;font-size:8px}
+/* editor tag chips */
+.tagedit{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 4px;min-height:22px;align-items:center}
+.tagchip{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fff;border-radius:11px;padding:2px 4px 2px 9px;line-height:1.6}
+.tagchip b{cursor:pointer;font-weight:700;opacity:.85;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%}
+.tagchip b:hover{opacity:1;background:rgba(255,255,255,.28)}
 .ppick{margin-top:4px;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden}
 .ppick .psearch{width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;color:var(--txt);padding:8px 10px;margin:0;outline:none}
 .ppick .presults{max-height:150px;overflow:auto}   /* ~5 rows; JS refines to exactly 5 */

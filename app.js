@@ -1089,11 +1089,24 @@ function dirty(){
   const v=editorValues();
   return v.title!==orig.title||v.state!==orig.state||v.assigned!==orig.assigned||v.desc!==orig.desc
     ||(orig.has_ac&&v.ac!==orig.ac)||((orig.priority?String(orig.priority):'')!==v.prio)
-    ||v.iter!==orig.iter||v.parent!==orig.parent||v.start!==orig.start||v.target!==orig.target||v.due!==orig.due||v.est!==orig.est;
+    ||v.iter!==orig.iter||v.parent!==orig.parent||v.start!==orig.start||v.target!==orig.target||v.due!==orig.due||v.est!==orig.est
+    ||v.tags!==orig.tags;
 }
 function refreshDirty(){const d=dirty();const b=$('s_save');b.disabled=!d;b.textContent=d?'● Save':'Saved';}
 function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:$('s_desc').value,ac:$('s_ac').value,prio:$('s_prio').value,
-  iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};}
+  iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};}
+// editor tags: chips with × remove + a free-text adder; value() is ADO's "a; b" string
+const tagsEditor=(function(){let cur=[];
+  const norm=s=>String(s||'').split(/[;,]/).map(t=>t.trim()).filter(Boolean);
+  const uniq=a=>{const seen=new Set(),o=[];a.forEach(t=>{const k=t.toLowerCase();if(!seen.has(k)){seen.add(k);o.push(t);}});return o;};
+  function render(){const box=$('s_tags');
+    box.innerHTML=cur.length?cur.map((t,i)=>`<span class="tagchip" style="background:${personColor(t)}">${esc(t)}<b data-i="${i}" title="remove">×</b></span>`).join(''):'<span class="pcnone">no tags</span>';
+    box.querySelectorAll('b[data-i]').forEach(x=>x.onclick=()=>{cur.splice(+x.dataset.i,1);render();refreshDirty();});}
+  return {render,
+    add(s){const a=norm(s);if(a.length){cur=uniq(cur.concat(a));render();refreshDirty();}},
+    set(s,silent){cur=uniq(norm(s));render();if(!silent)refreshDirty();},
+    value(){return cur.join('; ');}};
+})();
 
 /* ===================== CardPicker =====================
    Reusable form control: a card showing the chosen value + a searchable
@@ -1399,6 +1412,7 @@ async function save(){
   if(v.target!==orig.target)body.target=v.target;
   if(v.due!==orig.due)body.due=v.due;
   if(v.est!==orig.est)body.estimate=v.est;
+  if(v.tags!==orig.tags)body.tags=v.tags;
   const parentChanged=v.parent!==orig.parent;   // re-parent is a relations PATCH, handled separately
   if(!Object.keys(body).length&&!parentChanged){setStatus('no changes');return;}
   if(parentChanged&&v.parent!==''&&Number(v.parent)===id){setStatus('A work item cannot be its own parent',true);return;}

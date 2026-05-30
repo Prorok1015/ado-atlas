@@ -621,6 +621,7 @@ async function item(wid) {
     est: f["Microsoft.VSTS.Scheduling.OriginalEstimate"],
     target: f["Microsoft.VSTS.Scheduling.TargetDate"],
     due: f["Microsoft.VSTS.Scheduling.DueDate"],
+    tags: f["System.Tags"] || "",
     url: await browserUrl(d.id),
   };
 }
@@ -629,7 +630,7 @@ async function item(wid) {
 // (title/state/assigned/iteration/desc/ac/priority/estimate/start/target/due).
 async function updateItem(wid, body) {
   const fields = {};
-  for (const k of ["title","state","assigned","iteration","start","target","due"]) {
+  for (const k of ["title","state","assigned","iteration","start","target","due","tags"]) {
     if (k in body) fields[k] = body[k];
   }
   if (fields.assigned === "me") {
