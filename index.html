@@ -16,10 +16,12 @@
   <button class="btn save" id="newbtn" title="create a new work item (N)">✚ New</button>
   <button class="btn" id="undobtn" title="undo (Ctrl/Cmd+Z)" disabled>↶</button>
   <button class="btn" id="redobtn" title="redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)" disabled>↷</button>
-  <div class="seg" id="mode"><button data-m="tree" class="on">Tree</button><button data-m="graph">Graph</button><button data-m="board">Board</button></div>
+  <div class="seg" id="mode"><button data-m="tree" class="on">Tree</button><button data-m="graph">Graph</button><button data-m="board">Board</button><button data-m="timeline">Timeline</button></div>
   <div class="seg" id="emode" style="display:none"><button data-e="hierarchy" class="on" title="just hierarchy (compound boxes)">Hier</button><button data-e="dep" title="add dependency arrows">+ Deps</button></div>
   <div class="seg" id="dir" style="display:none"><button data-d="TB">↕ V</button><button data-d="LR" class="on">↔ H</button></div>
   <div class="seg" id="grp" style="display:none"><button data-g="sprint" class="on">by Sprint</button><button data-g="state">by State</button><button data-g="assignee">by Assignee</button></div>
+  <div class="seg" id="tlzoom" style="display:none" title="timeline zoom"><button data-z="day">Day</button><button data-z="week" class="on">Week</button><button data-z="month">Month</button></div>
+  <select id="tl_group" title="group timeline rows" style="display:none"><option value="none">group: none</option><option value="sprint">by Sprint</option><option value="state">by State</option><option value="assignee">by Assignee</option><option value="type">by Type</option></select>
   <button class="btn" id="empty_btn" title="show empty columns (sprints / states / assignees)" style="display:none">∅ empty</button>
   <button class="btn" id="filt_btn" title="filters, search &amp; sort">Filters <span id="filt_count"></span></button>
   <button class="btn" id="fit" title="fit graph" style="display:none">Fit</button>
@@ -69,6 +71,7 @@
     <div id="cy"></div>
     <div id="board"></div>
     <div id="sprintview"></div>
+    <div id="timeline"></div>
   </div>
   <div id="resizer"></div>
   <div id="side" class="hidden">

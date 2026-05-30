@@ -71,10 +71,18 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - **Current project** — a pill next to the **ADO Atlas** title shows the active
   `org / project` so you always know which one you're looking at; click it to
   switch (opens the connection settings).
-- **Tree / Graph / Board** toggle in the toolbar. The Board groups cards **by
-  Sprint**, **by State** (a classic Kanban — drag a card between columns to
-  change its state), or **by Assignee**. Dragging also works to change sprint
-  (by-Sprint) or reassign (by-Assignee).
+- **Tree / Graph / Board / Timeline** toggle in the toolbar. The Board groups
+  cards **by Sprint**, **by State** (a classic Kanban — drag a card between
+  columns to change its state), or **by Assignee**. Dragging also works to change
+  sprint (by-Sprint) or reassign (by-Assignee).
+- **Timeline** — a project-wide Gantt on one continuous axis (not cut up by
+  sprint like the per-sprint Gantt). Each item is a bar from its **Start** to its
+  **Target/Due**; items with no dates of their own fall back to their **sprint's**
+  dates (shown hatched/faded), and anything still undated is listed in a **No
+  dates** section at the bottom. **Zoom** Day / Week / Month (horizontal scroll;
+  it opens centred on today), optionally **group** rows by Sprint / State /
+  Assignee / Type. Click a bar or row to open the editor. (Read-only for now —
+  drag-to-reschedule is a planned follow-up.)
 - **∅ empty** (board toolbar) shows empty columns too: every project **state**
   (by-State) and every team member (by-Assignee) gets a column even with no
   cards, so you can drag an item into an as-yet-unused state/assignee. (For

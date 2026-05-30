@@ -89,6 +89,36 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .gright .gact{color:var(--accent);font-weight:600}
 .ggroup{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--panel2);font-weight:600;font-size:12px;padding:4px 10px;border-top:1px solid var(--line)}
 .ggroup .gact{color:var(--accent)}
+
+/* ---- Timeline (project-wide Gantt: sticky labels + axis, horizontal scroll) ---- */
+#timeline{position:absolute;inset:0;overflow:auto;display:none;background:var(--bg)}
+#timeline.show{display:block}
+.tlempty{padding:16px;color:var(--muted)}
+.tlcanvas{display:inline-block;min-width:100%}
+.tlhead{position:sticky;top:0;z-index:3;display:flex;background:var(--panel);border-bottom:1px solid var(--line)}
+.tlcorner{position:sticky;left:0;z-index:4;flex:none;background:var(--panel);border-right:1px solid var(--line);font-size:11px;color:var(--muted);padding:6px 8px;display:flex;align-items:center}
+.tlaxis{position:relative;flex:none;height:28px}
+.tlmonth{position:absolute;top:0;bottom:0;border-left:1px solid var(--line);font-size:11px;color:var(--muted);padding:6px 0 0 5px;white-space:nowrap;overflow:hidden;box-sizing:border-box}
+.tlbody{position:relative}
+.tlgrid{position:absolute;top:0;bottom:0;z-index:0;pointer-events:none}
+.tlvline{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.tlvline.wk{opacity:.45}
+.tlweekend{position:absolute;top:0;bottom:0;background:rgba(127,127,127,.07)}
+.tltoday{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#e74c3c;opacity:.75;z-index:1}
+.tlrow{display:flex;align-items:center;border-top:1px solid var(--line);min-height:28px;position:relative;z-index:1}
+.tlrow:hover{background:var(--panel2)}
+.tllabel{position:sticky;left:0;z-index:2;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;align-items:center;gap:6px;padding:3px 8px;font-size:12px;white-space:nowrap;overflow:hidden;cursor:pointer}
+.tlrow:hover .tllabel{background:var(--panel2)}
+.tllab{overflow:hidden;text-overflow:ellipsis}
+.tltrack{position:relative;flex:none;height:28px}
+.tlbar{position:absolute;top:5px;bottom:5px;border-radius:5px;color:#fff;font-size:11px;line-height:18px;padding:0 6px;overflow:hidden;white-space:nowrap;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.tlbar:hover{filter:brightness(1.12)}
+.tlbar.soft{opacity:.6;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0 5px,transparent 5px 10px)}
+.tlgrouprow{display:flex;align-items:center;position:relative;z-index:1;border-top:1px solid var(--line)}
+.tlgrouplabel{position:sticky;left:0;z-index:2;flex:none;background:var(--panel2);border-right:1px solid var(--line);font-weight:600;font-size:12px;padding:4px 8px;white-space:nowrap;overflow:hidden}
+.tlgrouptrack{position:relative;flex:none;height:24px;background:var(--panel2)}
+.tlgroupbar{position:absolute;top:9px;height:6px;border-radius:3px;background:var(--muted);opacity:.35}
+.tlnodate{color:var(--muted);font-size:11px;padding-left:6px}
 .bcard.moving .bttl::after{content:' \23F3 moving\2026';color:var(--accent);font-weight:600}
 .bcol.dropover{outline:2px dashed var(--accent);outline-offset:-2px}
 /* phantom "add sprint" column on Board → By Sprint */

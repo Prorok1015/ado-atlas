@@ -36,7 +36,8 @@ let typeList=[];                          // [{name,color}] of the project's rea
 const typeNames=()=>typeList.length?typeList.map(t=>t.name):TYPES;
 const $=id=>document.getElementById(id);
 let cy=null, mode='tree', edgeMode='hierarchy', rankDir='LR', cur=null, orig={}, selRow=null;
-let depCache={}, renderToken=0, boardToken=0;   // tokens drop superseded async renders
+let depCache={}, renderToken=0, boardToken=0, tlToken=0;   // tokens drop superseded async renders
+let tlZoom='week', tlGroup='none';               // timeline view: zoom (day|week|month) + row grouping
 let openToken=0;                                // drops superseded openItem() calls
 let boardBusy=false;                            // true while a card move PATCH is in flight
 let pdrag=null, suppressClick=false;            // custom pointer-based drag for board cards
@@ -590,16 +591,104 @@ function backToBoard(){
   if(boardScroll){$('board').scrollLeft=boardScroll.l;$('board').scrollTop=boardScroll.t;}
 }
 
+/* ---------- Timeline (project-wide Gantt — one continuous axis, no sprint cut-off) ---------- */
+const TL_DAY=86400000;
+const TL_PX={day:26,week:9,month:3.3};            // px per day at each zoom
+const TL_LABELW=240;                              // sticky left label column width
+// Effective {s,e,soft} dates (ms) for an item, or null if it has none: prefer the
+// item's own start/target, else fall back to its sprint's dates (soft=true).
+function tlDates(n){
+  const p=d=>d?Date.parse(String(d).slice(0,10)):null;
+  let s=p(n.start),e=p(n.target||n.due),soft=false;
+  if(s==null&&e==null){const it=n.iteration?_sprint(n.iteration):null;
+    if(it&&it.start&&it.finish){s=p(it.start);e=p(it.finish);soft=true;}}
+  if(s==null&&e==null)return null;
+  if(s==null)s=e;if(e==null)e=s;if(e<s)e=s;
+  return {s,e,soft};
+}
+function tlKey(n){                                 // row group key for the current grouping
+  if(tlGroup==='sprint')return n.iteration?(sprintNames[n.iteration]||String(n.iteration).split('\\').pop()):'(no sprint)';
+  if(tlGroup==='state')return n.state||'(no state)';
+  if(tlGroup==='assignee')return n.assigned||'Unassigned';
+  if(tlGroup==='type')return n.type||'(no type)';
+  return '';
+}
+function tlMonths(t0,t1){                          // month segments spanning [t0,t1]
+  const out=[];let y=new Date(t0).getUTCFullYear(),m=new Date(t0).getUTCMonth();
+  for(;;){const start=Date.UTC(y,m,1),end=Date.UTC(y,m+1,1)-TL_DAY;if(start>t1)break;
+    const lab=new Date(start).toLocaleString('en-US',{month:'short'})+(m===0?(" '"+String(y).slice(2)):'');
+    out.push({start,end,label:lab});m++;if(m>11){m=0;y++;}}
+  return out;
+}
+async function renderTimeline(){
+  const token=++tlToken;
+  const iters=await getIterations();                // for the sprint-date fallback + sprint grouping
+  if(token!==tlToken)return;
+  const el=$('timeline');el.innerHTML='';
+  const items=store.roots.map(id=>store.nodes[id]).filter(Boolean);
+  const dated=[],undated=[];
+  items.forEach(n=>{const d=tlDates(n);if(d){n._tl=d;dated.push(n);}else undated.push(n);});
+  if(!dated.length){
+    el.innerHTML='<div class="tlempty">'+(items.length?`none of the ${items.length} item(s) have start/target dates or a dated sprint`:'nothing matches the filters')+'</div>';
+    setStatus(`${items.length} items · 0 scheduled`+capNote());return;
+  }
+  let min=Infinity,max=-Infinity;dated.forEach(n=>{if(n._tl.s<min)min=n._tl.s;if(n._tl.e>max)max=n._tl.e;});
+  const ms=new Date(min),me=new Date(max);
+  const r0=Date.UTC(ms.getUTCFullYear(),ms.getUTCMonth(),1);                 // snap range to whole months
+  const r1=Date.UTC(me.getUTCFullYear(),me.getUTCMonth()+1,1)-TL_DAY;
+  const px=TL_PX[tlZoom]||TL_PX.week,LW=TL_LABELW;
+  const totalDays=Math.round((r1-r0)/TL_DAY)+1,W=Math.max(Math.round(totalDays*px),200);
+  const xOf=t=>Math.round(((t-r0)/TL_DAY)*px);
+  const wOf=(s,e)=>Math.max(Math.round(((e-s)/TL_DAY+1)*px),6);
+  // axis (month labels) + gridlines (month / week) + weekend shading + today line
+  const months=tlMonths(r0,r1);
+  let axis='',grid='';
+  months.forEach(m=>{const l=xOf(m.start),w=Math.round(((m.end-m.start)/TL_DAY+1)*px);
+    axis+=`<div class="tlmonth" style="left:${l}px;width:${w}px">${esc(m.label)}</div>`;
+    grid+=`<div class="tlvline" style="left:${l}px"></div>`;});
+  if(tlZoom!=='month'){let d=r0-((new Date(r0).getUTCDay()+6)%7)*TL_DAY;   // week lines (Mondays)
+    for(;d<=r1;d+=7*TL_DAY)if(d>=r0)grid+=`<div class="tlvline wk" style="left:${xOf(d)}px"></div>`;}
+  if(tlZoom==='day'&&totalDays<=140)for(let d=r0;d<=r1;d+=TL_DAY){const wd=new Date(d).getUTCDay();
+    if(wd===0||wd===6)grid+=`<div class="tlweekend" style="left:${xOf(d)}px;width:${px}px"></div>`;}
+  const today=Date.parse(new Date().toISOString().slice(0,10));
+  if(today>=r0&&today<=r1)grid+=`<div class="tltoday" style="left:${xOf(today)+Math.round(px/2)}px"></div>`;
+  // rows
+  const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${TYPE_COLOR[n.type]||'#95a5a6'}"></i><span class="tllab">#${n.id} ${esc(n.title)}</span></div>`;
+  const rowHTML=n=>{const t=n._tl,tip=`${n.start||(t.soft?'sprint start':'?')} → ${(n.target||n.due)||(t.soft?'sprint finish':'?')}`;
+    return `<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background:${TYPE_COLOR[n.type]||'#95a5a6'}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
+  const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
+  const groupHead=(k,arr)=>{const gs=Math.min(...arr.map(n=>n._tl.s)),ge=Math.max(...arr.map(n=>n._tl.e));
+    return `<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">${esc(k)} · ${arr.length}</div><div class="tlgrouptrack" style="width:${W}px"><div class="tlgroupbar" style="left:${xOf(gs)}px;width:${wOf(gs,ge)}px"></div></div></div>`;};
+  let rows='';
+  if(tlGroup==='none')dated.sort(byStart).forEach(n=>{rows+=rowHTML(n);});
+  else{
+    const groups=new Map();dated.forEach(n=>{const k=tlKey(n);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
+    let keys=[...groups.keys()];keys=(tlGroup==='state')?orderStates(keys):keys.sort((a,b)=>a.localeCompare(b));
+    keys.forEach(k=>{const arr=groups.get(k).sort(byStart);rows+=groupHead(k,arr);arr.forEach(n=>{rows+=rowHTML(n);});});
+  }
+  if(undated.length){
+    rows+=`<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">No dates · ${undated.length}</div><div class="tlgrouptrack" style="width:${W}px"></div></div>`;
+    undated.sort((a,b)=>a.id-b.id).forEach(n=>{rows+=`<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
+  }
+  el.innerHTML=`<div class="tlcanvas">`+
+    `<div class="tlhead"><div class="tlcorner" style="width:${LW}px">${months.length} mo · ${dated.length} scheduled</div><div class="tlaxis" style="width:${W}px">${axis}</div></div>`+
+    `<div class="tlbody"><div class="tlgrid" style="left:${LW}px;width:${W}px">${grid}</div>${rows}</div></div>`;
+  setStatus(`${dated.length} scheduled · ${undated.length} no dates`+capNote());
+  if(today>=r0&&today<=r1)el.scrollLeft=Math.max(0,xOf(today)-Math.round(el.clientWidth*0.35));   // centre on today
+}
+
 /* ---------- mode / refresh ---------- */
 function setMode(m){
   $('sprintview').classList.remove('show');openSprintPath=null;   // leaving board closes the sprint detail
   mode=m;$('mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   $('tree').classList.toggle('show',m==='tree');$('cy').classList.toggle('show',m==='graph');
-  $('board').classList.toggle('show',m==='board');
+  $('board').classList.toggle('show',m==='board');$('timeline').classList.toggle('show',m==='timeline');
   $('emode').style.display=$('dir').style.display=(m==='graph')?'inline-flex':'none';
   $('fit').style.display=(m==='graph')?'inline-block':'none';   // Fit only makes sense on the graph
   $('empty_btn').style.display=(m==='board')?'inline-block':'none';
   $('grp').style.display=(m==='board')?'inline-flex':'none';
+  $('tlzoom').style.display=(m==='timeline')?'inline-flex':'none';
+  $('tl_group').style.display=(m==='timeline')?'inline-block':'none';
 }
 async function resolveSkippedAncestors(skippers,inSet){
   // For each skipper (parent not in set), climb the chain until an in-set ancestor
@@ -655,6 +744,7 @@ async function _refresh(){
   $('tree').scrollTop=ts;                // preserve scroll across the rebuild
   if(mode==='graph')renderGraph({relayout:true,fit:true});
   else if(mode==='board')renderBoard();
+  else if(mode==='timeline')renderTimeline();
   if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);   // live-update open sprint
   saveSnapshot();                        // cache this view for an instant first paint next session
 }
@@ -1159,7 +1249,7 @@ function setAutoRefresh(sec){
   if(sec>0)autoTimer=setInterval(autoTick,sec*1000);
 }
 function switchMode(m){setMode(m);try{localStorage.setItem('ado.mode',m);}catch(e){}
-  if(m==='graph')renderGraph({fit:true});else if(m==='board')renderBoard();else renderTree();}
+  if(m==='graph')renderGraph({fit:true});else if(m==='board')renderBoard();else if(m==='timeline')renderTimeline();else renderTree();}
 
 /* ---------- last-snapshot cache (instant first paint) ---------- */
 async function snapKey(){try{const c=await api.getConfig();return (c.org&&c.project)?('snap:'+c.org+'/'+c.project):null;}catch(e){return null;}}
@@ -1467,6 +1557,10 @@ async function initialBoot(postSetup){
   $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);try{localStorage.setItem('ado.showEmpty',on?'1':'0');}catch(e){}
     if(mode==='board'&&boardGroup!=='sprint')renderBoard();};   // state/assignee add/remove empty columns in JS (sprints are CSS-only)
   $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.boardGroup',boardGroup);}catch(e){}renderBoard();});
+  // timeline: zoom segment, group select, row click → editor
+  $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.tlZoom',tlZoom);}catch(e){}renderTimeline();});
+  $('tl_group').onchange=()=>{tlGroup=$('tl_group').value;try{localStorage.setItem('ado.tlGroup',tlGroup);}catch(e){}renderTimeline();};
+  $('timeline').addEventListener('click',e=>{const r=e.target.closest&&e.target.closest('.tlrow[data-id]');if(r)openItem(parseInt(r.dataset.id));});
   $('filt_btn').onclick=()=>{const p=$('filterpanel');const show=p.style.display==='none';p.style.display=show?'flex':'none';$('filt_btn').classList.toggle('on',show);};
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
   const moreP=$('morepanel'),moreB=$('morebtn');
@@ -1573,6 +1667,8 @@ async function initialBoot(postSetup){
     const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
     if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
     const bg=localStorage.getItem('ado.boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
+    const tz2=localStorage.getItem('ado.tlZoom');if(tz2&&TL_PX[tz2]){tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.z===tz2));}
+    const tg=localStorage.getItem('ado.tlGroup');if(tg){tlGroup=tg;$('tl_group').value=tg;}
     const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
     const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;setAutoRefresh(au);}
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
