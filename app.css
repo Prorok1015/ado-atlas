@@ -247,6 +247,9 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .tcheck{flex:none;cursor:pointer;width:14px;height:14px;margin:0 4px 0 0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox;opacity:0;transition:opacity .12s}
 .trow:hover .tcheck,.trow.bulksel .tcheck{opacity:1}
 .trow.bulksel{background:rgba(47,111,237,0.14)}
+.trow.dragging{opacity:.4}                                  /* row(s) being dragged to re-parent */
+.trow.droptarget{outline:2px dashed var(--accent);outline-offset:-2px;background:rgba(47,111,237,0.12)}
+#tree.droproot{box-shadow:inset 0 0 0 2px var(--accent)}    /* dropping on empty area = make root */
 
 /* ---- command palette (Ctrl/Cmd+K) ---- */
 #palette{position:fixed;inset:0;background:rgba(8,11,15,0.6);z-index:10001;display:none;justify-content:center;align-items:flex-start}

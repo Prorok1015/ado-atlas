@@ -67,6 +67,7 @@ let treeEverLoaded=false;                // false only before the very first suc
 const store={nodes:{},kids:{},roots:[],expanded:new Set(),parent:{}};
 const bulkSel=new Set();                  // ids checked in the tree for bulk edit
 let bulkAnchor=null,bulkAnchorOn=true;     // pivot for Shift-range + whether that action selected (true) or deselected (false)
+let dragIds=[],dropTargetEl=null;          // tree drag-to-reparent: ids being dragged + current drop-target row
 function reachable(){const out=new Set(),st=[...(store.top||store.roots)];
   while(st.length){const id=st.pop();if(out.has(id))continue;out.add(id);
     if(store.expanded.has(id))(store.kids[id]||[]).forEach(c=>st.push(c));}
@@ -144,6 +145,7 @@ function treeNode(n){
   const row=document.createElement('div');row.className='trow';
   if(bulkSel.has(n.id))row.classList.add('bulksel');
   row.dataset.id=n.id;                                  // for Shift-click range selection
+  row.draggable=true;                                   // drag onto another row to re-parent
   const cb=document.createElement('input');cb.type='checkbox';cb.className='tcheck';cb.checked=bulkSel.has(n.id);
   cb.title='select for bulk edit  (or Ctrl-click the row; Shift-click for a range)';
   cb.onclick=e=>{e.stopPropagation();bulkSet([n.id],cb.checked);bulkAnchor=n.id;bulkAnchorOn=cb.checked;};
@@ -212,6 +214,65 @@ function bulkRange(toId){                    // apply the anchor's action (selec
 }
 function clearBulk(){bulkSel.clear();bulkAnchor=null;updateBulkBar();syncBulkRows();}
 function updateBulkBar(){const n=bulkSel.size;$('bulkbar').style.display=n?'flex':'none';$('bulk_count').textContent=n+' selected';}
+
+/* ---------- tree drag-to-re-parent (single or bulk) ---------- */
+function descendantsOf(ids){                 // loaded descendants of ids (to block cycles)
+  const set=new Set(),stack=[...ids];
+  while(stack.length){const id=stack.pop();(store.kids[id]||[]).forEach(c=>{if(!set.has(c)){set.add(c);stack.push(c);}});}
+  return set;
+}
+function canDrop(ids,targetId){              // targetId==='' means drop to root
+  if(targetId==='')return true;
+  if(ids.includes(targetId))return false;                       // can't be its own child
+  return !descendantsOf(ids).has(targetId);                     // …or under its own descendant (cycle)
+}
+async function doReparent(ids,targetId){     // targetId: an id, or '' for root
+  ids=ids.filter(id=>id!==targetId&&store.nodes[id]);
+  if(!ids.length||!canDrop(ids,targetId))return;
+  const olds=ids.map(id=>({id,old:(store.nodes[id].parent!=null?store.nodes[id].parent:'')}));
+  if(ids.every((id,i)=>String(olds[i].old)===String(targetId)))return;   // already there → no-op
+  loadStart(`re-parenting ${ids.length} item(s)…`);
+  const res=await api.pool(ids.map(id=>async()=>{try{await api.setParent(id,targetId);return true;}catch(e){return false;}}),6);
+  loadEnd();
+  const ok=res.filter(Boolean).length,fail=res.length-ok;
+  if(ok)pushAction(`re-parent ${ids.length} item(s)`,
+    async()=>{await api.pool(olds.map(o=>async()=>{try{await api.setParent(o.id,o.old);}catch(e){}}),6);await afterUndo(null);},
+    async()=>{await api.pool(ids.map(id=>async()=>{try{await api.setParent(id,targetId);}catch(e){}}),6);await afterUndo(null);});
+  if(targetId!=='')store.expanded.add(+targetId);              // reveal the moved items under the new parent
+  setStatus(`re-parented ${ok} item(s)`+(targetId!==''?` under #${targetId}`:' to root')+(fail?`, ${fail} failed`:''),!!fail);
+  await refresh();
+}
+function cleanupDrag(){
+  document.querySelectorAll('#tree .trow.dragging,#tree .trow.droptarget').forEach(el=>el.classList.remove('dragging','droptarget'));
+  $('tree').classList.remove('droproot');dropTargetEl=null;dragIds=[];
+}
+function wireTreeDnD(){
+  const t=$('tree');
+  t.addEventListener('dragstart',e=>{
+    const row=e.target.closest&&e.target.closest('.trow[data-id]');if(!row)return;
+    const id=+row.dataset.id;
+    dragIds=(bulkSel.has(id)&&bulkSel.size>1)?[...bulkSel]:[id];
+    try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(id));}catch(_){}
+    dragIds.forEach(d=>{const el=t.querySelector('.trow[data-id="'+d+'"]');if(el)el.classList.add('dragging');});
+  });
+  t.addEventListener('dragover',e=>{
+    if(!dragIds.length)return;
+    const row=e.target.closest&&e.target.closest('.trow[data-id]'),tid=row?+row.dataset.id:'';
+    if(!canDrop(dragIds,tid)){e.dataTransfer.dropEffect='none';
+      if(dropTargetEl){dropTargetEl.classList.remove('droptarget');dropTargetEl=null;}t.classList.remove('droproot');return;}
+    e.preventDefault();e.dataTransfer.dropEffect='move';
+    if(dropTargetEl&&dropTargetEl!==row)dropTargetEl.classList.remove('droptarget');
+    if(row){row.classList.add('droptarget');dropTargetEl=row;t.classList.remove('droproot');}
+    else{dropTargetEl=null;t.classList.add('droproot');}            // empty area → drop to root
+  });
+  t.addEventListener('drop',e=>{
+    if(!dragIds.length)return;e.preventDefault();
+    const row=e.target.closest&&e.target.closest('.trow[data-id]'),tid=row?+row.dataset.id:'';
+    const ids=dragIds.slice();cleanupDrag();
+    if(canDrop(ids,tid))doReparent(ids,tid);
+  });
+  t.addEventListener('dragend',cleanupDrag);
+}
 function buildBulkControls(){            // (re)fill the bar's dropdowns from loaded project data
   const st=$('bulk_state');if(st){st.innerHTML='<option value="">State…</option>'+
     (projectStates.length?projectStates:['New','Active','Resolved','Closed','Removed']).map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');}
@@ -498,6 +559,21 @@ async function moveCard(id,field,val){            // field: 'iteration' | 'assig
   boardBusy=false;loadEnd();
   renderBoard();                                   // regroup from the (now updated) store
 }
+// Bulk move: drag a selected card → move every selected card to the dropped column.
+async function moveCards(ids,field,val){
+  ids=ids.filter(id=>store.nodes[id]&&String(store.nodes[id][field]||'')!==String(val));   // skip ones already there
+  if(!ids.length)return;
+  const olds=ids.map(id=>({id,old:store.nodes[id][field]}));
+  boardBusy=true;loadStart(`moving ${ids.length} item(s)…`);
+  const res=await api.pool(ids.map(id=>async()=>{try{await api.updateItem(id,{[field]:val});if(store.nodes[id])store.nodes[id][field]=val;return true;}catch(e){return false;}}),6);
+  boardBusy=false;loadEnd();
+  const ok=res.filter(Boolean).length,fail=res.length-ok;
+  if(ok)pushAction(`move ${ids.length} item(s)`,
+    async()=>{await api.pool(olds.map(o=>async()=>{try{await api.updateItem(o.id,{[field]:(o.old==null?'':o.old)});}catch(e){}}),6);await afterUndo(null);},
+    async()=>{await api.pool(ids.map(id=>async()=>{try{await api.updateItem(id,{[field]:val});}catch(e){}}),6);await afterUndo(null);});
+  setStatus(`moved ${ok} item(s)`+(fail?`, ${fail} failed`:''),!!fail);
+  renderBoard();
+}
 /* ---- custom pointer-based card drag (native HTML5 DnD was unreliable here) ---- */
 function startCardDrag(e,id,card){
   if(boardBusy)return;
@@ -530,10 +606,11 @@ document.addEventListener('mouseup',()=>{
   const col=d.hot;if(!col)return;
   const field=col.dataset.field,val=col.dataset.val||'';
   const node=store.nodes[d.id],curVal=node?(node[field]||''):'';   // field: iteration | assigned | state
-  if(val===curVal)return;
+  const bulk=bulkSel.has(d.id)&&bulkSel.size>1;                     // dragged a selected card → move the whole selection
+  if(val===curVal&&!bulk)return;
   if(field==='iteration'){const it=_sprint(val),fin=it&&it.finish?it.finish.slice(0,10):null,today=new Date().toISOString().slice(0,10);
-    if(fin&&fin<today&&!confirm(`Sprint "${it.name}" ended ${fin}. Move #${d.id} there anyway?`))return;}
-  moveCard(d.id,field,val);
+    if(fin&&fin<today&&!confirm(`Sprint "${it.name}" ended ${fin}. Move ${bulk?bulkSel.size+' items':'#'+d.id} there anyway?`))return;}
+  if(bulk)moveCards([...bulkSel],field,val);else moveCard(d.id,field,val);
 });
 
 /* ---------- sprint detail (Gantt) ---------- */
@@ -1838,6 +1915,7 @@ async function initialBoot(postSetup){
   $('customize-overlay').addEventListener('mousedown',e=>{if(e.target===$('customize-overlay'))closeCustomize();});
   $('customize-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeCustomize();}});
   loadBarLayout();applyBarLayout();              // apply the saved toolbar order / hidden set
+  wireTreeDnD();                                  // drag tree rows to re-parent
   try{const sf=localStorage.getItem('ado.filters');if(sf)Object.assign(fstate,JSON.parse(sf));
     const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
     if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}

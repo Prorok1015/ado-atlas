@@ -128,6 +128,12 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   selected.) A plain click still opens the item; a plain drag still moves a card.
   A bar appears letting you set State, Sprint, Priority, or Assignee on every
   selected item at once (applied in parallel, then the list refreshes).
+- **Drag to re-parent** (Tree): drag a row onto another row to make it that row's
+  child, or onto empty space to make it a root. If the dragged row is part of the
+  selection, the whole selection is re-parented. (Cycles are blocked; undoable.)
+- **Bulk drag** (Board): dragging a card that's part of the selection moves the
+  **whole selection** to the dropped column (state / sprint / assignee); dragging
+  an unselected card moves just that one.
 - **Undo / Redo** — the **↶ / ↷** toolbar buttons (or **Ctrl/Cmd-Z** and
   **Ctrl/Cmd-Shift-Z / Ctrl-Y**, outside a text field) walk a stack of mutating
   actions: an editor save (fields + re-parent), a board drag, a bulk edit, or a
