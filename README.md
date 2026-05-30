@@ -74,7 +74,9 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - **Filters** (chip panel): State, Type, Priority, Assigned, **Sprint**, and
   **Tags**. State, **Type**, and Tag values are read from your project (the Type
   list is your process's real work-item types — no hard-coded list), sprints
-  from its iterations. Click a chip once to include, again to exclude.
+  from its iterations. Click a chip once to include, again to exclude. The same
+  panel also holds the **Find** box (search by id or text) and the **Sort**
+  selector — for a quick jump you can also use the Command palette (Ctrl/Cmd-K).
 - Large result sets are capped at 2000 items; when that happens the status bar
   shows `· capped, narrow the filters` so you know you're not seeing everything.
 - **Export** (toolbar): download the current filtered view as **CSV** or **JSON**.

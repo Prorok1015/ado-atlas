@@ -94,7 +94,7 @@ function filtersObj(){
 function filterCount(){let n=0;for(const k in fstate)n+=Object.keys(fstate[k]).length;return n;}
 function updateFilterCount(){const n=filterCount();$('filt_count').textContent=n?('('+n+')'):'';}
 function renderFilters(){
-  const el=$('filterpanel');el.innerHTML='';
+  const el=$('filterchips');el.innerHTML='';
   FILTERS.forEach(f=>{
     const vals=f.values()||[];
     if(!vals.length&&!Object.keys(fstate[f.key]||{}).length)return;   // skip empty rows (e.g. tags/sprints not loaded yet)
