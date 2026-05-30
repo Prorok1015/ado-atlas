@@ -329,39 +329,39 @@ function gstyle(){return [
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'180px','font-size':'12px','text-valign':'center',
    'width':'210px','height':'label','padding':'12px',
-   // top-left: child-count · priority (bookmarks) · estimate; top-right: assignee avatar (round);
+   // top-left: child-count · priority · assignee (flat bookmarks); top-right: estimate pill;
    // bottom: state (left) · tags (centre) · sprint (right)
    'background-image':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=tagDotsUri(e.data('tags'));return[
-     e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
+     e.data('childCount')>0?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
+     e.data('assigned')?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
      (est!=null&&est!=='')?pillUri((+est)+'h','#5b6b7d',60):BLANK_IMG,
-     e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG,
      e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG,
      tg?tg.uri:BLANK_IMG,
      sp?pillUri(sprintShort(sp),'#7a6cc4',96):BLANK_IMG];},
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
    'background-width':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=tagDotsUri(e.data('tags'));return[
-     '18px','18px',((est!=null&&est!=='')?pillW((+est)+'h',60):1)+'px','26px',
+     '17px','17px','17px',((est!=null&&est!=='')?pillW((+est)+'h',60):1)+'px',
      (e.data('state')?statePillW(e.data('state')):1)+'px',(tg?tg.w:1)+'px',(sp?pillW(sprintShort(sp),96):1)+'px'];},
-   'background-height':['24px','24px','20px','26px','22px','18px','20px'],
-   'background-position-x':['4px','23px','42px','100%','4px','50%','100%'],
+   'background-height':['22px','22px','22px','18px','18px','14px','18px'],
+   'background-position-x':['3px','21px','39px','100%','3px','50%','100%'],
    'background-position-y':['0','0','0','3px','100%','100%','100%'],
-   // overdue → soft red halo (underlay); same-hue stroke (thicker for high priority)
-   'underlay-color':'#e0524d','underlay-padding':6,'underlay-opacity':e=>isOverdue(e.data())?0.22:0,
-   'border-width':e=>((e.data('priority')||9)<=2?3.5:1.8),'border-color':e=>nodeStroke(e.data('type'))}},
+   // overdue → soft red halo (underlay); thin same-hue stroke (a touch bolder for high priority)
+   'underlay-color':'#e0524d','underlay-padding':5,'underlay-opacity':e=>isOverdue(e.data())?0.16:0,
+   'border-width':e=>((e.data('priority')||9)<=2?2.4:1.3),'border-color':e=>nodeStroke(e.data('type'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
-   // header strip: child-count · priority (bookmarks) · state pill (left), assignee avatar (right)
-   'background-image':e=>[e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
+   // header strip: child-count · priority · assignee (flat bookmarks) left, state pill right
+   'background-image':e=>[e.data('childCount')>0?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG,
-     e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG],
+     e.data('assigned')?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
+     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':e=>['18px','18px',(e.data('state')?statePillW(e.data('state')):1)+'px','26px'],
-   'background-height':['24px','24px','22px','26px'],
-   'background-position-x':['4px','23px','42px','100%'],'background-position-y':['0','0','0','6px'],
-   'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
+   'background-width':e=>['17px','17px','17px',(e.data('state')?statePillW(e.data('state')):1)+'px'],
+   'background-height':['22px','22px','22px','18px'],
+   'background-position-x':['3px','21px','39px','100%'],'background-position-y':['0','0','0','3px'],
+   'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':1.5,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
    'text-valign':'top','text-halign':'center','text-margin-y':-4,
@@ -1247,46 +1247,47 @@ function personInitials(name){const p=String(name).trim().split(/\s+/).filter(Bo
 function personChip(name){return `<i class="pav" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}
 function personChipT(name){return `<i class="pav pavsm" title="${esc(name)}" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}   // small, tooltipped — board cards
 const BLANK_IMG="data:image/svg+xml;utf8,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'></svg>");   // transparent slot for an absent multi-background layer
-// Corner "bookmark" ribbon (a tag with a V-notch) carrying a short label — used
-// for the child-count and priority badges on graph nodes. dir 'down' = notch at
-// the bottom (hangs from the top edge); 'up' = notch at the top (sits on the bottom).
-function bookmarkUri(color,text,dir){
-  text=String(text);const fs=text.length>1?17:23;
-  const body=dir==='up'
-    ? `<path d='M3 49 L3 11 L20 19 L37 11 L37 49 Z' fill='${color}'/><text x='20' y='40'`
-    : `<path d='M3 3 L37 3 L37 41 L20 33 L3 41 Z' fill='${color}'/><text x='20' y='27'`;
-  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='52'>${body} font-size='${fs}' font-family='sans-serif' font-weight='700' fill='#ffffff' text-anchor='middle'>${esc(text)}</text></svg>`;
-  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
-}
-// readable text colour for a coloured chip (black on light fills, white on dark)
+// All node badges are SVG drawn into a viewBox while width/height attrs are 3×
+// the logical size — the browser rasterises at 3× then cytoscape scales down:
+// crisp on HiDPI, no blur. Style is light & modern: thin strokes, soft fills.
+const SVGSC=3;
+const BADGE_FONT="-apple-system,Segoe UI,Roboto,sans-serif";
+function svgTag(w,h,body){return 'data:image/svg+xml;utf8,'+encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='${w*SVGSC}' height='${h*SVGSC}' viewBox='0 0 ${w} ${h}'>${body}</svg>`);}
+function hexToRgba(hex,a){const[r,g,b]=hexToRgb(hex);return `rgba(${r},${g},${b},${a})`;}
+// readable text colour for a coloured chip (dark on light fills, white on dark)
 function idealText(hex){const[r,g,b]=hexToRgb(hex);return (0.299*r+0.587*g+0.114*b)>150?'#1b2330':'#ffffff';}
-// rounded "pill" whose width grows with the label (capped). Used for state,
-// estimate and sprint chips on graph nodes.
-function pillW(text,max){return Math.round(Math.min(max||150,Math.max(30,12+String(text).length*7.2)));}
-function pillUri(text,color,max){const w=pillW(text,max);
-  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='22'>`+
-    `<rect x='1' y='1' rx='10' ry='10' width='${w-2}' height='20' fill='${color}'/>`+
-    `<text x='${w/2}' y='15.5' font-size='12' font-family='sans-serif' font-weight='700' fill='${idealText(color)}' text-anchor='middle'>${esc(text)}</text></svg>`;
-  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);}
-const statePillW=t=>pillW(t),statePillUri=(t,c)=>pillUri(t,c);
-function avatarDataUri(name){               // circular initials avatar (white ring), top-right of a graph node
-  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44'>`+
-    `<circle cx='22' cy='22' r='19' fill='${personColor(name)}' stroke='#ffffff' stroke-width='2.5'/>`+
-    `<text x='22' y='29' font-size='18' font-family='sans-serif' font-weight='700' fill='#ffffff' text-anchor='middle'>${esc(personInitials(name))}</text></svg>`;
-  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+// flat "bookmark" ribbon (tag with a soft V-notch) carrying a short label
+function bookmarkUri(color,text,dir){
+  text=String(text);const fs=text.length>1?9:12,W=18,H=24;
+  const path=dir==='up'
+    ? `M2 ${H-1} L2 6 Q2 4 4 4 L${W-4} 4 Q${W-2} 4 ${W-2} 6 L${W-2} ${H-1} L${W/2} ${H-6} Z`
+    : `M2 3 Q2 1 4 1 L${W-4} 1 Q${W-2} 1 ${W-2} 3 L${W-2} ${H-4} L${W/2} ${H-9} L2 ${H-4} Z`;
+  const ty=dir==='up'?17:13;
+  return svgTag(W,H,`<path d='${path}' fill='${color}'/>`+
+    `<text x='${W/2}' y='${ty}' font-size='${fs}' font-family='${BADGE_FONT}' font-weight='600' fill='#ffffff' text-anchor='middle'>${esc(text)}</text>`);
 }
+// rounded "pill": soft tinted fill + thin same-colour border + coloured text (Excalidraw-ish)
+function pillW(text,max){return Math.round(Math.min(max||150,Math.max(26,10+String(text).length*6.4)));}
+function pillUri(text,color,max){const w=pillW(text,max),h=18,light=document.body.classList.contains('light');
+  const fill=light?hexToRgba(color,0.16):hexToRgba(color,0.28),txt=light?color:'#ffffff';
+  return svgTag(w,h,`<rect x='0.75' y='0.75' rx='${h/2}' ry='${h/2}' width='${w-1.5}' height='${h-1.5}' fill='${fill}' stroke='${color}' stroke-width='1.2'/>`+
+    `<text x='${w/2}' y='${h/2+3.6}' font-size='10.5' font-family='${BADGE_FONT}' font-weight='600' fill='${txt}' text-anchor='middle'>${esc(text)}</text>`);}
+const statePillW=t=>pillW(t),statePillUri=(t,c)=>pillUri(t,c);
+// assignee badge: same flat bookmark in the person's colour with their initials
+function avatarBadgeUri(name){return bookmarkUri(personColor(name),personInitials(name),'down');}
 // node tags: parse the ";"-list, take the short name of an iteration path
 function tagList_(s){return String(s||'').split(/;\s*/).map(t=>t.trim()).filter(Boolean);}
 function sprintShort(path){if(!path)return '';return sprintNames[path]||String(path).split('\\').pop();}
 function isOverdue(n){const d=(n.target||n.due||'').slice(0,10);return !!d&&d<new Date().toISOString().slice(0,10)&&!DONE_STATES.includes(n.state);}
 // a row of coloured tag dots (max 5, "+N" overflow) as one image
 function tagDotsUri(tagsStr){const ts=tagList_(tagsStr);if(!ts.length)return null;
-  const show=ts.slice(0,5),extra=ts.length-show.length,gap=14,pad=3;
-  const w=pad*2+show.length*gap+(extra>0?20:0);
-  let x=pad+5,dots='';
-  for(const t of show){dots+=`<circle cx='${x}' cy='9' r='5' fill='${personColor(t)}' stroke='#ffffff' stroke-width='1'/>`;x+=gap;}
-  if(extra>0)dots+=`<text x='${x}' y='13' font-size='11' font-family='sans-serif' font-weight='700' fill='#888' text-anchor='start'>+${extra}</text>`;
-  return {uri:'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='18'>${dots}</svg>`),w};}
+  const show=ts.slice(0,5),extra=ts.length-show.length,gap=13,pad=2,r=4.5;
+  const w=pad*2+show.length*gap+(extra>0?18:0),h=14;
+  let x=pad+r,dots='';
+  for(const t of show){dots+=`<circle cx='${x}' cy='${h/2}' r='${r}' fill='${personColor(t)}'/>`;x+=gap;}
+  if(extra>0)dots+=`<text x='${x-r}' y='${h/2+3.5}' font-size='9.5' font-family='${BADGE_FONT}' font-weight='600' fill='#9aa7b4' text-anchor='start'>+${extra}</text>`;
+  return {uri:svgTag(w,h,dots),w};}
 function assigneePeople(){const seen=new Set(),out=[];   // current user first, then the deduped roster
   [currentUser,...assignees].forEach(a=>{if(a&&!seen.has(a)){seen.add(a);out.push(a);}});return out;}
 function assigneePickerProvider(){
