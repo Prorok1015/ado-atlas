@@ -327,10 +327,11 @@ async function getIterations(){                     // sprint dates — fetched 
   return iterCache;
 }
 function isCurrentSprint(it){const t=new Date().toISOString().slice(0,10);return !!(it.start&&it.finish&&t>=it.start.slice(0,10)&&t<=it.finish.slice(0,10));}
-// <option> label for a sprint dropdown: 🔵 prefix for the current sprint + its date range.
+// <option> label for a sprint dropdown: a small "•" marks the current sprint (a
+// native <select> can't size/colour a real dot — only fixed-size emoji), + dates.
 function sprintOptLabel(it){
   const range=(it.start||it.finish)?`  (${(it.start||'?').slice(0,10)} → ${(it.finish||'?').slice(0,10)})`:'';
-  return (isCurrentSprint(it)?'🔵 ':'')+it.name+range;
+  return (isCurrentSprint(it)?'• ':'')+it.name+range;
 }
 const BOARD_TIME_CAP=200;
 function hh(h){return h>=24?(Math.floor(h/24)+'d '+Math.round(h%24)+'h'):(Math.round(h*10)/10+'h');}
