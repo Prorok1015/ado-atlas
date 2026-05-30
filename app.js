@@ -526,8 +526,9 @@ function renderSprint(path){
   const el=$('sprintview');el.innerHTML='';
   const se=items.reduce((s,n)=>s+(n.est||0),0);
   const top=document.createElement('div');top.className='gtop';
+  const curMark=isCurrentSprint(it)?`<span class="curdot" title="current sprint"></span>`:'';
   top.innerHTML=`<button class="btn" id="g_back" title="back to board">←</button>`+
-    `<b>${esc(it.name)}</b> <span style="color:var(--muted)">${it.start.slice(0,10)} → ${it.finish.slice(0,10)} · ${items.length} items`+
+    `<span style="display:inline-flex;align-items:center;gap:6px">${curMark}<b>${esc(it.name)}</b></span> <span style="color:var(--muted)">${it.start.slice(0,10)} → ${it.finish.slice(0,10)} · ${items.length} items`+
     `${se?' · Σest '+(Math.round(se*10)/10)+'h':''} · <span id="g_act">Σ⏱ …</span></span>`+
     (canEditSprint?`<button class="btn" id="g_editdates" title="edit sprint dates">✎ dates</button>`:'')+
     `<button class="btn${sprintGroup==='assignee'?' on':''}" id="g_group" title="group rows by assignee" style="margin-left:auto">by assignee</button>`;

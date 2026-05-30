@@ -74,6 +74,7 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 #sprintview{position:absolute;inset:0;overflow:auto;display:none;padding:10px}
 #sprintview.show{display:block}
 .gtop{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.curdot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none}   /* current-sprint marker */
 .ghead{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
 .glabel{width:220px;flex:none;padding:4px 8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gdays{display:flex;flex:1}
