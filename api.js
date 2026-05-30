@@ -724,14 +724,27 @@ async function updateItem(wid, body) {
   if ("desc" in body) fields.desc = AdoLib.mdToHtml(body.desc);
   if ("ac" in body) fields.ac = AdoLib.mdToHtml(body.ac);
   if (!Object.keys(fields).length) throw new Error("no fields");
-  // ADO REST quirk: op:"add" with an empty value is silently dropped for some
-  // fields (notably System.Tags — clearing all/some tags appears to succeed but
-  // doesn't persist). Use op:"remove" to clear; op:"add" otherwise.
-  const ops = Object.entries(fields).map(([k, v]) => {
+  // ADO REST quirks:
+  // 1. op:"add" with an empty value is silently dropped on some fields (e.g.
+  //    clearing dates) — use op:"remove" to clear.
+  // 2. System.Tags is especially buggy: op:"add" with the new (shorter) list
+  //    may MERGE with the existing tags instead of replacing them, so a
+  //    deletion appears to succeed but the tag comes back on reopen. The
+  //    robust pattern is to remove the field first, then add the new value:
+  //    each op is applied sequentially, so the second op writes onto a clean
+  //    slate. Same trick handles "clear all" (just the remove).
+  const ops = [];
+  for (const [k, v] of Object.entries(fields)) {
     const path = `/fields/${resolveField(k)}`;
-    if (v === "" || v == null) return { op: "remove", path };
-    return { op: "add", path, value: v };
-  });
+    if (k === "tags") {
+      ops.push({ op: "remove", path });
+      if (v !== "" && v != null) ops.push({ op: "add", path, value: v });
+    } else if (v === "" || v == null) {
+      ops.push({ op: "remove", path });
+    } else {
+      ops.push({ op: "add", path, value: v });
+    }
+  }
   const proj = await projUrl();
   const d = await req("PATCH", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`, ops, "application/json-patch+json");
   return { id: d.id, rev: d.rev };
