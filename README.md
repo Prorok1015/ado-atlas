@@ -59,8 +59,9 @@ so it is not tied to any particular organization or project.
   recorded locally; it does not change anything if left blank.
 
 The PAT is stored in `chrome.storage.local` on this machine only — it is not
-synced via your Google account. Reopen the modal any time with the **⚙** button
-in the toolbar (e.g. to rotate the PAT or switch to another org/project).
+synced via your Google account. Reopen the modal any time from the **⚙ settings
+menu** (top-right of the toolbar) → **Connection** (e.g. to rotate the PAT or
+switch to another org/project).
 
 If the PAT expires or is revoked while you're working, the next request returns
 HTTP 401 and the setup modal reopens automatically asking for a fresh token.
@@ -80,18 +81,19 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - Large result sets are capped at 2000 items; when that happens the status bar
   shows `· capped, narrow the filters` so you know you're not seeing everything.
 - **Export** (toolbar): download the current filtered view as **CSV** or **JSON**.
-- **Display options** (the **⋯** button) groups the less-frequently-touched
-  controls in a small popover: **Auto-refresh**, **Timezone**, and **Work hours**.
-- **Auto-refresh** (in the **⋯** menu) re-fetches the list every 1 / 5 / 15 min
+- **⚙ Settings menu** (top-right of the toolbar) groups the less-frequently-used
+  controls in one popover: **Theme** (dark → light → **auto**, follows your OS),
+  **Auto-refresh**, **Timezone**, **Work hours**, and the **Connection** button
+  that reopens the PAT / org / project modal.
+- **Auto-refresh** (in the **⚙** menu) re-fetches the list every 1 / 5 / 15 min
   (paused while you have unsaved edits, are dragging a card, or the tab is hidden).
-- **Theme** button cycles dark → light → **auto** (follows your OS setting).
 - **Bulk edit** (Tree view): tick the checkboxes on tree rows — a bar appears
   letting you set State, Sprint, Priority, or Assignee on every selected item at
   once (applied in parallel, then the list refreshes).
 - **Command palette** — press **Ctrl/Cmd-K** to fuzzy-find any loaded item by id
   or title, or run a quick command (switch view, refresh, export, theme,
   settings). ↑/↓ to navigate, Enter to open, Esc to close.
-- **Work hours** (`N–N`, in the **⋯** menu next to the timezone): the local
+- **Work hours** (`N–N`, in the **⚙** menu next to the timezone): the local
   Mon–Fri window used to compute "active time" on cards and in the sprint Gantt.
 - Requests **retry automatically** on throttling (HTTP 429, honoring
   `Retry-After`) and transient `5xx` errors with exponential backoff.

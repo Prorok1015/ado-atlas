@@ -889,6 +889,7 @@ function applyTheme(mode){
   const light=mode==='light'||(mode==='auto'&&!systemDark());
   document.body.classList.toggle('light',light);
   $('theme').title='theme: '+mode+(mode==='auto'?' (follows system)':'')+' — click to change';
+  const tl=$('theme_label');if(tl)tl.textContent=mode;
 }
 function cycleTheme(){
   let m=localStorage.getItem('ado.theme')||'dark';
@@ -1168,7 +1169,7 @@ function wireSetup(){
   $('oauth-tenant-mode').onchange=updateTenantField;
   $('oauth-copy').onclick=()=>{const i=$('oauth-redirect');try{navigator.clipboard.writeText(i.value);$('oauth-copy').textContent='copied';setTimeout(()=>{$('oauth-copy').textContent='copy';},1200);}catch(e){if(i.select)i.select();}};
   $('setup-cancel').onclick=hideSetup;
-  $('settingsbtn').onclick=()=>showSetup(true);
+  $('settingsbtn').onclick=()=>{const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}showSetup(true);};
   $('patbadge').onclick=()=>showSetup(true);
 }
 

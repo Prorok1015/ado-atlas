@@ -154,12 +154,16 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
 #export{margin-left:auto}   /* pin the Export + PAT + legend group to the right edge */
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
-/* ---- overflow "⋯" display-options popover (auto-refresh, timezone, work hours) ---- */
+/* ---- combined settings popover (theme, auto-refresh, timezone, work hours, connection) ---- */
 .popwrap{position:relative;display:inline-flex}
-#morepanel{position:absolute;top:calc(100% + 6px);right:0;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:9px;min-width:200px;box-shadow:0 6px 22px rgba(0,0,0,.4)}
+#morepanel{position:absolute;top:calc(100% + 6px);right:0;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:9px;min-width:230px;box-shadow:0 6px 22px rgba(0,0,0,.4)}
 #morepanel .mrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
 #morepanel .ml{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
 #morepanel select{min-width:92px}
+#morepanel #theme{min-width:92px;text-align:left}
+#morepanel #theme #theme_label{text-transform:capitalize}
+#morepanel .mrow-full{margin-top:2px;padding-top:9px;border-top:1px solid var(--line)}
+#morepanel .mrow-full .btn{width:100%}
 #morebtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 #filterpanel{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;display:flex;flex-direction:column;gap:6px}
