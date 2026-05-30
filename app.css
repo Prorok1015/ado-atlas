@@ -289,6 +289,9 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 /* reusable parent field: current-parent card + searchable list (editor + New modal) */
 .prow-field{display:flex;gap:4px;align-items:stretch}
 .pcard{flex:1;display:flex;align-items:center;gap:6px;text-align:left;overflow:hidden;min-height:32px;padding:5px 9px}
+/* line every panel field up with the CardPicker card (32px tall) so rows align */
+#side select,#side>input,#side .row input,#newitem-box select,#newitem-box input,#child_form input,#child_form select{min-height:32px}
+.prow-field .btn{min-height:32px}
 .pcard .pcid{color:var(--muted);flex:none;font-size:12px}
 .pcard .pctitle{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pcard .pcstate{font-size:10px;border-radius:10px;padding:1px 7px;color:#fff;flex:none}

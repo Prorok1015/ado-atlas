@@ -322,17 +322,17 @@ function gstyle(){return [
    'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ↓'+k:'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':'#fff','text-wrap':'wrap','text-max-width':'190px','font-size':'11px','text-valign':'center',
    'width':'210px','height':'label','padding':'10px',
-   // assignee avatar tucked into the top-right corner (initials on a coloured disc)
+   // assignee avatar: ringed disc inset into the top-right corner, fully inside the node
    'background-image':e=>{const a=e.data('assigned');return a?avatarDataUri(a):'none';},
-   'background-image-containment':'over','background-clip':'none','background-fit':'none',
-   'background-width':'22px','background-height':'22px','background-position-x':'100%','background-position-y':'0%',
+   'background-image-containment':'inside','background-clip':'none','background-fit':'none',
+   'background-width':'26px','background-height':'26px','background-position-x':'94%','background-position-y':'14%',
    'border-width':e=>((e.data('priority')||9)<=2?4:2),'border-color':e=>prioColor(e.data('priority'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
-   'background-image':e=>{const a=e.data('assigned');return a?avatarDataUri(a):'none';},   // same corner avatar on container nodes
-   'background-image-containment':'over','background-clip':'none','background-fit':'none',
-   'background-width':'22px','background-height':'22px','background-position-x':'100%','background-position-y':'0%',
+   'background-image':e=>{const a=e.data('assigned');return a?avatarDataUri(a):'none';},   // same ringed corner avatar on container nodes
+   'background-image-containment':'inside','background-clip':'none','background-fit':'none',
+   'background-width':'26px','background-height':'26px','background-position-x':'99%','background-position-y':'6px',
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ↓'+k:'')+' · '+e.data('type')+' — '+e.data('title');},
@@ -1169,9 +1169,10 @@ function personColor(name){let h=0;name=String(name);for(let i=0;i<name.length;i
 function personInitials(name){const p=String(name).trim().split(/\s+/).filter(Boolean);return (((p[0]||'')[0]||'')+(p.length>1?(p[p.length-1][0]||''):'')).toUpperCase()||'?';}
 function personChip(name){return `<i class="pav" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}
 function personChipT(name){return `<i class="pav pavsm" title="${esc(name)}" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}   // small, tooltipped — board cards
-function avatarDataUri(name){               // tiny circular initials avatar for graph nodes (cytoscape background-image)
-  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='20' fill='${personColor(name)}'/>`+
-    `<text x='20' y='27' font-size='19' font-family='sans-serif' font-weight='700' fill='#fff' text-anchor='middle'>${esc(personInitials(name))}</text></svg>`;
+function avatarDataUri(name){               // circular initials avatar (white ring) for graph nodes — cytoscape background-image
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44'>`+
+    `<circle cx='22' cy='22' r='19' fill='${personColor(name)}' stroke='#ffffff' stroke-width='2.5'/>`+
+    `<text x='22' y='29' font-size='18' font-family='sans-serif' font-weight='700' fill='#ffffff' text-anchor='middle'>${esc(personInitials(name))}</text></svg>`;
   return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
 }
 function assigneePeople(){const seen=new Set(),out=[];   // current user first, then the deduped roster
