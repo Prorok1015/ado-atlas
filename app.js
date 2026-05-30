@@ -1105,16 +1105,32 @@ function dirty(){
 function refreshDirty(){const d=dirty();const b=$('s_save');b.disabled=!d;b.textContent=d?'● Save':'Saved';}
 function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:$('s_desc').value,ac:$('s_ac').value,prio:$('s_prio').value,
   iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};}
-// editor tags: chips with × remove + a free-text adder; value() is ADO's "a; b" string
-const tagsEditor=(function(){let cur=[];
+// editor tags: chips with × remove + a "＋" bubble that reveals an inline input;
+// the input commits on Enter/comma/blur and hides again. value() is ADO's "a; b".
+const tagsEditor=(function(){let cur=[],adding=false;
   const norm=s=>String(s||'').split(/[;,]/).map(t=>t.trim()).filter(Boolean);
   const uniq=a=>{const seen=new Set(),o=[];a.forEach(t=>{const k=t.toLowerCase();if(!seen.has(k)){seen.add(k);o.push(t);}});return o;};
+  function commit(v){const a=norm(v);if(a.length){cur=uniq(cur.concat(a));refreshDirty();}}
   function render(){const box=$('s_tags');
-    box.innerHTML=cur.length?cur.map((t,i)=>`<span class="tagchip" style="background:${personColor(t)}">${esc(t)}<b data-i="${i}" title="remove">×</b></span>`).join(''):'<span class="pcnone">no tags</span>';
-    box.querySelectorAll('b[data-i]').forEach(x=>x.onclick=()=>{cur.splice(+x.dataset.i,1);render();refreshDirty();});}
+    let html=cur.map((t,i)=>`<span class="tagchip" style="background:${personColor(t)}">${esc(t)}<b data-i="${i}" title="remove">×</b></span>`).join('');
+    if(!cur.length&&!adding)html='<span class="pcnone">no tags</span>';
+    html+=adding
+      ? `<input id="s_taginp" class="taginp" list="tagsdl" placeholder="tag…" autocomplete="off">`
+      : `<button type="button" class="tagadd" id="s_tagplus" title="add a tag">＋</button>`;
+    box.innerHTML=html;
+    box.querySelectorAll('b[data-i]').forEach(x=>x.onclick=()=>{cur.splice(+x.dataset.i,1);render();refreshDirty();});
+    if(adding){const inp=$('s_taginp');inp.focus();
+      const done=keep=>{commit(inp.value);adding=false;render();if(keep)setTimeout(()=>{adding=true;render();},0);};
+      inp.addEventListener('keydown',e=>{
+        if(e.key==='Enter'||e.key===','){e.preventDefault();commit(inp.value);inp.value='';render();adding=true;$('s_taginp').focus();}  // keep adding
+        else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();adding=false;render();}
+        else if(e.key==='Backspace'&&!inp.value&&cur.length){cur.pop();render();adding=true;$('s_taginp').focus();refreshDirty();}});
+      inp.addEventListener('blur',()=>{commit(inp.value);adding=false;render();});
+    }else{const p=$('s_tagplus');if(p)p.onclick=()=>{adding=true;render();};}
+  }
   return {render,
-    add(s){const a=norm(s);if(a.length){cur=uniq(cur.concat(a));render();refreshDirty();}},
-    set(s,silent){cur=uniq(norm(s));render();if(!silent)refreshDirty();},
+    add(s){commit(s);render();},
+    set(s,silent){cur=uniq(norm(s));adding=false;render();if(!silent)refreshDirty();},
     value(){return cur.join('; ');}};
 })();
 
@@ -2176,9 +2192,6 @@ async function initialBoot(postSetup){
   assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker
   sprintEditor.wire();sprintNew.wire();                           // sprint card + iteration picker
   assignedEditor.render();assignedChild.render();assignedNew.render();sprintEditor.render();sprintNew.render();tagsEditor.render();   // placeholder cards before first use
-  $('s_tagadd').addEventListener('keydown',e=>{                      // Enter or comma commits a tag
-    if(e.key==='Enter'||e.key===','){e.preventDefault();tagsEditor.add(e.target.value);e.target.value='';}});
-  $('s_tagadd').addEventListener('blur',e=>{if(e.target.value.trim()){tagsEditor.add(e.target.value);e.target.value='';}});
   ['s_title','s_state','s_prio','s_desc','s_ac','s_start','s_target','s_due','s_est'].forEach(id=>{
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
   document.addEventListener('keydown',e=>{
