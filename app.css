@@ -223,14 +223,14 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 #morebtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 #filterpanel{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;display:flex;flex-direction:column;gap:6px}
-.frow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.frow{display:flex;align-items:center;gap:8px 6px;flex-wrap:wrap}   /* more row-gap so wrapped chips don't crowd */
 .frow .fl{width:74px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;flex:none}
 /* search + sort row at the top of the filter panel */
 #filter-query{padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:2px}
 #filter-query .fsearch{flex:1;width:auto;min-width:160px;max-width:340px}
 #filter-query .fl-sort{width:auto;margin-left:6px}
 #filter-query #refreshbtn{margin-left:auto}   /* park Refresh at the right end of the row */
-.chip{border:1px solid var(--line);border-radius:14px;padding:2px 10px;font-size:12px;cursor:pointer;background:var(--field);color:var(--txt);user-select:none}
+.chip{border:1px solid var(--line);border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer;background:var(--field);color:var(--txt);user-select:none}
 .chip.in{background:#1e7a44;border-color:#1e7a44;color:#fff}
 .chip.out{background:#9b2c2c;border-color:#9b2c2c;color:#fff;text-decoration:line-through}
 #filt_count{color:var(--accent);font-weight:700}
