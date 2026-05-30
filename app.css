@@ -20,7 +20,13 @@ body{background:var(--bg);color:var(--txt);font:13px/1.4 -apple-system,Segoe UI,
 .patbadge.patbad{color:#e06c75;border-color:#e06c7566}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{background:transparent;color:var(--muted);border:0;padding:4px 10px;cursor:pointer;font:inherit;font-size:12px}
+.seg button+button{border-left:1px solid var(--line)}   /* visually separate the segmented buttons */
+.seg button:hover{background:var(--panel2);color:var(--txt)}
 .seg button.on{background:var(--accent);color:#fff}
+.seg button.on:hover{background:var(--accent);color:#fff}
+/* Export buttons are actions (never "on") — keep them readable + give clear hover feedback */
+#export button{color:var(--txt)}
+#export button:hover{background:var(--panel2);color:var(--accent)}
 .btn{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer;font:inherit;font-size:12px}
 .btn:hover{border-color:var(--accent)}
 select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 7px;font:inherit;font-size:12px}
