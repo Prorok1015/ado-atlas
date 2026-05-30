@@ -68,6 +68,9 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 
 ## Views & filters
 
+- **Current project** — a pill next to the **ADO Atlas** title shows the active
+  `org / project` so you always know which one you're looking at; click it to
+  switch (opens the connection settings).
 - **Tree / Graph / Board** toggle in the toolbar. The Board groups cards **by
   Sprint**, **by State** (a classic Kanban — drag a card between columns to
   change its state), or **by Assignee**. Dragging also works to change sprint

@@ -1162,6 +1162,15 @@ async function loadSetupProjects(){
    expiry date and we count down from it. */
 function patDaysLeft(expiry){return AdoLib.patDaysLeft(expiry);}   // pure logic in lib.js
 function patDaysLabel(n){return n>=60?(Math.round(n/30)+'mo'):(n+'d');}
+async function updateProjectBadge(){
+  const el=$('projbadge');if(!el)return;
+  let org='',project='';
+  try{const c=await api.getConfig();org=c.org||'';project=c.project||'';}catch(e){}
+  if(!project){el.style.display='none';return;}
+  el.style.display='inline-flex';
+  el.innerHTML=(org?`<span class="pb-org">${esc(org)}</span><span class="pb-sep">/</span>`:'')+`<span class="pb-proj">${esc(project)}</span>`;
+  el.title=`Current project: ${org?org+' / ':''}${project} — click to switch`;
+}
 async function updatePatBadge(){
   const el=$('patbadge');if(!el)return;
   let exp='';try{exp=(await api.getConfig()).patExpiry||'';}catch(e){}
@@ -1234,11 +1243,13 @@ function wireSetup(){
   $('setup-cancel').onclick=hideSetup;
   $('settingsbtn').onclick=()=>{const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}showSetup(true);};
   $('patbadge').onclick=()=>showSetup(true);
+  $('projbadge').onclick=()=>showSetup(true);
 }
 
 /* ---------- main init (runs after PAT is verified) ---------- */
 let _booted=false;
 async function initialBoot(postSetup){
+  updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
     iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];
     await loadIdentity();await refresh();warnIfPatExpiring();return;
