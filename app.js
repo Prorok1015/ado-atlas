@@ -117,8 +117,9 @@ function filterCount(){let n=0;for(const k in fstate)n+=Object.keys(fstate[k]).l
 function updateFilterCount(){const n=filterCount();$('filt_count').textContent=n?('('+n+')'):'';}
 function renderFilters(){
   const el=$('filterchips');el.innerHTML='';
-  // toggle the static "✕ Clear all" in the Find row — shown only when any filter is active
-  const all=$('filt_clear_all');if(all)all.style.display=filterCount()>0?'inline-flex':'none';
+  // toggle the static "✕ Clear all" in the Find row — visibility (not display)
+  // keeps its slot reserved so the search input never shifts when filters appear
+  const all=$('filt_clear_all');if(all)all.style.visibility=filterCount()>0?'visible':'hidden';
   FILTERS.forEach(f=>{
     const vals=f.values()||[];
     if(!vals.length&&!Object.keys(fstate[f.key]||{}).length)return;   // skip empty rows (e.g. tags/sprints not loaded yet)
