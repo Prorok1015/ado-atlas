@@ -1,21 +1,39 @@
-MIT License
+ADO Atlas — Proprietary Software License
+Copyright (c) 2026 Zakhar Lebediuk. All rights reserved.
 
-Copyright (c) 2026 Zakhar Lebediuk
+This software, including its source code, assets, and documentation (the
+"Software"), is the proprietary and confidential property of the copyright
+holder. It is made available in source-visible form only so that it can be
+reviewed and audited; this does NOT place it in the public domain and does NOT
+grant any license to it.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+No license or right is granted to any person to use, copy, reproduce, modify,
+adapt, translate, merge, publish, distribute, sublicense, sell, rent, lease,
+host as a service, or create derivative works of the Software, in whole or in
+part, by any means, except under a separate license agreement signed in writing
+by the copyright holder. All rights not expressly granted are reserved.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Viewing the Software — for example, where it is published in a public source
+repository, or where it is delivered to your browser as part of the ADO Atlas
+extension — does not grant you any license to it. You may not extract, reuse, or
+incorporate any portion of the Software into your own projects, products, or
+services.
+
+End users who install the official ADO Atlas extension from an authorized
+distribution channel (such as the Chrome Web Store) may run it for its intended
+personal or internal purpose, subject to that channel's terms. This permission
+to run the official build does not transfer ownership or grant any rights to the
+source code.
+
+Third-party components bundled under the `vendor/` directory are owned by their
+respective authors and licensed separately under their own terms (see
+THIRD-PARTY-NOTICES.md). Those components are not subject to this license.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For commercial licensing or other permissions, contact: prorok1015@gmail.com

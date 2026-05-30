@@ -137,4 +137,8 @@ npm test        # or: node tests/lib.test.js
 
 ## License
 
-[MIT](LICENSE).
+**Proprietary — © 2026 Zakhar Lebediuk, all rights reserved.** The source is
+visible for review only; no rights to use, copy, modify, or redistribute it are
+granted. See [LICENSE](LICENSE). Bundled third-party libraries in `vendor/`
+remain under their own MIT licenses — see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+For commercial licensing, contact prorok1015@gmail.com.

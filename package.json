@@ -2,6 +2,8 @@
   "name": "ado-atlas",
   "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
+  "author": "Zakhar Lebediuk",
   "description": "ADO Atlas Chrome extension — dev tooling (unit tests for lib.js).",
   "scripts": {
     "test": "node tests/lib.test.js",
