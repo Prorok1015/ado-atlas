@@ -121,12 +121,10 @@
          <code>chrome.storage.local</code> on this machine only.</p>
       <label>Personal Access Token</label>
       <input id="setup-pat" type="password" placeholder="Paste your PAT here" style="width:100%">
-      <p class="hint" id="setup-load-hint">Paste a PAT — your organizations and projects load automatically. Or just type them in.</p>
+      <p class="hint" id="setup-load-hint">Paste a PAT, then fill in your Organization and Project (both are in your <code>dev.azure.com/&lt;org&gt;/&lt;project&gt;</code> URL). The project list fills in automatically once the org is set.</p>
       <label>PAT expiry <span style="color:var(--muted);font-weight:400">(optional — copy from the token page for a validity countdown)</span></label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input id="setup-expiry" type="date" style="flex:0 0 auto;margin:0">
-        <span id="setup-expiry-info" style="color:var(--muted);font-size:12px;line-height:1"></span>
-      </div>
+      <input id="setup-expiry" type="date" style="width:100%;margin:0">
+      <div id="setup-expiry-info" style="color:var(--muted);font-size:12px;margin-top:3px"></div>
     </div>
 
     <div id="auth-oauth" style="display:none">

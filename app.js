@@ -984,7 +984,7 @@ async function warnIfPatExpiring(){
    Lets the user CHOOSE an org/project after pasting a PAT instead of typing.
    Both calls can legitimately fail for a narrowly-scoped PAT, so the inputs
    stay free-text and we just fall back to manual entry on error. */
-const SETUP_HINT='Paste a PAT — your organizations and projects load automatically. Or just type them in.';
+const SETUP_HINT='Paste a PAT, then fill in your Organization and Project (both are in your dev.azure.com/&lt;org&gt;/&lt;project&gt; URL). The project list fills in automatically once the org is set.';
 let patAutoTimer=null;   // debounce for auto-loading org/project after a PAT is pasted
 function fillDatalist(id,items){
   const dl=$(id);if(!dl)return;
@@ -1078,10 +1078,14 @@ async function saveSetup(){
 function wireSetup(){
   window.addEventListener('ado-401',handle401);   // PAT expired/revoked mid-session → reopen setup
   $('setup-save').onclick=saveSetup;
-  $('setup-pat').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadSetupOrgs();}});  // Enter on PAT loads orgs
-  $('setup-pat').addEventListener('input',()=>{   // auto-load org/project shortly after a PAT is pasted/typed
+  $('setup-pat').addEventListener('input',()=>{   // after a PAT is pasted: persist it and (if an org is set) auto-list its projects
     clearTimeout(patAutoTimer);
-    patAutoTimer=setTimeout(()=>{if(setupAuthMode==='pat'&&$('setup-pat').value.trim())loadSetupOrgs();},700);
+    patAutoTimer=setTimeout(async()=>{
+      if(setupAuthMode!=='pat')return;
+      const pat=$('setup-pat').value.trim();if(!pat)return;
+      try{await api.setConfig({authMode:'pat',pat});}catch(e){}
+      if($('setup-org').value.trim())loadSetupProjects();   // dev.azure.com endpoint — no sign-in redirect
+    },700);
   });
   $('setup-org').addEventListener('change',loadSetupProjects);   // org chosen → fetch its projects
   $('setup-expiry').addEventListener('change',updateSetupExpiryInfo);
@@ -1240,7 +1244,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
   wireSetup();
   const cfg=await api.getConfig();
   projectName=cfg.project;                  // "no sprint" root path fallback
-  const hasAuth=cfg.authMode==='oauth'?(!!cfg.oauthAccess||!!cfg.oauthRefresh):!!cfg.pat;
+  const hasAuth=cfg.authMode==='oauth'?(!!cfg.oauthAccess||!!cfg.oauthRefresh):(!!cfg.pat&&!!cfg.org&&!!cfg.project);
   if(!hasAuth){showSetup(false);return;}    // first-run flow takes over
   // Validate the stored credentials before showing the UI: a stale token would
   // otherwise surface as a wall of 401s after the first refresh.
