@@ -1590,22 +1590,33 @@ const BAR_ITEMS=[
   {id:'empty_btn',label:'Empty-columns toggle (∅)'},
   {id:'filt_btn',label:'Filters'},
   {id:'fit',label:'Fit graph'},
+  {id:'bar-spacer',label:'↔ Right-align spacer (flexible gap)'},
   {id:'export',label:'Export (CSV / JSON)'},
   {id:'patbadge',label:'PAT badge'},
   {id:'legend',label:'Type legend'},
   {id:'settings-wrap',label:'Settings menu (⚙)'},
 ];
-const BAR_LOCKED=new Set(['settings-wrap']);       // never hidden — it's how you reach this dialog
+const BAR_LOCKED=new Set(['settings-wrap','bar-spacer']);   // never hidden (settings = entry point; spacer = right-align anchor)
 let barOrder=BAR_ITEMS.map(i=>i.id), barHidden=new Set();
 function loadBarLayout(){
   try{const o=JSON.parse(localStorage.getItem('ado.barOrder')||'null');if(Array.isArray(o))barOrder=o;}catch(e){}
   try{const h=JSON.parse(localStorage.getItem('ado.barHidden')||'null');if(Array.isArray(h))barHidden=new Set(h.filter(id=>!BAR_LOCKED.has(id)));}catch(e){}
 }
 function saveBarLayout(){try{localStorage.setItem('ado.barOrder',JSON.stringify(barOrder));localStorage.setItem('ado.barHidden',JSON.stringify([...barHidden]));}catch(e){}}
-// Ordered id list = saved order (valid ids) then any default not yet placed (new in a future version).
-function barOrderedIds(){const known=new Set(BAR_ITEMS.map(i=>i.id)),seen=new Set(),out=[];
-  barOrder.forEach(id=>{if(known.has(id)&&!seen.has(id)){seen.add(id);out.push(id);}});
-  BAR_ITEMS.forEach(i=>{if(!seen.has(i.id)){seen.add(i.id);out.push(i.id);}});return out;}
+// Ordered id list = the saved order, with any default id missing from it (new in
+// a later version) re-inserted near its default neighbours rather than dumped at
+// the end — so e.g. the spacer lands in the right place for pre-existing layouts.
+function barOrderedIds(){
+  const def=BAR_ITEMS.map(i=>i.id),defSet=new Set(def);
+  const result=barOrder.filter((id,i)=>defSet.has(id)&&barOrder.indexOf(id)===i);
+  def.forEach((id,i)=>{
+    if(result.includes(id))return;
+    let at=result.length;
+    for(let j=i-1;j>=0;j--){const k=result.indexOf(def[j]);if(k>=0){at=k+1;break;}}
+    result.splice(at,0,id);
+  });
+  return result;
+}
 function applyBarLayout(){
   const bar=$('bar');if(!bar)return;
   barOrderedIds().forEach(id=>{const el=$(id);if(el)bar.appendChild(el);});   // reorder (h1 isn't listed → stays first)
