@@ -268,7 +268,7 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .pcnone{color:var(--muted)}
 .ppick{margin-top:4px;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden}
 .ppick .psearch{width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;color:var(--txt);padding:8px 10px;margin:0;outline:none}
-.ppick .presults{max-height:240px;overflow:auto}
+.ppick .presults{max-height:150px;overflow:auto}   /* ~5 rows; JS refines to exactly 5 */
 .ppick .prow{padding:6px 10px;font-size:12px}
 .ppick .prow .pkind{width:auto;max-width:74px;overflow:hidden;text-overflow:ellipsis}
 

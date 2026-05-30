@@ -902,7 +902,7 @@ function createParentField(base,opts){
   const getExclude=opts.getExcludeId||(()=>null);   // id that can't be the parent (e.g. the item itself)
   const V=()=>$(base),Card=()=>$(base+'_card'),Pick=()=>$(base+'_pick'),
         Search=()=>$(base+'_search'),Results=()=>$(base+'_results'),Open=()=>$(base+'_open');
-  let idx=0,rows=[];
+  let idx=0,rows=[],searchTimer=null,searchTok=0,searching=false;
   function render(){
     const v=V().value.trim(),card=Card(),openBtn=Open();
     if(!v){card.innerHTML='<span class="pcnone">(no parent)</span>';if(openBtn)openBtn.style.visibility='hidden';return;}
@@ -931,7 +931,32 @@ function createParentField(base,opts){
     }
     return out;
   }
-  function results(q){rows=matches(q);idx=0;draw();}
+  // Look up items the local tree hasn't loaded: a numeric query fetches that id,
+  // otherwise a server-side title search.
+  async function apiSearch(term){
+    const m=term.match(/^#?(\d+)$/);
+    if(m){try{const it=await api.item(parseInt(m[1],10));return it?[it]:[];}catch(e){return [];}}
+    try{return (await api.search({text:term}))||[];}catch(e){return [];}
+  }
+  function results(q){
+    rows=matches(q);idx=0;
+    clearTimeout(searchTimer);const tok=++searchTok;searching=false;
+    const term=(q||'').trim();
+    if(term.length>=2||/^#?\d+$/.test(term)){          // hit the API for anything not loaded locally
+      searching=true;
+      searchTimer=setTimeout(async()=>{
+        const found=await apiSearch(term);
+        if(tok!==searchTok)return;                     // a newer query superseded this one
+        const ex=getExclude(),have=new Set(rows.filter(r=>r.node).map(r=>r.node.id));
+        found.slice(0,30).forEach(it=>{if(!it||!it.id||it.id===ex)return;
+          store.nodes[it.id]=store.nodes[it.id]||it;
+          if(!have.has(it.id)){rows.push({node:it});have.add(it.id);}});
+        rows=rows.filter(r=>!(r.rawId!=null&&have.has(r.rawId)));   // drop "Use #id" once the item is resolved
+        idx=Math.max(0,Math.min(idx,rows.length-1));searching=false;draw();
+      },300);
+    }
+    draw();
+  }
   function draw(){
     const list=Results();
     list.innerHTML=rows.map((r,i)=>{
@@ -940,11 +965,13 @@ function createParentField(base,opts){
       if(r.rawId!=null)return `<div class="prow${on}" data-i="${i}"><span class="pkind">id</span><span class="ptitle">Use #${r.rawId}</span></div>`;
       const n=r.node,badge=n.state?`<span class="pbadge" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'';
       return `<div class="prow${on}" data-i="${i}"><span class="pkind">${esc(n.type||'item')}</span><span class="ptitle">#${n.id} ${esc(n.title||'')}</span>${badge}</div>`;
-    }).join('');
+    }).join('')+(searching?'<div class="prow"><span class="pkind"></span><span class="ptitle pcnone">searching…</span></div>':'');
     list.querySelectorAll('.prow[data-i]').forEach(r=>{
       r.onmousedown=e=>{e.preventDefault();idx=+r.dataset.i;pick();};
       r.onmousemove=()=>{if(idx!==+r.dataset.i){idx=+r.dataset.i;highlight();}};
     });
+    const first=list.querySelector('.prow[data-i]');     // cap the visible window at ~5 rows, rest scrolls
+    if(first)list.style.maxHeight=(first.offsetHeight*5)+'px';
   }
   function highlight(){Results().querySelectorAll('.prow[data-i]').forEach(r=>r.classList.toggle('on',+r.dataset.i===idx));}
   function move(d){if(!rows.length)return;idx=(idx+d+rows.length)%rows.length;highlight();

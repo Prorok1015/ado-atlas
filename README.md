@@ -164,10 +164,11 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 Click any item to open the side editor. Beyond the usual fields:
 
 - **Parent** — shown as a card (type dot, id, title, state) for the current
-  parent. Click it to open a searchable picker — type an id or title to find any
-  loaded item, pick a result, or choose **(no parent)** to detach. Save applies
-  the re-parent and the tree/graph hierarchy updates. The **↗** button opens the
-  parent.
+  parent. Click it to open a searchable picker — it matches loaded items
+  instantly and, as you type, also runs a **server-side search** (by title, or
+  fetches an exact id) so you can pick items that aren't loaded in the tree. The
+  list shows ~5 rows and scrolls. Pick a result or choose **(no parent)** to
+  detach; Save applies the re-parent. The **↗** button opens the parent.
 - **Description / Acceptance Criteria** — edited as **Markdown** with a live
   **preview** toggle. Supported: headings (`#`–`######`), **bold** (`**`/`__`),
   *italic* (`*`), ~~strikethrough~~ (`~~`), `inline code`, fenced code blocks,
