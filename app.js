@@ -608,6 +608,7 @@ async function _refresh(){
   if(mode==='graph')renderGraph({relayout:true,fit:true});
   else if(mode==='board')renderBoard();
   if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);   // live-update open sprint
+  saveSnapshot();                        // cache this view for an instant first paint next session
 }
 
 /* ---------- editor ---------- */
@@ -846,6 +847,28 @@ function setAutoRefresh(sec){
 function switchMode(m){setMode(m);try{localStorage.setItem('ado.mode',m);}catch(e){}
   if(m==='graph')renderGraph({fit:true});else if(m==='board')renderBoard();else renderTree();}
 
+/* ---------- last-snapshot cache (instant first paint) ---------- */
+async function snapKey(){try{const c=await api.getConfig();return (c.org&&c.project)?('snap:'+c.org+'/'+c.project):null;}catch(e){return null;}}
+async function saveSnapshot(){
+  try{
+    if(store.roots.length>1500||Object.keys(store.nodes).length>4000)return;   // skip very large views
+    const key=await snapKey();if(!key)return;
+    await chrome.storage.local.set({[key]:{roots:store.roots,top:store.top||store.roots,nodes:store.nodes,kids:store.kids,expanded:[...store.expanded],ts:Date.now()}});
+  }catch(e){/* cache is best-effort */}
+}
+async function loadSnapshot(){
+  try{
+    const key=await snapKey();if(!key)return false;
+    const r=await chrome.storage.local.get([key]);const d=r[key];
+    if(!d||!d.roots||!d.roots.length)return false;
+    store.nodes=d.nodes||{};store.roots=d.roots;store.top=d.top||d.roots;store.kids=d.kids||{};store.expanded=new Set(d.expanded||[]);
+    renderTree();                              // instant tree from the cached snapshot
+    const age=Math.round((Date.now()-(d.ts||Date.now()))/60000);
+    setStatus(store.roots.length+' item(s) · cached'+(age>0?(' '+age+'m ago'):'')+' — refreshing…');
+    return true;
+  }catch(e){return false;}
+}
+
 /* ---------- command palette (Ctrl/Cmd+K) ---------- */
 let palItems=[],palIdx=0;
 const PALETTE_ACTIONS=[
@@ -967,12 +990,7 @@ async function loadSetupProjects(){
    ADO can't tell a PAT-authenticated request when the PAT expires (the Token
    Lifecycle API needs an Entra token), so the user optionally records the
    expiry date and we count down from it. */
-function patDaysLeft(expiry){
-  if(!expiry)return null;
-  const exp=Date.parse(expiry);if(!Number.isFinite(exp))return null;
-  const today=Date.parse(new Date().toISOString().slice(0,10));   // local midnight
-  return Math.round((exp-today)/86400000);
-}
+function patDaysLeft(expiry){return AdoLib.patDaysLeft(expiry);}   // pure logic in lib.js
 function patDaysLabel(n){return n>=60?(Math.round(n/30)+'mo'):(n+'d');}
 async function updatePatBadge(){
   const el=$('patbadge');if(!el)return;
@@ -1054,6 +1072,15 @@ async function initialBoot(postSetup){
   {const s=localStorage.getItem('ado.tz');if(s!==null&&s!=='')tzOffset=parseInt(s);}
   $('f_tz').value=tzOffset;
   $('f_tz').onchange=()=>{tzOffset=parseInt($('f_tz').value);try{localStorage.setItem('ado.tz',tzOffset);}catch(e){}if(mode==='board')renderBoard();if(cur!=null)loadTimeline(cur);};
+  // working-hours window for the active-time calc (defaults 9–17)
+  {let ws=9,we=17;const wh=localStorage.getItem('ado.workHours');
+    if(wh&&/^\d+-\d+$/.test(wh)){const m=wh.split('-');ws=+m[0];we=+m[1];}
+    const r=api.setWorkHours(ws,we);$('f_wh_start').value=r.start;$('f_wh_end').value=r.end;}
+  const applyWH=()=>{const r=api.setWorkHours($('f_wh_start').value,$('f_wh_end').value);
+    $('f_wh_start').value=r.start;$('f_wh_end').value=r.end;
+    try{localStorage.setItem('ado.workHours',r.start+'-'+r.end);}catch(e){}
+    if(mode==='board')renderBoard();if(cur!=null)loadTimeline(cur);};
+  $('f_wh_start').onchange=applyWH;$('f_wh_end').onchange=applyWH;
   $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);try{localStorage.setItem('ado.showEmpty',on?'1':'0');}catch(e){}};
   $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.boardGroup',boardGroup);}catch(e){}renderBoard();});
   $('filt_btn').onclick=()=>{const p=$('filterpanel');p.style.display=p.style.display==='none'?'flex':'none';};
@@ -1134,6 +1161,7 @@ async function initialBoot(postSetup){
   }catch(e){}
   const p=new URLSearchParams(location.search),root=p.get('root');
   if(root){await openItem(parseInt(root));}
+  if(mode==='tree')await loadSnapshot();   // paint last session's tree instantly while the network refresh runs
   refresh().then(warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
 }
 

@@ -18,7 +18,7 @@ mkdir dist
 
 echo Packaging extension into %OUT%
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "Compress-Archive -Path manifest.json,background.js,index.html,api.js,app.js,app.css,vendor,icons,README.md,LICENSE -DestinationPath '%OUT%' -Force"
+  "Compress-Archive -Path manifest.json,background.js,index.html,lib.js,api.js,app.js,app.css,vendor,icons,README.md,LICENSE -DestinationPath '%OUT%' -Force"
 
 if errorlevel 1 (
     echo Packaging failed.

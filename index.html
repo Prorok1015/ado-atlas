@@ -20,6 +20,7 @@
   <button class="btn" id="filt_btn" title="filters">Filters <span id="filt_count"></span></button>
   <select id="f_sort" title="sort order"><option value="">sort: id</option><option value="priority">sort: priority</option></select>
   <select id="f_tz" title="timezone for work-hours"></select>
+  <span class="whrs" title="working hours window for active-time (local)">hrs <input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span>
   <select id="f_auto" title="auto-refresh interval"><option value="0">auto: off</option><option value="60">auto: 1m</option><option value="300">auto: 5m</option><option value="900">auto: 15m</option></select>
   <input id="search" placeholder="search id / title">
   <button class="btn" id="searchbtn">Search</button>
@@ -144,6 +145,7 @@
   </div>
 </div>
 
+<script src="lib.js"></script>
 <script src="api.js"></script>
 <script src="app.js"></script>
 </body>

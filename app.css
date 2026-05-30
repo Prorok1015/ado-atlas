@@ -12,6 +12,8 @@ body.light{--bg:#f5f7fa;--panel:#fff;--panel2:#eef2f7;--line:#d6dee8;--txt:#1b23
 body{background:var(--bg);color:var(--txt);font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
 #bar{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
 #bar h1{font-size:13px;margin:0 4px 0 0;font-weight:600;letter-spacing:.3px}
+.whrs{color:var(--muted);font-size:11px;display:inline-flex;align-items:center;gap:3px}
+.whrs input{width:40px;font-size:12px}
 .patbadge{display:none;font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid var(--line);color:var(--muted);cursor:pointer;white-space:nowrap;line-height:1}
 .patbadge.patok{color:#3fb950;border-color:#3fb95066}
 .patbadge.patwarn{color:#e0a13c;border-color:#e0a13c66}

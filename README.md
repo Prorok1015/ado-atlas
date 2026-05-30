@@ -68,6 +68,12 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - **Command palette** — press **Ctrl/Cmd-K** to fuzzy-find any loaded item by id
   or title, or run a quick command (switch view, refresh, export, theme,
   settings). ↑/↓ to navigate, Enter to open, Esc to close.
+- **Work hours** (`hrs N–N` next to the timezone): the local Mon–Fri window used
+  to compute "active time" on cards and in the sprint Gantt.
+- Requests **retry automatically** on throttling (HTTP 429, honoring
+  `Retry-After`) and transient `5xx` errors with exponential backoff.
+- The last view is **cached** (`chrome.storage.local`) and painted instantly on
+  open while the live refresh runs in the background.
 
 ## Editing a work item
 
@@ -86,16 +92,26 @@ Click any item to open the side editor. Beyond the usual fields:
 | `background.js` | Service worker: on icon click, open `index.html` in a tab (focuses an existing one if it's already open) |
 | `index.html` | Single-page UI shell + setup-modal markup |
 | `app.css` | Styles (dark + light theme, board / Gantt, modal) |
+| `lib.js` | Pure, dependency-free helpers (WIQL builder, html⇄text, business-hours, PAT countdown) — shared by `api.js`/`app.js` and unit-tested |
 | `api.js` | ADO REST client — direct calls to `dev.azure.com` using the PAT |
 | `app.js` | Tree / Graph / Board / Sprint / Editor logic |
 | `vendor/` | Cytoscape + dagre + cytoscape-dagre (bundled, no CDN) |
 | `icons/` | Toolbar icons (16/48/128) |
 | `build.bat` | One-shot zip into `dist/ado-atlas-extension.zip` |
+| `tests/` | Node unit tests for `lib.js` (`npm test`) |
 
 ## Build (only when sharing)
 
 Double-click `build.bat` on Windows (or run `powershell Compress-Archive ...`
 on any OS). Result lands in `dist\ado-atlas-extension.zip`.
+
+## Tests
+
+The pure logic in `lib.js` has unit tests (no dependencies, no browser):
+
+```
+npm test        # or: node tests/lib.test.js
+```
 
 ## Troubleshooting
 

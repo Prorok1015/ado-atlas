@@ -5,6 +5,11 @@
 
 const API_VERSION = "api-version=7.1";
 const LIST_CAP = 2000;   // max work items a single list() query returns (guards unfiltered queries)
+const MAX_RETRIES = 3;   // retries for throttling (429) / transient 5xx
+
+// Pure, dependency-free helpers live in lib.js (loaded before api.js).
+const AdoLib = (typeof globalThis !== "undefined" ? globalThis : window).AdoLib;
+const { wiqlQuote, htmlEsc, htmlUnesc, htmlToText, textToHtml } = AdoLib;
 
 const FIELD_ALIASES = {
   title: "System.Title",
@@ -81,7 +86,6 @@ async function clearConfig() {
 }
 
 // ---------- HTTP ----------
-function wiqlQuote(v) { return String(v).replace(/'/g, "''"); }
 function resolveField(k) { return FIELD_ALIASES[k.toLowerCase()] || k; }
 
 async function authHeader() {
@@ -100,73 +104,40 @@ async function orgUrl() {
   return `https://dev.azure.com/${encodeURIComponent(org)}`;
 }
 
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+async function errorFrom(resp) {
+  let detail = await resp.text();
+  try { detail = JSON.parse(detail).message || detail; } catch (_) { /* keep raw */ }
+  return new Error(`HTTP ${resp.status}: ${String(detail).slice(0, 500)}`);
+}
+function retryDelay(resp, attempt) {
+  const ra = resp.headers && resp.headers.get && resp.headers.get("Retry-After");
+  if (ra) { const s = parseFloat(ra); if (Number.isFinite(s)) return Math.min(s * 1000, 30000); }
+  return Math.min(500 * Math.pow(2, attempt), 8000) + Math.floor(Math.random() * 250);   // exp backoff + jitter
+}
+
 async function req(method, url, body, ctype) {
   const headers = { Authorization: await authHeader() };
   if (body !== undefined) headers["Content-Type"] = ctype || "application/json";
-  const resp = await fetch(url, {
-    method, headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!resp.ok) {
-    // A 401 mid-session means the PAT expired or was revoked. Let the UI react
-    // (reopen setup) instead of just spraying errors into the status bar.
-    if (resp.status === 401 && typeof window !== "undefined") {
-      try { window.dispatchEvent(new CustomEvent("ado-401")); } catch (_) { /* no window */ }
+  const payload = body === undefined ? undefined : JSON.stringify(body);
+  for (let attempt = 0; ; attempt++) {
+    const resp = await fetch(url, { method, headers, body: payload });
+    if (resp.ok) {
+      const text = await resp.text();
+      if (!text) return {};
+      // ADO sometimes prefixes responses with a UTF-8 BOM; strip it before JSON.parse.
+      return JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
     }
-    let detail = await resp.text();
-    try { detail = JSON.parse(detail).message || detail; } catch (_) { /* keep raw */ }
-    throw new Error(`HTTP ${resp.status}: ${detail.slice(0, 500)}`);
-  }
-  const text = await resp.text();
-  if (!text) return {};
-  // ADO sometimes prefixes responses with a UTF-8 BOM; strip it before JSON.parse.
-  return JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
-}
-
-// ---------- markdown-lite <-> HTML (mirror of ado_client.py) ----------
-function htmlEsc(s) { return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
-function htmlUnesc(s) {
-  return String(s)
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"").replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
-}
-function htmlToText(s) {
-  if (!s) return "";
-  let out = String(s)
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<li[^>]*>/gi, "- ")
-    .replace(/<\/li>/gi, "\n")
-    .replace(/<\/(p|div|ul|ol|tr|h[1-6])>/gi, "\n")
-    .replace(/<[^>]+>/g, "");
-  out = htmlUnesc(out);
-  out = out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n");
-  return out.trim();
-}
-function textToHtml(text) {
-  if (text == null) return "";
-  const lines = String(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  const out = [];
-  let i = 0;
-  while (i < lines.length) {
-    const stripped = lines[i].replace(/^\s+/, "");
-    const bullet = stripped.slice(0, 2);
-    if (bullet === "- " || bullet === "* ") {
-      const items = [];
-      while (i < lines.length) {
-        const s = lines[i].replace(/^\s+/, "");
-        if (s.slice(0, 2) !== "- " && s.slice(0, 2) !== "* ") break;
-        items.push("<li>" + htmlEsc(s.slice(2)) + "</li>");
-        i++;
-      }
-      out.push("<ul>" + items.join("") + "</ul>");
-      continue;
+    // 401 mid-session = PAT expired/revoked: let the UI react, don't retry.
+    if (resp.status === 401) {
+      if (typeof window !== "undefined") { try { window.dispatchEvent(new CustomEvent("ado-401")); } catch (_) { /* no window */ } }
+      throw await errorFrom(resp);
     }
-    if (lines[i].trim() === "") out.push("<br>");
-    else out.push("<div>" + htmlEsc(lines[i]) + "</div>");
-    i++;
+    // Retry throttling (429) and transient server errors (5xx) with backoff.
+    const retryable = resp.status === 429 || (resp.status >= 500 && resp.status < 600);
+    if (retryable && attempt < MAX_RETRIES) { await sleep(retryDelay(resp, attempt)); continue; }
+    throw await errorFrom(resp);
   }
-  return out.join("");
 }
 
 function personName(v) {
@@ -193,48 +164,9 @@ function nodeOf(w) {
   };
 }
 
-// ---------- WIQL filter builder (mirrors _build_clauses in ado_web.py) ----------
-function buildClauses(filters) {
-  filters = filters || {};
-  const clauses = [];
-  for (const key of Object.keys(FILTER_FIELDS)) {
-    const spec = FILTER_FIELDS[key];
-    const f = filters[key] || {};
-    const inc = f.in || [], exc = f.not || [];
-    const { ref, identity, num, contains } = spec;
-    const lit = v => {
-      if (num) {
-        const n = parseInt(v, 10);
-        return Number.isFinite(n) ? String(n) : null;
-      }
-      return "'" + wiqlQuote(v) + "'";
-    };
-    // Semicolon-list fields (e.g. System.Tags) can't use IN — each value is a
-    // separate CONTAINS, OR-ed for include and AND-ed (NOT CONTAINS) for exclude.
-    if (contains) {
-      if (inc.length) clauses.push("(" + inc.map(v => `[${ref}] CONTAINS '${wiqlQuote(v)}'`).join(" OR ") + ")");
-      if (exc.length) clauses.push("(" + exc.map(v => `[${ref}] NOT CONTAINS '${wiqlQuote(v)}'`).join(" AND ") + ")");
-      continue;
-    }
-    if (inc.length) {
-      const parts = [];
-      const names = inc.filter(v => !(identity && v === "me"));
-      if (identity && inc.includes("me")) parts.push(`[${ref}] = @me`);
-      const vals = names.map(lit).filter(x => x !== null);
-      if (vals.length) parts.push(`[${ref}] IN (${vals.join(",")})`);
-      if (parts.length) clauses.push("(" + parts.join(" OR ") + ")");
-    }
-    if (exc.length) {
-      const parts = [];
-      const names = exc.filter(v => !(identity && v === "me"));
-      if (identity && exc.includes("me")) parts.push(`[${ref}] <> @me`);
-      const vals = names.map(lit).filter(x => x !== null);
-      if (vals.length) parts.push(`[${ref}] NOT IN (${vals.join(",")})`);
-      if (parts.length) clauses.push("(" + parts.join(" AND ") + ")");
-    }
-  }
-  return clauses;
-}
+// ---------- WIQL filter builder ----------
+// Pure logic lives in lib.js; bind it to this module's FILTER_FIELDS registry.
+function buildClauses(filters) { return AdoLib.buildClauses(FILTER_FIELDS, filters); }
 
 // ---------- core ADO reads ----------
 async function wiqlIds(wiql, top) {
@@ -244,17 +176,19 @@ async function wiqlIds(wiql, top) {
   return (res.workItems || []).map(w => w.id);
 }
 
+function chunk200(ids) { const out = []; for (let i = 0; i < ids.length; i += 200) out.push(ids.slice(i, i + 200)); return out; }
+
 async function batchFetch(ids, fields) {
   if (!ids.length) return [];
   fields = fields || DEFAULT_FIELDS;
-  const byId = {};
   const proj = await projUrl();
-  for (let i = 0; i < ids.length; i += 200) {
-    const chunk = ids.slice(i, i + 200);
+  // Fetch the 200-id chunks concurrently (6-wide) instead of one at a time.
+  const results = await pool(chunk200(ids).map(chunk => async () => {
     const url = `${proj}/_apis/wit/workitems?ids=${chunk.join(",")}&fields=${fields.join(",")}&${API_VERSION}`;
-    const res = await req("GET", url);
-    for (const w of (res.value || [])) byId[w.id] = w;
-  }
+    return (await req("GET", url)).value || [];
+  }), 6);
+  const byId = {};
+  for (const arr of results) for (const w of arr) byId[w.id] = w;
   // preserve caller's id order (which carries the WIQL ORDER BY)
   return ids.map(i => byId[i]).filter(Boolean);
 }
@@ -415,25 +349,24 @@ async function deps(ids) {
   const idSet = new Set(ids);
   const edges = [];
   const seen = new Set();
-  for (let i = 0; i < ids.length; i += 200) {
-    const chunk = ids.slice(i, i + 200);
+  const chunks = await pool(chunk200(ids).map(chunk => async () => {   // fetch relation chunks concurrently
     const url = `${proj}/_apis/wit/workitems?ids=${chunk.join(",")}&$expand=relations&${API_VERSION}`;
-    const res = await req("GET", url);
-    for (const w of (res.value || [])) {
-      const wid = w.id;
-      for (const r of (w.relations || [])) {
-        const tail = (r.url || "").replace(/\/+$/, "").split("/").pop();
-        if (!/^\d+$/.test(tail)) continue;
-        const tid = parseInt(tail, 10);
-        let src, dst;
-        if (r.rel === "System.LinkTypes.Dependency-Forward") { src = wid; dst = tid; }
-        else if (r.rel === "System.LinkTypes.Dependency-Reverse") { src = tid; dst = wid; }
-        else continue;
-        const k = src + "_" + dst;
-        if (idSet.has(src) && idSet.has(dst) && !seen.has(k)) {
-          seen.add(k);
-          edges.push({ source: src, target: dst });
-        }
+    return (await req("GET", url)).value || [];
+  }), 6);
+  for (const arr of chunks) for (const w of arr) {
+    const wid = w.id;
+    for (const r of (w.relations || [])) {
+      const tail = (r.url || "").replace(/\/+$/, "").split("/").pop();
+      if (!/^\d+$/.test(tail)) continue;
+      const tid = parseInt(tail, 10);
+      let src, dst;
+      if (r.rel === "System.LinkTypes.Dependency-Forward") { src = wid; dst = tid; }
+      else if (r.rel === "System.LinkTypes.Dependency-Reverse") { src = tid; dst = wid; }
+      else continue;
+      const k = src + "_" + dst;
+      if (idSet.has(src) && idSet.has(dst) && !seen.has(k)) {
+        seen.add(k);
+        edges.push({ source: src, target: dst });
       }
     }
   }
@@ -615,7 +548,17 @@ async function setParent(wid, newParentId) {
 
 // ---------- updates / business-hours (active time per item) ----------
 const ACTIVE_STATES = new Set(["Active", "Doing", "In Progress", "Committed"]);
-const WORK_START = 9, WORK_END = 17;
+
+// Configurable working window (local hours, Mon-Fri); the UI sets these.
+let workStart = 9, workEnd = 17;
+function setWorkHours(s, e) {
+  s = parseInt(s, 10); e = parseInt(e, 10);
+  const ns = (Number.isFinite(s) && s >= 0 && s <= 23) ? s : workStart;
+  const ne = (Number.isFinite(e) && e >= 1 && e <= 24) ? e : workEnd;
+  if (ne > ns) { workStart = ns; workEnd = ne; }   // only commit a valid (start < end) window
+  return { start: workStart, end: workEnd };
+}
+function getWorkHours() { return { start: workStart, end: workEnd }; }
 
 function parseTs(t) {
   if (!t) return null;
@@ -623,28 +566,8 @@ function parseTs(t) {
   return Number.isFinite(d.valueOf()) ? d : null;
 }
 
-// Business-second overlap of [s, e] with Mon-Fri WORK_START..WORK_END after
-// shifting both endpoints by `offset` hours (so the team's local-time window
-// is applied to a UTC timestamp pair).
-function businessSeconds(s, e, offset) {
-  if (!s || !e || e <= s) return 0;
-  const ms = (offset || 0) * 3600 * 1000;
-  const start = new Date(s.getTime() + ms);
-  const end = new Date(e.getTime() + ms);
-  let total = 0;
-  let cur = new Date(start);
-  while (cur < end) {
-    const day0 = new Date(cur);
-    day0.setUTCHours(0, 0, 0, 0);
-    if (cur.getUTCDay() !== 0 && cur.getUTCDay() !== 6) {   // Mon-Fri (UTC after shift)
-      const a = new Date(Math.max(cur.getTime(), day0.getTime() + WORK_START * 3600 * 1000));
-      const b = new Date(Math.min(end.getTime(), day0.getTime() + WORK_END * 3600 * 1000));
-      if (b > a) total += (b - a) / 1000;
-    }
-    cur = new Date(day0.getTime() + 24 * 3600 * 1000);
-  }
-  return total;
-}
+// Business-second overlap (pure math in lib.js, bound to the current window).
+function businessSeconds(s, e, offset) { return AdoLib.businessSeconds(s, e, offset, workStart, workEnd); }
 
 async function updatesFor(wid) {
   const proj = await projUrl();
@@ -733,6 +656,8 @@ window.api = {
   orgs, projects,
   // primitives
   me, iterations, states, assignees, tags, browserUrl,
+  // work-hours config (active-time window)
+  setWorkHours, getWorkHours,
   // list / search / children / parents
   roots: ({ text, order, filters } = {}) => list({ text, order, filters }),
   search: ({ text, order, filters } = {}) => list({ text, order, filters }),
