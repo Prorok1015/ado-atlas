@@ -349,7 +349,7 @@ async function expandNode(id){
   }finally{loadEnd();}
 }
 const txtColor=()=>document.body.classList.contains('light')?'#1b2330':'#e6edf3';   // theme text colour (matches --txt)
-const HAND_FONT="'Segoe Print','Bradley Hand','Comic Sans MS',cursive";              // Excalidraw-ish hand-drawn label font
+const HAND_FONT='"Segoe Print","Bradley Hand","Comic Sans MS",cursive';              // Excalidraw-ish hand-drawn label font (double quotes — cytoscape's font-family parser rejects single-quoted names)
 function hexToRgb(h){h=String(h||'').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h||'0',16)||0;return [(n>>16)&255,(n>>8)&255,n&255];}
 function mixHex(hex,toward,t){const a=hexToRgb(hex),b=hexToRgb(toward);return 'rgb('+a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')+')';}
 // Excalidraw-style fill: a soft pastel tint of the type colour toward the canvas
