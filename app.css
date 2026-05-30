@@ -1,7 +1,9 @@
 :root{--bg:#0f1216;--panel:#171c23;--panel2:#1e252e;--line:#2a323d;--txt:#e6edf3;
-  --muted:#9aa7b4;--accent:#4c8bf5;--field:#0d1117;--sel:#243042}
+  --muted:#9aa7b4;--accent:#4c8bf5;--field:#0d1117;--sel:#243042;
+  --cy-bg:#14181f;--cy-dot:#2b333e}
 body.light{--bg:#f5f7fa;--panel:#fff;--panel2:#eef2f7;--line:#d6dee8;--txt:#1b2330;
-  --muted:#5a6b7b;--accent:#2f6fed;--field:#fff;--sel:#e4edfb}
+  --muted:#5a6b7b;--accent:#2f6fed;--field:#fff;--sel:#e4edfb;
+  --cy-bg:#fdfcfa;--cy-dot:#dad6cd}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 *{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 ::-webkit-scrollbar{width:8px;height:8px}
@@ -48,17 +50,24 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 #tree{position:absolute;inset:0;overflow:auto;padding:8px 6px;display:none}
 #tree.show{display:block}
 #cy{position:absolute;inset:0;display:none}
-#cy.show{display:block}
-/* per-view controls legend (bottom-left), collapsible */
-#viewhelp{position:absolute;left:10px;bottom:10px;z-index:5;display:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.22);font-size:11px;color:var(--muted);max-width:280px;overflow:hidden}
+/* Excalidraw-style canvas: warm background + dot grid (JS keeps the grid in
+   sync with cytoscape pan/zoom so the dots move and scale with the graph) */
+#cy.show{display:block;background-color:var(--cy-bg);
+  background-image:radial-gradient(var(--cy-dot) 1.4px,transparent 1.5px);
+  background-size:24px 24px;background-position:0 0}
+/* per-view controls legend (bottom-left), collapsible — styled as an
+   Excalidraw "island": rounded card, soft layered shadow, hand-drawn font */
+#viewhelp{position:absolute;left:14px;bottom:14px;z-index:5;display:none;background:var(--panel);
+  border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.12),0 6px 18px rgba(0,0,0,.14);
+  font-family:'Segoe Print','Bradley Hand','Comic Sans MS',cursive;font-size:12px;color:var(--muted);max-width:300px;overflow:hidden}
 #viewhelp.show{display:block}
-.vhh{padding:5px 10px;cursor:pointer;font-weight:600;color:var(--txt);user-select:none}
+.vhh{padding:7px 12px;cursor:pointer;font-weight:700;color:var(--txt);user-select:none}
 .vhh:hover{background:var(--panel2)}
-.vhb{padding:3px 10px 8px;display:flex;flex-direction:column;gap:3px}
+.vhb{padding:4px 12px 10px;display:flex;flex-direction:column;gap:5px}
 #viewhelp.collapsed .vhb{display:none}
-.vhrow{display:flex;gap:8px;align-items:baseline}
-.vk{flex:none;min-width:96px;color:var(--txt);font-weight:600}
-.vhnote{margin-top:4px;padding-top:5px;border-top:1px solid var(--line);font-style:italic;opacity:.85}
+.vhrow{display:flex;gap:9px;align-items:baseline}
+.vk{flex:none;min-width:104px;color:var(--txt);font-weight:700}
+.vhnote{margin-top:5px;padding-top:6px;border-top:1px dashed var(--line);font-style:italic;opacity:.85}
 #board{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden;display:none;gap:10px;padding:10px}
 #board.show{display:flex}
 .bcol{min-width:240px;max-width:260px;flex:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;max-height:100%}

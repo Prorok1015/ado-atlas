@@ -343,8 +343,16 @@ function gstyle(){return [
  {selector:'edge[kind="hierarchy"]',style:{'width':1,'line-color':'#5b6b7d','line-opacity':0.4,'target-arrow-color':'#5b6b7d','target-arrow-shape':'triangle','curve-style':'bezier'}},
  {selector:'edge[kind="dep"]',style:{'width':2,'line-style':'dashed','line-color':'#e0a13c','target-arrow-color':'#e0a13c','target-arrow-shape':'vee','curve-style':'bezier'}},
 ]}
+// Keep the Excalidraw dot grid locked to the graph: scale dot spacing by zoom
+// and offset by pan, so the dots move and zoom with the nodes.
+function syncCyGrid(){
+  if(!cy)return;const z=cy.zoom(),p=cy.pan(),s=24*z,el=$('cy');
+  el.style.backgroundSize=s+'px '+s+'px';
+  el.style.backgroundPosition=p.x+'px '+p.y+'px';
+}
 function initCy(){
   cy=cytoscape({container:$('cy'),style:gstyle(),wheelSensitivity:0.2,autounselectify:true,boxSelectionEnabled:false});
+  cy.on('pan zoom',syncCyGrid);                 // grid follows the canvas
   let tapTimer=null,tapId=null;                 // single tap = open editor; double tap = expand
   cy.on('tap','node',e=>{const id=Number(e.target.data('id'));   // cytoscape gives a string id
     const oe=e.originalEvent||{};
@@ -415,6 +423,7 @@ async function renderGraph(opts){
   else if(opts.fit)cy.fit(undefined,40);                        // positions unchanged -> safe to fit now
   setStatus(`${ids.length} nodes · ${edges.length} edges`);
   syncGraphBulk();                                              // re-apply the bulk highlight to (re)added nodes
+  syncCyGrid();                                                 // align the dot grid with the current pan/zoom
 }
 
 /* ---------- board (sprints) ---------- */
