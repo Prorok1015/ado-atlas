@@ -79,9 +79,11 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   sprint like the per-sprint Gantt). Each item is a bar from its **Start** to its
   **Target/Due**; items with no dates of their own fall back to their **sprint's**
   dates (shown hatched/faded), and anything still undated is listed in a **No
-  dates** section at the bottom. **Zoom** Day / Week / Month (horizontal scroll;
-  it opens centred on today) — the axis shows month labels with a second tier of
-  day numbers (Day zoom) or week-start dates (Week zoom). Optionally **group**
+  dates** section at the bottom. The axis always includes today and ~2 months of
+  future runway past the last item, so it doesn't end abruptly. **Zoom** Day /
+  Week / Month (horizontal scroll; it opens centred on today) — the axis shows
+  month labels with a second tier of day numbers (Day zoom) or week-start dates
+  (Week zoom). Optionally **group**
   rows by Sprint / State / Assignee / Type. Click a bar or row to open the
   editor. (Read-only for now — drag-to-reschedule is a planned follow-up.)
 - **∅ empty** (board toolbar) shows empty columns too: every project **state**

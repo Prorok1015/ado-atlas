@@ -10,7 +10,11 @@
 cytoscape.use(cytoscapeDagre);
 // Type colours: seeded with sensible defaults for instant first paint, then
 // overwritten by the project's real process colours once they load from ADO.
+// The hex map feeds the canvas graph; DOM views use a CSS custom property so the
+// real colour propagates live (no re-render) once loadTypes() sets it on :root.
 let TYPE_COLOR={Epic:'#8e44ad',Feature:'#e67e22','User Story':'#3498db',Bug:'#e74c3c',Task:'#7f8c8d',Issue:'#16a085'};
+const tyVar=t=>'--ty-'+String(t).toLowerCase().replace(/[^a-z0-9]+/g,'-');
+const tyColor=t=>`var(${tyVar(t)}, ${TYPE_COLOR[t]||'#95a5a6'})`;   // CSS var with the default hex as fallback
 const PRIO_COLOR={1:'#e74c3c',2:'#e67e22',3:'#f1c40f',4:'#95a5a6'};   // P1 urgent … P4 low
 const prioColor=p=>PRIO_COLOR[p]||'#5b6b7d';
 const STATE_COLOR={New:'#6b7785',Active:'#2f6fed',Resolved:'#1e7a44',Closed:'#5b6b7d',Removed:'#9b2c2c',Done:'#1e7a44'};
@@ -144,7 +148,7 @@ function treeNode(n){
   const open=store.expanded.has(n.id);
   const tog=document.createElement('span');tog.className='tog';tog.textContent=open?'▾':'▸';
   tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};
-  const dot=document.createElement('i');dot.className='dot';dot.style.background=TYPE_COLOR[n.type]||'#95a5a6';
+  const dot=document.createElement('i');dot.className='dot';dot.style.background=tyColor(n.type);
   const lab=document.createElement('span');lab.className='lab';lab.textContent=`#${n.id} ${n.title}`;
   if(n.via&&n.via.length){const m=document.createElement('span');m.className='skip';m.textContent=' ↗';
     m.title='via '+n.via.map(i=>'#'+i).join(' → ')+' (not in filter)';lab.appendChild(m);}
@@ -437,7 +441,7 @@ function boardCard(n,finish,today){
   const due=n.target?n.target.slice(0,10):(finish?finish.slice(0,10):null);
   const overdue=due&&due<today&&!DONE_STATES.includes(n.state);
   const c=document.createElement('div');c.className='bcard'+(overdue?' overdue':'');
-  c.style.borderLeftColor=TYPE_COLOR[n.type]||'#95a5a6';   // left marker = item TYPE colour
+  c.style.borderLeftColor=tyColor(n.type);   // left marker = item TYPE colour
   c.dataset.id=n.id;c.dataset.est=(n.est!=null?n.est:'');
   c.innerHTML=`<div class="bttl">#${n.id} ${esc(n.title)}</div>`+
     `<div class="bmeta"><span>${esc(n.type)}</span>`+
@@ -537,7 +541,7 @@ function renderSprint(path){
     si=Math.max(0,Math.min(si,N-1));ei=Math.max(si,Math.min(ei,N-1));
     const bar=document.createElement('div');bar.className='gbar';
     bar.style.left=(si/N*100)+'%';bar.style.width=((ei-si+1)/N*100)+'%';
-    bar.style.background=TYPE_COLOR[n.type]||'#95a5a6';
+    bar.style.background=tyColor(n.type);
     bar.textContent=(n.priority?'P'+n.priority+' ':'')+'#'+n.id+' '+n.title;bar.title=n.title;
     bar.onclick=()=>openItem(n.id);
     track.appendChild(bar);
@@ -633,9 +637,11 @@ async function renderTimeline(){
     setStatus(`${items.length} items · 0 scheduled`+capNote());return;
   }
   let min=Infinity,max=-Infinity;dated.forEach(n=>{if(n._tl.s<min)min=n._tl.s;if(n._tl.e>max)max=n._tl.e;});
+  const today=Date.parse(new Date().toISOString().slice(0,10));
+  min=Math.min(min,today);max=Math.max(max,today);                          // always include today
   const ms=new Date(min),me=new Date(max);
-  const r0=Date.UTC(ms.getUTCFullYear(),ms.getUTCMonth(),1);                 // snap range to whole months
-  const r1=Date.UTC(me.getUTCFullYear(),me.getUTCMonth()+1,1)-TL_DAY;
+  const r0=Date.UTC(ms.getUTCFullYear(),ms.getUTCMonth(),1);                 // start of the first month
+  const r1=Date.UTC(me.getUTCFullYear(),me.getUTCMonth()+3,1)-TL_DAY;        // +2 months of future runway past the last item / today
   const px=TL_PX[tlZoom]||TL_PX.week,LW=TL_LABELW;
   const totalDays=Math.round((r1-r0)/TL_DAY)+1,W=Math.max(Math.round(totalDays*px),200);
   const xOf=t=>Math.round(((t-r0)/TL_DAY)*px);
@@ -650,7 +656,6 @@ async function renderTimeline(){
     for(;d<=r1;d+=7*TL_DAY)if(d>=r0)grid+=`<div class="tlvline wk" style="left:${xOf(d)}px"></div>`;}
   if(tlZoom==='day'&&totalDays<=140)for(let d=r0;d<=r1;d+=TL_DAY){const wd=new Date(d).getUTCDay();
     if(wd===0||wd===6)grid+=`<div class="tlweekend" style="left:${xOf(d)}px;width:${px}px"></div>`;}
-  const today=Date.parse(new Date().toISOString().slice(0,10));
   if(today>=r0&&today<=r1)grid+=`<div class="tltoday" style="left:${xOf(today)+Math.round(px/2)}px"></div>`;
   // second axis tier: day numbers (day zoom) or week-start dates (week zoom)
   let ticks='';
@@ -663,9 +668,9 @@ async function renderTimeline(){
       ticks+=`<div class="tltick${cls}" style="left:${xOf(d)}px;width:${Math.round(7*px)}px">${dt.getUTCDate()}</div>`;}
   }
   // rows
-  const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${TYPE_COLOR[n.type]||'#95a5a6'}"></i><span class="tllab">#${n.id} ${esc(n.title)}</span></div>`;
+  const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${tyColor(n.type)}"></i><span class="tllab">#${n.id} ${esc(n.title)}</span></div>`;
   const rowHTML=n=>{const t=n._tl,tip=`${n.start||(t.soft?'sprint start':'?')} → ${(n.target||n.due)||(t.soft?'sprint finish':'?')}`;
-    return `<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background:${TYPE_COLOR[n.type]||'#95a5a6'}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
+    return `<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background:${tyColor(n.type)}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
   const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
   const groupHead=(k,arr)=>{const gs=Math.min(...arr.map(n=>n._tl.s)),ge=Math.max(...arr.map(n=>n._tl.e));
     return `<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">${esc(k)} · ${arr.length}</div><div class="tlgrouptrack" style="width:${W}px"><div class="tlgroupbar" style="left:${xOf(gs)}px;width:${wOf(gs,ge)}px"></div></div></div>`;};
@@ -793,7 +798,7 @@ async function openItem(id){
   if(myToken!==openToken)return;                  // a newer openItem() superseded this one
   cur=id;$('side').classList.remove('hidden');$('resizer').style.display='block';$('child_form').style.display='none';$('comment_form').style.display='none';
   $('s_activity').classList.remove('show');$('s_activity').innerHTML='';   // collapse activity for the new item
-  $('s_hdr').innerHTML=`<i class="dot" style="background:${TYPE_COLOR[d.type]||'#95a5a6'}"></i>#${d.id} ${esc(d.type)}`+
+  $('s_hdr').innerHTML=`<i class="dot" style="background:${tyColor(d.type)}"></i>#${d.id} ${esc(d.type)}`+
     ` <span class="sbadge" style="background:${stateColor(d.state)}">${esc(d.state)}</span>`+
     ` <span style="color:var(--muted);font-weight:400;font-size:11px">rev${d.rev}</span>`;
   $('s_ctx').innerHTML=d.parent?`↑ parent <a id="s_par">#${d.parent}</a>`:'';
@@ -846,7 +851,7 @@ function editorValues(){return {title:$('s_title').value,state:$('s_state').valu
    Elements are looked up by id from `base`: <base> (hidden value), <base>_card,
    <base>_pick, <base>_search, <base>_results, and optional <base>_open. */
 function parentCardHtml(n){
-  return `<i class="dot" style="background:${TYPE_COLOR[n.type]||'#95a5a6'}"></i>`+
+  return `<i class="dot" style="background:${tyColor(n.type)}"></i>`+
     `<span class="pcid">#${n.id}</span><span class="pctitle">${esc(n.title||'')}</span>`+
     (n.state?`<span class="pcstate" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'');
 }
@@ -1193,7 +1198,8 @@ async function loadTypes(){
   try{types=await api.workItemTypes();}catch(e){types=[];}
   if(types.length){
     typeList=types;
-    types.forEach(t=>{if(t.color)TYPE_COLOR[t.name]=t.color;});   // adopt the project's real process colours
+    types.forEach(t=>{if(t.color){TYPE_COLOR[t.name]=t.color;   // canvas graph reads the hex map…
+      document.documentElement.style.setProperty(tyVar(t.name),t.color);}});   // …DOM views read the CSS var (live update)
   }else if(!typeList.length){
     typeList=TYPES.map(n=>({name:n,color:TYPE_COLOR[n]||''}));     // offline fallback to the static defaults
   }
@@ -1201,17 +1207,9 @@ async function loadTypes(){
   buildLegend();
   repaintTypes();                                  // colours just changed → repaint so defaults don't linger
 }
-// Re-apply the (now real) type colours to whatever view is showing. The first
-// paint can beat the async colour load on a page reload, leaving the hard-coded
-// defaults stuck until the next refresh — this fixes that without a full reload.
-function repaintTypes(){
-  if(!store.roots.length)return;                   // nothing painted yet; the next render will use the new colours
-  if(mode==='timeline')renderTimeline();
-  else if(mode==='board')renderBoard();
-  else if(mode==='graph'){if(cy)cy.style().update();}
-  else renderTree();
-  if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);
-}
+// DOM views colour via the CSS vars set above, so they update live. Only the
+// canvas graph needs a nudge to re-read the hex map after the colours change.
+function repaintTypes(){ if(mode==='graph'&&cy)cy.style().update(); }
 // (Re)populate a type <select> from the loaded types, keeping the current
 // choice if it's still valid, else falling back to `preferred` then the first.
 function fillTypeSelect(id,preferred){
@@ -1221,7 +1219,7 @@ function fillTypeSelect(id,preferred){
   sel.value=names.includes(prev)?prev:(names.includes(preferred)?preferred:(names[0]||''));
 }
 
-function buildLegend(){$('legend').innerHTML=typeNames().map(k=>`<span><i style="background:${TYPE_COLOR[k]||'#95a5a6'}"></i>${esc(k)}</span>`).join('');}
+function buildLegend(){$('legend').innerHTML=typeNames().map(k=>`<span><i style="background:${tyColor(k)}"></i>${esc(k)}</span>`).join('');}
 
 /* ---------- export the current (filtered) view ---------- */
 const EXPORT_COLS=['id','type','title','state','assigned','priority','iteration','parent','start','target','est','tags'];
