@@ -195,15 +195,17 @@ function renderTree(){
 }
 
 /* ---------- bulk multi-select (tree): Ctrl/Cmd-click toggles, Shift-click ranges ---------- */
-function syncBulkRows(){                    // reflect bulkSel onto the rendered rows (class + checkbox)
-  document.querySelectorAll('#tree .trow[data-id]').forEach(r=>{
+// Selectable elements of the active view (tree rows / board cards), in visual order.
+function bulkEls(){return [...document.querySelectorAll(mode==='board'?'#board .bcard[data-id]':'#tree .trow[data-id]')];}
+function syncBulkRows(){                    // reflect bulkSel onto the rendered rows/cards (class + any checkbox)
+  document.querySelectorAll('#tree .trow[data-id], #board .bcard[data-id]').forEach(r=>{
     const on=bulkSel.has(+r.dataset.id);r.classList.toggle('bulksel',on);
     const cb=r.querySelector('.tcheck');if(cb)cb.checked=on;});
 }
 function bulkSet(ids,on){ids.forEach(id=>{if(on)bulkSel.add(id);else bulkSel.delete(id);});updateBulkBar();syncBulkRows();}
 function bulkToggle(id){const on=!bulkSel.has(id);bulkSet([id],on);bulkAnchor=id;bulkAnchorOn=on;}
 function bulkRange(toId){                    // apply the anchor's action (select OR deselect) to the whole range
-  const ids=[...document.querySelectorAll('#tree .trow[data-id]')].map(r=>+r.dataset.id);
+  const ids=bulkEls().map(r=>+r.dataset.id);
   const b=ids.indexOf(toId);if(b<0)return;
   let a=bulkAnchor!=null?ids.indexOf(bulkAnchor):-1;if(a<0){a=b;bulkAnchor=toId;}
   bulkSet(ids.slice(Math.min(a,b),Math.max(a,b)+1),bulkAnchorOn);
@@ -464,7 +466,7 @@ function renderBoardByState(el,items){
 function boardCard(n,finish,today){
   const due=n.target?n.target.slice(0,10):(finish?finish.slice(0,10):null);
   const overdue=due&&due<today&&!DONE_STATES.includes(n.state);
-  const c=document.createElement('div');c.className='bcard'+(overdue?' overdue':'');
+  const c=document.createElement('div');c.className='bcard'+(overdue?' overdue':'')+(bulkSel.has(n.id)?' bulksel':'');
   c.style.borderLeftColor=tyColor(n.type);   // left marker = item TYPE colour
   c.dataset.id=n.id;c.dataset.est=(n.est!=null?n.est:'');
   c.innerHTML=`<div class="bttl">#${n.id} ${esc(n.title)}</div>`+
@@ -473,8 +475,11 @@ function boardCard(n,finish,today){
     `<span>${esc(n.state)}</span>`+(overdue?'<span class="od">overdue</span>':'')+`</div>`+
     `<div class="bfoot">`+(n.est!=null?`<div class="tbar"><div class="tfill"></div></div>`:'')+
     `<span class="tlabel">${n.est!=null?'est '+(+n.est)+'h':'⏱ …'}</span></div>`;
-  c.addEventListener('mousedown',e=>{if(e.button===0)startCardDrag(e,n.id,c);});   // custom pointer drag
-  c.onclick=()=>{if(suppressClick)return;openItem(n.id);};                          // suppressed right after a drag
+  c.addEventListener('mousedown',e=>{if(e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey)startCardDrag(e,n.id,c);});   // modifier = select, not drag
+  c.onclick=(e)=>{if(suppressClick)return;
+    if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(n.id);return;}        // Ctrl/Cmd: toggle in selection
+    if(e.shiftKey){e.preventDefault();bulkRange(n.id);return;}                    // Shift: range from anchor (select or deselect)
+    openItem(n.id);};
   return c;
 }
 async function moveCard(id,field,val){            // field: 'iteration' | 'assigned' | 'state'

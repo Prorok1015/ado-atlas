@@ -59,6 +59,7 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .bcard{background:var(--panel2);border:1px solid var(--line);border-left:4px solid #5b6b7d;border-radius:8px;padding:7px 9px;cursor:pointer}
 .bcard:hover{border-color:var(--accent)}
 .bcard.overdue{box-shadow:inset 0 0 0 1px #e74c3c}
+.bcard.bulksel{outline:2px solid var(--accent);outline-offset:-1px}   /* bulk-selected (Ctrl/Shift-click) */
 .bttl{font-size:12px;margin-bottom:4px}
 .bmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10px;color:var(--muted)}
 .bfoot{display:flex;gap:6px;align-items:center;font-size:10px;color:var(--muted);margin-top:4px}
