@@ -727,20 +727,18 @@ async function updateItem(wid, body) {
   // ADO REST quirks:
   // 1. op:"add" with an empty value is silently dropped on some fields (e.g.
   //    clearing dates) — use op:"remove" to clear.
-  // 2. System.Tags is especially buggy: op:"add" with the new (shorter) list
-  //    may MERGE with the existing tags instead of replacing them, so a
-  //    deletion appears to succeed but the tag comes back on reopen. The
-  //    robust pattern is to remove the field first, then add the new value:
-  //    each op is applied sequentially, so the second op writes onto a clean
-  //    slate. Same trick handles "clear all" (just the remove).
+  // 2. System.Tags is especially fiddly: op:"add" with the new (shorter) list
+  //    is treated as APPEND on some tenants, so a deletion silently re-merges.
+  //    The JSON-Patch-standard fix is op:"replace" with the new value, which
+  //    cleanly replaces. ADO rejects two ops on the same field in one PATCH
+  //    (VS403691), so we send exactly one op for tags.
   const ops = [];
   for (const [k, v] of Object.entries(fields)) {
     const path = `/fields/${resolveField(k)}`;
-    if (k === "tags") {
+    if (v === "" || v == null) {
       ops.push({ op: "remove", path });
-      if (v !== "" && v != null) ops.push({ op: "add", path, value: v });
-    } else if (v === "" || v == null) {
-      ops.push({ op: "remove", path });
+    } else if (k === "tags") {
+      ops.push({ op: "replace", path, value: v });
     } else {
       ops.push({ op: "add", path, value: v });
     }
