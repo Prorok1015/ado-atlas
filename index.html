@@ -24,6 +24,7 @@
   <select id="f_auto" title="auto-refresh interval"><option value="0">auto: off</option><option value="60">auto: 1m</option><option value="300">auto: 5m</option><option value="900">auto: 15m</option></select>
   <input id="search" placeholder="search id / title">
   <button class="btn" id="searchbtn">Search</button>
+  <button class="btn save" id="newbtn" title="create a new work item (N)">✚ New</button>
   <button class="btn" id="refreshbtn" title="reload from server (drop caches)">⟳</button>
   <button class="btn" id="fit" title="fit graph">Fit</button>
   <div class="seg" id="export" title="export the current (filtered) view"><button data-x="csv">⬇ CSV</button><button data-x="json">JSON</button></div>
@@ -103,6 +104,30 @@
   </div>
 </div>
 <div id="statusbar"><span id="status"></span></div>
+
+<!-- New work item modal: create an item from scratch (no parent required).
+     Parent is optional — leave blank for a top-level item. -->
+<div id="newitem-overlay">
+  <div id="newitem-box">
+    <h1>New work item</h1>
+    <div class="row">
+      <div><label>Type</label><select id="n_type" style="width:100%"></select></div>
+      <div style="max-width:96px"><label>Priority</label><select id="n_prio" style="width:100%"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+    </div>
+    <label>Title</label>
+    <input id="n_title" placeholder="work item title" style="width:100%">
+    <div class="row">
+      <div><label>Assigned</label><div style="display:flex;gap:4px"><input id="n_assigned" list="assignees" style="flex:1"><button class="btn" id="n_me" title="assign to me" style="padding:6px 9px">me</button></div></div>
+      <div><label>Parent</label><input id="n_parent" type="number" min="0" placeholder="id (blank = top-level)" style="width:100%"></div>
+    </div>
+    <label>Sprint</label><select id="n_iter" style="width:100%"></select>
+    <div id="newitem-err"></div>
+    <div id="newitem-actions">
+      <button class="btn save" id="n_create" title="Ctrl/Cmd+Enter">Create</button>
+      <button class="btn" id="n_cancel">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- First-run / settings modal. The whole UI is invisible until the PAT
      check passes (handled by app.js boot). -->

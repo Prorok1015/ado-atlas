@@ -188,3 +188,14 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 #setup-actions{display:flex;gap:8px;margin-top:14px}
 #setup-actions .btn{flex:1;padding:7px 12px;font-size:13px}
 #setup-err{color:#e06c75;font-size:12px;min-height:16px;margin-top:6px}
+
+/* New-work-item modal (shares the setup-modal look) */
+#newitem-overlay{position:fixed;inset:0;background:rgba(8,11,15,0.85);z-index:10000;display:none;align-items:center;justify-content:center}
+#newitem-overlay.show{display:flex}
+#newitem-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px;width:480px;max-width:92vw;color:var(--txt)}
+#newitem-box h1{font-size:16px;margin:0 0 12px}
+#newitem-box label{margin-top:8px}
+#newitem-box input,#newitem-box select{margin-bottom:4px}
+#newitem-actions{display:flex;gap:8px;margin-top:14px}
+#newitem-actions .btn{flex:1;padding:7px 12px;font-size:13px}
+#newitem-err{color:#e06c75;font-size:12px;min-height:16px;margin-top:6px}

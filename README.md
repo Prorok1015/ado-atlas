@@ -93,6 +93,18 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - The last view is **cached** (`chrome.storage.local`) and painted instantly on
   open while the live refresh runs in the background.
 
+## Creating a work item
+
+- **✚ New** (toolbar) — create a brand-new item from scratch. Pick a **Type**
+  and **Title** (required); **Priority**, **Assignee**, **Sprint**, and an
+  optional **Parent** id are all optional — leave Parent blank for a top-level
+  item. On save the list refreshes and the new item opens in the editor.
+  Shortcuts: press **N** anywhere (when not typing) to open it, **Ctrl/Cmd+Enter**
+  to submit, **Esc** to cancel. Also reachable from the **Command palette**
+  (Ctrl/Cmd-K → "New work item").
+- **+ Child** (item editor) — create an item already parented under the one
+  you're viewing; the form stays open for rapid multi-create.
+
 ## Editing a work item
 
 Click any item to open the side editor. Beyond the usual fields:

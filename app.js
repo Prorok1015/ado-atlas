@@ -791,6 +791,46 @@ async function createChild(){
   refresh();
 }
 
+/* ---------- create a brand-new item from scratch (no parent required) ---------- */
+let _newIterRoot='';                               // sentinel path for "(no sprint)"
+async function showNewItem(parentId){
+  $('newitem-err').textContent='';
+  $('n_title').value='';$('n_prio').value='';$('n_assigned').value='';
+  $('n_parent').value=(parentId!=null?String(parentId):'');
+  $('n_type').value='Task';
+  // sprint dropdown — same source as the editor's, default to "(no sprint)"
+  const isel=$('n_iter');isel.innerHTML='<option value="">(no sprint)</option>';
+  try{
+    const iters=await getIterations();
+    _newIterRoot=iters[0]?iters[0].path.split('\\')[0]:(projectName||'');
+    const _t=new Date().toISOString().slice(0,10);
+    iters.forEach(it=>{const cur=it.start&&it.finish&&_t>=it.start.slice(0,10)&&_t<=it.finish.slice(0,10);
+      isel.appendChild(new Option(it.name+(cur?'  • current':''),it.path));});
+  }catch(e){/* sprints are optional — leave just "(no sprint)" */}
+  $('newitem-overlay').classList.add('show');
+  $('n_title').focus();
+}
+function closeNewItem(){$('newitem-overlay').classList.remove('show');}
+async function createNew(){
+  const type=$('n_type').value,title=$('n_title').value.trim();
+  if(!title){$('newitem-err').textContent='Title is required.';$('n_title').focus();return;}
+  const body={type,title};
+  const par=$('n_parent').value.trim();
+  if(par!==''){if(!/^\d+$/.test(par)){$('newitem-err').textContent='Parent must be a numeric work-item id.';return;}body.parent=parseInt(par,10);}
+  const assigned=$('n_assigned').value.trim();if(assigned)body.assigned=(assigned==='me'?(currentUser||assigned):assigned);
+  const prio=$('n_prio').value;if(prio)body.priority=Number(prio);
+  const iter=$('n_iter').value;if(iter&&iter!==_newIterRoot)body.iteration=iter;
+  const btn=$('n_create');btn.disabled=true;btn.textContent='Creating…';loadStart('creating…');
+  let r;try{r=await api.createItem(body);}
+  catch(e){$('newitem-err').textContent='ERROR: '+e.message;btn.disabled=false;btn.textContent='Create';loadEnd();return;}
+  btn.disabled=false;btn.textContent='Create';loadEnd();
+  if(body.parent!=null)delete store.kids[body.parent];   // parent's child list is now stale
+  closeNewItem();
+  setStatus(`created #${r.id} (${type})`+(body.parent!=null?` under #${body.parent}`:' (top-level)'));
+  await refresh();
+  openItem(r.id);                                  // jump straight into the new item's editor
+}
+
 function buildLegend(){$('legend').innerHTML=Object.entries(TYPE_COLOR).map(([k,c])=>`<span><i style="background:${c}"></i>${k}</span>`).join('');}
 
 /* ---------- export the current (filtered) view ---------- */
@@ -868,6 +908,7 @@ async function loadSnapshot(){
 /* ---------- command palette (Ctrl/Cmd+K) ---------- */
 let palItems=[],palIdx=0;
 const PALETTE_ACTIONS=[
+  {kind:'cmd',title:'New work item',run:()=>showNewItem()},
   {kind:'cmd',title:'Refresh list',run:()=>refresh()},
   {kind:'cmd',title:'View: Tree',run:()=>switchMode('tree')},
   {kind:'cmd',title:'View: Graph',run:()=>switchMode('graph')},
@@ -1111,8 +1152,8 @@ async function initialBoot(postSetup){
   }
   _booted=true;
 
-  TYPES.forEach(t=>{const o=document.createElement('option');o.value=o.textContent=t;$('c_type').appendChild(o);});
-  $('c_type').value='Task';
+  TYPES.forEach(t=>{$('c_type').appendChild(new Option(t,t));$('n_type').appendChild(new Option(t,t));});
+  $('c_type').value='Task';$('n_type').value='Task';
   // switching view is render-only (no API): graph draws from the store, tree DOM persists
   $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>switchMode(b.dataset.m));
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderGraph();});
@@ -1158,6 +1199,13 @@ async function initialBoot(postSetup){
   // command palette (Ctrl/Cmd+K)
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();
     $('palette').classList.contains('show')?closePalette():openPalette();}});
+  // plain "N" opens the new-item modal — only when not typing and no modal/palette is up
+  document.addEventListener('keydown',e=>{
+    if((e.key!=='n'&&e.key!=='N')||e.ctrlKey||e.metaKey||e.altKey)return;
+    const t=e.target,tag=t&&t.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(t&&t.isContentEditable))return;
+    if($('palette').classList.contains('show')||$('setup-overlay').classList.contains('show')||$('newitem-overlay').classList.contains('show'))return;
+    e.preventDefault();showNewItem();});
   $('palette-input').addEventListener('input',e=>renderPalette(e.target.value));
   $('palette-input').addEventListener('keydown',e=>{
     if(e.key==='ArrowDown'){e.preventDefault();e.stopPropagation();movePalette(1);}
@@ -1193,6 +1241,15 @@ async function initialBoot(postSetup){
   $('c_create').onclick=createChild;$('c_cancel').onclick=()=>$('child_form').style.display='none';
   $('c_me').onclick=()=>{$('c_assigned').value=currentUser||'me';};
   $('c_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createChild();}});
+  // new-item modal (create from scratch)
+  $('newbtn').onclick=()=>showNewItem();
+  $('n_create').onclick=createNew;$('n_cancel').onclick=closeNewItem;
+  $('n_me').onclick=()=>{$('n_assigned').value=currentUser||'me';};
+  $('newitem-overlay').addEventListener('mousedown',e=>{if(e.target===$('newitem-overlay'))closeNewItem();});
+  $('n_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createNew();}});
+  $('newitem-box').addEventListener('keydown',e=>{
+    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeNewItem();}
+    else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();createNew();}});
   try{const sf=localStorage.getItem('ado.filters');if(sf)Object.assign(fstate,JSON.parse(sf));
     const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
     if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
