@@ -154,6 +154,11 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 #board.drag.showempty .bcol.empty-sprint .bhead{color:var(--muted)}
 #board.drag.showempty .bcol.empty-sprint:not(.dropover) .bhead{writing-mode:vertical-rl;white-space:nowrap;border:0;padding:6px 2px;font-size:11px}
 #board.drag.showempty .bcol.empty-sprint:not(.dropover) .bcards{display:none}
+/* empty "No sprint": always visible but narrow, expands when a drag hovers it */
+.bcol.collapsed{min-width:44px;max-width:44px;overflow:hidden;opacity:.9}
+.bcol.collapsed:not(.dropover) .bhead{writing-mode:vertical-rl;white-space:nowrap;border:0;padding:6px 2px;font-size:11px;color:var(--muted)}
+.bcol.collapsed:not(.dropover) .bcards{display:none}
+.bcol.collapsed.dropover{min-width:240px;max-width:260px;overflow:visible;opacity:1}
 .btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;padding-left:18px}
 .trow{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer;white-space:nowrap;user-select:none}

@@ -470,6 +470,7 @@ async function renderBoard(){
     const colItems=groups.get(k)||[];
     const col=document.createElement('div');col.className='bcol';
     if(k!=='__none__'&&!colItems.length&&!newSprints.has(k))col.classList.add('empty-sprint');   // hidden until a drag starts (but keep a just-created one visible)
+    if(k==='__none__'&&!colItems.length)col.classList.add('collapsed');   // empty "No sprint" → narrow, expands on drag-hover
     if(it&&it.start&&it.finish&&today>=it.start.slice(0,10)&&today<=it.finish.slice(0,10))col.classList.add('current');
     const h=document.createElement('div');h.className='bhead';
     h.innerHTML=(k==='__none__'?'No sprint':`${esc(it.name)} <small>${(it.start||'').slice(0,10)}→${(fin||'').slice(0,10)}</small>`)+'<br>'+colMeta(colItems);
