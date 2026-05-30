@@ -164,6 +164,7 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 .trow{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer;white-space:nowrap;user-select:none}
 .trow:hover{background:var(--panel2)}.trow.sel{background:var(--sel)}
 .tog{width:14px;text-align:center;color:var(--muted);cursor:pointer;user-select:none}
+.tog.leaf{cursor:default}                                   /* childless item: blank caret slot, keeps labels aligned */
 .dot{width:10px;height:10px;border-radius:3px;flex:none}
 .lab{overflow:hidden;text-overflow:ellipsis}
 .badge{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:1px 7px}

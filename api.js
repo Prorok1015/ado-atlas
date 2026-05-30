@@ -564,6 +564,36 @@ async function parents(ids) {
   return out;
 }
 
+// How many child work items each of `ids` has, WITHOUT fetching the children.
+// One WorkItemLinks WIQL query per chunk (returns ids only) → count the
+// Hierarchy-Forward edges leaving each source. Children outside the current
+// filter still count, so this is a true total (a node may show "3" yet expand
+// to fewer rows once the filter hides some). A chunk that errors leaves its ids
+// ABSENT from the result, so the caller can tell "0 children" from "unknown".
+async function childCounts(ids) {
+  ids = ids.map(Number).filter(Number.isFinite);
+  if (!ids.length) return {};
+  const proj = await projUrl();
+  const out = {};
+  await pool(chunk200(ids).map(chunk => async () => {
+    const wiql =
+      "SELECT [System.Id] FROM WorkItemLinks WHERE " +
+      "([Source].[System.Id] IN (" + chunk.join(",") + ")) AND " +
+      "([System.Links.LinkType] = 'System.LinkTypes.Hierarchy-Forward') " +
+      "MODE(MustContain)";
+    let rels;
+    try {
+      const res = await req("POST", `${proj}/_apis/wit/wiql?${API_VERSION}`, { query: wiql });
+      rels = res.workItemRelations || [];
+    } catch (_) { return; }                       // chunk failed → its ids stay "unknown"
+    for (const id of chunk) if (!(id in out)) out[id] = 0;   // chunk succeeded → known counts (incl. real zeros)
+    for (const r of rels) {                       // source-only entries have rel === null → skipped
+      if (r && r.rel && r.source && r.target) out[r.source.id] = (out[r.source.id] || 0) + 1;
+    }
+  }), 6);
+  return out;
+}
+
 // ---------- item GET/PATCH/comment/create ----------
 async function browserUrl(wid) {
   const { org, project } = await getConfig();
@@ -844,7 +874,7 @@ window.api = {
   roots: ({ text, order, filters } = {}) => list({ text, order, filters }),
   search: ({ text, order, filters } = {}) => list({ text, order, filters }),
   children: (wid, order) => list({ parent: wid, order }),
-  parents,
+  parents, childCounts,
   // graph
   deps,
   // item ops

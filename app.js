@@ -151,8 +151,12 @@ function treeNode(n){
   cb.title='select for bulk edit  (or Ctrl-click the row; Shift-click for a range)';
   cb.onclick=e=>{e.stopPropagation();bulkSet([n.id],cb.checked);bulkAnchor=n.id;bulkAnchorOn=cb.checked;};
   const open=store.expanded.has(n.id);
-  const tog=document.createElement('span');tog.className='tog';tog.textContent=open?'▾':'▸';
-  tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};
+  // Show the expand caret only when the item can have children: known in-set kids,
+  // a positive child count, or an as-yet-unknown count (undefined → keep the caret).
+  const hasKids=(store.kids[n.id]||[]).length>0||n.childCount===undefined||n.childCount>0;
+  const tog=document.createElement('span');tog.className='tog';
+  if(hasKids){tog.textContent=open?'▾':'▸';tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};}
+  else{tog.classList.add('leaf');}     // childless → blank spacer keeps labels aligned
   const dot=document.createElement('i');dot.className='dot';dot.style.background=tyColor(n.type);
   const lab=document.createElement('span');lab.className='lab';lab.textContent=`#${n.id} ${n.title}`;
   if(n.via&&n.via.length){const m=document.createElement('span');m.className='skip';m.textContent=' ↗';
@@ -168,7 +172,7 @@ function treeNode(n){
     if(selRow)selRow.classList.remove('sel');selRow=row;row.classList.add('sel');openItem(n.id);   // plain click: open
   };
   li.appendChild(row);
-  if(open)li.appendChild(childrenUl(n.id));              // auto-expand from shared state
+  if(open&&hasKids)li.appendChild(childrenUl(n.id));    // auto-expand from shared state (never for a known-leaf)
   return li;
 }
 async function toggle(li,n,tog){
@@ -312,7 +316,7 @@ async function expandNode(id){
 const txtColor=()=>document.body.classList.contains('light')?'#1b2330':'#e6edf3';   // theme text colour (matches --txt)
 function gstyle(){return [
  {selector:'node',style:{'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','shape':'round-rectangle',
-   'label':e=>{const p=e.data('priority'),v=e.data('via');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
+   'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ⊞'+k:'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':'#fff','text-wrap':'wrap','text-max-width':'190px','font-size':'11px','text-valign':'center',
    'width':'210px','height':'label','padding':'10px',
    'border-width':e=>((e.data('priority')||9)<=2?4:2),'border-color':e=>prioColor(e.data('priority'))}},
@@ -321,7 +325,7 @@ function gstyle(){return [
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
-   'label':e=>{const p=e.data('priority'),v=e.data('via');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
+   'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ⊞'+k:'')+' · '+e.data('type')+' — '+e.data('title');},
    'text-valign':'top','text-halign':'center','text-margin-y':-4,
    'font-size':'12px','font-weight':'bold','text-max-width':'400px','text-wrap':'wrap'}},
  {selector:'node:selected',style:{'border-color':'#fff','border-width':4}},
@@ -903,6 +907,23 @@ async function _refresh(){
   else if(mode==='timeline')renderTimeline();
   if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);   // live-update open sprint
   saveSnapshot();                        // cache this view for an instant first paint next session
+  loadChildCounts(store.roots.slice());  // fill in n.childCount → hides empty-tree arrows, badges graph nodes
+}
+// How many children each loaded item has (incl. ones the filter hides), fetched
+// cheaply via a links-only query. Stored on the node as n.childCount so it rides
+// along into the graph data and the snapshot. Re-renders once when it lands.
+let childCountTok=0;
+async function loadChildCounts(ids){
+  if(!ids.length)return;
+  const tok=++childCountTok;
+  let counts;try{counts=await api.childCounts(ids);}catch(e){return;}
+  if(tok!==childCountTok)return;          // a newer refresh superseded this lookup
+  let changed=false;
+  for(const idStr in counts){const n=store.nodes[idStr];if(n&&n.childCount!==counts[idStr]){n.childCount=counts[idStr];changed=true;}}
+  if(!changed)return;
+  if(mode==='tree'){const ts=$('tree').scrollTop;renderTree();$('tree').scrollTop=ts;}
+  else if(mode==='graph'&&cy){cy.batch(()=>cy.nodes().forEach(nd=>{const n=store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));cy.style().update();}
+  saveSnapshot();                         // persist the counts so next session's cached paint has them too
 }
 
 /* ---------- editor ---------- */
