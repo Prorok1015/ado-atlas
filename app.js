@@ -1202,7 +1202,7 @@ async function initialBoot(postSetup){
   $('f_wh_start').onchange=applyWH;$('f_wh_end').onchange=applyWH;
   $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);try{localStorage.setItem('ado.showEmpty',on?'1':'0');}catch(e){}};
   $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.boardGroup',boardGroup);}catch(e){}renderBoard();});
-  $('filt_btn').onclick=()=>{const p=$('filterpanel');p.style.display=p.style.display==='none'?'flex':'none';};
+  $('filt_btn').onclick=()=>{const p=$('filterpanel');const show=p.style.display==='none';p.style.display=show?'flex':'none';$('filt_btn').classList.toggle('on',show);};
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
   const moreP=$('morepanel'),moreB=$('morebtn');
   const closeMore=()=>{moreP.style.display='none';moreB.classList.remove('on');};
