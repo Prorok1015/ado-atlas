@@ -75,6 +75,10 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   Sprint**, **by State** (a classic Kanban — drag a card between columns to
   change its state), or **by Assignee**. Dragging also works to change sprint
   (by-Sprint) or reassign (by-Assignee).
+- **∅ empty** (board toolbar) shows empty columns too: every project **state**
+  (by-State) and every team member (by-Assignee) gets a column even with no
+  cards, so you can drag an item into an as-yet-unused state/assignee. (For
+  by-Sprint it reveals empty sprints as narrow drop targets while dragging.)
 - **New sprint** (Board → By Sprint): a dashed **＋ New sprint** column at the
   right end opens a dialog to create a dated iteration. It needs permission to
   add iteration nodes in ADO — if the create is denied (HTTP 403) the column

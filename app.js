@@ -393,15 +393,19 @@ function renderBoardByAssignee(el,items){
   const groups=new Map();
   items.forEach(n=>{const k=n.assigned||'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
   groups.forEach(arr=>arr.sort(cmpBySort));
-  const names=[...groups.keys()].filter(k=>k).sort((a,b)=>a.localeCompare(b));
+  let names=[...groups.keys()].filter(k=>k);
+  if($('board').classList.contains('showempty'))    // "∅ empty" on: also show team members with no items
+    [currentUser,...assignees].forEach(a=>{if(a&&!groups.has(a)&&!names.includes(a))names.push(a);});
+  names.sort((a,b)=>a.localeCompare(b));
   if(groups.has(''))names.push('');                 // Unassigned last
   names.forEach(k=>{
-    const arr=groups.get(k);
+    const arr=groups.get(k)||[];
     const col=document.createElement('div');col.className='bcol';
     const h=document.createElement('div');h.className='bhead';
     h.innerHTML=(k?esc(k):'Unassigned')+'<br>'+colMeta(arr);
     const wrap=document.createElement('div');wrap.className='bcards';
     arr.forEach(n=>wrap.appendChild(boardCard(n,null,'')));   // no overdue colouring in assignee view
+    if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
     col.dataset.field='assigned';col.dataset.val=k;   // drop = reassign
     col.append(h,wrap);el.appendChild(col);
   });
@@ -411,7 +415,10 @@ function renderBoardByState(el,items){
   const groups=new Map();
   items.forEach(n=>{const k=n.state||'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
   groups.forEach(arr=>arr.sort(cmpBySort));
-  const cols=orderStates([...groups.keys()].filter(k=>k));
+  let keys=[...groups.keys()].filter(k=>k);
+  if($('board').classList.contains('showempty'))    // "∅ empty" on: also show project states with no items
+    projectStates.forEach(s=>{if(!groups.has(s))keys.push(s);});
+  const cols=orderStates(keys);
   if(groups.has(''))cols.push('');                  // items with no state last (rare)
   cols.forEach(k=>{
     const arr=groups.get(k)||[];
@@ -420,6 +427,7 @@ function renderBoardByState(el,items){
     h.innerHTML=(k?`<span class="sbadge" style="background:${stateColor(k)}">${esc(k)}</span>`:'(no state)')+'<br>'+colMeta(arr);
     const wrap=document.createElement('div');wrap.className='bcards';
     arr.forEach(n=>wrap.appendChild(boardCard(n,null,today)));   // overdue colouring by target date
+    if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
     col.dataset.field='state';col.dataset.val=k;   // drop = change state
     col.append(h,wrap);el.appendChild(col);
   });
@@ -1456,7 +1464,8 @@ async function initialBoot(postSetup){
     try{localStorage.setItem('ado.workHours',r.start+'-'+r.end);}catch(e){}
     if(mode==='board')renderBoard();if(cur!=null)loadTimeline(cur);};
   $('f_wh_start').onchange=applyWH;$('f_wh_end').onchange=applyWH;
-  $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);try{localStorage.setItem('ado.showEmpty',on?'1':'0');}catch(e){}};
+  $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);try{localStorage.setItem('ado.showEmpty',on?'1':'0');}catch(e){}
+    if(mode==='board'&&boardGroup!=='sprint')renderBoard();};   // state/assignee add/remove empty columns in JS (sprints are CSS-only)
   $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.boardGroup',boardGroup);}catch(e){}renderBoard();});
   $('filt_btn').onclick=()=>{const p=$('filterpanel');const show=p.style.display==='none';p.style.display=show?'flex':'none';$('filt_btn').classList.toggle('on',show);};
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
