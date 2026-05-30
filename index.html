@@ -99,7 +99,15 @@
         </div>
       </div>
     </div>
-    <label>Sprint</label><select id="s_iter" style="width:100%"></select>
+    <label>Sprint</label>
+    <input type="hidden" id="s_iter">
+    <div class="prow-field">
+      <button type="button" class="btn pcard" id="s_iter_card" title="click to change sprint"></button>
+    </div>
+    <div id="s_iter_pick" class="ppick" style="display:none">
+      <input id="s_iter_search" class="psearch" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
+      <div id="s_iter_results" class="presults"></div>
+    </div>
     <label>Parent</label>
     <input type="hidden" id="s_parent">
     <div class="prow-field">
@@ -181,7 +189,15 @@
       <input id="n_parent_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
       <div id="n_parent_results" class="presults"></div>
     </div>
-    <label>Sprint</label><select id="n_iter" style="width:100%"></select>
+    <label>Sprint</label>
+    <input type="hidden" id="n_iter">
+    <div class="prow-field">
+      <button type="button" class="btn pcard" id="n_iter_card" title="click to choose a sprint"></button>
+    </div>
+    <div id="n_iter_pick" class="ppick" style="display:none">
+      <input id="n_iter_search" class="psearch" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
+      <div id="n_iter_results" class="presults"></div>
+    </div>
     <div id="newitem-err"></div>
     <div id="newitem-actions">
       <button class="btn save" id="n_create" title="Ctrl/Cmd+Enter">Create</button>

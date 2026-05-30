@@ -319,10 +319,17 @@ function gstyle(){return [
    'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ⊞'+k:'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':'#fff','text-wrap':'wrap','text-max-width':'190px','font-size':'11px','text-valign':'center',
    'width':'210px','height':'label','padding':'10px',
+   // assignee avatar tucked into the top-right corner (initials on a coloured disc)
+   'background-image':e=>{const a=e.data('assigned');return a?avatarDataUri(a):'none';},
+   'background-image-containment':'over','background-clip':'none','background-fit':'none',
+   'background-width':'22px','background-height':'22px','background-position-x':'100%','background-position-y':'0%',
    'border-width':e=>((e.data('priority')||9)<=2?4:2),'border-color':e=>prioColor(e.data('priority'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
+   'background-image':e=>{const a=e.data('assigned');return a?avatarDataUri(a):'none';},   // same corner avatar on container nodes
+   'background-image-containment':'over','background-clip':'none','background-fit':'none',
+   'background-width':'22px','background-height':'22px','background-position-x':'100%','background-position-y':'0%',
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ⊞'+k:'')+' · '+e.data('type')+' — '+e.data('title');},
@@ -416,12 +423,6 @@ async function getIterations(){                     // sprint dates — fetched 
   return iterCache;
 }
 function isCurrentSprint(it){const t=new Date().toISOString().slice(0,10);return !!(it.start&&it.finish&&t>=it.start.slice(0,10)&&t<=it.finish.slice(0,10));}
-// <option> label for a sprint dropdown: a small "•" marks the current sprint (a
-// native <select> can't size/colour a real dot — only fixed-size emoji), + dates.
-function sprintOptLabel(it){
-  const range=(it.start||it.finish)?`  (${(it.start||'?').slice(0,10)} → ${(it.finish||'?').slice(0,10)})`:'';
-  return (isCurrentSprint(it)?'• ':'')+it.name+range;
-}
 const BOARD_TIME_CAP=200;
 function hh(h){return h>=24?(Math.floor(h/24)+'d '+Math.round(h%24)+'h'):(Math.round(h*10)/10+'h');}
 function colMeta(items){const se=items.reduce((s,n)=>s+(n.est||0),0);
@@ -544,7 +545,8 @@ function boardCard(n,finish,today){
   c.innerHTML=`<div class="bttl">#${n.id} ${esc(n.title)}</div>`+
     `<div class="bmeta"><span>${esc(n.type)}</span>`+
     (n.priority?`<span class="prio" style="background:${prioColor(n.priority)}">P${n.priority}</span>`:'')+
-    `<span>${esc(n.state)}</span>`+(overdue?'<span class="od">overdue</span>':'')+`</div>`+
+    `<span>${esc(n.state)}</span>`+(overdue?'<span class="od">overdue</span>':'')+
+    (n.assigned?`<span class="basg">${personChipT(n.assigned)}</span>`:'')+`</div>`+
     `<div class="bfoot">`+(n.est!=null?`<div class="tbar"><div class="tfill"></div></div>`:'')+
     `<span class="tlabel">${n.est!=null?'est '+(+n.est)+'h':'⏱ …'}</span></div>`;
   c.addEventListener('mousedown',e=>{if(e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey)startCardDrag(e,n.id,c);});   // modifier = select, not drag
@@ -978,20 +980,16 @@ async function openItem(id){
   // sprint dropdown (manual iteration change) + planning dates
   const iters=await getIterations();
   if(myToken!==openToken)return;                  // a newer openItem() superseded this one
-  const isel=$('s_iter');isel.innerHTML='';
   const root=iters[0]?iters[0].path.split('\\')[0]:projectName;
-  isel.appendChild(new Option('(no sprint)',root));
-  iters.forEach(it=>{isel.appendChild(new Option(sprintOptLabel(it),it.path));});
   const curIt=d.iteration||root;
-  if(curIt!==root&&!iters.some(it=>it.path===curIt))isel.appendChild(new Option(curIt.split('\\').slice(1).join('\\')||curIt,curIt));
-  isel.value=curIt;
+  sprintEditor.set(curIt,/*silent*/true);                                // sprint card + picker (iterCache is loaded above)
   parentEditor.set(d.parent!=null?String(d.parent):'',/*silent*/true);   // set value + render card without flipping dirty
   $('s_start').value=(d.start||'').slice(0,10);
   $('s_target').value=(d.target||'').slice(0,10);
   $('s_due').value=(d.due||'').slice(0,10);
   $('s_est').value=(d.est!=null?d.est:'');
   orig={title:d.title,state:d.state,assigned:d.assigned,desc:d.desc,ac:d.ac,has_ac:d.has_ac,priority:d.priority,
-        iter:isel.value,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};
+        iter:curIt,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};
   refreshDirty();loadTimeline(id);
   setStatus('#'+id+' loaded');
 }
@@ -1006,17 +1004,18 @@ function refreshDirty(){const d=dirty();const b=$('s_save');b.disabled=!d;b.text
 function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:$('s_desc').value,ac:$('s_ac').value,prio:$('s_prio').value,
   iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};}
 
-/* ---------- reusable searchable picker: chosen-value card + dropdown ----------
-   One instance per place that picks a value (parent item, assignee, …).
+/* ===================== CardPicker =====================
+   Reusable form control: a card showing the chosen value + a searchable
+   dropdown to change it. One instance per spot; the three spots so far are
+   parent item, assignee and sprint (provider plugs in the data + rendering).
    Elements are looked up by id from `base`: <base> (hidden value), <base>_card,
-   <base>_pick, <base>_search, <base>_results, and optional <base>_open.
-   `opts.provider` plugs in the data source and how each row/card is rendered. */
+   <base>_pick, <base>_search, <base>_results, and optional <base>_open. */
 function parentCardHtml(n){
   return `<i class="dot" style="background:${tyColor(n.type)}"></i>`+
     `<span class="pcid">#${n.id}</span><span class="pctitle">${esc(n.title||'')}</span>`+
     (n.state?`<span class="pcstate" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'');
 }
-function createPickerField(base,opts){
+function createCardPicker(base,opts){
   opts=opts||{};
   const onChange=opts.onChange||(()=>{});
   const prov=opts.provider;
@@ -1132,6 +1131,12 @@ function itemPickerProvider(getExclude){
 function personColor(name){let h=0;name=String(name);for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;return `hsl(${h%360} 52% 45%)`;}
 function personInitials(name){const p=String(name).trim().split(/\s+/).filter(Boolean);return (((p[0]||'')[0]||'')+(p.length>1?(p[p.length-1][0]||''):'')).toUpperCase()||'?';}
 function personChip(name){return `<i class="pav" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}
+function personChipT(name){return `<i class="pav pavsm" title="${esc(name)}" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}   // small, tooltipped — board cards
+function avatarDataUri(name){               // tiny circular initials avatar for graph nodes (cytoscape background-image)
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><circle cx='20' cy='20' r='20' fill='${personColor(name)}'/>`+
+    `<text x='20' y='27' font-size='19' font-family='sans-serif' font-weight='700' fill='#fff' text-anchor='middle'>${esc(personInitials(name))}</text></svg>`;
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+}
 function assigneePeople(){const seen=new Set(),out=[];   // current user first, then the deduped roster
   [currentUser,...assignees].forEach(a=>{if(a&&!seen.has(a)){seen.add(a);out.push(a);}});return out;}
 function assigneePickerProvider(){
@@ -1158,13 +1163,46 @@ function assigneePickerProvider(){
   };
 }
 
-function createParentField(base,opts){opts=opts||{};return createPickerField(base,{onChange:opts.onChange,provider:itemPickerProvider(opts.getExcludeId)});}
-function createAssigneeField(base,opts){opts=opts||{};return createPickerField(base,{onChange:opts.onChange,provider:assigneePickerProvider()});}
+/* --- provider: sprint / iteration (the project's dated iterations, fully cached) --- */
+function sprintRoot(){return (iterCache&&iterCache[0])?iterCache[0].path.split('\\')[0]:projectName;}   // project segment = "no sprint"
+function sprintRangeText(it){const s=it.start?it.start.slice(0,10):'',f=it.finish?it.finish.slice(0,10):'';return (s||f)?(s+'→'+f):'';}
+function sprintPickerProvider(getNone){
+  getNone=getNone||(()=>'');
+  function isNone(v){return !v||v===getNone();}
+  return {
+    renderCard(v,card){
+      if(isNone(v)){card.innerHTML='<span class="pcnone">(no sprint)</span>';return;}
+      const it=_sprint(v);
+      if(!it){card.innerHTML=`<span class="pctitle">${esc(v.split('\\').slice(1).join('\\')||v)}</span>`;return;}
+      const rt=sprintRangeText(it);
+      card.innerHTML=(isCurrentSprint(it)?'<span class="curdot" title="current sprint"></span>':'')+
+        `<span class="pctitle">${esc(it.name)}</span>`+(rt?`<span class="pcnone" style="flex:none">${esc(rt)}</span>`:'');
+    },
+    localRows(q){
+      q=(q||'').trim().toLowerCase();
+      const out=[{value:getNone(),html:`<span class="pkind">—</span><span class="ptitle pcnone">(no sprint)</span>`}];
+      for(const it of (iterCache||[])){
+        if(q&&!it.name.toLowerCase().includes(q))continue;
+        const rt=sprintRangeText(it);
+        out.push({value:it.path,html:(isCurrentSprint(it)?'<span class="curdot"></span>':'<span class="pkind"></span>')+
+          `<span class="ptitle">${esc(it.name)}</span>`+(rt?`<span class="pcnone">${esc(rt)}</span>`:'')});
+      }
+      return out;
+    },
+    // no apiExpand — iterations are already cached in iterCache
+  };
+}
+
+function createParentField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:itemPickerProvider(opts.getExcludeId)});}
+function createAssigneeField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:assigneePickerProvider()});}
+function createSprintField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:sprintPickerProvider(opts.getNone)});}
 const parentEditor=createParentField('s_parent',{onChange:refreshDirty,getExcludeId:()=>cur});
 const parentNew=createParentField('n_parent',{getExcludeId:()=>null});
 const assignedEditor=createAssigneeField('s_assigned',{onChange:refreshDirty});
 const assignedChild=createAssigneeField('c_assigned',{});
 const assignedNew=createAssigneeField('n_assigned',{});
+const sprintEditor=createSprintField('s_iter',{onChange:refreshDirty,getNone:sprintRoot});   // editor: "no sprint" = project root path
+const sprintNew=createSprintField('n_iter',{getNone:()=>''});                                // new-item modal: "no sprint" = empty
 
 /* ---------- undo / redo (Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z or Ctrl+Y) ----------
    Each mutating action pushes a command with matching undo()/redo() functions,
@@ -1345,17 +1383,14 @@ async function showNewItem(parentId){
   $('n_title').value='';$('n_prio').value='';assignedNew.set('',/*silent*/true);
   parentNew.set(parentId!=null?String(parentId):'',/*silent*/true);   // render the parent card + close any open picker
   fillTypeSelect('n_type','Task');           // ensure options match the project's real types
-  // sprint dropdown — same source as the editor's, default to "(no sprint)"
-  const isel=$('n_iter');isel.innerHTML='<option value="">(no sprint)</option>';
-  try{
-    const iters=await getIterations();
-    _newIterRoot=iters[0]?iters[0].path.split('\\')[0]:(projectName||'');
-    iters.forEach(it=>{isel.appendChild(new Option(sprintOptLabel(it),it.path));});
-  }catch(e){/* sprints are optional — leave just "(no sprint)" */}
+  // sprint picker — same source as the editor's; "(no sprint)" = empty value
+  try{const iters=await getIterations();_newIterRoot=iters[0]?iters[0].path.split('\\')[0]:(projectName||'');}
+  catch(e){/* sprints are optional */}
+  sprintNew.set('',/*silent*/true);
   $('newitem-overlay').classList.add('show');
   $('n_title').focus();
 }
-function closeNewItem(){parentNew.close();assignedNew.close();$('newitem-overlay').classList.remove('show');}
+function closeNewItem(){parentNew.close();assignedNew.close();sprintNew.close();$('newitem-overlay').classList.remove('show');}
 async function createNew(){
   const type=$('n_type').value,title=$('n_title').value.trim();
   if(!title){$('newitem-err').textContent='Title is required.';$('n_title').focus();return;}
@@ -1986,8 +2021,9 @@ async function initialBoot(postSetup){
   $('s_actbtn').onclick=toggleActivity;
   parentEditor.wire();parentNew.wire();   // parent card + searchable picker (editor + New-item modal)
   assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker
-  assignedEditor.render();assignedChild.render();assignedNew.render();   // show placeholder cards before first use
-  ['s_title','s_state','s_prio','s_desc','s_ac','s_iter','s_start','s_target','s_due','s_est'].forEach(id=>{
+  sprintEditor.wire();sprintNew.wire();                           // sprint card + iteration picker
+  assignedEditor.render();assignedChild.render();assignedNew.render();sprintEditor.render();sprintNew.render();   // placeholder cards before first use
+  ['s_title','s_state','s_prio','s_desc','s_ac','s_start','s_target','s_due','s_est'].forEach(id=>{
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
   document.addEventListener('keydown',e=>{
     const open=!$('side').classList.contains('hidden');
@@ -1996,6 +2032,7 @@ async function initialBoot(postSetup){
       if(parentEditor.isOpen())parentEditor.close();
       else if(assignedEditor.isOpen())assignedEditor.close();
       else if(assignedChild.isOpen())assignedChild.close();
+      else if(sprintEditor.isOpen())sprintEditor.close();
       else if($('comment_form').style.display==='flex')$('comment_form').style.display='none';
       else if($('child_form').style.display==='flex')$('child_form').style.display='none';
       else closePanel();
@@ -2013,7 +2050,7 @@ async function initialBoot(postSetup){
   $('newitem-overlay').addEventListener('mousedown',e=>{if(e.target===$('newitem-overlay'))closeNewItem();});
   $('n_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createNew();}});
   $('newitem-box').addEventListener('keydown',e=>{
-    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(parentNew.isOpen())parentNew.close();else if(assignedNew.isOpen())assignedNew.close();else closeNewItem();}
+    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(parentNew.isOpen())parentNew.close();else if(assignedNew.isOpen())assignedNew.close();else if(sprintNew.isOpen())sprintNew.close();else closeNewItem();}
     else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();createNew();}});
   // new-sprint modal (Board → By Sprint "＋" column)
   $('sp_create').onclick=createSprintSubmit;$('sp_cancel').onclick=closeSprintModal;
