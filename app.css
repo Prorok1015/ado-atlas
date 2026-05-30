@@ -191,6 +191,7 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 .lab{overflow:hidden;text-overflow:ellipsis}
 .badge{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:1px 7px}
 .prio{font-size:10px;font-weight:700;color:#111;border-radius:10px;padding:1px 6px;flex:none}
+.ttag{font-size:10px;font-weight:600;color:#fff;border-radius:10px;padding:1px 6px;flex:none;max-width:72px;overflow:hidden;text-overflow:ellipsis}
 .empty{color:var(--muted);font-size:12px;padding:2px 8px}
 .skip{color:var(--accent);font-weight:600;cursor:help}
 #side{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:10px 12px;overflow:auto;display:flex;flex-direction:column;gap:5px}
@@ -324,6 +325,21 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .pav{width:20px;height:20px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;letter-spacing:.2px}
 .pav0{background:var(--line);color:var(--muted)}
 .pavsm{width:16px;height:16px;font-size:8px}
+/* editor: Blocked-by / Blocks chip rows + their "+ add" pickers */
+#s_deps{display:flex;flex-direction:column;gap:6px}
+.depgroup{display:flex;flex-direction:column;gap:3px}
+.dephdr{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.depchips{display:flex;flex-wrap:wrap;gap:5px;min-height:20px;align-items:center}
+.depchip{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:2px 5px 2px 7px;font-size:11px;max-width:100%}
+.depchip .dot{width:8px;height:8px;border-radius:2px}
+.depchip .depopen{color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600;flex:none}
+.depchip .depopen:hover{text-decoration:underline}
+.depchip .depttl{color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.depchip b{cursor:pointer;font-weight:700;opacity:.7;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%}
+.depchip b:hover{opacity:1;background:var(--line)}
+/* graph: hover handle for drag-to-create dependency link */
+#depHandle{position:absolute;display:none;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#e0a13c;color:#fff;font-size:12px;font-weight:700;line-height:1;cursor:crosshair;z-index:40;box-shadow:0 0 0 2px var(--cy-bg),0 1px 4px rgba(0,0,0,.4);user-select:none}
+#depHandle:hover{background:#f0c674}
 /* editor tag chips */
 .tagedit{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 4px;min-height:22px;align-items:center}
 .tagchip{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fff;border-radius:11px;padding:2px 4px 2px 9px;line-height:1.6}

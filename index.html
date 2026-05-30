@@ -120,6 +120,33 @@
       <input id="s_parent_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
       <div id="s_parent_results" class="presults"></div>
     </div>
+    <label>Dependencies</label>
+    <div id="s_deps">
+      <div class="depgroup">
+        <div class="dephdr">Blocked by</div>
+        <div id="s_deps_blockedby_chips" class="depchips"></div>
+        <input type="hidden" id="s_deps_blockedby">
+        <div class="prow-field">
+          <button type="button" class="btn pcard" id="s_deps_blockedby_card" title="add a blocking work item"></button>
+        </div>
+        <div id="s_deps_blockedby_pick" class="ppick" style="display:none">
+          <input id="s_deps_blockedby_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+          <div id="s_deps_blockedby_results" class="presults"></div>
+        </div>
+      </div>
+      <div class="depgroup">
+        <div class="dephdr">Blocks</div>
+        <div id="s_deps_blocks_chips" class="depchips"></div>
+        <input type="hidden" id="s_deps_blocks">
+        <div class="prow-field">
+          <button type="button" class="btn pcard" id="s_deps_blocks_card" title="add a work item this blocks"></button>
+        </div>
+        <div id="s_deps_blocks_pick" class="ppick" style="display:none">
+          <input id="s_deps_blocks_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+          <div id="s_deps_blocks_results" class="presults"></div>
+        </div>
+      </div>
+    </div>
     <div class="row">
       <div><label>Start</label><input id="s_start" type="date"></div>
       <div><label>Target</label><input id="s_target" type="date"></div>

@@ -600,6 +600,20 @@ async function browserUrl(wid) {
   return `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_workitems/edit/${wid}`;
 }
 
+// Pure: split a relations array into {blocks, blockedBy}. Forward = this item
+// blocks → those ids; Reverse = this item is blocked by → those ids.
+function depsFromRelations(rels) {
+  const blocks = [], blockedBy = [];
+  for (const r of (rels || [])) {
+    const tail = (r.url || "").replace(/\/+$/, "").split("/").pop();
+    if (!/^\d+$/.test(tail)) continue;
+    const tid = parseInt(tail, 10);
+    if (r.rel === "System.LinkTypes.Dependency-Forward") blocks.push(tid);
+    else if (r.rel === "System.LinkTypes.Dependency-Reverse") blockedBy.push(tid);
+  }
+  return { blocks, blockedBy };
+}
+
 async function item(wid) {
   const proj = await projUrl();
   const d = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`);
@@ -622,8 +636,69 @@ async function item(wid) {
     target: f["Microsoft.VSTS.Scheduling.TargetDate"],
     due: f["Microsoft.VSTS.Scheduling.DueDate"],
     tags: f["System.Tags"] || "",
+    deps: depsFromRelations(d.relations),
     url: await browserUrl(d.id),
   };
+}
+
+// Standalone Dependency lookup for one item. Same shape as item().deps, used
+// from the graph (no full editor open) and for cache invalidation.
+async function dependencies(wid) {
+  const proj = await projUrl();
+  const d = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`);
+  return depsFromRelations(d.relations);
+}
+
+// Add a dep link: System.LinkTypes.Dependency-Forward on fromId pointing at toId.
+// Equivalent to a Reverse on toId — ADO renders it on both ends, and dependencies()
+// reads it from whichever side the caller asks about.
+async function addDependency(fromId, toId) {
+  fromId = Number(fromId); toId = Number(toId);
+  if (!Number.isFinite(fromId) || !Number.isFinite(toId)) throw new Error("invalid id");
+  if (fromId === toId) throw new Error("a work item can't depend on itself");
+  const proj = await projUrl();
+  const d = await req("GET", `${proj}/_apis/wit/workitems/${fromId}?${API_VERSION}&$expand=relations`);
+  for (const r of (d.relations || [])) {
+    if (r.rel !== "System.LinkTypes.Dependency-Forward" && r.rel !== "System.LinkTypes.Dependency-Reverse") continue;
+    const tail = (r.url || "").replace(/\/+$/, "").split("/").pop();
+    if (tail === String(toId)) throw new Error("dependency already exists");
+  }
+  const ops = [
+    { op: "test", path: "/rev", value: d.rev },
+    { op: "add", path: "/relations/-",
+      value: { rel: "System.LinkTypes.Dependency-Forward", url: `${proj}/_apis/wit/workitems/${toId}` } },
+  ];
+  const r = await req("PATCH", `${proj}/_apis/wit/workitems/${fromId}?${API_VERSION}`, ops, "application/json-patch+json");
+  return { id: r.id, rev: r.rev };
+}
+
+// Remove the Dependency link between fromId and toId. The relation can physically
+// live on either end (Forward on the source, or Reverse on the target — they are
+// the same link); try fromId's side first, fall back to toId's.
+async function removeDependency(fromId, toId) {
+  fromId = Number(fromId); toId = Number(toId);
+  if (!Number.isFinite(fromId) || !Number.isFinite(toId)) throw new Error("invalid id");
+  const proj = await projUrl();
+  async function tryRemoveFrom(host, peer) {
+    const d = await req("GET", `${proj}/_apis/wit/workitems/${host}?${API_VERSION}&$expand=relations`);
+    const rels = d.relations || [];
+    const idx = rels.findIndex(r => {
+      if (r.rel !== "System.LinkTypes.Dependency-Forward" && r.rel !== "System.LinkTypes.Dependency-Reverse") return false;
+      const tail = (r.url || "").replace(/\/+$/, "").split("/").pop();
+      return tail === String(peer);
+    });
+    if (idx < 0) return null;
+    const ops = [
+      { op: "test", path: "/rev", value: d.rev },
+      { op: "remove", path: `/relations/${idx}` },
+    ];
+    return await req("PATCH", `${proj}/_apis/wit/workitems/${host}?${API_VERSION}`, ops, "application/json-patch+json");
+  }
+  const r1 = await tryRemoveFrom(fromId, toId);
+  if (r1) return { id: r1.id, rev: r1.rev };
+  const r2 = await tryRemoveFrom(toId, fromId);
+  if (r2) return { id: r2.id, rev: r2.rev };
+  throw new Error("dependency link not found");
 }
 
 // Body shape mirrors the old /api/item PATCH endpoint: friendly aliases
@@ -878,6 +953,8 @@ window.api = {
   parents, childCounts,
   // graph
   deps,
+  // dependency links (create / remove / per-item lookup)
+  addDependency, removeDependency, dependencies,
   // item ops
   item, updateItem, comment, comments, history, createItem, deleteItem, setParent,
   // time

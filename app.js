@@ -168,6 +168,10 @@ function treeNode(n){
   row.append(cb,tog,dot,lab,bdg);
   if(n.priority){const pc=document.createElement('span');pc.className='prio';pc.textContent='P'+n.priority;
     pc.style.background=prioColor(n.priority);pc.title='priority '+n.priority;row.insertBefore(pc,bdg);}
+  if(n.tags){const ts=tagList_(n.tags);if(ts.length){const show=ts.slice(0,3),extra=ts.length-show.length;
+    bdg.style.marginLeft='0';
+    show.forEach((t,i)=>{const tc=document.createElement('span');tc.className='ttag';tc.textContent=t;tc.style.background=personColor(t);tc.title=t;if(i===0)tc.style.marginLeft='auto';row.insertBefore(tc,bdg);});
+    if(extra>0){const tc=document.createElement('span');tc.className='ttag';tc.textContent='+'+extra;tc.style.background='var(--muted)';row.insertBefore(tc,bdg);}}}
   if(n.id===cur){row.classList.add('sel');selRow=row;}   // keep highlight across re-renders
   row.onclick=(e)=>{
     if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(n.id);return;}        // Ctrl/Cmd: toggle in selection
@@ -329,38 +333,41 @@ function gstyle(){return [
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'180px','font-size':'12px','text-valign':'center',
    'width':'210px','height':'label','padding':'12px',
-   // top-left: child-count · priority · assignee (flat bookmarks); top-right: estimate pill;
-   // bottom: state (left) · tags (centre) · sprint (right)
-   'background-image':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=tagDotsUri(e.data('tags'));return[
+   // top-left: child-count · priority · assignee (flat bookmarks); top-right: state (corner tag);
+   // bottom-left: estimate (corner tag); bottom-centre: tags; bottom-right: sprint (corner tag)
+   'background-image':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=tagDotsUri(e.data('tags')),
+       est_=(est!=null&&est!=='')?cornerTagUri((+est)+'h','#5b6b7d','bl',60):null,
+       st=e.data('state')?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120):null,
+       spt=sp?cornerTagUri(sprintShort(sp),'#7a6cc4','br',110):null;return[
      e.data('childCount')>0?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
      e.data('assigned')?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
-     (est!=null&&est!=='')?pillUri((+est)+'h','#5b6b7d',60):BLANK_IMG,
-     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG,
+     st?st.uri:BLANK_IMG,
+     est_?est_.uri:BLANK_IMG,
      tg?tg.uri:BLANK_IMG,
-     sp?pillUri(sprintShort(sp),'#7a6cc4',96):BLANK_IMG];},
+     spt?spt.uri:BLANK_IMG];},
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
    'background-width':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=tagDotsUri(e.data('tags'));return[
-     '17px','17px','17px',((est!=null&&est!=='')?pillW((+est)+'h',60):1)+'px',
-     (e.data('state')?statePillW(e.data('state')):1)+'px',(tg?tg.w:1)+'px',(sp?pillW(sprintShort(sp),96):1)+'px'];},
-   'background-height':['22px','22px','22px','18px','18px','14px','18px'],
-   'background-position-x':['3px','21px','39px','100%','3px','50%','100%'],
-   'background-position-y':['0','0','0','3px','100%','100%','100%'],
+     '17px','17px','17px',(e.data('state')?cornerW(e.data('state'),120):1)+'px',
+     ((est!=null&&est!=='')?cornerW((+est)+'h',60):1)+'px',(tg?tg.w:1)+'px',(sp?cornerW(sprintShort(sp),110):1)+'px'];},
+   'background-height':['22px','22px','22px','16px','16px','10px','16px'],
+   'background-position-x':['3px','21px','39px','100%','0','50%','100%'],
+   'background-position-y':['0','0','0','0','100%','100%','100%'],
    // overdue → soft red halo (underlay); thin same-hue stroke (a touch bolder for high priority)
    'underlay-color':'#e0524d','underlay-padding':5,'underlay-opacity':e=>isOverdue(e.data())?0.16:0,
    'border-width':e=>((e.data('priority')||9)<=2?2.4:1.3),'border-color':e=>nodeStroke(e.data('type'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
-   // header strip: child-count · priority · assignee (flat bookmarks) left, state pill right
+   // header strip: child-count · priority · assignee (flat bookmarks) left, state (corner tag) top-right
    'background-image':e=>[e.data('childCount')>0?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
      e.data('assigned')?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
-     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG],
+     e.data('state')?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120).uri:BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':e=>['17px','17px','17px',(e.data('state')?statePillW(e.data('state')):1)+'px'],
-   'background-height':['22px','22px','22px','18px'],
-   'background-position-x':['3px','21px','39px','100%'],'background-position-y':['0','0','0','3px'],
+   'background-width':e=>['17px','17px','17px',(e.data('state')?cornerW(e.data('state'),120):1)+'px'],
+   'background-height':['22px','22px','22px','16px'],
+   'background-position-x':['3px','21px','39px','100%'],'background-position-y':['0','0','0','0'],
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':1.5,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
@@ -368,8 +375,10 @@ function gstyle(){return [
    'font-family':HAND_FONT,'font-size':'13px','font-weight':'bold','text-max-width':'400px','text-wrap':'wrap'}},
  {selector:'node:selected',style:{'border-color':'#fff','border-width':4}},
  {selector:'node.bulk',style:{'border-color':'#4c8bf5','border-width':5}},   // bulk-selected (Ctrl/Shift-tap)
+ {selector:'node.dep-hot',style:{'border-color':'#e0a13c','border-width':4}},   // dep-drag target highlight
  {selector:'edge[kind="hierarchy"]',style:{'width':1,'line-color':'#5b6b7d','line-opacity':0.4,'target-arrow-color':'#5b6b7d','target-arrow-shape':'triangle','curve-style':'bezier'}},
  {selector:'edge[kind="dep"]',style:{'width':2,'line-style':'dashed','line-color':'#e0a13c','target-arrow-color':'#e0a13c','target-arrow-shape':'vee','curve-style':'bezier'}},
+ {selector:'edge[kind="dep"].hot',style:{'width':3.5,'line-color':'#f0c674','target-arrow-color':'#f0c674'}},   // hover (click → delete)
 ]}
 // Keep the Excalidraw dot grid locked to the graph: scale dot spacing by zoom
 // and offset by pan, so the dots move and zoom with the nodes.
@@ -380,7 +389,7 @@ function syncCyGrid(){
 }
 function initCy(){
   cy=cytoscape({container:$('cy'),style:gstyle(),wheelSensitivity:0.2,autounselectify:true,boxSelectionEnabled:false});
-  cy.on('pan zoom',syncCyGrid);                 // grid follows the canvas
+  cy.on('pan zoom',()=>{syncCyGrid();depHandlePlace();});                 // grid + handle follow the canvas
   let tapTimer=null,tapId=null;                 // single tap = open editor; double tap = expand
   cy.on('tap','node',e=>{const id=Number(e.target.data('id'));   // cytoscape gives a string id
     const oe=e.originalEvent||{};
@@ -388,7 +397,98 @@ function initCy(){
     if(tapTimer&&tapId===id){clearTimeout(tapTimer);tapTimer=null;tapId=null;expandNode(id);return;}
     tapId=id;clearTimeout(tapTimer);
     tapTimer=setTimeout(()=>{tapTimer=null;tapId=null;openItem(id);},250);});
+  // Hover handle for drag-to-create dep links (only in +Deps mode).
+  cy.on('mouseover','node',e=>{const nd=e.target;if(nd.isParent&&nd.isParent())return;
+    if(mode==='graph'&&edgeMode!=='hierarchy')depHandleShow(nd);});
+  cy.on('mouseout','node',e=>{
+    if(depDrag)return;                          // mid-drag → keep target highlights
+    const rel=e.originalEvent&&e.originalEvent.relatedTarget;
+    if(rel&&rel.id==='depHandle')return;        // moved into the handle itself, keep it visible
+    depHandleHide();
+  });
+  cy.on('position','node',e=>{const h=$('depHandle');
+    if(h&&h.style.display!=='none'&&h._nodeId===Number(e.target.data('id')))depHandlePlace();});
+  // Click on a dep edge → confirm + delete.
+  cy.on('tap','edge[kind="dep"]',async e=>{
+    const ed=e.target,s=Number(ed.data('source')),t=Number(ed.data('target'));
+    if(!confirm(`Remove dependency #${s} → #${t}?`))return;
+    await removeDepLink(s,t,'blocks');
+  });
+  cy.on('mouseover','edge[kind="dep"]',e=>e.target.addClass('hot'));
+  cy.on('mouseout','edge[kind="dep"]',e=>e.target.removeClass('hot'));
 }
+
+/* ---- graph: drag a stub from a node to create a Dependency link ----
+   Active only in +Deps mode. The handle is a small DOM bubble pinned to the
+   hovered node's right edge (cheaper than another canvas layer, and stays
+   accurate under pan/zoom via depHandlePlace()). Mousedown starts a custom
+   drag with an SVG line ghost; mouseup hit-tests against cy nodes. */
+let depDrag=null;                                // {sourceId, svg, line, sx, sy, hot}
+function depHandleEl(){
+  let h=$('depHandle');if(h)return h;
+  h=document.createElement('div');h.id='depHandle';h.textContent='→';
+  h.title='drag to create a dependency link';
+  $('cy').appendChild(h);
+  h.addEventListener('mousedown',e=>{
+    if(!h._nodeId||e.button!==0)return;
+    e.preventDefault();e.stopPropagation();
+    depDragBegin(h._nodeId);
+  });
+  return h;
+}
+function depHandleShow(node){
+  if(!cy)return;
+  const h=depHandleEl();
+  h._nodeId=Number(node.data('id'));
+  h.style.display='flex';
+  depHandlePlace();
+}
+function depHandlePlace(){
+  const h=$('depHandle');if(!h||h.style.display==='none'||!cy)return;
+  const nd=cy.getElementById(String(h._nodeId));if(nd.empty()){depHandleHide();return;}
+  const bb=nd.renderedBoundingBox();
+  h.style.left=(bb.x2-9)+'px';h.style.top=((bb.y1+bb.y2)/2-9)+'px';
+}
+function depHandleHide(){const h=$('depHandle');if(h)h.style.display='none';}
+function depDragBegin(sourceId){
+  if(!cy)return;
+  const cyEl=$('cy');
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.id='depDragSvg';svg.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:50;width:100%;height:100%';
+  const ln=document.createElementNS('http://www.w3.org/2000/svg','line');
+  ln.setAttribute('stroke','#e0a13c');ln.setAttribute('stroke-width','2');ln.setAttribute('stroke-dasharray','5,4');
+  svg.appendChild(ln);cyEl.appendChild(svg);
+  const src=cy.getElementById(String(sourceId)).renderedPosition();
+  depDrag={sourceId,svg,line:ln,sx:src.x,sy:src.y,hot:null};
+  depHandleHide();
+  document.body.style.cursor='crosshair';
+}
+document.addEventListener('mousemove',e=>{
+  if(!depDrag||!cy)return;
+  const r=$('cy').getBoundingClientRect();
+  const x=e.clientX-r.left,y=e.clientY-r.top;
+  depDrag.line.setAttribute('x1',depDrag.sx);depDrag.line.setAttribute('y1',depDrag.sy);
+  depDrag.line.setAttribute('x2',x);depDrag.line.setAttribute('y2',y);
+  let hot=null;
+  cy.nodes().forEach(nd=>{
+    if(nd.isParent&&nd.isParent())return;
+    if(Number(nd.data('id'))===depDrag.sourceId)return;
+    const bb=nd.renderedBoundingBox();
+    if(x>=bb.x1&&x<=bb.x2&&y>=bb.y1&&y<=bb.y2)hot=nd;
+  });
+  if(depDrag.hot&&depDrag.hot!==hot)depDrag.hot.removeClass('dep-hot');
+  depDrag.hot=hot;if(hot)hot.addClass('dep-hot');
+});
+document.addEventListener('mouseup',async()=>{
+  if(!depDrag)return;
+  const d=depDrag;depDrag=null;
+  document.body.style.cursor='';
+  if(d.svg&&d.svg.parentNode)d.svg.parentNode.removeChild(d.svg);
+  if(d.hot)d.hot.removeClass('dep-hot');
+  const target=d.hot?Number(d.hot.data('id')):null;
+  if(!target||target===d.sourceId)return;
+  await addDepLink(d.sourceId,target,'blocks');   // source → target (source "blocks" target)
+});
 function syncGraphBulk(){if(cy)cy.nodes().forEach(nd=>nd.toggleClass('bulk',bulkSel.has(Number(nd.data('id')))));}
 function runLayout(fit){cy.layout({name:'dagre',rankDir,ranker:'tight-tree',
   nodeSep:55,rankSep:110,edgeSep:25,animate:true,animationDuration:250,fit:!!fit,padding:40}).run();}
@@ -417,7 +517,7 @@ async function renderGraph(opts){
       finally{loadEnd();}
       if(token!==renderToken)return;
     }
-    d.forEach((e,i)=>edges.push({id:'d'+i,source:String(e.source),target:String(e.target),kind:'dep'}));
+    d.forEach(e=>edges.push({id:'d_'+e.source+'_'+e.target,source:String(e.source),target:String(e.target),kind:'dep'}));
   }
   if(token!==renderToken)return;
   // --- incremental diff: keep existing nodes (and their positions); no full rebuild ---
@@ -885,6 +985,7 @@ async function renderTimeline(){
 /* ---------- mode / refresh ---------- */
 function setMode(m){
   $('sprintview').classList.remove('show');openSprintPath=null;   // leaving board closes the sprint detail
+  if(m!=='graph')depHandleHide();             // dep drag-handle is graph-only
   mode=m;$('mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   $('tree').classList.toggle('show',m==='tree');$('cy').classList.toggle('show',m==='graph');
   $('board').classList.toggle('show',m==='board');$('timeline').classList.toggle('show',m==='timeline');
@@ -901,7 +1002,7 @@ function setMode(m){
 // this surfaces them. Collapsible, with the state remembered across sessions.
 const VIEW_HELP={
   tree:[['🖱️','Click','open item'],['▸','Click ▸','expand / collapse'],['☑️','Ctrl-click','toggle select'],['↕️','Shift-click','select range'],['✋','Drag','re-parent onto a row']],
-  graph:[['🖱️','Click','open item'],['👆','Double-click','expand / collapse children'],['☑️','Ctrl / Shift-click','toggle select'],['✋','Drag node','move · background pans'],['🔍','Scroll','zoom']],
+  graph:[['🖱️','Click','open item'],['👆','Double-click','expand / collapse children'],['☑️','Ctrl / Shift-click','toggle select'],['✋','Drag node','move · background pans'],['🔍','Scroll','zoom'],['→','+Deps: drag handle','create dependency link'],['🗑️','+Deps: click edge','delete dependency']],
   board:[['🖱️','Click','open item'],['☑️','Ctrl / Shift-click','toggle / range select'],['✋','Drag','move to another column'],['➕','Drag → ＋','new sprint from cards']],
   timeline:[['🖱️','Click','open item'],['☑️','Ctrl-click','toggle select'],['↕️','Shift-click','select range']],
 };
@@ -1005,8 +1106,9 @@ async function loadChildCounts(ids){      // top-level refresh path: guarded so 
 /* ---------- editor ---------- */
 function closePanel(force){
   if(!force&&dirty()&&!confirm('Discard unsaved changes?'))return;
-  parentEditor.close();
+  parentEditor.close();depBlockedByPicker.close();depBlocksPicker.close();
   $('side').classList.add('hidden');$('resizer').style.display='none';cur=null;orig={};
+  depsState.blockedBy=[];depsState.blocks=[];renderDeps();
   if(selRow){selRow.classList.remove('sel');selRow=null;}
   if(cy)cy.$(':selected').unselect();
 }
@@ -1089,6 +1191,7 @@ async function openItem(id){
   $('s_due').value=(d.due||'').slice(0,10);
   $('s_est').value=(d.est!=null?d.est:'');
   tagsEditor.set(d.tags||'',/*silent*/true);
+  loadDeps(id,d.deps);                            // seed from item() result; no extra round-trip
   orig={title:d.title,state:d.state,assigned:d.assigned,desc:d.desc,ac:d.ac,has_ac:d.has_ac,priority:d.priority,
         iter:curIt,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};
   refreshDirty();loadTimeline(id);
@@ -1292,17 +1395,34 @@ function pillUri(text,color,max){const w=pillW(text,max),h=18,light=document.bod
 const statePillW=t=>pillW(t),statePillUri=(t,c)=>pillUri(t,c);
 // assignee badge: same flat bookmark in the person's colour with their initials
 function avatarBadgeUri(name){return bookmarkUri(personColor(name),personInitials(name),'down');}
+// "corner tag": a coloured panel flush into a node corner (two edges square, the
+// node corner rounded, the inner corner rounded) — reads as part of the node,
+// not a floating pill. corner: 'bl' (bottom-left) | 'tr' (top-right).
+function cornerW(text,max){return Math.round(Math.min(max||120,Math.max(22,9+String(text).length*6.1)));}
+// rounded-rect path with a per-corner radius [tl,tr,br,bl]
+function roundRectPath(w,h,r){const[tl,tr,br,bl]=r;
+  return `M${tl} 0 L${w-tr} 0 Q${w} 0 ${w} ${tr} L${w} ${h-br} Q${w} ${h} ${w-br} ${h} `+
+    `L${bl} ${h} Q0 ${h} 0 ${h-bl} L0 ${tl} Q0 0 ${tl} 0 Z`;}
+// "corner tag": a coloured panel flush into a node corner — the matching node
+// corner is rounded and the diagonally-opposite inner corner is rounded too;
+// the two edges along the node sides are square. Reads as part of the node,
+// not a floating pill. corner: 'tl' | 'tr' | 'bl' | 'br'.
+function cornerTagUri(text,color,corner,max){const w=cornerW(text,max),h=16,ro=8,ri=7;
+  // radii [tl,tr,br,bl]: round the node corner + its diagonal (inner) corner
+  const R={tl:[ro,0,ri,0],tr:[0,ro,0,ri],br:[ri,0,ro,0],bl:[0,ri,0,ro]}[corner]||[0,0,0,0];
+  return {w,h,uri:svgTag(w,h,`<path d='${roundRectPath(w,h,R)}' fill='${color}'/>`+
+    `<text x='${w/2}' y='${h/2+3.4}' font-size='10' font-family='${BADGE_FONT}' font-weight='600' fill='${idealText(color)}' text-anchor='middle'>${esc(text)}</text>`)};}
 // node tags: parse the ";"-list, take the short name of an iteration path
 function tagList_(s){return String(s||'').split(/;\s*/).map(t=>t.trim()).filter(Boolean);}
 function sprintShort(path){if(!path)return '';return sprintNames[path]||String(path).split('\\').pop();}
 function isOverdue(n){const d=(n.target||n.due||'').slice(0,10);return !!d&&d<new Date().toISOString().slice(0,10)&&!DONE_STATES.includes(n.state);}
-// a row of coloured tag dots (max 5, "+N" overflow) as one image
+// a row of small, unobtrusive tag dots (max 6, "+N" overflow) as one image
 function tagDotsUri(tagsStr){const ts=tagList_(tagsStr);if(!ts.length)return null;
-  const show=ts.slice(0,5),extra=ts.length-show.length,gap=13,pad=2,r=4.5;
-  const w=pad*2+show.length*gap+(extra>0?18:0),h=14;
+  const show=ts.slice(0,6),extra=ts.length-show.length,gap=8,pad=2,r=3;
+  const w=pad*2+show.length*gap+(extra>0?16:0),h=10;
   let x=pad+r,dots='';
   for(const t of show){dots+=`<circle cx='${x}' cy='${h/2}' r='${r}' fill='${personColor(t)}'/>`;x+=gap;}
-  if(extra>0)dots+=`<text x='${x-r}' y='${h/2+3.5}' font-size='9.5' font-family='${BADGE_FONT}' font-weight='600' fill='#9aa7b4' text-anchor='start'>+${extra}</text>`;
+  if(extra>0)dots+=`<text x='${x-r+1}' y='${h/2+3}' font-size='8' font-family='${BADGE_FONT}' font-weight='600' fill='#9aa7b4' text-anchor='start'>+${extra}</text>`;
   return {uri:svgTag(w,h,dots),w};}
 function assigneePeople(){const seen=new Set(),out=[];   // current user first, then the deduped roster
   [currentUser,...assignees].forEach(a=>{if(a&&!seen.has(a)){seen.add(a);out.push(a);}});return out;}
@@ -1370,6 +1490,133 @@ const assignedChild=createAssigneeField('c_assigned',{});
 const assignedNew=createAssigneeField('n_assigned',{});
 const sprintEditor=createSprintField('s_iter',{onChange:refreshDirty,getNone:sprintRoot});   // editor: "no sprint" = project root path
 const sprintNew=createSprintField('n_iter',{getNone:()=>''});                                // new-item modal: "no sprint" = empty
+
+/* ---------- dependency links (sidebar Blocked-by / Blocks + the graph) ----------
+   The editor shows two chip rows + an item picker for adding. Mutations also fire
+   from the graph (drag a stub between nodes, or click an edge to delete). Both
+   paths share the same state + undo plumbing so the views stay consistent. */
+const depsState={blockedBy:[],blocks:[]};
+// Pick the per-direction array on the open item's deps state.
+function depsArr(dir){return dir==='blocks'?depsState.blocks:depsState.blockedBy;}
+function setDepsArr(dir,arr){if(dir==='blocks')depsState.blocks=arr;else depsState.blockedBy=arr;}
+// Adapter on top of itemPickerProvider: hides the items already linked in the
+// chosen direction and always renders the card as a "+ add" affordance (the
+// picker never holds a sticky value — every pick triggers an add and resets).
+function depAdderProvider(dir){
+  const base=itemPickerProvider(()=>cur);
+  const blocked=()=>new Set(depsArr(dir).map(Number));
+  return {
+    renderCard(v,card){const t=dir==='blocks'?'add a blocked link':'add a blocked-by link';
+      card.innerHTML=`<span class="pcnone">＋ ${t}</span>`;},
+    localRows(q){const ex=blocked();return base.localRows(q).filter(r=>!r.value||!ex.has(+r.value));},
+    apiExpand(q,rows){const inner=base.apiExpand(q,rows);if(!inner)return null;
+      const ex=blocked();return async()=>(await inner()).filter(r=>!r.value||!ex.has(+r.value));},
+  };
+}
+// The hidden <input> keeps the last-picked id, but renderCard always shows the
+// "+ add" affordance (independent of value), so we just reset the value to ''
+// after each pick — no re-render needed.
+function depPickerOnChange(dir){
+  return ()=>{
+    const baseId='s_deps_'+(dir==='blocks'?'blocks':'blockedby');
+    const v=$(baseId).value.trim();
+    $(baseId).value='';
+    if(!/^\d+$/.test(v)||cur==null)return;
+    addDepLink(cur,parseInt(v,10),dir);
+  };
+}
+const depBlockedByPicker=createCardPicker('s_deps_blockedby',{provider:depAdderProvider('blockedBy'),onChange:depPickerOnChange('blockedBy')});
+const depBlocksPicker=createCardPicker('s_deps_blocks',{provider:depAdderProvider('blocks'),onChange:depPickerOnChange('blocks')});
+
+// Render Blocked-by / Blocks chip rows from depsState. Titles for items the tree
+// hasn't loaded resolve lazily via api.item — same pattern as the parent card.
+function renderDeps(){
+  const chip=(id,dir)=>{
+    const n=store.nodes[id];
+    const ty=n?tyColor(n.type):'#95a5a6';
+    const ttl=n?esc(n.title||''):'';
+    return `<span class="depchip"><i class="dot" style="background:${ty}"></i>`+
+      `<a class="depopen" data-id="${id}">#${id}</a>`+
+      (ttl?`<span class="depttl">${ttl}</span>`:'')+
+      `<b data-dir="${dir}" data-id="${id}" title="remove">×</b></span>`;
+  };
+  const bb=$('s_deps_blockedby_chips'),bk=$('s_deps_blocks_chips');
+  if(!bb||!bk)return;
+  bb.innerHTML=depsState.blockedBy.length?depsState.blockedBy.map(id=>chip(id,'blockedBy')).join(''):'<span class="pcnone">(none)</span>';
+  bk.innerHTML=depsState.blocks.length?depsState.blocks.map(id=>chip(id,'blocks')).join(''):'<span class="pcnone">(none)</span>';
+  document.querySelectorAll('#s_deps .depchip b[data-dir]').forEach(x=>x.onclick=()=>removeDepLink(cur,+x.dataset.id,x.dataset.dir));
+  document.querySelectorAll('#s_deps .depopen').forEach(a=>a.onclick=(e)=>{e.preventDefault();openItem(+a.dataset.id);});
+  // Lazy-load titles for ids not yet in the store (a single GET per id, cached on success)
+  const missing=[...depsState.blockedBy,...depsState.blocks].filter(id=>!store.nodes[id]);
+  missing.forEach(id=>{api.item(id).then(it=>{
+    if(it&&it.id){store.nodes[it.id]=store.nodes[it.id]||it;if(cur!=null)renderDeps();}
+  }).catch(()=>{});});
+  // Keep the adder pickers in sync with the current list (so they exclude linked items)
+  depBlockedByPicker.render();depBlocksPicker.render();
+}
+async function loadDeps(id,seed){
+  depsState.blockedBy=seed&&seed.blockedBy?seed.blockedBy.slice():[];
+  depsState.blocks=seed&&seed.blocks?seed.blocks.slice():[];
+  renderDeps();
+  if(seed)return;                                  // openItem already has fresh data from api.item()
+  let d;try{d=await api.dependencies(id);}catch(e){return;}
+  if(cur!==id)return;
+  depsState.blockedBy=d.blockedBy||[];depsState.blocks=d.blocks||[];
+  renderDeps();
+}
+// Map a UI direction relative to the focused item to the underlying (from, to)
+// pair: edge always flows from → to ("from blocks to"). 'blocks' = focused
+// blocks other; 'blockedBy' = other blocks focused.
+function depPair(focusId,otherId,dir){
+  return dir==='blocks'?{from:focusId,to:otherId}:{from:otherId,to:focusId};
+}
+// Sync local view-state (sidebar deps + graph edge) for a link that just changed
+// on the server. `op` is 'add' | 'remove'.
+function applyDepLocal(from,to,op){
+  if(cur===from){const a=depsState.blocks;if(op==='add'){if(!a.includes(to))a.push(to);}else depsState.blocks=a.filter(x=>x!==to);}
+  if(cur===to){const a=depsState.blockedBy;if(op==='add'){if(!a.includes(from))a.push(from);}else depsState.blockedBy=a.filter(x=>x!==from);}
+  if(cur===from||cur===to)renderDeps();
+  if(cy&&mode==='graph'&&edgeMode!=='hierarchy'){
+    const eid='d_'+from+'_'+to;
+    const existing=cy.getElementById(eid);
+    if(op==='add'){if(existing.empty()&&cy.getElementById(String(from)).nonempty()&&cy.getElementById(String(to)).nonempty())
+      cy.add({group:'edges',data:{id:eid,source:String(from),target:String(to),kind:'dep'}});}
+    else{if(existing.nonempty())existing.remove();}
+  }
+}
+async function addDepLink(focusId,otherId,dir){
+  const {from,to}=depPair(focusId,otherId,dir);
+  if(from===to){setStatus("a work item can't depend on itself",true);return;}
+  // Local dup-check only when the sidebar's open item IS the focus (else we have no fresh state)
+  if(cur===focusId&&depsArr(dir).includes(otherId))return;
+  loadStart('linking #'+from+' → #'+to+'…');
+  try{
+    await api.addDependency(from,to);
+    depCache={};                                   // graph cache is per id-set; nuke wholesale
+    applyDepLocal(from,to,'add');
+    pushAction(`link #${from} → #${to}`,
+      async()=>{try{await api.removeDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'remove');if(cur===focusId)await loadDeps(focusId);},
+      async()=>{try{await api.addDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'add');if(cur===focusId)await loadDeps(focusId);});
+    setStatus(`linked #${from} → #${to}`);
+  }catch(e){
+    if(!denyOnForbidden(e,'add dependencies'))setStatus('ERROR: '+e.message,true);
+  }finally{loadEnd();}
+}
+async function removeDepLink(focusId,otherId,dir){
+  const {from,to}=depPair(focusId,otherId,dir);
+  loadStart('unlinking #'+from+' → #'+to+'…');
+  try{
+    await api.removeDependency(from,to);
+    depCache={};
+    applyDepLocal(from,to,'remove');
+    pushAction(`unlink #${from} → #${to}`,
+      async()=>{try{await api.addDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'add');if(cur===focusId)await loadDeps(focusId);},
+      async()=>{try{await api.removeDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'remove');if(cur===focusId)await loadDeps(focusId);});
+    setStatus(`unlinked #${from} → #${to}`);
+  }catch(e){
+    if(!denyOnForbidden(e,'remove dependencies'))setStatus('ERROR: '+e.message,true);
+  }finally{loadEnd();}
+}
 
 /* ---------- undo / redo (Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z or Ctrl+Y) ----------
    Each mutating action pushes a command with matching undo()/redo() functions,
@@ -1456,6 +1703,7 @@ async function save(){
   if(selRow&&body.title)selRow.querySelector('.lab').textContent=`#${id} ${body.title}`;
   if(selRow&&body.state)selRow.querySelector('.badge').textContent=body.state;
   if(selRow&&('priority'in body)){let pc=selRow.querySelector('.prio');if(!pc){pc=document.createElement('span');pc.className='prio';selRow.insertBefore(pc,selRow.querySelector('.badge'));}pc.textContent='P'+body.priority;pc.style.background=prioColor(body.priority);}
+  if(selRow&&('tags'in body)){selRow.querySelectorAll('.ttag').forEach(t=>t.remove());const bdg=selRow.querySelector('.badge');if(bdg){bdg.style.marginLeft='';const ts=tagList_(v.tags);if(ts.length){const show=ts.slice(0,3),extra=ts.length-show.length;bdg.style.marginLeft='0';show.forEach((t,i)=>{const tc=document.createElement('span');tc.className='ttag';tc.textContent=t;tc.style.background=personColor(t);tc.title=t;if(i===0)tc.style.marginLeft='auto';selRow.insertBefore(tc,bdg);});if(extra>0){const tc=document.createElement('span');tc.className='ttag';tc.textContent='+'+extra;tc.style.background='var(--muted)';selRow.insertBefore(tc,bdg);}}}}
   if(store.nodes[id]){const s=store.nodes[id];s.title=v.title;s.state=v.state;
     if('priority'in body)s.priority=body.priority;
     if('iteration'in body)s.iteration=body.iteration;
@@ -2093,7 +2341,7 @@ async function initialBoot(postSetup){
   fillTypeSelect('c_type','Task');fillTypeSelect('n_type','Task');   // seed with fallback now; loadTypes() refills from ADO
   // switching view is render-only (no API): graph draws from the store, tree DOM persists
   $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>switchMode(b.dataset.m));
-  $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderGraph();});
+  $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));depHandleHide();renderGraph();});
   $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.rankDir',rankDir);}catch(e){}renderGraph({relayout:true,fit:true});});
   $('f_sort').onchange=()=>{try{localStorage.setItem('ado.sort',$('f_sort').value);}catch(e){}refresh();};
   for(let o=-12;o<=14;o++)$('f_tz').appendChild(new Option('UTC'+(o>=0?'+':'')+o,o));
@@ -2191,7 +2439,9 @@ async function initialBoot(postSetup){
   parentEditor.wire();parentNew.wire();   // parent card + searchable picker (editor + New-item modal)
   assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker
   sprintEditor.wire();sprintNew.wire();                           // sprint card + iteration picker
+  depBlockedByPicker.wire();depBlocksPicker.wire();               // dependency adders (Blocked-by / Blocks)
   assignedEditor.render();assignedChild.render();assignedNew.render();sprintEditor.render();sprintNew.render();tagsEditor.render();   // placeholder cards before first use
+  depBlockedByPicker.render();depBlocksPicker.render();renderDeps();   // dep card stubs + empty chip rows
   ['s_title','s_state','s_prio','s_desc','s_ac','s_start','s_target','s_due','s_est'].forEach(id=>{
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
   document.addEventListener('keydown',e=>{
@@ -2202,6 +2452,8 @@ async function initialBoot(postSetup){
       else if(assignedEditor.isOpen())assignedEditor.close();
       else if(assignedChild.isOpen())assignedChild.close();
       else if(sprintEditor.isOpen())sprintEditor.close();
+      else if(depBlockedByPicker.isOpen())depBlockedByPicker.close();
+      else if(depBlocksPicker.isOpen())depBlocksPicker.close();
       else if($('comment_form').style.display==='flex')$('comment_form').style.display='none';
       else if($('child_form').style.display==='flex')$('child_form').style.display='none';
       else closePanel();
