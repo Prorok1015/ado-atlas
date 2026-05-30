@@ -329,26 +329,25 @@ function gstyle(){return [
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'180px','font-size':'12px','text-valign':'center',
    'width':'210px','height':'label','padding':'12px',
-   // corner badges (cytoscape multi-background): [0] assignee avatar top-right,
-   // [1] child-count blue bookmark top-left, [2] priority bookmark bottom-left
-   'background-image':e=>[e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG,
-     e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
-     e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'up'):BLANK_IMG],
+   // top-left badge row (cytoscape multi-background): child-count · priority · assignee
+   'background-image':e=>[e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
+     e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
+     e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':['26px','19px','19px'],'background-height':['26px','25px','25px'],
-   'background-position-x':['94%','7%','7%'],'background-position-y':['14%','0%','100%'],
+   'background-width':['18px','18px','22px'],'background-height':['24px','24px','22px'],
+   'background-position-x':['4px','23px','45px'],'background-position-y':['0','0','2px'],
    // Excalidraw sketch look: same-hue stroke (thicker for high priority)
    'border-width':e=>((e.data('priority')||9)<=2?3.5:1.8),'border-color':e=>nodeStroke(e.data('type'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
-   // corner badges, kept up in the header strip: [0] avatar right, [1] child-count, [2] priority
-   'background-image':e=>[e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG,
-     e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
-     e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG],
+   // top-left badge row in the header strip: child-count · priority · assignee
+   'background-image':e=>[e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
+     e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
+     e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':['26px','20px','20px'],'background-height':['26px','26px','26px'],
-   'background-position-x':['99%','2%','9%'],'background-position-y':['6px','0','0'],
+   'background-width':['18px','18px','22px'],'background-height':['24px','24px','22px'],
+   'background-position-x':['4px','23px','45px'],'background-position-y':['0','0','2px'],
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
