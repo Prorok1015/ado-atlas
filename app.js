@@ -652,6 +652,16 @@ async function renderTimeline(){
     if(wd===0||wd===6)grid+=`<div class="tlweekend" style="left:${xOf(d)}px;width:${px}px"></div>`;}
   const today=Date.parse(new Date().toISOString().slice(0,10));
   if(today>=r0&&today<=r1)grid+=`<div class="tltoday" style="left:${xOf(today)+Math.round(px/2)}px"></div>`;
+  // second axis tier: day numbers (day zoom) or week-start dates (week zoom)
+  let ticks='';
+  if(tlZoom==='day'){
+    for(let d=r0;d<=r1;d+=TL_DAY){const dt=new Date(d),wd=dt.getUTCDay(),cls=(d===today?' now':((wd===0||wd===6)?' we':''));
+      ticks+=`<div class="tltick${cls}" style="left:${xOf(d)}px;width:${px}px">${dt.getUTCDate()}</div>`;}
+  }else if(tlZoom==='week'){
+    for(let d=r0-((new Date(r0).getUTCDay()+6)%7)*TL_DAY;d<=r1;d+=7*TL_DAY){if(d<r0)continue;
+      const dt=new Date(d),cls=(today>=d&&today<d+7*TL_DAY)?' now':'';
+      ticks+=`<div class="tltick${cls}" style="left:${xOf(d)}px;width:${Math.round(7*px)}px">${dt.getUTCDate()}</div>`;}
+  }
   // rows
   const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${TYPE_COLOR[n.type]||'#95a5a6'}"></i><span class="tllab">#${n.id} ${esc(n.title)}</span></div>`;
   const rowHTML=n=>{const t=n._tl,tip=`${n.start||(t.soft?'sprint start':'?')} → ${(n.target||n.due)||(t.soft?'sprint finish':'?')}`;
@@ -671,7 +681,7 @@ async function renderTimeline(){
     undated.sort((a,b)=>a.id-b.id).forEach(n=>{rows+=`<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
   }
   el.innerHTML=`<div class="tlcanvas">`+
-    `<div class="tlhead"><div class="tlcorner" style="width:${LW}px">${months.length} mo · ${dated.length} scheduled</div><div class="tlaxis" style="width:${W}px">${axis}</div></div>`+
+    `<div class="tlhead"><div class="tlcorner" style="width:${LW}px">${months.length} mo · ${dated.length} scheduled</div><div class="tlaxis" style="width:${W}px">${axis}${ticks}</div></div>`+
     `<div class="tlbody"><div class="tlgrid" style="left:${LW}px;width:${W}px">${grid}</div>${rows}</div></div>`;
   setStatus(`${dated.length} scheduled · ${undated.length} no dates`+capNote());
   if(today>=r0&&today<=r1)el.scrollLeft=Math.max(0,xOf(today)-Math.round(el.clientWidth*0.35));   // centre on today
