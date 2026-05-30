@@ -78,6 +78,9 @@ async function ensureKids(id){            // load children once, cache in the st
   const ord=$('f_sort').value||null;
   let kids;try{kids=await api.children(id,ord);}catch(e){setStatus('ERROR: '+e.message,true);return [];}
   kids.forEach(k=>{store.nodes[k.id]=k;store.parent[k.id]=id;});store.kids[id]=kids.map(k=>k.id);
+  // these were loaded outside the filtered set, so their own child counts are
+  // unknown — fetch them so the carets/badges on the new rows resolve too.
+  fetchChildCounts(store.kids[id]).then(changed=>{if(changed)rerenderChildCounts();});
   return store.kids[id];
 }
 
@@ -316,7 +319,7 @@ async function expandNode(id){
 const txtColor=()=>document.body.classList.contains('light')?'#1b2330':'#e6edf3';   // theme text colour (matches --txt)
 function gstyle(){return [
  {selector:'node',style:{'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','shape':'round-rectangle',
-   'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ⊞'+k:'')+' · '+e.data('type')+'\n'+e.data('title');},
+   'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ↓'+k:'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':'#fff','text-wrap':'wrap','text-max-width':'190px','font-size':'11px','text-valign':'center',
    'width':'210px','height':'label','padding':'10px',
    // assignee avatar tucked into the top-right corner (initials on a coloured disc)
@@ -332,7 +335,7 @@ function gstyle(){return [
    'background-width':'22px','background-height':'22px','background-position-x':'100%','background-position-y':'0%',
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
-   'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ⊞'+k:'')+' · '+e.data('type')+' — '+e.data('title');},
+   'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ↓'+k:'')+' · '+e.data('type')+' — '+e.data('title');},
    'text-valign':'top','text-halign':'center','text-margin-y':-4,
    'font-size':'12px','font-weight':'bold','text-max-width':'400px','text-wrap':'wrap'}},
  {selector:'node:selected',style:{'border-color':'#fff','border-width':4}},
@@ -913,19 +916,27 @@ async function _refresh(){
 }
 // How many children each loaded item has (incl. ones the filter hides), fetched
 // cheaply via a links-only query. Stored on the node as n.childCount so it rides
-// along into the graph data and the snapshot. Re-renders once when it lands.
-let childCountTok=0;
-async function loadChildCounts(ids){
-  if(!ids.length)return;
-  const tok=++childCountTok;
-  let counts;try{counts=await api.childCounts(ids);}catch(e){return;}
-  if(tok!==childCountTok)return;          // a newer refresh superseded this lookup
+// along into the graph data and the snapshot.
+async function fetchChildCounts(ids,force){   // store counts on nodes; return true if anything changed
+  ids=(ids||[]).filter(id=>store.nodes[id]&&(force||store.nodes[id].childCount===undefined));   // force=refetch all; else only the not-yet-known
+  if(!ids.length)return false;
+  let counts;try{counts=await api.childCounts(ids);}catch(e){return false;}
   let changed=false;
   for(const idStr in counts){const n=store.nodes[idStr];if(n&&n.childCount!==counts[idStr]){n.childCount=counts[idStr];changed=true;}}
-  if(!changed)return;
+  return changed;
+}
+function rerenderChildCounts(){           // reflect freshly-learned counts in the current view
   if(mode==='tree'){const ts=$('tree').scrollTop;renderTree();$('tree').scrollTop=ts;}
   else if(mode==='graph'&&cy){cy.batch(()=>cy.nodes().forEach(nd=>{const n=store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));cy.style().update();}
   saveSnapshot();                         // persist the counts so next session's cached paint has them too
+}
+let childCountTok=0;
+async function loadChildCounts(ids){      // top-level refresh path: guarded so a newer refresh wins
+  if(!ids.length)return;
+  const tok=++childCountTok;
+  const changed=await fetchChildCounts(ids,/*force*/true);   // structure may have changed since last refresh
+  if(tok!==childCountTok)return;          // a newer refresh superseded this lookup
+  if(changed)rerenderChildCounts();
 }
 
 /* ---------- editor ---------- */
@@ -952,6 +963,33 @@ async function loadTimeline(id){
   $('s_time').innerHTML='<span>⏱ time in state:</span>'+ent.map(([s,sec])=>
     `<span><span class="sbadge" style="background:${stateColor(s)};font-size:9px">${esc(s)}</span> <b>${fmtDur(sec)}</b></span>`).join('');
 }
+// Sidebar hierarchy nav: an "↑ parent" chip to go up and a "↓ children" chip
+// that expands an inline, clickable child list — so you can walk the tree both
+// ways without leaving the editor.
+function renderItemContext(d){
+  const up=d.parent?`<a class="ctxnav" id="s_par" title="open parent">↑ #${d.parent}</a>`:'';
+  const n=store.nodes[d.id],cc=n?n.childCount:undefined;
+  $('s_ctx').innerHTML=up+`<a class="ctxnav" id="s_kidsbtn" title="show children">↓ children${cc!=null?' ('+cc+')':''}</a>`;
+  if(d.parent)$('s_par').onclick=()=>openItem(d.parent);
+  const kb=$('s_kidsbtn'),box=$('s_kidlist');
+  box.style.display='none';box.innerHTML='';
+  if(cc===0)kb.classList.add('ctxoff');                 // known childless → inert chip
+  else kb.onclick=()=>toggleSidebarKids(d.id,kb);
+  if(cc===undefined&&n)fetchChildCounts([d.id]).then(ch=>{if(ch&&cur===d.id)renderItemContext(d);});   // learn + refresh the (N)
+}
+async function toggleSidebarKids(id,btn){
+  const box=$('s_kidlist');
+  if(box.style.display!=='none'){box.style.display='none';btn&&btn.classList.remove('ctxon');return;}
+  box.style.display='block';btn&&btn.classList.add('ctxon');box.innerHTML='<div class="kidmsg">loading…</div>';
+  let kids;try{kids=await ensureKids(id);}catch(e){kids=[];}
+  if(cur!==id)return;                                    // user navigated away while loading
+  const nodes=kids.map(k=>store.nodes[k]).filter(Boolean);
+  if(!nodes.length){box.innerHTML='<div class="kidmsg">(no children)</div>';return;}
+  box.innerHTML=nodes.map(k=>`<a class="kidrow" data-id="${k.id}"><i class="dot" style="background:${tyColor(k.type)}"></i>`+
+    `<span class="kidttl">#${k.id} ${esc(k.title||'')}</span>`+
+    (k.state?`<span class="kidstate" style="background:${stateColor(k.state)}">${esc(k.state)}</span>`:'')+`</a>`).join('');
+  box.querySelectorAll('.kidrow').forEach(r=>r.onclick=()=>openItem(+r.dataset.id));
+}
 async function openItem(id){
   const myToken=++openToken;
   if(cur!=null&&id!==cur&&dirty()&&!confirm('Discard unsaved changes to #'+cur+'?'))return;  // guard against silent loss
@@ -965,8 +1003,7 @@ async function openItem(id){
   $('s_hdr').innerHTML=`<i class="dot" style="background:${tyColor(d.type)}"></i>#${d.id} ${esc(d.type)}`+
     ` <span class="sbadge" style="background:${stateColor(d.state)}">${esc(d.state)}</span>`+
     ` <span style="color:var(--muted);font-weight:400;font-size:11px">rev${d.rev}</span>`;
-  $('s_ctx').innerHTML=d.parent?`↑ parent <a id="s_par">#${d.parent}</a>`:'';
-  if(d.parent)$('s_par').onclick=()=>openItem(d.parent);
+  renderItemContext(d);
   $('s_link').href=d.url;$('s_title').value=d.title;assignedEditor.set(d.assigned||'',/*silent*/true);$('s_desc').value=d.desc;
   showDescPreview(true);                          // open in preview; click "edit" to modify
   $('s_prio').value=d.priority?String(d.priority):'';
