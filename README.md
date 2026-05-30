@@ -84,8 +84,12 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   Week / Month (horizontal scroll; it opens centred on today) — the axis shows
   month labels with a second tier of day numbers (Day zoom) or week-start dates
   (Week zoom). Optionally **group**
-  rows by Sprint / State / Assignee / Type. Click a bar or row to open the
-  editor. (Read-only for now — drag-to-reschedule is a planned follow-up.)
+  rows by Sprint / State / Assignee / Type. Grouped **by Sprint**, each group
+  header draws the **sprint's own date window** as an accent line, and any item
+  whose dates fall outside it gets an amber outline — so a task that crosses
+  sprints or doesn't fit its sprint's dates stands out at a glance. Click a bar
+  or row to open the editor. (Read-only for now — drag-to-reschedule is a
+  planned follow-up.)
 - **∅ empty** (board toolbar) shows empty columns too: every project **state**
   (by-State) and every team member (by-Assignee) gets a column even with no
   cards, so you can drag an item into an as-yet-unused state/assignee. (For

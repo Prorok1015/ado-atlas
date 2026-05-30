@@ -678,18 +678,30 @@ async function renderTimeline(){
       ticks+=`<div class="tltick${cls}" style="left:${xOf(d)}px;width:${Math.round(7*px)}px">${dt.getUTCDate()}</div>`;}
   }
   // rows
+  const ymd=ms=>new Date(ms).toISOString().slice(0,10);
   const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${tyColor(n.type)}"></i><span class="tllab">#${n.id} ${esc(n.title)}</span></div>`;
-  const rowHTML=n=>{const t=n._tl,tip=`${n.start||(t.soft?'sprint start':'?')} → ${(n.target||n.due)||(t.soft?'sprint finish':'?')}`;
-    return `<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
+  // sp (optional) = the group's sprint window {s,e}; bars outside it are flagged.
+  const rowHTML=(n,sp)=>{const t=n._tl,oos=sp&&(t.s<sp.s||t.e>sp.e);
+    const tip=`${n.start||(t.soft?'sprint start':'?')} → ${(n.target||n.due)||(t.soft?'sprint finish':'?')}`+(oos?'  ⚠ dates fall outside the sprint':'');
+    return `<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
   const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
-  const groupHead=(k,arr)=>{const gs=Math.min(...arr.map(n=>n._tl.s)),ge=Math.max(...arr.map(n=>n._tl.e));
-    return `<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">${esc(k)} · ${arr.length}</div><div class="tlgrouptrack" style="width:${W}px"><div class="tlgroupbar" style="left:${xOf(gs)}px;width:${wOf(gs,ge)}px"></div></div></div>`;};
+  const groupHead=(k,arr,sp)=>{
+    let label=esc(k)+' · '+arr.length,track;
+    if(sp){                                          // sprint grouping: draw the sprint's own date span as a reference line
+      label+=`  (${ymd(sp.s)} → ${ymd(sp.e)})`;
+      track=`<div class="tlsprintspan" style="left:${xOf(sp.s)}px;width:${wOf(sp.s,sp.e)}px" title="sprint window ${ymd(sp.s)} → ${ymd(sp.e)}"></div>`;
+    }else{const gs=Math.min(...arr.map(n=>n._tl.s)),ge=Math.max(...arr.map(n=>n._tl.e));
+      track=`<div class="tlgroupbar" style="left:${xOf(gs)}px;width:${wOf(gs,ge)}px"></div>`;}
+    return `<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">${label}</div><div class="tlgrouptrack" style="width:${W}px">${track}</div></div>`;};
   let rows='';
   if(tlGroup==='none')dated.sort(byStart).forEach(n=>{rows+=rowHTML(n);});
   else{
     const groups=new Map();dated.forEach(n=>{const k=tlKey(n);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
     let keys=[...groups.keys()];keys=(tlGroup==='state')?orderStates(keys):keys.sort((a,b)=>a.localeCompare(b));
-    keys.forEach(k=>{const arr=groups.get(k).sort(byStart);rows+=groupHead(k,arr);arr.forEach(n=>{rows+=rowHTML(n);});});
+    keys.forEach(k=>{const arr=groups.get(k).sort(byStart);
+      let sp=null;
+      if(tlGroup==='sprint'){const it=_sprint(arr[0].iteration);if(it&&it.start&&it.finish)sp={s:Date.parse(it.start.slice(0,10)),e:Date.parse(it.finish.slice(0,10))};}
+      rows+=groupHead(k,arr,sp);arr.forEach(n=>{rows+=rowHTML(n,sp);});});
   }
   if(undated.length){
     rows+=`<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">No dates · ${undated.length}</div><div class="tlgrouptrack" style="width:${W}px"></div></div>`;
