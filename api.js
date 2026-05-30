@@ -356,7 +356,7 @@ async function states(wtype) {
 
 // Members of all project teams (deduped). Falls back to AssignedTo distinct
 // values from recent items if the team API isn't permitted by the PAT scope.
-async function assignees() {
+async function getAssignees() {
   const o = await orgUrl();
   const { project } = await getConfig();
   const p = encodeURIComponent(project);
@@ -754,7 +754,7 @@ window.api = {
   // setup picker (org / project discovery)
   orgs, projects,
   // primitives
-  me, iterations, states, assignees, tags, browserUrl,
+  me, iterations, states, assignees: getAssignees, tags, browserUrl,
   // work-hours config (active-time window)
   setWorkHours, getWorkHours,
   // list / search / children / parents

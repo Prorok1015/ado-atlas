@@ -6,7 +6,8 @@
   "author": "Zakhar Lebediuk",
   "description": "ADO Atlas Chrome extension — dev tooling (unit tests for lib.js).",
   "scripts": {
-    "test": "node tests/lib.test.js",
+    "check": "node tools/check-globals.js",
+    "test": "node tools/check-globals.js && node tests/lib.test.js",
     "build": "powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1"
   }
 }
