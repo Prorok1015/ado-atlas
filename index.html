@@ -83,9 +83,14 @@
     </div>
     <label>Sprint</label><select id="s_iter" style="width:100%"></select>
     <label>Parent</label>
-    <div style="display:flex;gap:4px">
-      <input id="s_parent" type="number" min="0" placeholder="parent id (blank = no parent)" style="flex:1">
-      <button class="btn" id="s_parent_open" title="open parent" style="padding:6px 9px">↗</button>
+    <input type="hidden" id="s_parent">
+    <div class="prow-field">
+      <button type="button" class="btn" id="s_parent_card" title="click to change parent"></button>
+      <button type="button" class="btn" id="s_parent_open" title="open parent" style="padding:6px 9px">↗</button>
+    </div>
+    <div id="s_parent_pick" class="ppick" style="display:none">
+      <input id="s_parent_search" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+      <div id="s_parent_results"></div>
     </div>
     <div class="row">
       <div><label>Start</label><input id="s_start" type="date"></div>

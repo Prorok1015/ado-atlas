@@ -628,6 +628,7 @@ async function _refresh(){
 /* ---------- editor ---------- */
 function closePanel(){
   if(dirty()&&!confirm('Discard unsaved changes?'))return;
+  closeParentPick();
   $('side').classList.add('hidden');$('resizer').style.display='none';cur=null;orig={};
   if(selRow){selRow.classList.remove('sel');selRow=null;}
   if(cy)cy.$(':selected').unselect();
@@ -686,6 +687,7 @@ async function openItem(id){
   if(curIt!==root&&!iters.some(it=>it.path===curIt))isel.appendChild(new Option(curIt.split('\\').slice(1).join('\\')||curIt,curIt));
   isel.value=curIt;
   $('s_parent').value=(d.parent!=null?String(d.parent):'');
+  closeParentPick();renderParentCard();
   $('s_start').value=(d.start||'').slice(0,10);
   $('s_target').value=(d.target||'').slice(0,10);
   $('s_due').value=(d.due||'').slice(0,10);
@@ -705,6 +707,67 @@ function dirty(){
 function refreshDirty(){const d=dirty();const b=$('s_save');b.disabled=!d;b.textContent=d?'● Save':'Saved';}
 function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:$('s_desc').value,ac:$('s_ac').value,prio:$('s_prio').value,
   iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};}
+
+/* ---------- parent picker (card + search, in the item editor) ---------- */
+function parentCardHtml(n){
+  return `<i class="dot" style="background:${TYPE_COLOR[n.type]||'#95a5a6'}"></i>`+
+    `<span class="pcid">#${n.id}</span><span class="pctitle">${esc(n.title||'')}</span>`+
+    (n.state?`<span class="pcstate" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'');
+}
+function renderParentCard(){
+  const v=$('s_parent').value.trim(),card=$('s_parent_card'),openBtn=$('s_parent_open');
+  if(!v){card.innerHTML='<span class="pcnone">(no parent)</span>';openBtn.style.visibility='hidden';return;}
+  openBtn.style.visibility='visible';
+  const n=store.nodes[v];
+  if(n){card.innerHTML=parentCardHtml(n);return;}
+  card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span><span class="pctitle pcnone">loading…</span>`;
+  const want=v;                                   // resolve the title for a parent that isn't in the loaded tree
+  api.item(v).then(it=>{if($('s_parent').value.trim()!==want)return;store.nodes[it.id]=store.nodes[it.id]||it;card.innerHTML=parentCardHtml(it);})
+    .catch(()=>{if($('s_parent').value.trim()===want)card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>`;});
+}
+function setParentValue(v){                        // v: '' (detach) or an id
+  $('s_parent').value=(v==null?'':String(v));
+  renderParentCard();refreshDirty();closeParentPick();
+}
+let _ppIdx=0,_ppRows=[];
+function openParentPick(){
+  const p=$('s_parent_pick');if(p.style.display!=='none'){closeParentPick();return;}   // toggle
+  p.style.display='block';const i=$('s_parent_search');i.value='';renderParentResults('');i.focus();
+}
+function closeParentPick(){const p=$('s_parent_pick');if(p)p.style.display='none';}
+function parentMatches(q){
+  q=(q||'').trim().toLowerCase();const toks=q.split(/\s+/).filter(Boolean),out=[{none:true}];
+  if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);if(id!==cur&&!store.nodes[id])out.push({rawId:id});}
+  let n=0;
+  for(const node of Object.values(store.nodes)){
+    if(node.id===cur)continue;                     // an item can't be its own parent
+    const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
+    if(!toks.length||toks.every(t=>hay.includes(t))){out.push({node});if(++n>=40)break;}
+  }
+  return out;
+}
+function renderParentResults(q){_ppRows=parentMatches(q);_ppIdx=0;drawParentResults();}
+function drawParentResults(){
+  const list=$('s_parent_results');
+  list.innerHTML=_ppRows.map((r,i)=>{
+    const on=i===_ppIdx?' on':'';
+    if(r.none)return `<div class="prow${on}" data-i="${i}"><span class="pkind">—</span><span class="ptitle pcnone">(no parent)</span></div>`;
+    if(r.rawId!=null)return `<div class="prow${on}" data-i="${i}"><span class="pkind">id</span><span class="ptitle">Use #${r.rawId}</span></div>`;
+    const n=r.node,badge=n.state?`<span class="pbadge" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'';
+    return `<div class="prow${on}" data-i="${i}"><span class="pkind">${esc(n.type||'item')}</span><span class="ptitle">#${n.id} ${esc(n.title||'')}</span>${badge}</div>`;
+  }).join('');
+  list.querySelectorAll('.prow[data-i]').forEach(r=>{
+    r.onmousedown=e=>{e.preventDefault();_ppIdx=+r.dataset.i;pickParent();};
+    r.onmousemove=()=>{if(_ppIdx!==+r.dataset.i){_ppIdx=+r.dataset.i;highlightParentRows();}};
+  });
+}
+function highlightParentRows(){$('s_parent_results').querySelectorAll('.prow[data-i]').forEach(r=>r.classList.toggle('on',+r.dataset.i===_ppIdx));}
+function moveParentPick(d){if(!_ppRows.length)return;_ppIdx=(_ppIdx+d+_ppRows.length)%_ppRows.length;highlightParentRows();
+  const el=$('s_parent_results').querySelector('.prow.on');if(el)el.scrollIntoView({block:'nearest'});}
+function pickParent(){const r=_ppRows[_ppIdx];if(!r)return;
+  if(r.none)return setParentValue('');
+  if(r.rawId!=null)return setParentValue(r.rawId);
+  setParentValue(r.node.id);}
 async function save(){
   if(cur==null)return;const id=cur;const v=editorValues();const body={};
   if(v.title!==orig.title)body.title=v.title;
@@ -1261,13 +1324,25 @@ async function initialBoot(postSetup){
   $('s_me').onclick=()=>{$('s_assigned').value=currentUser||'me';refreshDirty();};
   $('s_actbtn').onclick=toggleActivity;
   $('s_parent_open').onclick=()=>{const p=$('s_parent').value.trim();if(/^\d+$/.test(p))openItem(parseInt(p));};
-  ['s_title','s_state','s_prio','s_assigned','s_desc','s_ac','s_iter','s_parent','s_start','s_target','s_due','s_est'].forEach(id=>{
+  // parent picker: click the card to open a searchable list (items + "(no parent)")
+  $('s_parent_card').onclick=openParentPick;
+  $('s_parent_search').addEventListener('input',e=>renderParentResults(e.target.value));
+  $('s_parent_search').addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'){e.preventDefault();moveParentPick(1);}
+    else if(e.key==='ArrowUp'){e.preventDefault();moveParentPick(-1);}
+    else if(e.key==='Enter'){e.preventDefault();pickParent();}
+    else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeParentPick();$('s_parent_card').focus();}
+  });
+  document.addEventListener('mousedown',e=>{const p=$('s_parent_pick');   // dismiss on outside click
+    if(p.style.display!=='none'&&!p.contains(e.target)&&!$('s_parent_card').contains(e.target))closeParentPick();});
+  ['s_title','s_state','s_prio','s_assigned','s_desc','s_ac','s_iter','s_start','s_target','s_due','s_est'].forEach(id=>{
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
   document.addEventListener('keydown',e=>{
     const open=!$('side').classList.contains('hidden');
     if((e.ctrlKey||e.metaKey)&&(e.key==='s'||e.key==='S')){if(open){e.preventDefault();save();}}
     else if(e.key==='Escape'&&open){
-      if($('comment_form').style.display==='flex')$('comment_form').style.display='none';
+      if($('s_parent_pick').style.display!=='none')closeParentPick();
+      else if($('comment_form').style.display==='flex')$('comment_form').style.display='none';
       else if($('child_form').style.display==='flex')$('child_form').style.display='none';
       else closePanel();
     }

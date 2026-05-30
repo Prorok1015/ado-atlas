@@ -118,8 +118,11 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 
 Click any item to open the side editor. Beyond the usual fields:
 
-- **Parent** — type a work-item id (or clear it) and Save to re-parent the item;
-  the tree/graph hierarchy updates. The **↗** button opens the parent.
+- **Parent** — shown as a card (type dot, id, title, state) for the current
+  parent. Click it to open a searchable picker — type an id or title to find any
+  loaded item, pick a result, or choose **(no parent)** to detach. Save applies
+  the re-parent and the tree/graph hierarchy updates. The **↗** button opens the
+  parent.
 - **🕑 Activity** — shows the item's existing comments and a field-change history
   (state, assignee, sprint, priority, parent, …) pulled from its revisions.
 

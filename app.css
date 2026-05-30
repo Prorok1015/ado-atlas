@@ -201,6 +201,19 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .prow .pbadge{font-size:10px;border-radius:10px;padding:1px 7px;color:#fff;flex:none}
 #palette-foot{border-top:1px solid var(--line);padding:6px 16px;color:var(--muted);font-size:11px}
 
+/* parent picker (item editor): current-parent card + searchable list */
+.prow-field{display:flex;gap:4px;align-items:stretch}
+#s_parent_card{flex:1;display:flex;align-items:center;gap:6px;text-align:left;overflow:hidden;min-height:32px;padding:5px 9px}
+#s_parent_card .pcid{color:var(--muted);flex:none;font-size:12px}
+#s_parent_card .pctitle{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#s_parent_card .pcstate{font-size:10px;border-radius:10px;padding:1px 7px;color:#fff;flex:none}
+.pcnone{color:var(--muted)}
+.ppick{margin-top:4px;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden}
+.ppick #s_parent_search{width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;color:var(--txt);padding:8px 10px;margin:0;outline:none}
+.ppick #s_parent_results{max-height:240px;overflow:auto}
+.ppick .prow{padding:6px 10px;font-size:12px}
+.ppick .prow .pkind{width:auto;max-width:74px;overflow:hidden;text-overflow:ellipsis}
+
 /* ---- setup modal (first-run / "Settings" gear) ---- */
 #setup-overlay{position:fixed;inset:0;background:rgba(8,11,15,0.85);z-index:10000;display:none;align-items:center;justify-content:center}
 #setup-overlay.show{display:flex}
