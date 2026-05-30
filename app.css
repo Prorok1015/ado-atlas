@@ -183,6 +183,9 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 .skip{color:var(--accent);font-weight:600;cursor:help}
 #side{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:10px 12px;overflow:auto;display:flex;flex-direction:column;gap:5px}
 #side.hidden{display:none}
+/* keep each field at its natural height — when the form is taller than the panel,
+   the whole card scrolls instead of squashing blocks (e.g. the children list) */
+#side>*{flex:none}
 #side h2{font-size:13px;margin:0;color:var(--muted);font-weight:600}
 .ttl{font-size:15px;font-weight:600}
 label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:2px 0 1px}
@@ -210,7 +213,7 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 .ctxnav{border:1px solid var(--line);border-radius:12px;padding:1px 9px}
 .ctxnav.ctxon{background:var(--accent);color:#fff !important;border-color:var(--accent)}
 .ctxnav.ctxoff{opacity:.4;pointer-events:none}
-#s_kidlist{margin:6px 0 2px;border:1px solid var(--line);border-radius:8px;overflow:hidden;max-height:220px;overflow-y:auto}
+#s_kidlist{margin:6px 0 2px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .kidrow{display:flex;align-items:center;gap:7px;padding:6px 9px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--line)}
 .kidrow:last-child{border-bottom:0}
 .kidrow:hover{background:var(--panel2)}
