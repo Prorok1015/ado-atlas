@@ -35,8 +35,10 @@
   <p>OAuth requires a <b>one-time app registration</b> in Microsoft Entra ID. It
      takes ~3 minutes; after that, signing in is one click.</p>
 
-  <div class="note">Prefer zero setup? The PAT method still works — just stay on the
-     <b>Token</b> tab in the extension.</div>
+  <div class="note"><b>Only for work/school accounts.</b> Azure DevOps OAuth is a Microsoft Entra
+     (work/school) resource — it does not exist for <b>personal Microsoft accounts</b>. If you sign in
+     to <code>dev.azure.com</code> with a personal account (outlook/hotmail/live), use the
+     <b>Token (PAT)</b> tab instead. The PAT method works for any account type.</div>
 
   <h2>1. Register an app in Entra ID</h2>
   <ol>
@@ -76,9 +78,8 @@
     <li>App registration → <b>Overview</b> → copy the <b>Application (client) ID</b>.</li>
     <li>In the extension's <b>Microsoft sign-in</b> tab, paste the <b>Application (client) ID</b> and pick the
         <b>Account type / tenant</b> from the dropdown: <i>Work or school</i> (<code>organizations</code>),
-        <i>Any Microsoft account</i> (<code>common</code>), <i>Personal only</i> (<code>consumers</code>), or
-        <i>Specific tenant ID</i> (paste a tenant GUID to pin one organization). It must match the
-        <b>Supported account types</b> you chose in step 1.</li>
+        <i>Any work/school account</i> (<code>common</code>), or <i>Specific tenant ID</i>
+        (paste a tenant GUID to pin one organization).</li>
     <li>Click <b>Sign in with Microsoft</b>, complete the prompt and consent.</li>
     <li>Pick your <b>organization</b> and <b>project</b> (they auto-populate after sign-in) → <b>Save &amp; Connect</b>.</li>
   </ol>

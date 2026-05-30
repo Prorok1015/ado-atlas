@@ -9,7 +9,12 @@ OAuth requires a **one-time app registration** in Microsoft Entra ID (this is ho
 Microsoft grants the extension permission to act on your behalf). It takes ~3
 minutes. After that, signing in is one click.
 
-> Prefer zero setup? The PAT method still works — just stay on the **Token** tab.
+> **Only for work/school accounts.** Azure DevOps OAuth is an Entra (work/school)
+> resource — it does not exist for **personal Microsoft accounts**. If you sign
+> in to `dev.azure.com` with a personal account (outlook/hotmail/live), use the
+> **Token (PAT)** tab instead; OAuth won't work for you.
+>
+> Prefer zero setup? The PAT method works for any account — just stay on the **Token** tab.
 
 ## 1. Register an app in Entra ID
 
@@ -45,10 +50,8 @@ minutes. After that, signing in is one click.
 1. App registration → **Overview** → copy the **Application (client) ID**.
 2. In the extension's **Microsoft sign-in** tab, paste the **Application (client)
    ID** and pick the **Account type / tenant** from the dropdown:
-   *Work or school* (`organizations`), *Any Microsoft account* (`common`),
-   *Personal only* (`consumers`), or *Specific tenant ID* (paste a tenant GUID to
-   pin one organization). It must match the **Supported account types** you chose
-   in step 1.
+   *Work or school* (`organizations`), *Any work/school account* (`common`), or
+   *Specific tenant ID* (paste a tenant GUID to pin one organization).
 3. Click **Sign in with Microsoft**, complete the Microsoft prompt and consent.
 4. Pick your **organization** and **project** (they auto-populate after sign-in)
    → **Save & Connect**.

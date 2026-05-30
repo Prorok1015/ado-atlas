@@ -949,7 +949,7 @@ function showSetup(cancellable){
     $('setup-expiry').value=c.patExpiry||'';updateSetupExpiryInfo();
     $('oauth-client').value=c.oauthClientId||'';
     const t=c.oauthTenant||'organizations';
-    if(['organizations','common','consumers'].includes(t)){$('oauth-tenant-mode').value=t;$('oauth-tenant-id').value='';}
+    if(['organizations','common'].includes(t)){$('oauth-tenant-mode').value=t;$('oauth-tenant-id').value='';}
     else{$('oauth-tenant-mode').value='custom';$('oauth-tenant-id').value=t;}
     updateTenantField();
     setAuthPane(c.authMode==='oauth'?'oauth':'pat');
