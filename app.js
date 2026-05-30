@@ -1013,8 +1013,7 @@ function setMode(m){
   $('board').classList.toggle('show',m==='board');$('timeline').classList.toggle('show',m==='timeline');
   $('emode').style.display=$('dir').style.display=(m==='graph')?'inline-flex':'none';
   $('fit').style.display=(m==='graph')?'inline-block':'none';   // Fit only makes sense on the graph
-  $('badgepicker').style.display=(m==='graph')?'block':'none';   // badge picker only in graph mode
-  if(m!=='graph')$('badgepanel').style.display='none';
+  if(m!=='graph')$('badgepanel').style.display='none';            // badges popover lives inside the Controls header — graph-only
   $('empty_btn').style.display=(m==='board')?'inline-block':'none';
   $('grp').style.display=(m==='board')?'inline-flex':'none';
   $('tlzoom').style.display=(m==='timeline')?'inline-flex':'none';
@@ -1035,13 +1034,19 @@ function renderViewHelp(){
   const box=$('viewhelp'),rows=VIEW_HELP[mode];
   const show=!!rows&&!$('sprintview').classList.contains('show');   // hide over the sprint detail
   box.classList.toggle('show',show);
-  if(!show)return;
+  if(!show){$('badgepanel').style.display='none';return;}
   const collapsed=viewHelpCollapsed();
   box.classList.toggle('collapsed',collapsed);
-  box.innerHTML=`<div class="vhh" id="vhh">${collapsed?'▸':'▾'} Controls</div>`+
+  // graph mode: the Badges gear sits flush-left in the header (replaces the old
+  // standalone "⚙ Badges" button); clicking it toggles the popover without
+  // collapsing the Controls box.
+  const gear=mode==='graph'?`<button class="vhbadge" id="vhbadge" title="show / hide badges on graph nodes">⚙</button>`:'';
+  box.innerHTML=`<div class="vhh" id="vhh">${gear}<span class="vhctrl">${collapsed?'▸':'▾'} Controls</span></div>`+
     `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${esc(r[0])}</span><span class="vk">${esc(r[1])}</span><span class="vd">${esc(r[2])}</span></div>`).join('')+
     `<div class="vhnote">selecting items opens the bulk-edit bar</div></div>`;
-  $('vhh').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
+  // Toggle collapse only when the user clicks the "Controls" label, not the gear.
+  $('vhh').querySelector('.vhctrl').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
+  const gb=$('vhbadge');if(gb)gb.onclick=e=>{e.stopPropagation();toggleBadgePanel();};
 }
 // Bottom-left badge picker: a "⚙ Badges" button + checkbox panel (graph mode only).
 // Toggling rebuilds cytoscape styles so the mappers re-evaluate the badgeOn() gate.
@@ -2322,6 +2327,44 @@ const BAR_ITEMS=[
 ];
 const BAR_LOCKED=new Set(['settings-wrap','bar-spacer']);   // never hidden (settings = entry point; spacer = right-align anchor)
 let barOrder=BAR_ITEMS.map(i=>i.id), barHidden=new Set();
+// Work-item sidebar groups — same reorder + show/hide pattern as the toolbar.
+// Each id matches a <div class="sgroup" data-sg="..."> wrapper in #side.
+const SIDE_GROUPS=[
+  {id:'nav',     label:'Hierarchy nav (↑ parent · ↓ children)'},
+  {id:'title',   label:'Title'},
+  {id:'workflow',label:'State · Priority · Assignee'},
+  {id:'sprint',  label:'Sprint'},
+  {id:'parent',  label:'Parent'},
+  {id:'deps',    label:'Dependencies (blocked by · blocks)'},
+  {id:'schedule',label:'Schedule (Start · Target · Due · Estimate · time in state)'},
+  {id:'tags',    label:'Tags'},
+  {id:'desc',    label:'Description'},
+  {id:'ac',      label:'Acceptance Criteria'},
+  {id:'actions', label:'Actions row + activity / comment / child forms'},
+];
+const SIDE_LOCKED=new Set(['title','actions']);    // editor unusable without these
+let sideOrder=SIDE_GROUPS.map(g=>g.id), sideHidden=new Set();
+function loadSideLayout(){
+  try{const o=JSON.parse(localStorage.getItem('ado.sideOrder')||'null');if(Array.isArray(o))sideOrder=o;}catch(e){}
+  try{const h=JSON.parse(localStorage.getItem('ado.sideHidden')||'null');if(Array.isArray(h))sideHidden=new Set(h.filter(id=>!SIDE_LOCKED.has(id)));}catch(e){}
+}
+function saveSideLayout(){try{localStorage.setItem('ado.sideOrder',JSON.stringify(sideOrder));localStorage.setItem('ado.sideHidden',JSON.stringify([...sideHidden]));}catch(e){}}
+function sideOrderedIds(){     // same recovery as barOrderedIds — re-insert missing ids near their defaults
+  const def=SIDE_GROUPS.map(g=>g.id),defSet=new Set(def);
+  const result=sideOrder.filter((id,i)=>defSet.has(id)&&sideOrder.indexOf(id)===i);
+  def.forEach((id,i)=>{
+    if(result.includes(id))return;
+    let at=result.length;
+    for(let j=i-1;j>=0;j--){const k=result.indexOf(def[j]);if(k>=0){at=k+1;break;}}
+    result.splice(at,0,id);
+  });
+  return result;
+}
+function applySideLayout(){
+  const side=$('side');if(!side)return;
+  sideOrderedIds().forEach(id=>{const el=side.querySelector(`.sgroup[data-sg="${id}"]`);if(el)side.appendChild(el);});
+  SIDE_GROUPS.forEach(g=>{const el=side.querySelector(`.sgroup[data-sg="${g.id}"]`);if(el)el.classList.toggle('sg-hidden',sideHidden.has(g.id));});
+}
 function loadBarLayout(){
   try{const o=JSON.parse(localStorage.getItem('ado.barOrder')||'null');if(Array.isArray(o))barOrder=o;}catch(e){}
   try{const h=JSON.parse(localStorage.getItem('ado.barHidden')||'null');if(Array.isArray(h))barHidden=new Set(h.filter(id=>!BAR_LOCKED.has(id)));}catch(e){}
@@ -2346,24 +2389,38 @@ function applyBarLayout(){
   barOrderedIds().forEach(id=>{const el=$(id);if(el)bar.appendChild(el);});   // reorder (h1 isn't listed → stays first)
   BAR_ITEMS.forEach(i=>{const el=$(i.id);if(el)el.classList.toggle('tb-hidden',barHidden.has(i.id));});
 }
+let czTab='bar';                                           // 'bar' | 'side' — which list the Customize dialog is editing
 function showCustomize(){const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}
   renderCustomizeList();$('customize-overlay').classList.add('show');}
 function closeCustomize(){$('customize-overlay').classList.remove('show');}
-function resetBar(){barOrder=BAR_ITEMS.map(i=>i.id);barHidden=new Set();saveBarLayout();applyBarLayout();renderCustomizeList();}
+function resetCustomize(){       // reset only the currently-active tab to defaults
+  if(czTab==='side'){sideOrder=SIDE_GROUPS.map(g=>g.id);sideHidden=new Set();saveSideLayout();applySideLayout();}
+  else{barOrder=BAR_ITEMS.map(i=>i.id);barHidden=new Set();saveBarLayout();applyBarLayout();}
+  renderCustomizeList();
+}
+function setCustomizeTab(t){czTab=t;
+  $('cz_tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.cz===t));
+  $('cz_title').textContent=t==='side'?'Customize work item panel':'Customize toolbar';
+  renderCustomizeList();
+}
 function renderCustomizeList(){
-  const list=$('customize-list'),byId=Object.fromEntries(BAR_ITEMS.map(i=>[i.id,i.label]));
-  list.innerHTML=barOrderedIds().map(id=>{
-    const locked=BAR_LOCKED.has(id),checked=!barHidden.has(id);
+  const list=$('customize-list');
+  const cfg=czTab==='side'
+    ? {items:SIDE_GROUPS,locked:SIDE_LOCKED,orderedIds:sideOrderedIds,save:saveSideLayout,apply:applySideLayout,setOrder:o=>{sideOrder=o;},isHidden:id=>sideHidden.has(id),hide:id=>sideHidden.add(id),show:id=>sideHidden.delete(id)}
+    : {items:BAR_ITEMS,  locked:BAR_LOCKED, orderedIds:barOrderedIds, save:saveBarLayout, apply:applyBarLayout, setOrder:o=>{barOrder=o;}, isHidden:id=>barHidden.has(id), hide:id=>barHidden.add(id), show:id=>barHidden.delete(id)};
+  const byId=Object.fromEntries(cfg.items.map(i=>[i.id,i.label]));
+  list.innerHTML=cfg.orderedIds().map(id=>{
+    const locked=cfg.locked.has(id),checked=!cfg.isHidden(id);
     return `<div class="czrow" draggable="true" data-id="${id}"><span class="czgrip" title="drag to reorder">⠿</span>`+
       `<label class="czlab"><input type="checkbox" ${checked?'checked':''} ${locked?'disabled':''} data-id="${id}">${esc(byId[id])}</label></div>`;
   }).join('');
   list.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
-    const id=cb.dataset.id;if(cb.checked)barHidden.delete(id);else barHidden.add(id);saveBarLayout();applyBarLayout();});
+    const id=cb.dataset.id;if(cb.checked)cfg.show(id);else cfg.hide(id);cfg.save();cfg.apply();});
   let dragging=null;
   list.querySelectorAll('.czrow').forEach(row=>{
     row.addEventListener('dragstart',()=>{dragging=row;setTimeout(()=>row.classList.add('dragging'),0);});
     row.addEventListener('dragend',()=>{row.classList.remove('dragging');dragging=null;
-      barOrder=[...list.querySelectorAll('.czrow')].map(r=>r.dataset.id);saveBarLayout();applyBarLayout();});});
+      cfg.setOrder([...list.querySelectorAll('.czrow')].map(r=>r.dataset.id));cfg.save();cfg.apply();});});
   list.ondragover=e=>{e.preventDefault();if(!dragging)return;
     const rows=[...list.querySelectorAll('.czrow:not(.dragging)')];
     const after=rows.find(r=>{const b=r.getBoundingClientRect();return e.clientY<b.top+b.height/2;});
@@ -2430,10 +2487,11 @@ async function initialBoot(postSetup){
   };
   $('fit').onclick=()=>cy&&cy.fit(undefined,40);
   loadBadgesOn();                                                 // restore last "what to show on nodes" choices
-  $('badgepicker').onclick=toggleBadgePanel;
-  document.addEventListener('mousedown',e=>{                      // close the badge panel on outside-click
+  // The ⚙ Badges trigger is now part of the Controls panel header (wired in renderViewHelp);
+  // here we just handle outside-click dismissal of the popover.
+  document.addEventListener('mousedown',e=>{
     const p=$('badgepanel');if(p.style.display==='none')return;
-    if(!p.contains(e.target)&&e.target!==$('badgepicker'))p.style.display='none';});
+    const gb=$('vhbadge');if(!p.contains(e.target)&&e.target!==gb&&(!gb||!gb.contains(e.target)))p.style.display='none';});
   $('theme').onclick=cycleTheme;
   try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')applyTheme('auto');});}catch(e){}
   $('export').querySelectorAll('button').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
@@ -2529,7 +2587,9 @@ async function initialBoot(postSetup){
     else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();createSprintSubmit();}});
   $('sp_name').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createSprintSubmit();}});
   // customize-toolbar dialog
-  $('cz_open').onclick=showCustomize;$('cz_done').onclick=closeCustomize;$('cz_reset').onclick=resetBar;
+  $('cz_open').onclick=showCustomize;$('cz_done').onclick=closeCustomize;$('cz_reset').onclick=resetCustomize;
+  $('cz_tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>setCustomizeTab(b.dataset.cz));
+  loadSideLayout();applySideLayout();          // restore the saved sidebar group order / hidden set
   $('customize-overlay').addEventListener('mousedown',e=>{if(e.target===$('customize-overlay'))closeCustomize();});
   $('customize-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeCustomize();}});
   loadBarLayout();applyBarLayout();              // apply the saved toolbar order / hidden set

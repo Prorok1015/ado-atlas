@@ -40,7 +40,7 @@
         <select id="f_tz" title="timezone for work-hours / active-time"></select></div>
       <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours</span>
         <span class="whrs"><input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span></div>
-      <div class="mrow mrow-full"><button class="btn" id="cz_open" title="reorder / show-hide toolbar buttons">⠿ Customize toolbar…</button></div>
+      <div class="mrow mrow-full"><button class="btn" id="cz_open" title="reorder / show-hide toolbar buttons and work-item panel fields">⠿ Customize layout…</button></div>
       <div class="mrow mrow-full"><button class="btn" id="settingsbtn" title="Azure DevOps connection (PAT / org / project)">⚙ Connection (PAT / org / project)…</button></div>
     </div>
   </span>
@@ -75,7 +75,6 @@
     <div id="sprintview"></div>
     <div id="timeline"></div>
     <div id="viewhelp"></div>
-    <button class="btn" id="badgepicker" title="show / hide badges on graph nodes" style="display:none">⚙ Badges</button>
     <div id="badgepanel" style="display:none"></div>
   </div>
   <div id="resizer"></div>
@@ -85,9 +84,14 @@
       <a class="btn icon" id="s_link" target="_blank" title="open in Azure DevOps">↗</a>
       <button class="btn icon" id="s_close" title="close (Esc)">✕</button>
     </div>
-    <div id="s_ctx"></div>
-    <div id="s_kidlist" style="display:none"></div>
-    <label>Title</label><input id="s_title">
+    <div class="sgroup" data-sg="nav">
+      <div id="s_ctx"></div>
+      <div id="s_kidlist" style="display:none"></div>
+    </div>
+    <div class="sgroup" data-sg="title">
+      <label>Title</label><input id="s_title">
+    </div>
+    <div class="sgroup" data-sg="workflow">
     <div class="row">
       <div><label>State</label><select id="s_state" style="width:100%"></select></div>
       <div style="max-width:96px"><label>Priority</label><select id="s_prio" style="width:100%"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
@@ -103,6 +107,8 @@
         </div>
       </div>
     </div>
+    </div>
+    <div class="sgroup" data-sg="sprint">
     <label>Sprint</label>
     <input type="hidden" id="s_iter">
     <div class="prow-field">
@@ -112,6 +118,8 @@
       <input id="s_iter_search" class="psearch" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
       <div id="s_iter_results" class="presults"></div>
     </div>
+    </div>
+    <div class="sgroup" data-sg="parent">
     <label>Parent</label>
     <input type="hidden" id="s_parent">
     <div class="prow-field">
@@ -122,6 +130,8 @@
       <input id="s_parent_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
       <div id="s_parent_results" class="presults"></div>
     </div>
+    </div>
+    <div class="sgroup" data-sg="deps">
     <label>Dependencies</label>
     <div id="s_deps">
       <div class="depgroup">
@@ -149,20 +159,30 @@
         </div>
       </div>
     </div>
+    </div>
+    <div class="sgroup" data-sg="schedule">
     <div class="row">
       <div><label>Start</label><input id="s_start" type="date"></div>
       <div><label>Target</label><input id="s_target" type="date"></div>
       <div><label>Due</label><input id="s_due" type="date"></div>
       <div style="max-width:70px"><label>Est h</label><input id="s_est" type="number" min="0" step="0.5"></div>
     </div>
+    <div id="s_time" class="stime"></div>
+    </div>
+    <div class="sgroup" data-sg="tags">
     <label>Tags</label>
     <div id="s_tags" class="tagedit"></div>
     <datalist id="tagsdl"></datalist>
-    <div id="s_time" class="stime"></div>
+    </div>
+    <div class="sgroup" data-sg="desc">
     <label>Description <a id="s_desc_toggle" class="mdlink">preview</a></label>
     <textarea id="s_desc"></textarea>
     <div id="s_desc_prev" class="mdview" style="display:none"></div>
+    </div>
+    <div class="sgroup" data-sg="ac">
     <div id="ac_wrap"><label>Acceptance Criteria</label><textarea id="s_ac"></textarea></div>
+    </div>
+    <div class="sgroup" data-sg="actions">
     <div class="actions">
       <button class="btn save" id="s_save" title="Ctrl/Cmd+S">Save</button>
       <button class="btn" id="s_comment">💬 Comment</button>
@@ -188,6 +208,7 @@
         <div id="c_assigned_results" class="presults"></div>
       </div>
       <div class="actions"><button class="btn save" id="c_create">Create</button><button class="btn" id="c_cancel">Cancel</button></div>
+    </div>
     </div>
   </div>
 </div>
@@ -262,7 +283,11 @@
 <!-- Customize toolbar: reorder (drag) and show/hide (checkbox) the toolbar controls. -->
 <div id="customize-overlay">
   <div id="customize-box">
-    <h1>Customize toolbar</h1>
+    <h1 id="cz_title">Customize</h1>
+    <div id="cz_tabs">
+      <button data-cz="bar" class="on">Toolbar</button>
+      <button data-cz="side">Work item panel</button>
+    </div>
     <p class="hint">Drag rows to reorder, uncheck to hide. Changes apply live and are remembered.</p>
     <div id="customize-list"></div>
     <div id="customize-actions">

@@ -61,8 +61,12 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
   border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.12),0 6px 18px rgba(0,0,0,.14);
   font-family:'Segoe Print','Bradley Hand','Comic Sans MS',cursive;font-size:12px;color:var(--muted);max-width:300px;overflow:hidden}
 #viewhelp.show{display:block}
-.vhh{padding:7px 12px;cursor:pointer;font-weight:700;color:var(--txt);user-select:none}
-.vhh:hover{background:var(--panel2)}
+.vhh{padding:5px 10px 5px 6px;font-weight:700;color:var(--txt);user-select:none;display:flex;align-items:center;gap:4px}
+.vhh .vhctrl{flex:1;cursor:pointer;padding:2px 4px;border-radius:6px}
+.vhh .vhctrl:hover{background:var(--panel2)}
+/* ⚙ Badges trigger embedded in the Controls header (graph mode only) — flush-left of the ▸ caret */
+.vhh .vhbadge{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--txt);font:inherit;font-size:13px;cursor:pointer;line-height:1}
+.vhh .vhbadge:hover{border-color:var(--accent);color:var(--accent)}
 .vhb{padding:4px 12px 10px;display:flex;flex-direction:column;gap:5px}
 #viewhelp.collapsed .vhb{display:none}
 .vhrow{display:flex;gap:8px;align-items:center}
@@ -70,15 +74,12 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .vk{flex:none;min-width:100px;color:var(--txt);font-weight:700}
 .vd{flex:1}
 .vhnote{margin-top:5px;padding-top:6px;border-top:1px dashed var(--line);font-style:italic;opacity:.85}
-/* "⚙ Badges" button + checkbox popover for graph nodes — sits left of the legend */
-#badgepicker{position:absolute;left:14px;bottom:14px;z-index:6;font-size:11px;padding:5px 10px}
-#badgepanel{position:absolute;left:14px;bottom:48px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.12),0 6px 18px rgba(0,0,0,.14);padding:8px 4px;min-width:170px}
+/* "What to show on nodes" popover — pops up above the Controls box (anchored on the same bottom-left corner) */
+#badgepanel{position:absolute;left:14px;bottom:60px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.12),0 6px 18px rgba(0,0,0,.14);padding:8px 4px;min-width:170px}
 #badgepanel .bph{padding:2px 12px 6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
 #badgepanel label{display:flex;align-items:center;gap:8px;padding:4px 12px;cursor:pointer;font-size:12px;color:var(--txt);user-select:none}
 #badgepanel label:hover{background:var(--panel2)}
 #badgepanel label input{width:14px;height:14px;margin:0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox;flex:none}
-/* nudge the legend up so the badge picker sits beneath it without overlap */
-#cy.show ~ #viewhelp{bottom:48px}
 #board{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden;display:none;gap:10px;padding:10px}
 #board.show{display:flex}
 .bcol{min-width:240px;max-width:260px;flex:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;max-height:100%}
@@ -208,6 +209,14 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 /* keep each field at its natural height — when the form is taller than the panel,
    the whole card scrolls instead of squashing blocks (e.g. the children list) */
 #side>*{flex:none}
+/* sidebar field groups (logical chunks reordered/hidden via the Customize dialog) */
+.sgroup{display:flex;flex-direction:column;gap:5px}
+.sgroup.sg-hidden{display:none}
+/* tabs at the top of the Customize dialog (Toolbar / Sidebar) */
+#cz_tabs{display:flex;gap:4px;margin:0 0 10px;border-bottom:1px solid var(--line)}
+#cz_tabs button{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:6px 12px;cursor:pointer;font:inherit;font-size:12px}
+#cz_tabs button.on{color:var(--txt);border-bottom-color:var(--accent);font-weight:600}
+#cz_tabs button:hover{color:var(--txt)}
 #side h2{font-size:13px;margin:0;color:var(--muted);font-weight:600}
 .ttl{font-size:15px;font-weight:600}
 label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:2px 0 1px}
