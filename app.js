@@ -229,6 +229,7 @@ async function expandNode(id){
     setStatus(`#${id}: +${kids.length} child(ren)`);
   }finally{loadEnd();}
 }
+const txtColor=()=>document.body.classList.contains('light')?'#1b2330':'#e6edf3';   // theme text colour (matches --txt)
 function gstyle(){return [
  {selector:'node',style:{'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','shape':'round-rectangle',
    'label':e=>{const p=e.data('priority'),v=e.data('via');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
@@ -239,7 +240,7 @@ function gstyle(){return [
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
-   'shape':'round-rectangle','padding':'24px','color':'#fff',
+   'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const p=e.data('priority'),v=e.data('via');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
    'text-valign':'top','text-halign':'center','text-margin-y':-4,
    'font-size':'12px','font-weight':'bold','text-max-width':'400px','text-wrap':'wrap'}},
@@ -1276,6 +1277,7 @@ function applyTheme(mode){
   document.body.classList.toggle('light',light);
   $('theme').title='theme: '+mode+(mode==='auto'?' (follows system)':'')+' — click to change';
   const tl=$('theme_label');if(tl)tl.textContent=mode;
+  if(cy)cy.style().update();                        // re-evaluate theme-aware graph styles (parent label colour)
 }
 function cycleTheme(){
   let m=localStorage.getItem('ado.theme')||'dark';
