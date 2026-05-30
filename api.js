@@ -724,9 +724,14 @@ async function updateItem(wid, body) {
   if ("desc" in body) fields.desc = AdoLib.mdToHtml(body.desc);
   if ("ac" in body) fields.ac = AdoLib.mdToHtml(body.ac);
   if (!Object.keys(fields).length) throw new Error("no fields");
-  const ops = Object.entries(fields).map(([k, v]) => ({
-    op: "add", path: `/fields/${resolveField(k)}`, value: v,
-  }));
+  // ADO REST quirk: op:"add" with an empty value is silently dropped for some
+  // fields (notably System.Tags — clearing all/some tags appears to succeed but
+  // doesn't persist). Use op:"remove" to clear; op:"add" otherwise.
+  const ops = Object.entries(fields).map(([k, v]) => {
+    const path = `/fields/${resolveField(k)}`;
+    if (v === "" || v == null) return { op: "remove", path };
+    return { op: "add", path, value: v };
+  });
   const proj = await projUrl();
   const d = await req("PATCH", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`, ops, "application/json-patch+json");
   return { id: d.id, rev: d.rev };
