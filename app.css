@@ -70,6 +70,15 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .vk{flex:none;min-width:100px;color:var(--txt);font-weight:700}
 .vd{flex:1}
 .vhnote{margin-top:5px;padding-top:6px;border-top:1px dashed var(--line);font-style:italic;opacity:.85}
+/* "⚙ Badges" button + checkbox popover for graph nodes — sits left of the legend */
+#badgepicker{position:absolute;left:14px;bottom:14px;z-index:6;font-size:11px;padding:5px 10px}
+#badgepanel{position:absolute;left:14px;bottom:48px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.12),0 6px 18px rgba(0,0,0,.14);padding:8px 4px;min-width:170px}
+#badgepanel .bph{padding:2px 12px 6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+#badgepanel label{display:flex;align-items:center;gap:8px;padding:4px 12px;cursor:pointer;font-size:12px;color:var(--txt);user-select:none}
+#badgepanel label:hover{background:var(--panel2)}
+#badgepanel label input{width:14px;height:14px;margin:0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox;flex:none}
+/* nudge the legend up so the badge picker sits beneath it without overlap */
+#cy.show ~ #viewhelp{bottom:48px}
 #board{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden;display:none;gap:10px;padding:10px}
 #board.show{display:flex}
 .bcol{min-width:240px;max-width:260px;flex:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;max-height:100%}
@@ -348,6 +357,8 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .tagadd{width:22px;height:22px;flex:none;border-radius:50%;border:1px dashed var(--line);background:transparent;color:var(--muted);font-size:14px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0}
 .tagadd:hover{border-color:var(--accent);color:var(--accent);border-style:solid}
 .taginp{width:96px!important;min-height:22px;font-size:11px;padding:2px 8px;border-radius:11px;margin:0!important}
+.tagok{height:22px;flex:none;border-radius:11px;border:none;background:var(--accent);color:#fff;font-size:12px;line-height:1;padding:0 8px;cursor:pointer}
+.tagok:hover{opacity:.85}
 .ppick{margin-top:4px;border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden}
 .ppick .psearch{width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;color:var(--txt);padding:8px 10px;margin:0;outline:none}
 .ppick .presults{max-height:150px;overflow:auto}   /* ~5 rows; JS refines to exactly 5 */

@@ -327,6 +327,21 @@ function mixHex(hex,toward,t){const a=hexToRgb(hex),b=hexToRgb(toward);return 'r
 // Excalidraw-style fill: a soft pastel tint of the type colour toward the canvas
 const nodeFill=type=>{const c=TYPE_COLOR[type]||'#95a5a6';return document.body.classList.contains('light')?mixHex(c,'#ffffff',0.82):mixHex(c,'#11151b',0.70);};
 const nodeStroke=type=>TYPE_COLOR[type]||'#95a5a6';
+// Which badges to show on graph nodes. The user toggles these via the bottom-left
+// "⚙ Badges" popover; choices are persisted in localStorage.
+const BADGE_FIELDS=[
+  {key:'childCount',label:'Child count'},
+  {key:'priority',label:'Priority'},
+  {key:'assigned',label:'Assignee'},
+  {key:'state',label:'State'},
+  {key:'est',label:'Estimate (h)'},
+  {key:'tags',label:'Tags'},
+  {key:'iteration',label:'Sprint'},
+];
+const badgesOn={childCount:true,priority:true,assigned:true,state:true,est:true,tags:true,iteration:true};
+const badgeOn=k=>badgesOn[k]!==false;
+function loadBadgesOn(){try{const s=localStorage.getItem('ado.graphBadges');if(s){const p=JSON.parse(s);BADGE_FIELDS.forEach(f=>{if(typeof p[f.key]==='boolean')badgesOn[f.key]=p[f.key];});}}catch(e){}}
+function saveBadgesOn(){try{localStorage.setItem('ado.graphBadges',JSON.stringify(badgesOn));}catch(e){}}
 function gstyle(){return [
  {selector:'node',style:{'background-color':e=>nodeFill(e.data('type')),'shape':'round-rectangle',
    // clean label: only #id (↗ skip marker) · type, then the title
@@ -334,22 +349,27 @@ function gstyle(){return [
    'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'180px','font-size':'12px','text-valign':'center',
    'width':'210px','height':'label','padding':'12px',
    // top-left: child-count · priority · assignee (flat bookmarks); top-right: state (corner tag);
-   // bottom-left: estimate (corner tag); bottom-centre: tags; bottom-right: sprint (corner tag)
-   'background-image':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=tagDotsUri(e.data('tags')),
-       est_=(est!=null&&est!=='')?cornerTagUri((+est)+'h','#5b6b7d','bl',60):null,
-       st=e.data('state')?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120):null,
-       spt=sp?cornerTagUri(sprintShort(sp),'#7a6cc4','br',110):null;return[
-     e.data('childCount')>0?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
-     e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     e.data('assigned')?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
+   // bottom-left: estimate (corner tag); bottom-centre: tags; bottom-right: sprint (corner tag).
+   // Each slot is gated by badgeOn(key) — hidden slots collapse to BLANK_IMG (1px wide).
+   'background-image':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=badgeOn('tags')?tagDotsUri(e.data('tags')):null,
+       est_=(badgeOn('est')&&est!=null&&est!=='')?cornerTagUri((+est)+'h','#5b6b7d','bl',60):null,
+       st=(badgeOn('state')&&e.data('state'))?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120):null,
+       spt=(badgeOn('iteration')&&sp)?cornerTagUri(sprintShort(sp),'#7a6cc4','br',110):null;return[
+     (badgeOn('childCount')&&e.data('childCount')>0)?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
+     (badgeOn('priority')&&e.data('priority'))?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
+     (badgeOn('assigned')&&e.data('assigned'))?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
      st?st.uri:BLANK_IMG,
      est_?est_.uri:BLANK_IMG,
      tg?tg.uri:BLANK_IMG,
      spt?spt.uri:BLANK_IMG];},
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=tagDotsUri(e.data('tags'));return[
-     '17px','17px','17px',(e.data('state')?cornerW(e.data('state'),120):1)+'px',
-     ((est!=null&&est!=='')?cornerW((+est)+'h',60):1)+'px',(tg?tg.w:1)+'px',(sp?cornerW(sprintShort(sp),110):1)+'px'];},
+   'background-width':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=badgeOn('tags')?tagDotsUri(e.data('tags')):null;return[
+     (badgeOn('childCount')&&e.data('childCount')>0)?'17px':'1px',
+     (badgeOn('priority')&&e.data('priority'))?'17px':'1px',
+     (badgeOn('assigned')&&e.data('assigned'))?'17px':'1px',
+     ((badgeOn('state')&&e.data('state'))?cornerW(e.data('state'),120):1)+'px',
+     ((badgeOn('est')&&est!=null&&est!=='')?cornerW((+est)+'h',60):1)+'px',(tg?tg.w:1)+'px',
+     ((badgeOn('iteration')&&sp)?cornerW(sprintShort(sp),110):1)+'px'];},
    'background-height':['22px','22px','22px','16px','16px','10px','16px'],
    'background-position-x':['3px','21px','39px','100%','0','50%','100%'],
    'background-position-y':['0','0','0','0','100%','100%','100%'],
@@ -360,12 +380,14 @@ function gstyle(){return [
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
    // header strip: child-count · priority · assignee (flat bookmarks) left, state (corner tag) top-right
-   'background-image':e=>[e.data('childCount')>0?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
-     e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     e.data('assigned')?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
-     e.data('state')?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120).uri:BLANK_IMG],
+   'background-image':e=>[(badgeOn('childCount')&&e.data('childCount')>0)?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
+     (badgeOn('priority')&&e.data('priority'))?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
+     (badgeOn('assigned')&&e.data('assigned'))?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
+     (badgeOn('state')&&e.data('state'))?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120).uri:BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':e=>['17px','17px','17px',(e.data('state')?cornerW(e.data('state'),120):1)+'px'],
+   'background-width':e=>[(badgeOn('childCount')&&e.data('childCount')>0)?'17px':'1px',
+     (badgeOn('priority')&&e.data('priority'))?'17px':'1px',(badgeOn('assigned')&&e.data('assigned'))?'17px':'1px',
+     ((badgeOn('state')&&e.data('state'))?cornerW(e.data('state'),120):1)+'px'],
    'background-height':['22px','22px','22px','16px'],
    'background-position-x':['3px','21px','39px','100%'],'background-position-y':['0','0','0','0'],
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':1.5,'border-opacity':0.7,
@@ -991,6 +1013,8 @@ function setMode(m){
   $('board').classList.toggle('show',m==='board');$('timeline').classList.toggle('show',m==='timeline');
   $('emode').style.display=$('dir').style.display=(m==='graph')?'inline-flex':'none';
   $('fit').style.display=(m==='graph')?'inline-block':'none';   // Fit only makes sense on the graph
+  $('badgepicker').style.display=(m==='graph')?'block':'none';   // badge picker only in graph mode
+  if(m!=='graph')$('badgepanel').style.display='none';
   $('empty_btn').style.display=(m==='board')?'inline-block':'none';
   $('grp').style.display=(m==='board')?'inline-flex':'none';
   $('tlzoom').style.display=(m==='timeline')?'inline-flex':'none';
@@ -1019,6 +1043,18 @@ function renderViewHelp(){
     `<div class="vhnote">selecting items opens the bulk-edit bar</div></div>`;
   $('vhh').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
 }
+// Bottom-left badge picker: a "⚙ Badges" button + checkbox panel (graph mode only).
+// Toggling rebuilds cytoscape styles so the mappers re-evaluate the badgeOn() gate.
+function renderBadgePanel(){
+  const p=$('badgepanel');
+  p.innerHTML=`<div class="bph">Show on nodes</div>`+
+    BADGE_FIELDS.map(f=>`<label><input type="checkbox" data-k="${f.key}"${badgeOn(f.key)?' checked':''}> ${esc(f.label)}</label>`).join('');
+  p.querySelectorAll('input[data-k]').forEach(cb=>cb.onchange=()=>{
+    badgesOn[cb.dataset.k]=cb.checked;saveBadgesOn();
+    if(cy){cy.style(gstyle()).update();}                   // mappers re-read badgeOn() on next paint
+  });
+}
+function toggleBadgePanel(){const p=$('badgepanel');if(p.style.display==='none'){renderBadgePanel();p.style.display='block';}else p.style.display='none';}
 async function resolveSkippedAncestors(skippers,inSet){
   // For each skipper (parent not in set), climb the chain until an in-set ancestor
   // is found (≤6 levels). Returns {id: {target, via:[skipped ids]}}.
@@ -1218,17 +1254,24 @@ const tagsEditor=(function(){let cur=[],adding=false;
     let html=cur.map((t,i)=>`<span class="tagchip" style="background:${personColor(t)}">${esc(t)}<b data-i="${i}" title="remove">×</b></span>`).join('');
     if(!cur.length&&!adding)html='<span class="pcnone">no tags</span>';
     html+=adding
-      ? `<input id="s_taginp" class="taginp" list="tagsdl" placeholder="tag…" autocomplete="off">`
+      ? `<input id="s_taginp" class="taginp" list="tagsdl" placeholder="tag…" autocomplete="off"><button type="button" id="s_tagok" class="tagok" title="add tag">✓</button>`
       : `<button type="button" class="tagadd" id="s_tagplus" title="add a tag">＋</button>`;
     box.innerHTML=html;
-    box.querySelectorAll('b[data-i]').forEach(x=>x.onclick=()=>{cur.splice(+x.dataset.i,1);render();refreshDirty();});
-    if(adding){const inp=$('s_taginp');inp.focus();
-      const done=keep=>{commit(inp.value);adding=false;render();if(keep)setTimeout(()=>{adding=true;render();},0);};
+    box.querySelectorAll('b[data-i]').forEach(x=>{
+      x.onmousedown=e=>e.preventDefault();   // keep input focus when clicking × (prevents blur → DOM rebuild race)
+      x.onclick=()=>{cur.splice(+x.dataset.i,1);render();refreshDirty();};
+    });
+    if(adding){const inp=$('s_taginp'),ok=$('s_tagok');inp.focus();
+      let committing=false;
+      function doCommit(){committing=true;commit(inp.value);inp.value='';render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();committing=false;}
+      ok.onmousedown=e=>e.preventDefault();   // keep focus on input when clicking ✓
+      ok.onclick=doCommit;
       inp.addEventListener('keydown',e=>{
-        if(e.key==='Enter'||e.key===','){e.preventDefault();commit(inp.value);inp.value='';render();adding=true;$('s_taginp').focus();}  // keep adding
+        if(e.key==='Enter'||e.key===','){e.preventDefault();doCommit();}
         else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();adding=false;render();}
-        else if(e.key==='Backspace'&&!inp.value&&cur.length){cur.pop();render();adding=true;$('s_taginp').focus();refreshDirty();}});
-      inp.addEventListener('blur',()=>{commit(inp.value);adding=false;render();});
+        else if(e.key==='Backspace'&&!inp.value&&cur.length){cur.pop();render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();refreshDirty();}});
+      inp.addEventListener('change',()=>{if(inp.value.trim())doCommit();});   // datalist option selected by mouse
+      inp.addEventListener('blur',()=>{if(!committing){commit(inp.value);adding=false;render();}});
     }else{const p=$('s_tagplus');if(p)p.onclick=()=>{adding=true;render();};}
   }
   return {render,
@@ -2386,6 +2429,11 @@ async function initialBoot(postSetup){
     }finally{b.classList.remove('spinning');b.disabled=false;}
   };
   $('fit').onclick=()=>cy&&cy.fit(undefined,40);
+  loadBadgesOn();                                                 // restore last "what to show on nodes" choices
+  $('badgepicker').onclick=toggleBadgePanel;
+  document.addEventListener('mousedown',e=>{                      // close the badge panel on outside-click
+    const p=$('badgepanel');if(p.style.display==='none')return;
+    if(!p.contains(e.target)&&e.target!==$('badgepicker'))p.style.display='none';});
   $('theme').onclick=cycleTheme;
   try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')applyTheme('auto');});}catch(e){}
   $('export').querySelectorAll('button').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
