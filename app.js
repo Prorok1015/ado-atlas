@@ -325,24 +325,33 @@ const nodeFill=type=>{const c=TYPE_COLOR[type]||'#95a5a6';return document.body.c
 const nodeStroke=type=>TYPE_COLOR[type]||'#95a5a6';
 function gstyle(){return [
  {selector:'node',style:{'background-color':e=>nodeFill(e.data('type')),'shape':'round-rectangle',
-   'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ↓'+k:'')+' · '+e.data('type')+'\n'+e.data('title');},
-   'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'190px','font-size':'12px','text-valign':'center',
+   // clean label: only #id (↗ skip marker) · type, then the title
+   'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
+   'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'180px','font-size':'12px','text-valign':'center',
    'width':'210px','height':'label','padding':'12px',
-   // assignee avatar: ringed disc inset into the top-right corner, fully inside the node
-   'background-image':e=>{const a=e.data('assigned');return a?avatarDataUri(a):'none';},
+   // corner badges (cytoscape multi-background): [0] assignee avatar top-right,
+   // [1] child-count blue bookmark top-left, [2] priority bookmark bottom-left
+   'background-image':e=>[e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG,
+     e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
+     e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'up'):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':'26px','background-height':'26px','background-position-x':'94%','background-position-y':'14%',
+   'background-width':['26px','19px','19px'],'background-height':['26px','25px','25px'],
+   'background-position-x':['94%','7%','7%'],'background-position-y':['14%','0%','100%'],
    // Excalidraw sketch look: same-hue stroke (thicker for high priority)
    'border-width':e=>((e.data('priority')||9)<=2?3.5:1.8),'border-color':e=>nodeStroke(e.data('type'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
-   'background-image':e=>{const a=e.data('assigned');return a?avatarDataUri(a):'none';},   // same ringed corner avatar on container nodes
+   // corner badges, kept up in the header strip: [0] avatar right, [1] child-count, [2] priority
+   'background-image':e=>[e.data('assigned')?avatarDataUri(e.data('assigned')):BLANK_IMG,
+     e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
+     e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':'26px','background-height':'26px','background-position-x':'99%','background-position-y':'6px',
+   'background-width':['26px','20px','20px'],'background-height':['26px','26px','26px'],
+   'background-position-x':['99%','2%','9%'],'background-position-y':['6px','0','0'],
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
-   'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ↓'+k:'')+' · '+e.data('type')+' — '+e.data('title');},
+   'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
    'text-valign':'top','text-halign':'center','text-margin-y':-4,
    'font-family':HAND_FONT,'font-size':'13px','font-weight':'bold','text-max-width':'400px','text-wrap':'wrap'}},
  {selector:'node:selected',style:{'border-color':'#fff','border-width':4}},
@@ -880,10 +889,10 @@ function setMode(m){
 // non-obvious interactions (modifier-click to bulk-select, drag semantics, …);
 // this surfaces them. Collapsible, with the state remembered across sessions.
 const VIEW_HELP={
-  tree:[['Click','open item'],['Click ▸','expand / collapse'],['Ctrl-click','toggle select'],['Shift-click','select range'],['Drag','re-parent onto a row']],
-  graph:[['Click','open item'],['Double-click','expand / collapse children'],['Ctrl / Shift-click','toggle select'],['Drag node','move · background pans'],['Scroll','zoom']],
-  board:[['Click','open item'],['Ctrl / Shift-click','toggle / range select'],['Drag','move to another column'],['Drag → ＋','new sprint from cards']],
-  timeline:[['Click','open item'],['Ctrl-click','toggle select'],['Shift-click','select range']],
+  tree:[['🖱️','Click','open item'],['▸','Click ▸','expand / collapse'],['☑️','Ctrl-click','toggle select'],['↕️','Shift-click','select range'],['✋','Drag','re-parent onto a row']],
+  graph:[['🖱️','Click','open item'],['👆','Double-click','expand / collapse children'],['☑️','Ctrl / Shift-click','toggle select'],['✋','Drag node','move · background pans'],['🔍','Scroll','zoom']],
+  board:[['🖱️','Click','open item'],['☑️','Ctrl / Shift-click','toggle / range select'],['✋','Drag','move to another column'],['➕','Drag → ＋','new sprint from cards']],
+  timeline:[['🖱️','Click','open item'],['☑️','Ctrl-click','toggle select'],['↕️','Shift-click','select range']],
 };
 function viewHelpCollapsed(){try{return localStorage.getItem('ado.viewhelp')==='0';}catch(e){return false;}}
 function renderViewHelp(){
@@ -894,7 +903,7 @@ function renderViewHelp(){
   const collapsed=viewHelpCollapsed();
   box.classList.toggle('collapsed',collapsed);
   box.innerHTML=`<div class="vhh" id="vhh">${collapsed?'▸':'▾'} Controls</div>`+
-    `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vk">${esc(r[0])}</span><span>${esc(r[1])}</span></div>`).join('')+
+    `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${esc(r[0])}</span><span class="vk">${esc(r[1])}</span><span class="vd">${esc(r[2])}</span></div>`).join('')+
     `<div class="vhnote">selecting items opens the bulk-edit bar</div></div>`;
   $('vhh').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
 }
@@ -1216,6 +1225,18 @@ function avatarDataUri(name){               // circular initials avatar (white r
   const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44'>`+
     `<circle cx='22' cy='22' r='19' fill='${personColor(name)}' stroke='#ffffff' stroke-width='2.5'/>`+
     `<text x='22' y='29' font-size='18' font-family='sans-serif' font-weight='700' fill='#ffffff' text-anchor='middle'>${esc(personInitials(name))}</text></svg>`;
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+}
+const BLANK_IMG="data:image/svg+xml;utf8,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'></svg>");   // transparent slot for an absent multi-background layer
+// Corner "bookmark" ribbon (a tag with a V-notch) carrying a short label — used
+// for the child-count and priority badges on graph nodes. dir 'down' = notch at
+// the bottom (hangs from the top edge); 'up' = notch at the top (sits on the bottom).
+function bookmarkUri(color,text,dir){
+  text=String(text);const fs=text.length>1?17:23;
+  const body=dir==='up'
+    ? `<path d='M3 49 L3 11 L20 19 L37 11 L37 49 Z' fill='${color}'/><text x='20' y='40'`
+    : `<path d='M3 3 L37 3 L37 41 L20 33 L3 41 Z' fill='${color}'/><text x='20' y='27'`;
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='52'>${body} font-size='${fs}' font-family='sans-serif' font-weight='700' fill='#ffffff' text-anchor='middle'>${esc(text)}</text></svg>`;
   return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
 }
 function assigneePeople(){const seen=new Set(),out=[];   // current user first, then the deduped roster

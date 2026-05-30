@@ -65,8 +65,10 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .vhh:hover{background:var(--panel2)}
 .vhb{padding:4px 12px 10px;display:flex;flex-direction:column;gap:5px}
 #viewhelp.collapsed .vhb{display:none}
-.vhrow{display:flex;gap:9px;align-items:baseline}
-.vk{flex:none;min-width:104px;color:var(--txt);font-weight:700}
+.vhrow{display:flex;gap:8px;align-items:center}
+.vi{flex:none;width:18px;text-align:center;font-size:13px;line-height:1}
+.vk{flex:none;min-width:100px;color:var(--txt);font-weight:700}
+.vd{flex:1}
 .vhnote{margin-top:5px;padding-top:6px;border-top:1px dashed var(--line);font-style:italic;opacity:.85}
 #board{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden;display:none;gap:10px;padding:10px}
 #board.show{display:flex}
