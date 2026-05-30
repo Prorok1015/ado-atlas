@@ -591,9 +591,14 @@ document.addEventListener('mousemove',e=>{
     if(Math.abs(e.clientX-pdrag.sx)+Math.abs(e.clientY-pdrag.sy)<5)return;   // movement threshold
     pdrag.active=true;
     const r=pdrag.card.getBoundingClientRect();
-    const cl=pdrag.card.cloneNode(true);cl.className='bcard drag-ghost';cl.style.width=r.width+'px';
+    const bulk=bulkSel.has(pdrag.id)&&bulkSel.size>1;
+    const cl=pdrag.card.cloneNode(true);cl.className='bcard drag-ghost'+(bulk?' bulk':'');cl.style.width=r.width+'px';
+    if(bulk){const b=document.createElement('span');b.className='dgcount';b.textContent=bulkSel.size;cl.appendChild(b);}   // count badge
     document.body.appendChild(cl);pdrag.clone=cl;
-    pdrag.card.classList.add('dragging');$('board').classList.add('drag');document.body.style.cursor='grabbing';
+    // dim every card being moved (the whole selection on a bulk drag)
+    pdrag.dragEls=bulk?[...document.querySelectorAll('#board .bcard[data-id]')].filter(el=>bulkSel.has(+el.dataset.id)):[pdrag.card];
+    pdrag.dragEls.forEach(el=>el.classList.add('dragging'));
+    $('board').classList.add('drag');document.body.style.cursor='grabbing';
   }
   pdrag.clone.style.left=(e.clientX+10)+'px';pdrag.clone.style.top=(e.clientY+10)+'px';
   const el=document.elementFromPoint(e.clientX,e.clientY);
@@ -604,7 +609,7 @@ document.addEventListener('mousemove',e=>{
 document.addEventListener('mouseup',()=>{
   if(!pdrag)return;const d=pdrag;pdrag=null;
   if(!d.active)return;                              // was a plain click — let onclick handle it
-  d.card.classList.remove('dragging');if(d.clone)d.clone.remove();
+  (d.dragEls||[d.card]).forEach(el=>el.classList.remove('dragging'));if(d.clone)d.clone.remove();
   $('board').classList.remove('drag');document.body.style.cursor='';
   if(d.hot)d.hot.classList.remove('dropover');
   suppressClick=true;setTimeout(()=>{suppressClick=false;},30);   // swallow the click that follows a drag

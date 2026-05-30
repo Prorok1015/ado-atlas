@@ -73,6 +73,9 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .bcard.dragging{opacity:.4}
 .bcard.moving{opacity:.5;pointer-events:none;cursor:default}
 .drag-ghost{position:fixed;pointer-events:none;opacity:.92;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.45);transform:rotate(1.5deg);max-width:260px}
+/* bulk drag: stack of cards behind the ghost + a count badge */
+.drag-ghost.bulk{box-shadow:5px 5px 0 -1px var(--panel2),5px 5px 0 0 var(--line),10px 10px 0 -1px var(--panel2),10px 10px 0 0 var(--line),0 10px 28px rgba(0,0,0,.45)}
+.drag-ghost .dgcount{position:absolute;top:-9px;right:-9px;min-width:20px;height:20px;line-height:20px;padding:0 5px;border-radius:11px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;text-align:center;box-shadow:0 1px 5px rgba(0,0,0,.45)}
 #sprintview{position:absolute;inset:0;overflow:auto;display:none;padding:10px}
 #sprintview.show{display:block}
 .gtop{display:flex;align-items:center;gap:8px;margin-bottom:8px}
