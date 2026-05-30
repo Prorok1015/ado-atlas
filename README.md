@@ -6,6 +6,12 @@ Talks to `dev.azure.com` directly from the browser — no local server, no Pytho
 Point it at **any** Azure DevOps organization and project: you supply the org,
 project, and a Personal Access Token on first run.
 
+> **Independent project — not affiliated with or endorsed by Microsoft.**
+> "Azure DevOps" is a trademark of Microsoft Corporation. Your token and data
+> stay on your device; the extension only ever contacts Azure DevOps. See
+> [PRIVACY.md](PRIVACY.md). Publishing to the Chrome Web Store: see
+> [PUBLISHING.md](PUBLISHING.md).
+
 ## Install (one-time, per machine)
 
 1. Unzip the bundle (or clone this folder).
@@ -100,10 +106,13 @@ Click any item to open the side editor. Beyond the usual fields:
 | `build.bat` | One-shot zip into `dist/ado-atlas-extension.zip` |
 | `tests/` | Node unit tests for `lib.js` (`npm test`) |
 
-## Build (only when sharing)
+## Build (only when sharing / publishing)
 
-Double-click `build.bat` on Windows (or run `powershell Compress-Archive ...`
-on any OS). Result lands in `dist\ado-atlas-extension.zip`.
+Double-click `build.bat` on Windows, or run `npm run build` (both call
+`build.ps1`). Result: `dist\ado-atlas-extension.zip` — a Web Store-ready package
+with `manifest.json` at the root, spec-correct forward-slash paths, and only the
+runtime files (no tests/docs). For publishing to the Chrome Web Store, follow
+[PUBLISHING.md](PUBLISHING.md).
 
 ## Tests
 

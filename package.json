@@ -4,6 +4,7 @@
   "private": true,
   "description": "ADO Atlas Chrome extension — dev tooling (unit tests for lib.js).",
   "scripts": {
-    "test": "node tests/lib.test.js"
+    "test": "node tests/lib.test.js",
+    "build": "powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1"
   }
 }

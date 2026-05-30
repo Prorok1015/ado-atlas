@@ -3,6 +3,7 @@
   "name": "ADO Atlas",
   "version": "1.0.0",
   "description": "Tree / Graph / Board / Sprint Gantt over Azure DevOps work items.",
+  "author": "Zakhar Lebediuk",
   "permissions": ["storage"],
   "host_permissions": [
     "https://dev.azure.com/*",
