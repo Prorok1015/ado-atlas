@@ -394,6 +394,20 @@ async function createSprint({ name, start, finish }) {
   return node;
 }
 
+// Update an existing sprint's start/finish dates. `path` is the iteration path
+// as iterations() reports it ("<project>\<...>\<sprint>"); the node API wants
+// everything after the root (project) segment, slash-separated. A 403 means the
+// caller lacks "Edit this node" rights on the iteration.
+async function updateSprintDates(path, { start, finish }) {
+  const proj = await projUrl();
+  const toIso = d => (d && d.length === 10) ? d + "T00:00:00Z" : (d || null);
+  const rel = String(path).split("\\").slice(1).map(encodeURIComponent).join("/");
+  if (!rel) throw new Error("can't edit the project root iteration");
+  const attributes = { startDate: start ? toIso(start) : null, finishDate: finish ? toIso(finish) : null };
+  return await req("PATCH", `${proj}/_apis/wit/classificationnodes/iterations/${rel}?${API_VERSION}`,
+    { attributes }, "application/json");
+}
+
 // The work-item types actually defined in this project's process, with their
 // process colour — the single source of truth for the create dropdowns and the
 // type-colour map (so nothing about types is hard-coded). Disabled types, and
@@ -823,7 +837,7 @@ window.api = {
   // setup picker (org / project discovery)
   orgs, projects,
   // primitives
-  me, iterations, states, workItemTypes, createSprint, assignees: getAssignees, tags, browserUrl,
+  me, iterations, states, workItemTypes, createSprint, updateSprintDates, assignees: getAssignees, tags, browserUrl,
   // work-hours config (active-time window)
   setWorkHours, getWorkHours,
   // list / search / children / parents

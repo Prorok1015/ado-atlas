@@ -43,6 +43,7 @@ let pdrag=null, suppressClick=false;            // custom pointer-based drag for
 let boardScroll=null;                           // saved board scroll to restore from the sprint view
 let boardGroup='sprint';                        // board grouping: 'sprint' | 'assignee' | 'state'
 let canCreateSprint=true;                       // show the "add sprint" column until a create is denied (403)
+let canEditSprint=true;                          // show the sprint "✎ dates" button until an edit is denied (403)
 let canCreateItem=true;                         // show the New / + Child buttons until a create is denied (403)
 const newSprints=new Set();                     // sprint paths created this session — stay visible while still empty
 let tzOffset=Math.round(-new Date().getTimezoneOffset()/60);   // UTC offset for work-hours (default: browser TZ)
@@ -508,6 +509,7 @@ function renderSprint(path){
   top.innerHTML=`<button class="btn" id="g_back" title="back to board">←</button>`+
     `<b>${esc(it.name)}</b> <span style="color:var(--muted)">${it.start.slice(0,10)} → ${it.finish.slice(0,10)} · ${items.length} items`+
     `${se?' · Σest '+(Math.round(se*10)/10)+'h':''} · <span id="g_act">Σ⏱ …</span></span>`+
+    (canEditSprint?`<button class="btn" id="g_editdates" title="edit sprint dates">✎ dates</button>`:'')+
     `<button class="btn${sprintGroup==='assignee'?' on':''}" id="g_group" title="group rows by assignee" style="margin-left:auto">by assignee</button>`;
   el.appendChild(top);
   const head=document.createElement('div');head.className='ghead';
@@ -549,6 +551,7 @@ function renderSprint(path){
     });
   } else items.forEach(n=>el.appendChild(mkRow(n)));
   $('g_back').onclick=backToBoard;
+  {const eb=$('g_editdates');if(eb)eb.onclick=()=>showSprintEdit(path);}
   $('g_group').onclick=()=>{sprintGroup=sprintGroup==='assignee'?'none':'assignee';
     try{localStorage.setItem('ado.sprintGroup',sprintGroup);}catch(e){}renderSprint(path);};
   annotateSprintTimes(items.map(n=>n.id),path);
@@ -1016,32 +1019,64 @@ async function createNew(){
   openItem(r.id);                                  // jump straight into the new item's editor
 }
 
-/* ---------- create a sprint (Board → By Sprint "＋" column) ---------- */
-function showSprintModal(){
+/* ---------- create / edit a sprint (Board → By Sprint "＋" column; sprint screen "✎") ---------- */
+let sprintMode='create',sprintEditPath=null;
+function showSprintModal(){                        // create a new sprint
+  sprintMode='create';sprintEditPath=null;
+  $('sprint-title').textContent='New sprint';
   $('sprint-err').textContent='';
-  $('sp_name').value='';$('sp_start').value='';$('sp_finish').value='';
-  $('sprint-overlay').classList.add('show');
-  $('sp_name').focus();
+  $('sp_name').readOnly=false;$('sp_name').value='';$('sp_start').value='';$('sp_finish').value='';
+  $('sp_create').textContent='Create sprint';
+  $('sprint-overlay').classList.add('show');$('sp_name').focus();
+}
+function showSprintEdit(path){                     // edit an existing sprint's dates
+  const it=_sprint(path);if(!it)return;
+  sprintMode='edit';sprintEditPath=path;
+  $('sprint-title').textContent='Edit sprint dates';
+  $('sprint-err').textContent='';
+  $('sp_name').readOnly=true;$('sp_name').value=it.name||'';
+  $('sp_start').value=(it.start||'').slice(0,10);$('sp_finish').value=(it.finish||'').slice(0,10);
+  $('sp_create').textContent='Save dates';
+  $('sprint-overlay').classList.add('show');$('sp_start').focus();
 }
 function closeSprintModal(){$('sprint-overlay').classList.remove('show');}
+// Re-derive the Sprint filter chips + bulk dropdown from the (refreshed) iteration
+// list — otherwise a newly created sprint is missing from the filter.
+async function reloadSprintFilter(){
+  try{const its=await getIterations();sprintPaths=its.map(i=>i.path);sprintNames={};its.forEach(i=>{sprintNames[i.path]=i.name;});}
+  catch(e){/* keep whatever we had */}
+  renderFilters();                                 // also rebuilds the bulk Sprint dropdown
+}
 async function createSprintSubmit(){
-  const name=$('sp_name').value.trim();
-  if(!name){$('sprint-err').textContent='Sprint name is required.';$('sp_name').focus();return;}
   const start=$('sp_start').value,finish=$('sp_finish').value;
   if(start&&finish&&finish<start){$('sprint-err').textContent='Finish date is before the start date.';return;}
-  const btn=$('sp_create');btn.disabled=true;btn.textContent='Creating…';loadStart('creating sprint…');
+  const name=$('sp_name').value.trim();
+  if(sprintMode!=='edit'&&!name){$('sprint-err').textContent='Sprint name is required.';$('sp_name').focus();return;}
+  const btn=$('sp_create');btn.disabled=true;loadStart(sprintMode==='edit'?'saving sprint…':'creating sprint…');
   try{
-    await api.createSprint({name,start,finish});
-    iterCache=null;                                // sprint list changed → drop the cache
-    newSprints.add((projectName||'')+'\\'+name);   // keep the (still-empty) new column visible
-    closeSprintModal();
-    setStatus(`sprint "${name}" created`);
-    await refresh();                               // re-fetch iterations + re-render the board
+    if(sprintMode==='edit'){
+      await api.updateSprintDates(sprintEditPath,{start,finish});
+      iterCache=null;closeSprintModal();
+      await reloadSprintFilter();
+      setStatus('sprint dates updated');
+      await refresh();                             // re-render board / open sprint with new dates
+      if(openSprintPath===sprintEditPath&&$('sprintview').classList.contains('show'))renderSprint(sprintEditPath);
+    }else{
+      await api.createSprint({name,start,finish});
+      iterCache=null;newSprints.add((projectName||'')+'\\'+name);   // keep the (still-empty) new column visible
+      closeSprintModal();
+      await reloadSprintFilter();                  // new sprint now selectable in the filter
+      setStatus(`sprint "${name}" created`);
+      await refresh();
+    }
   }catch(e){
-    if(/HTTP 403/.test(e.message)){canCreateSprint=false;closeSprintModal();
-      setStatus("you don't have permission to create sprints",true);if(mode==='board')renderBoard();}
-    else $('sprint-err').textContent='ERROR: '+e.message;
-  }finally{btn.disabled=false;btn.textContent='Create sprint';loadEnd();}
+    if(/HTTP 403/.test(e.message)){
+      closeSprintModal();
+      if(sprintMode==='edit'){canEditSprint=false;setStatus("you don't have permission to edit sprint dates",true);
+        if(openSprintPath)renderSprint(openSprintPath);}
+      else{canCreateSprint=false;setStatus("you don't have permission to create sprints",true);if(mode==='board')renderBoard();}
+    }else $('sprint-err').textContent='ERROR: '+e.message;
+  }finally{btn.disabled=false;$('sp_create').textContent=sprintMode==='edit'?'Save dates':'Create sprint';loadEnd();}
 }
 
 /* ---------- work-item types (sourced from ADO — no hard-coded list) ---------- */
@@ -1396,7 +1431,7 @@ let _booted=false;
 async function initialBoot(postSetup){
   updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
-    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canCreateItem=true;newSprints.clear();
+    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canEditSprint=true;canCreateItem=true;newSprints.clear();
     updateUndoButtons();updateCreateButtons();
     await loadIdentity();await refresh();warnIfPatExpiring();return;
   }

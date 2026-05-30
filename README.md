@@ -79,7 +79,11 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   right end opens a dialog to create a dated iteration. It needs permission to
   add iteration nodes in ADO — if the create is denied (HTTP 403) the column
   disappears for the session. The new sprint is also added to the project's
-  default team (best-effort) so native ADO planning sees it.
+  default team (best-effort) so native ADO planning sees it, and immediately
+  becomes selectable in the Sprint filter.
+- **Edit sprint dates** — open a sprint (double-click its board header) and use
+  **✎ dates** in the sprint view to change its start/finish. Needs "edit node"
+  permission; on HTTP 403 the button hides for the session.
 - **Filters** (chip panel): State, Type, Priority, Assigned, **Sprint**, and
   **Tags**. State, **Type**, and Tag values are read from your project (the Type
   list is your process's real work-item types — no hard-coded list), sprints
