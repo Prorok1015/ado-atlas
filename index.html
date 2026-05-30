@@ -120,11 +120,8 @@
          with at least <b>Work Items (Read &amp; Write)</b> and <b>Project and Team (Read)</b> scopes. The PAT is stored in
          <code>chrome.storage.local</code> on this machine only.</p>
       <label>Personal Access Token</label>
-      <div style="display:flex;gap:6px">
-        <input id="setup-pat" type="password" placeholder="Paste your PAT here" style="flex:1">
-        <button class="btn" id="setup-load" title="list organizations & projects this PAT can access">Load</button>
-      </div>
-      <p class="hint" id="setup-load-hint">Paste a PAT and click <b>Load</b> to pick your organization and project from the dropdowns, or just type them in.</p>
+      <input id="setup-pat" type="password" placeholder="Paste your PAT here" style="width:100%">
+      <p class="hint" id="setup-load-hint">Paste a PAT — your organizations and projects load automatically. Or just type them in.</p>
       <label>PAT expiry <span style="color:var(--muted);font-weight:400">(optional — copy from the token page for a validity countdown)</span></label>
       <div style="display:flex;gap:8px;align-items:center">
         <input id="setup-expiry" type="date" style="flex:0 0 auto">

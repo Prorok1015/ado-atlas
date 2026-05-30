@@ -1078,7 +1078,6 @@ async function saveSetup(){
 function wireSetup(){
   window.addEventListener('ado-401',handle401);   // PAT expired/revoked mid-session → reopen setup
   $('setup-save').onclick=saveSetup;
-  $('setup-load').onclick=loadSetupOrgs;
   $('setup-pat').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadSetupOrgs();}});  // Enter on PAT loads orgs
   $('setup-pat').addEventListener('input',()=>{   // auto-load org/project shortly after a PAT is pasted/typed
     clearTimeout(patAutoTimer);
