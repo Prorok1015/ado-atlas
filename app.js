@@ -51,6 +51,7 @@ let canCreateSprint=true;                       // show the "add sprint" column 
 let canEditSprint=true;                          // show the sprint "✎ dates" button until an edit is denied (403)
 let canCreateItem=true;                         // show the New / + Child buttons until a create is denied (403)
 const newSprints=new Set();                     // sprint paths created this session — stay visible while still empty
+let pendingSprintItems=null;                     // cards dropped on "＋ New sprint" → moved into the sprint once created
 let tzOffset=Math.round(-new Date().getTimezoneOffset()/60);   // UTC offset for work-hours (default: browser TZ)
 let sprintGroup='none';                         // expanded-sprint grouping: 'none' | 'assignee'
 let currentUser='';                      // display name of the PAT owner (for the "me" shortcuts)
@@ -482,7 +483,7 @@ async function renderBoard(){
   if(canCreateSprint){                              // phantom "add sprint" column at the right end
     const add=document.createElement('div');add.className='bcol addcol';add.title='create a new sprint';
     add.innerHTML='<div class="addinner"><span class="plus">＋</span>New sprint</div>';
-    add.onclick=showSprintModal;el.appendChild(add);
+    add.onclick=()=>{if(suppressClick)return;pendingSprintItems=null;showSprintModal();};el.appendChild(add);   // plain click (not a drop)
   }
   setStatus(`${items.length} items`+capNote());annotateBoardTimes();
 }
@@ -602,7 +603,7 @@ document.addEventListener('mousemove',e=>{
   }
   pdrag.clone.style.left=(e.clientX+10)+'px';pdrag.clone.style.top=(e.clientY+10)+'px';
   const el=document.elementFromPoint(e.clientX,e.clientY);
-  const c=el&&el.closest?el.closest('.bcol[data-field]'):null;
+  const c=el&&el.closest?el.closest('.bcol[data-field], .bcol.addcol'):null;   // addcol = "＋ New sprint" drop zone
   if(pdrag.hot&&pdrag.hot!==c)pdrag.hot.classList.remove('dropover');
   pdrag.hot=c;if(c)c.classList.add('dropover');
 });
@@ -614,9 +615,13 @@ document.addEventListener('mouseup',()=>{
   if(d.hot)d.hot.classList.remove('dropover');
   suppressClick=true;setTimeout(()=>{suppressClick=false;},30);   // swallow the click that follows a drag
   const col=d.hot;if(!col)return;
+  const bulk=bulkSel.has(d.id)&&bulkSel.size>1;                     // dragged a selected card → move the whole selection
+  const dropIds=bulk?[...bulkSel]:[d.id];
+  if(col.classList.contains('addcol')){                            // dropped on "＋ New sprint" → create, then move them in
+    pendingSprintItems=dropIds;showSprintModal();return;
+  }
   const field=col.dataset.field,val=col.dataset.val||'';
   const node=store.nodes[d.id],curVal=node?(node[field]||''):'';   // field: iteration | assigned | state
-  const bulk=bulkSel.has(d.id)&&bulkSel.size>1;                     // dragged a selected card → move the whole selection
   if(val===curVal&&!bulk)return;
   if(field==='iteration'){const it=_sprint(val),fin=it&&it.finish?it.finish.slice(0,10):null,today=new Date().toISOString().slice(0,10);
     if(fin&&fin<today&&!confirm(`Sprint "${it.name}" ended ${fin}. Move ${bulk?bulkSel.size+' items':'#'+d.id} there anyway?`))return;}
@@ -1317,7 +1322,7 @@ function showSprintEdit(path){                     // edit an existing sprint's 
   $('sp_create').textContent='Save dates';
   $('sprint-overlay').classList.add('show');$('sp_start').focus();
 }
-function closeSprintModal(){$('sprint-overlay').classList.remove('show');}
+function closeSprintModal(){$('sprint-overlay').classList.remove('show');pendingSprintItems=null;}
 // Re-derive the Sprint filter chips + bulk dropdown from the (refreshed) iteration
 // list — otherwise a newly created sprint is missing from the filter.
 async function reloadSprintFilter(){
@@ -1340,11 +1345,25 @@ async function createSprintSubmit(){
       await refresh();                             // re-render board / open sprint with new dates
       if(openSprintPath===sprintEditPath&&$('sprintview').classList.contains('show'))renderSprint(sprintEditPath);
     }else{
+      const pend=pendingSprintItems&&pendingSprintItems.slice();   // cards dropped on "＋ New sprint"
       await api.createSprint({name,start,finish});
-      iterCache=null;newSprints.add((projectName||'')+'\\'+name);   // keep the (still-empty) new column visible
+      iterCache=null;
+      const its=await getIterations();                            // refetch (now includes the new sprint) to get its real path
+      const made=its.find(it=>it.name===name);
+      const newPath=made?made.path:((projectName||'')+'\\'+name);
+      newSprints.add(newPath);                                    // keep the new column visible
+      let moved=0;
+      if(pend&&pend.length){                                      // move the dropped cards into the new sprint
+        const olds=pend.map(id=>({id,old:(store.nodes[id]?store.nodes[id].iteration:'')}));
+        const res=await api.pool(pend.map(id=>async()=>{try{await api.updateItem(id,{iteration:newPath});if(store.nodes[id])store.nodes[id].iteration=newPath;return true;}catch(e){return false;}}),6);
+        moved=res.filter(Boolean).length;
+        if(moved)pushAction(`move ${moved} item(s) → ${name}`,
+          async()=>{await api.pool(olds.map(o=>async()=>{try{await api.updateItem(o.id,{iteration:(o.old==null?'':o.old)});}catch(e){}}),6);await afterUndo(null);},
+          async()=>{await api.pool(pend.map(id=>async()=>{try{await api.updateItem(id,{iteration:newPath});}catch(e){}}),6);await afterUndo(null);});
+      }
       closeSprintModal();
       await reloadSprintFilter();                  // new sprint now selectable in the filter
-      setStatus(`sprint "${name}" created`);
+      setStatus(`sprint "${name}" created`+(moved?` · ${moved} item(s) moved in`:''));
       await refresh();
     }
   }catch(e){

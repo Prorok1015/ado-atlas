@@ -95,11 +95,13 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   cards, so you can drag an item into an as-yet-unused state/assignee. (For
   by-Sprint it reveals empty sprints as narrow drop targets while dragging.)
 - **New sprint** (Board → By Sprint): a dashed **＋ New sprint** column at the
-  right end opens a dialog to create a dated iteration. It needs permission to
-  add iteration nodes in ADO — if the create is denied (HTTP 403) the column
-  disappears for the session. The new sprint is also added to the project's
-  default team (best-effort) so native ADO planning sees it, and immediately
-  becomes selectable in the Sprint filter.
+  right end opens a dialog to create a dated iteration. **Drag cards onto it** to
+  open the dialog and have those cards (the whole selection if you dragged a
+  selected one) **moved into the new sprint** once it's created. It needs
+  permission to add iteration nodes in ADO — if the create is denied (HTTP 403)
+  the column disappears for the session. The new sprint is also added to the
+  project's default team (best-effort) so native ADO planning sees it, and
+  immediately becomes selectable in the Sprint filter.
 - **Edit sprint dates** — open a sprint (click its board header) and use
   **✎ dates** in the sprint view to change its start/finish. Needs "edit node"
   permission; on HTTP 403 the button hides for the session.
