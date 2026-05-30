@@ -117,6 +117,13 @@ function filterCount(){let n=0;for(const k in fstate)n+=Object.keys(fstate[k]).l
 function updateFilterCount(){const n=filterCount();$('filt_count').textContent=n?('('+n+')'):'';}
 function renderFilters(){
   const el=$('filterchips');el.innerHTML='';
+  // "Clear all" — only when at least one filter has a selection
+  if(filterCount()>0){
+    const all=document.createElement('button');
+    all.className='fclear fclear-all';all.title='clear all filters';all.textContent='✕ Clear all';
+    all.onclick=()=>{for(const k in fstate)delete fstate[k];renderFilters();updateFilterCount();scheduleApply();};
+    el.appendChild(all);
+  }
   FILTERS.forEach(f=>{
     const vals=f.values()||[];
     if(!vals.length&&!Object.keys(fstate[f.key]||{}).length)return;   // skip empty rows (e.g. tags/sprints not loaded yet)
@@ -129,6 +136,13 @@ function renderFilters(){
       ch.onclick=()=>{cycleChip(f.key,v);renderFilters();updateFilterCount();scheduleApply();};
       row.appendChild(ch);
     });
+    // per-row clear "✕" — only when this filter has any selection
+    if(Object.keys(fstate[f.key]||{}).length){
+      const x=document.createElement('button');
+      x.className='fclear';x.title='clear this filter';x.textContent='✕';
+      x.onclick=()=>{delete fstate[f.key];renderFilters();updateFilterCount();scheduleApply();};
+      row.appendChild(x);
+    }
     el.appendChild(row);
   });
   buildBulkControls();                      // keep the bulk-bar dropdowns in sync with loaded data
