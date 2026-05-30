@@ -77,8 +77,10 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - Large result sets are capped at 2000 items; when that happens the status bar
   shows `· capped, narrow the filters` so you know you're not seeing everything.
 - **Export** (toolbar): download the current filtered view as **CSV** or **JSON**.
-- **Auto-refresh** dropdown re-fetches the list every 1 / 5 / 15 min (paused
-  while you have unsaved edits, are dragging a card, or the tab is hidden).
+- **Display options** (the **⋯** button) groups the less-frequently-touched
+  controls in a small popover: **Auto-refresh**, **Timezone**, and **Work hours**.
+- **Auto-refresh** (in the **⋯** menu) re-fetches the list every 1 / 5 / 15 min
+  (paused while you have unsaved edits, are dragging a card, or the tab is hidden).
 - **Theme** button cycles dark → light → **auto** (follows your OS setting).
 - **Bulk edit** (Tree view): tick the checkboxes on tree rows — a bar appears
   letting you set State, Sprint, Priority, or Assignee on every selected item at
@@ -86,8 +88,8 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - **Command palette** — press **Ctrl/Cmd-K** to fuzzy-find any loaded item by id
   or title, or run a quick command (switch view, refresh, export, theme,
   settings). ↑/↓ to navigate, Enter to open, Esc to close.
-- **Work hours** (`hrs N–N` next to the timezone): the local Mon–Fri window used
-  to compute "active time" on cards and in the sprint Gantt.
+- **Work hours** (`N–N`, in the **⋯** menu next to the timezone): the local
+  Mon–Fri window used to compute "active time" on cards and in the sprint Gantt.
 - Requests **retry automatically** on throttling (HTTP 429, honoring
   `Retry-After`) and transient `5xx` errors with exponential backoff.
 - The last view is **cached** (`chrome.storage.local`) and painted instantly on

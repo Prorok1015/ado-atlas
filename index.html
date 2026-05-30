@@ -19,16 +19,24 @@
   <button class="btn" id="empty_btn" title="show empty sprints" style="display:none">∅ empty</button>
   <button class="btn" id="filt_btn" title="filters">Filters <span id="filt_count"></span></button>
   <select id="f_sort" title="sort order"><option value="">sort: id</option><option value="priority">sort: priority</option></select>
-  <select id="f_tz" title="timezone for work-hours"></select>
-  <span class="whrs" title="working hours window for active-time (local)">hrs <input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span>
-  <select id="f_auto" title="auto-refresh interval"><option value="0">auto: off</option><option value="60">auto: 1m</option><option value="300">auto: 5m</option><option value="900">auto: 15m</option></select>
   <input id="search" placeholder="search id / title">
   <button class="btn" id="searchbtn">Search</button>
   <button class="btn save" id="newbtn" title="create a new work item (N)">✚ New</button>
   <button class="btn" id="refreshbtn" title="reload from server (drop caches)">⟳</button>
-  <button class="btn" id="fit" title="fit graph">Fit</button>
+  <button class="btn" id="fit" title="fit graph" style="display:none">Fit</button>
   <div class="seg" id="export" title="export the current (filtered) view"><button data-x="csv">⬇ CSV</button><button data-x="json">JSON</button></div>
   <span class="patbadge" id="patbadge" title="PAT validity"></span>
+  <span class="popwrap">
+    <button class="btn" id="morebtn" title="display options (auto-refresh, timezone, work hours)">⋯</button>
+    <div id="morepanel" style="display:none">
+      <div class="mrow"><span class="ml">Auto-refresh</span>
+        <select id="f_auto" title="auto-refresh interval"><option value="0">off</option><option value="60">1 min</option><option value="300">5 min</option><option value="900">15 min</option></select></div>
+      <div class="mrow"><span class="ml">Timezone</span>
+        <select id="f_tz" title="timezone for work-hours / active-time"></select></div>
+      <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours</span>
+        <span class="whrs"><input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span></div>
+    </div>
+  </span>
   <button class="btn" id="settingsbtn" title="settings (PAT / org / project)">⚙</button>
   <button class="btn" id="theme">◐</button>
   <span class="legend" id="legend"></span>

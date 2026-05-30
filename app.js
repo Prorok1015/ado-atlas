@@ -557,6 +557,7 @@ function setMode(m){
   $('tree').classList.toggle('show',m==='tree');$('cy').classList.toggle('show',m==='graph');
   $('board').classList.toggle('show',m==='board');
   $('emode').style.display=$('dir').style.display=(m==='graph')?'inline-flex':'none';
+  $('fit').style.display=(m==='graph')?'inline-block':'none';   // Fit only makes sense on the graph
   $('empty_btn').style.display=(m==='board')?'inline-block':'none';
   $('grp').style.display=(m==='board')?'inline-flex':'none';
 }
@@ -1175,6 +1176,12 @@ async function initialBoot(postSetup){
   $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);try{localStorage.setItem('ado.showEmpty',on?'1':'0');}catch(e){}};
   $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.boardGroup',boardGroup);}catch(e){}renderBoard();});
   $('filt_btn').onclick=()=>{const p=$('filterpanel');p.style.display=p.style.display==='none'?'flex':'none';};
+  // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
+  const moreP=$('morepanel'),moreB=$('morebtn');
+  const closeMore=()=>{moreP.style.display='none';moreB.classList.remove('on');};
+  moreB.onclick=e=>{e.stopPropagation();const show=moreP.style.display==='none';moreP.style.display=show?'flex':'none';moreB.classList.toggle('on',show);};
+  document.addEventListener('mousedown',e=>{if(moreP.style.display!=='none'&&!moreP.contains(e.target)&&e.target!==moreB)closeMore();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&moreP.style.display!=='none')closeMore();});
   $('searchbtn').onclick=()=>{const t=$('search').value.trim();if(/^\d+$/.test(t)){openItem(parseInt(t));return;}refresh();};
   $('search').addEventListener('keydown',e=>{if(e.key==='Enter')$('searchbtn').click();});
   // hard refresh: drop every per-session cache and re-fetch everything from the server
