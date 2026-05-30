@@ -176,14 +176,30 @@ function treeNode(n){
   const lab=document.createElement('span');lab.className='lab';lab.textContent=`#${n.id} ${n.title}`;
   if(n.via&&n.via.length){const m=document.createElement('span');m.className='skip';m.textContent=' ↗';
     m.title='via '+n.via.map(i=>'#'+i).join(' → ')+' (not in filter)';lab.appendChild(m);}
-  const bdg=document.createElement('span');bdg.className='badge';bdg.textContent=n.state;
-  row.append(cb,tog,dot,lab,bdg);
-  if(n.priority){const pc=document.createElement('span');pc.className='prio';pc.textContent='P'+n.priority;
-    pc.style.background=prioColor(n.priority);pc.title='priority '+n.priority;row.insertBefore(pc,bdg);}
-  if(n.tags){const ts=tagList_(n.tags);if(ts.length){const show=ts.slice(0,3),extra=ts.length-show.length;
-    bdg.style.marginLeft='0';
-    show.forEach((t,i)=>{const tc=document.createElement('span');tc.className='ttag';tc.textContent=t;tc.style.background=personColor(t);tc.title=t;if(i===0)tc.style.marginLeft='auto';row.insertBefore(tc,bdg);});
-    if(extra>0){const tc=document.createElement('span');tc.className='ttag';tc.textContent='+'+extra;tc.style.background='var(--muted)';row.insertBefore(tc,bdg);}}}
+  // Priority sits to the RIGHT of the title (between the label and the spacer),
+  // so it stays close to the task name and never visually merges with the
+  // right-edge tag chips.
+  const prioEl=(badgeOn('priority','tree')&&n.priority)?(()=>{
+    const pc=document.createElement('span');pc.className='prio';pc.textContent='P'+n.priority;
+    pc.style.background=prioColor(n.priority);pc.title='priority '+n.priority;return pc;
+  })():null;
+  // A right-pushing spacer keeps the right-aligned cluster anchored regardless of
+  // which badges the user has hidden via ⚙ Badges; everything appended after it
+  // sits on the right edge in insertion order.
+  const sp=document.createElement('span');sp.className='rspacer';sp.style.cssText='flex:1';
+  if(prioEl)row.append(cb,tog,dot,lab,prioEl,sp);
+  else row.append(cb,tog,dot,lab,sp);
+  if(badgeOn('tags','tree')&&n.tags){
+    const ts=tagList_(n.tags);
+    if(ts.length){const show=ts.slice(0,3),extra=ts.length-show.length;
+      show.forEach(t=>{const tc=document.createElement('span');tc.className='ttag';tc.textContent=t;tc.style.background=personColor(t);tc.title=t;row.appendChild(tc);});
+      if(extra>0){const tc=document.createElement('span');tc.className='ttag';tc.textContent='+'+extra;tc.style.background='var(--muted)';tc.title=ts.slice(3).join(', ');row.appendChild(tc);}
+    }
+  }
+  if(badgeOn('state','tree')&&n.state){
+    const bdg=document.createElement('span');bdg.className='badge';bdg.textContent=n.state;
+    bdg.style.marginLeft='0';row.appendChild(bdg);
+  }
   if(n.id===cur){row.classList.add('sel');selRow=row;}   // keep highlight across re-renders
   row.onclick=(e)=>{
     if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(n.id);return;}        // Ctrl/Cmd: toggle in selection
@@ -339,21 +355,63 @@ function mixHex(hex,toward,t){const a=hexToRgb(hex),b=hexToRgb(toward);return 'r
 // Excalidraw-style fill: a soft pastel tint of the type colour toward the canvas
 const nodeFill=type=>{const c=TYPE_COLOR[type]||'#95a5a6';return document.body.classList.contains('light')?mixHex(c,'#ffffff',0.82):mixHex(c,'#11151b',0.70);};
 const nodeStroke=type=>TYPE_COLOR[type]||'#95a5a6';
-// Which badges to show on graph nodes. The user toggles these via the bottom-left
-// "⚙ Badges" popover; choices are persisted in localStorage.
-const BADGE_FIELDS=[
-  {key:'childCount',label:'Child count'},
-  {key:'priority',label:'Priority'},
-  {key:'assigned',label:'Assignee'},
-  {key:'state',label:'State'},
-  {key:'est',label:'Estimate (h)'},
-  {key:'tags',label:'Tags'},
-  {key:'iteration',label:'Sprint'},
-];
-const badgesOn={childCount:true,priority:true,assigned:true,state:true,est:true,tags:true,iteration:true};
-const badgeOn=k=>badgesOn[k]!==false;
-function loadBadgesOn(){try{const s=localStorage.getItem('ado.graphBadges');if(s){const p=JSON.parse(s);BADGE_FIELDS.forEach(f=>{if(typeof p[f.key]==='boolean')badgesOn[f.key]=p[f.key];});}}catch(e){}}
-function saveBadgesOn(){try{localStorage.setItem('ado.graphBadges',JSON.stringify(badgesOn));}catch(e){}}
+// Per-view "what to show" toggles. Each view exposes its own set of fields
+// through the ⚙ popover anchored on the Controls box. Choices persist as one
+// nested object under `ado.badges`; the legacy `ado.graphBadges` flat key is
+// migrated on first load.
+const BADGE_FIELDS_BY_VIEW={
+  graph:[
+    {key:'childCount',label:'Child count'},
+    {key:'priority',label:'Priority'},
+    {key:'assigned',label:'Assignee'},
+    {key:'state',label:'State'},
+    {key:'est',label:'Estimate (h)'},
+    {key:'tags',label:'Tags'},
+    {key:'iteration',label:'Sprint'},
+  ],
+  board:[
+    {key:'assigned',label:'Assignee'},
+    {key:'type',label:'Type'},
+    {key:'priority',label:'Priority'},
+    {key:'state',label:'State'},
+    {key:'est',label:'Estimate / time bar'},
+    {key:'tags',label:'Tags'},
+  ],
+  tree:[
+    {key:'priority',label:'Priority'},
+    {key:'state',label:'State'},
+    {key:'tags',label:'Tags'},
+  ],
+  timeline:[
+    {key:'priority',label:'Priority (bar prefix)'},
+    {key:'state',label:'State pill on label'},
+    {key:'assigned',label:'Assignee chip'},
+  ],
+};
+const badgesOn={
+  graph:{childCount:true,priority:true,assigned:true,state:true,est:true,tags:true,iteration:true},
+  board:{assigned:true,type:true,priority:true,state:true,est:true,tags:true},
+  tree:{priority:true,state:true,tags:true},
+  timeline:{priority:true,state:false,assigned:false},
+};
+// True iff the (view, key) toggle is on. View defaults to the current mode
+// — pass an explicit view when the call site renders for a specific view
+// regardless of what's focused (e.g., gstyle is always 'graph').
+function badgeOn(k,view){view=view||mode;const m=badgesOn[view];return !m||m[k]!==false;}
+function loadBadgesOn(){
+  try{
+    const s=localStorage.getItem('ado.badges');
+    if(s){const p=JSON.parse(s);Object.keys(badgesOn).forEach(v=>{
+      if(p[v]&&typeof p[v]==='object')Object.keys(badgesOn[v]).forEach(k=>{if(typeof p[v][k]==='boolean')badgesOn[v][k]=p[v][k];});
+    });}
+    const legacy=localStorage.getItem('ado.graphBadges');   // migrate v1 single-view format
+    if(legacy){const op=JSON.parse(legacy);Object.keys(badgesOn.graph).forEach(k=>{if(typeof op[k]==='boolean')badgesOn.graph[k]=op[k];});}
+  }catch(e){}
+}
+function saveBadgesOn(){try{localStorage.setItem('ado.badges',JSON.stringify(badgesOn));}catch(e){}}
+// Short alias used by cytoscape style mappers — always read the graph's set, since
+// mappers may evaluate at any time (e.g. after a theme change while another view is up).
+const gOn=k=>badgeOn(k,'graph');
 function gstyle(){return [
  {selector:'node',style:{'background-color':e=>nodeFill(e.data('type')),'shape':'round-rectangle',
    // clean label: only #id (↗ skip marker) · type, then the title
@@ -363,25 +421,25 @@ function gstyle(){return [
    // top-left: child-count · priority · assignee (flat bookmarks); top-right: state (corner tag);
    // bottom-left: estimate (corner tag); bottom-centre: tags; bottom-right: sprint (corner tag).
    // Each slot is gated by badgeOn(key) — hidden slots collapse to BLANK_IMG (1px wide).
-   'background-image':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=badgeOn('tags')?tagDotsUri(e.data('tags')):null,
-       est_=(badgeOn('est')&&est!=null&&est!=='')?cornerTagUri((+est)+'h','#5b6b7d','bl',60):null,
-       st=(badgeOn('state')&&e.data('state'))?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120):null,
-       spt=(badgeOn('iteration')&&sp)?cornerTagUri(sprintShort(sp),'#7a6cc4','br',110):null;return[
-     (badgeOn('childCount')&&e.data('childCount')>0)?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
-     (badgeOn('priority')&&e.data('priority'))?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     (badgeOn('assigned')&&e.data('assigned'))?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
+   'background-image':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=gOn('tags')?tagDotsUri(e.data('tags')):null,
+       est_=(gOn('est')&&est!=null&&est!=='')?cornerTagUri((+est)+'h','#5b6b7d','bl',60):null,
+       st=(gOn('state')&&e.data('state'))?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120):null,
+       spt=(gOn('iteration')&&sp)?cornerTagUri(sprintShort(sp),'#7a6cc4','br',110):null;return[
+     (gOn('childCount')&&e.data('childCount')>0)?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
+     (gOn('priority')&&e.data('priority'))?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
+     (gOn('assigned')&&e.data('assigned'))?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
      st?st.uri:BLANK_IMG,
      est_?est_.uri:BLANK_IMG,
      tg?tg.uri:BLANK_IMG,
      spt?spt.uri:BLANK_IMG];},
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=badgeOn('tags')?tagDotsUri(e.data('tags')):null;return[
-     (badgeOn('childCount')&&e.data('childCount')>0)?'17px':'1px',
-     (badgeOn('priority')&&e.data('priority'))?'17px':'1px',
-     (badgeOn('assigned')&&e.data('assigned'))?'17px':'1px',
-     ((badgeOn('state')&&e.data('state'))?cornerW(e.data('state'),120):1)+'px',
-     ((badgeOn('est')&&est!=null&&est!=='')?cornerW((+est)+'h',60):1)+'px',(tg?tg.w:1)+'px',
-     ((badgeOn('iteration')&&sp)?cornerW(sprintShort(sp),110):1)+'px'];},
+   'background-width':e=>{const est=e.data('est'),sp=e.data('iteration'),tg=gOn('tags')?tagDotsUri(e.data('tags')):null;return[
+     (gOn('childCount')&&e.data('childCount')>0)?'17px':'1px',
+     (gOn('priority')&&e.data('priority'))?'17px':'1px',
+     (gOn('assigned')&&e.data('assigned'))?'17px':'1px',
+     ((gOn('state')&&e.data('state'))?cornerW(e.data('state'),120):1)+'px',
+     ((gOn('est')&&est!=null&&est!=='')?cornerW((+est)+'h',60):1)+'px',(tg?tg.w:1)+'px',
+     ((gOn('iteration')&&sp)?cornerW(sprintShort(sp),110):1)+'px'];},
    'background-height':['22px','22px','22px','16px','16px','10px','16px'],
    'background-position-x':['3px','21px','39px','100%','0','50%','100%'],
    'background-position-y':['0','0','0','0','100%','100%','100%'],
@@ -392,14 +450,14 @@ function gstyle(){return [
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
    // header strip: child-count · priority · assignee (flat bookmarks) left, state (corner tag) top-right
-   'background-image':e=>[(badgeOn('childCount')&&e.data('childCount')>0)?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
-     (badgeOn('priority')&&e.data('priority'))?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     (badgeOn('assigned')&&e.data('assigned'))?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
-     (badgeOn('state')&&e.data('state'))?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120).uri:BLANK_IMG],
+   'background-image':e=>[(gOn('childCount')&&e.data('childCount')>0)?bookmarkUri('#3b7de0',e.data('childCount'),'down'):BLANK_IMG,
+     (gOn('priority')&&e.data('priority'))?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
+     (gOn('assigned')&&e.data('assigned'))?avatarBadgeUri(e.data('assigned')):BLANK_IMG,
+     (gOn('state')&&e.data('state'))?cornerTagUri(e.data('state'),stateColor(e.data('state')),'tr',120).uri:BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':e=>[(badgeOn('childCount')&&e.data('childCount')>0)?'17px':'1px',
-     (badgeOn('priority')&&e.data('priority'))?'17px':'1px',(badgeOn('assigned')&&e.data('assigned'))?'17px':'1px',
-     ((badgeOn('state')&&e.data('state'))?cornerW(e.data('state'),120):1)+'px'],
+   'background-width':e=>[(gOn('childCount')&&e.data('childCount')>0)?'17px':'1px',
+     (gOn('priority')&&e.data('priority'))?'17px':'1px',(gOn('assigned')&&e.data('assigned'))?'17px':'1px',
+     ((gOn('state')&&e.data('state'))?cornerW(e.data('state'),120):1)+'px'],
    'background-height':['22px','22px','22px','16px'],
    'background-position-x':['3px','21px','39px','100%'],'background-position-y':['0','0','0','0'],
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':1.5,'border-opacity':0.7,
@@ -726,12 +784,26 @@ function boardCard(n,finish,today){
   const c=document.createElement('div');c.className='bcard'+(overdue?' overdue':'')+(bulkSel.has(n.id)?' bulksel':'');
   c.style.borderLeftColor=tyColor(n.type);   // left marker = item TYPE colour
   c.dataset.id=n.id;c.dataset.est=(n.est!=null?n.est:'');
-  c.innerHTML=`<div class="bttl">${n.assigned?personChipT(n.assigned):''}<span class="btxt">#${n.id} ${esc(n.title)}</span></div>`+
-    `<div class="bmeta"><span>${esc(n.type)}</span>`+
-    (n.priority?`<span class="prio" style="background:${prioColor(n.priority)}">P${n.priority}</span>`:'')+
-    `<span>${esc(n.state)}</span>`+(overdue?'<span class="od">overdue</span>':'')+`</div>`+
-    `<div class="bfoot">`+(n.est!=null?`<div class="tbar"><div class="tfill"></div></div>`:'')+
-    `<span class="tlabel">${n.est!=null?'est '+(+n.est)+'h':'⏱ …'}</span></div>`;
+  // Gate each badge by the board's per-field toggle (⚙ in the Controls header).
+  const showAssigned=badgeOn('assigned','board'),showType=badgeOn('type','board'),
+        showPrio=badgeOn('priority','board'),showState=badgeOn('state','board'),
+        showEst=badgeOn('est','board'),showTags=badgeOn('tags','board');
+  const tagsHtml=(()=>{
+    if(!showTags||!n.tags)return '';
+    const ts=tagList_(n.tags);if(!ts.length)return '';
+    const show=ts.slice(0,4),extra=ts.length-show.length;
+    return `<div class="btags">`+
+      show.map(t=>`<span class="ttag" style="background:${personColor(t)}" title="${esc(t)}">${esc(t)}</span>`).join('')+
+      (extra>0?`<span class="ttag" style="background:var(--muted)" title="${esc(ts.slice(4).join(', '))}">+${extra}</span>`:'')+
+      `</div>`;
+  })();
+  c.innerHTML=`<div class="bttl">${showAssigned&&n.assigned?personChipT(n.assigned):''}<span class="btxt">#${n.id} ${esc(n.title)}</span></div>`+
+    `<div class="bmeta">`+(showType?`<span>${esc(n.type)}</span>`:'')+
+    (showPrio&&n.priority?`<span class="prio" style="background:${prioColor(n.priority)}">P${n.priority}</span>`:'')+
+    (showState?`<span>${esc(n.state)}</span>`:'')+(overdue?'<span class="od">overdue</span>':'')+`</div>`+
+    tagsHtml+
+    (showEst?`<div class="bfoot">`+(n.est!=null?`<div class="tbar"><div class="tfill"></div></div>`:'')+
+      `<span class="tlabel">${n.est!=null?'est '+(+n.est)+'h':'⏱ …'}</span></div>`:'');
   c.addEventListener('mousedown',e=>{if(e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey)startCardDrag(e,n.id,c);});   // modifier = select, not drag
   c.onclick=(e)=>{if(suppressClick)return;
     if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(n.id);return;}        // Ctrl/Cmd: toggle in selection
@@ -986,11 +1058,18 @@ async function renderTimeline(){
   }
   // rows
   const ymd=ms=>new Date(ms).toISOString().slice(0,10);
-  const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${tyColor(n.type)}"></i><span class="tllab">#${n.id} ${esc(n.title)}</span></div>`;
+  // Timeline label: dot + #id title + optional state pill + optional assignee chip — gated by ⚙ Badges (timeline).
+  const showTlPrio=badgeOn('priority','timeline'),showTlState=badgeOn('state','timeline'),showTlAsg=badgeOn('assigned','timeline');
+  const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${tyColor(n.type)}"></i>`+
+    (showTlAsg&&n.assigned?personChipT(n.assigned):'')+
+    `<span class="tllab">#${n.id} ${esc(n.title)}</span>`+
+    (showTlState&&n.state?`<span class="sbadge tlst" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'')+
+    `</div>`;
   // sp (optional) = the group's sprint window {s,e}; bars outside it are flagged.
   const rowHTML=(n,sp)=>{const t=n._tl,oos=sp&&(t.s<sp.s||t.e>sp.e);
     const tip=`${n.start?prettyDate(n.start):(t.soft?'sprint start':'?')} → ${(n.target||n.due)?prettyDate(n.target||n.due):(t.soft?'sprint finish':'?')}`+(oos?'  ⚠ dates fall outside the sprint':'');
-    return `<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
+    const prefix=(showTlPrio&&n.priority)?('P'+n.priority+' '):'';
+    return `<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${esc(tip)}">${esc(prefix)}#${n.id} ${esc(n.title)}</div></div></div>`;};
   const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
   const groupHead=(k,arr,sp)=>{
     let label=esc(k)+' · '+arr.length,track;
@@ -1056,26 +1135,35 @@ function renderViewHelp(){
   if(!show){$('badgepanel').style.display='none';return;}
   const collapsed=viewHelpCollapsed();
   box.classList.toggle('collapsed',collapsed);
-  // graph mode: the Badges gear sits flush-left in the header (replaces the old
-  // standalone "⚙ Badges" button); clicking it toggles the popover without
-  // collapsing the Controls box.
-  const gear=mode==='graph'?`<button class="vhbadge" id="vhbadge" title="show / hide badges on graph nodes">⚙</button>`:'';
+  // The ⚙ gear in the Controls header is per-view: every view that defines a
+  // BADGE_FIELDS_BY_VIEW entry gets a popover ("Show on nodes / cards / rows / bars").
+  const hasFields=!!(BADGE_FIELDS_BY_VIEW[mode]&&BADGE_FIELDS_BY_VIEW[mode].length);
+  const gear=hasFields?`<button class="vhbadge" id="vhbadge" title="show / hide fields on this view">⚙</button>`:'';
   box.innerHTML=`<div class="vhh" id="vhh">${gear}<span class="vhctrl">${collapsed?'▸':'▾'} Controls</span></div>`+
     `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${esc(r[0])}</span><span class="vk">${esc(r[1])}</span><span class="vd">${esc(r[2])}</span></div>`).join('')+
     `<div class="vhnote">selecting items opens the bulk-edit bar</div></div>`;
-  // Toggle collapse only when the user clicks the "Controls" label, not the gear.
+  // Clicking the "Controls" label collapses/expands; the gear is its own button.
   $('vhh').querySelector('.vhctrl').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
   const gb=$('vhbadge');if(gb)gb.onclick=e=>{e.stopPropagation();toggleBadgePanel();};
+  // If the gear vanished (mode without fields, but somehow panel is open), hide the popover.
+  if(!hasFields)$('badgepanel').style.display='none';
 }
-// Bottom-left badge picker: a "⚙ Badges" button + checkbox panel (graph mode only).
-// Toggling rebuilds cytoscape styles so the mappers re-evaluate the badgeOn() gate.
+// Per-view "Show on …" popover (anchored on the Controls box's bottom-left corner).
+// Toggling a checkbox re-renders the matching view so the change shows immediately.
+const BADGE_PANEL_HEADER={graph:'Show on nodes',board:'Show on cards',tree:'Show on rows',timeline:'Show on bars'};
 function renderBadgePanel(){
+  const view=mode,fields=BADGE_FIELDS_BY_VIEW[view]||[];
   const p=$('badgepanel');
-  p.innerHTML=`<div class="bph">Show on nodes</div>`+
-    BADGE_FIELDS.map(f=>`<label><input type="checkbox" data-k="${f.key}"${badgeOn(f.key)?' checked':''}> ${esc(f.label)}</label>`).join('');
+  if(!fields.length){p.style.display='none';return;}
+  p.innerHTML=`<div class="bph">${esc(BADGE_PANEL_HEADER[view]||'Show')}</div>`+
+    fields.map(f=>`<label><input type="checkbox" data-k="${f.key}"${badgeOn(f.key,view)?' checked':''}> ${esc(f.label)}</label>`).join('');
   p.querySelectorAll('input[data-k]').forEach(cb=>cb.onchange=()=>{
-    badgesOn[cb.dataset.k]=cb.checked;saveBadgesOn();
-    if(cy){cy.style(gstyle()).update();}                   // mappers re-read badgeOn() on next paint
+    if(!badgesOn[view])badgesOn[view]={};
+    badgesOn[view][cb.dataset.k]=cb.checked;saveBadgesOn();
+    if(view==='graph'){if(cy)cy.style(gstyle()).update();}   // graph mappers re-read on next paint
+    else if(view==='board')renderBoard();
+    else if(view==='tree'){const ts=$('tree').scrollTop;renderTree();$('tree').scrollTop=ts;}
+    else if(view==='timeline')renderTimeline();
   });
 }
 function toggleBadgePanel(){const p=$('badgepanel');if(p.style.display==='none'){renderBadgePanel();p.style.display='block';}else p.style.display='none';}
@@ -1166,17 +1254,341 @@ async function loadChildCounts(ids){      // top-level refresh path: guarded so 
 /* ---------- editor ---------- */
 function closePanel(force){
   if(!force&&dirty()&&!confirm('Discard unsaved changes?'))return;
-  parentEditor.close();depBlockedByPicker.close();depBlocksPicker.close();
-  $('side').classList.add('hidden');$('resizer').style.display='none';cur=null;orig={};
+  parentEditor.close();depBlockedByPicker.close();depBlocksPicker.close();closeMention();
+  if($('side').classList.contains('fullscreen'))toggleFullscreen(false);   // restore inline width before hiding
+  $('side').classList.add('hidden');
+  $('resizer').style.display='none';cur=null;orig={};
+  atchState.list=[];atchState.wid=null;atchState.uploading=0;renderAttachments();clearAttBlobs();
   depsState.blockedBy=[];depsState.blocks=[];renderDeps();
   if(selRow){selRow.classList.remove('sel');selRow=null;}
   if(cy)cy.$(':selected').unselect();
 }
 const mdToHtml=AdoLib.mdToHtml;                     // pure, hardened renderer in lib.js
+// Description-preview renderer uses the project's work-item base URL so that
+// `#123` shorthand in the markdown gets auto-linked back to that work item.
+// descBase is derived from the open item's url (set by api.item()) — that way
+// we don't have to know org/project here.
+let descBase='';
+function descRenderOpts(){return {workItemBase:descBase};}
+// ADO attachment URLs require an Authorization header that the browser doesn't
+// send for plain <img src=...>, so we fetch each one through the API helper and
+// swap the src to a blob: URL. Cache keyed by attachment URL; revoked on item
+// switch so memory doesn't grow without bound.
+const attBlobs=new Map();
+function isAdoAttachmentUrl(u){return /^https:\/\/[^/]+\/.+\/_apis\/wit\/attachments\/[^/?#]+/.test(u||'');}
+function clearAttBlobs(){for(const u of attBlobs.values())try{URL.revokeObjectURL(u);}catch(e){}attBlobs.clear();}
+async function hydratePreviewImages(){
+  const pv=$('s_desc_prev');if(!pv)return;
+  const imgs=Array.from(pv.querySelectorAll('img[src]'));
+  for(const img of imgs){
+    const src=img.getAttribute('src');
+    if(!isAdoAttachmentUrl(src))continue;
+    const cached=attBlobs.get(src);
+    if(cached){img.src=cached;continue;}
+    try{
+      const blob=await api.fetchAttachmentBlob(src);
+      const blobUrl=URL.createObjectURL(blob);
+      attBlobs.set(src,blobUrl);
+      // Preview may have been re-rendered (or the user may have closed the panel)
+      // by the time the blob arrives — only patch the element if it's still in the DOM.
+      if(img.isConnected)img.src=blobUrl;
+    }catch(e){
+      img.alt=(img.alt||'')+' [failed to load: '+e.message+']';
+      img.style.opacity='.4';
+    }
+  }
+}
 function showDescPreview(on){
   const ta=$('s_desc'),pv=$('s_desc_prev'),tg=$('s_desc_toggle');
-  if(on){pv.innerHTML=mdToHtml(ta.value);ta.style.display='none';pv.style.display='block';tg.textContent='edit';}
-  else{pv.style.display='none';ta.style.display='block';tg.textContent='preview';}
+  if(on){
+    closeMention();
+    pv.innerHTML=mdToHtml(ta.value,descRenderOpts());
+    ta.style.display='none';pv.style.display='block';
+    tg.textContent='✎';tg.title='switch to edit mode';tg.classList.add('on');
+    hydratePreviewImages();
+  } else {
+    pv.style.display='none';ta.style.display='block';
+    tg.textContent='👁';tg.title='toggle description preview / edit';tg.classList.remove('on');
+  }
+}
+
+/* ---------- attachments + paste/drop + @mention typeahead (description editor) ----------
+   atchState mirrors the AttachedFile relations for the open item. Add/remove are
+   PATCHes against the work item's relations; uploads use the project attachments
+   endpoint. Pasting an image into s_desc uploads it, links it, and inserts an
+   image markdown at the caret in one shot. */
+const atchState={list:[],wid:null,uploading:0};
+function fmtBytes(n){if(n==null)return '';if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' K';return (n/1048576).toFixed(1)+' M';}
+function isImageName(n){return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(n||'');}
+function isImageMime(t){return /^image\//.test(t||'');}
+function renderAttachments(){
+  const box=$('s_atch');if(!box)return;
+  const arr=atchState.list||[];
+  if(!arr.length&&!atchState.uploading){box.style.display='none';box.innerHTML='';return;}
+  box.style.display='block';
+  const head=`<div class="atchhead">Attachments <span class="acount">${arr.length}</span>`+
+    (atchState.uploading?` <span class="spin"></span> uploading ${atchState.uploading}…`:'')+`</div>`;
+  const rows=arr.map((a,i)=>{
+    const icon=isImageName(a.name)?'🖼':'📄';
+    const size=a.size!=null?fmtBytes(a.size):'';
+    return `<div class="atchrow" data-i="${i}">`+
+      `<span class="aico">${icon}</span>`+
+      `<a class="aname" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(a.name)}</a>`+
+      (size?`<span class="asize">${size}</span>`:'')+
+      `<button class="ains" title="insert ${isImageName(a.name)?'image':'link'} into the description">↩ insert</button>`+
+      `<button class="axdel" title="remove attachment">✕</button>`+
+      `</div>`;
+  }).join('');
+  box.innerHTML=head+rows;
+  box.querySelectorAll('.atchrow').forEach(row=>{
+    const i=+row.dataset.i,a=arr[i];
+    row.querySelector('.ains').onclick=e=>{e.preventDefault();insertAtCursor($('s_desc'),(isImageName(a.name)?'!':'')+`[${a.name}](${a.url})`);refreshDirty();};
+    row.querySelector('.axdel').onclick=e=>{e.preventDefault();removeAttachment(a);};
+  });
+}
+function insertAtCursor(ta,text){
+  if(!ta)return;
+  // If the textarea is hidden (user is in preview mode) the caret position is
+  // meaningless — append at the END instead of falling back to position 0.
+  const hidden=ta.offsetParent===null;
+  const s=hidden?ta.value.length:ta.selectionStart;
+  const e=hidden?ta.value.length:ta.selectionEnd;
+  const v=ta.value;
+  const before=v.slice(0,s),after=v.slice(e);
+  // Newline-pad block-ish inserts (images/files) so they don't collide with
+  // surrounding text. Inline @-mentions skip the padding.
+  const pad=text.startsWith('!')||text.startsWith('[')?(before.length&&!before.endsWith('\n')?'\n':''):'';
+  const tail=text.startsWith('!')?'\n':'';
+  const ins=pad+text+tail;
+  ta.value=before+ins+after;
+  const at=before.length+ins.length;
+  ta.selectionStart=ta.selectionEnd=at;
+  ta.focus();
+  ta.dispatchEvent(new Event('input',{bubbles:true}));
+  // If the user is currently looking at the preview (the textarea is hidden),
+  // re-render it so a paste / drop / "↩ insert" reflects immediately instead of
+  // waiting until they switch back to edit mode.
+  if(ta.id==='s_desc'&&$('s_desc_prev').style.display!=='none')showDescPreview(true);
+}
+async function uploadAndLink(files){
+  if(!files||!files.length||cur==null)return;
+  const wid=cur;
+  for(const f of files){
+    atchState.uploading++;renderAttachments();
+    let up;
+    try{up=await api.uploadAttachment(f);}
+    catch(e){atchState.uploading--;renderAttachments();setStatus('upload failed: '+e.message,true);continue;}
+    let res;
+    try{res=await api.addAttachmentLink(wid,up.url,up.name,'');}
+    catch(e){atchState.uploading--;renderAttachments();setStatus('attach failed: '+e.message,true);continue;}
+    atchState.uploading--;
+    if(cur!==wid){renderAttachments();continue;}
+    atchState.list=res.attachments||[];
+    // Insert at caret: image goes as ![]; other files as [name](url)
+    const md=(isImageMime(f.type)||isImageName(f.name)?'!':'')+`[${up.name}](${up.url})`;
+    insertAtCursor($('s_desc'),md);
+    renderAttachments();
+    setStatus('#'+wid+' attached '+up.name);
+  }
+}
+async function removeAttachment(a){
+  if(cur==null)return;
+  const wid=cur;
+  if(!confirm('Remove attachment "'+a.name+'"?'))return;
+  try{
+    const res=await api.removeAttachmentLink(wid,a.url);
+    if(cur===wid){atchState.list=res.attachments||[];renderAttachments();}
+    setStatus('#'+wid+' detached '+a.name);
+  }catch(e){setStatus('detach failed: '+e.message,true);}
+}
+
+/* @mention typeahead: opens when the caret follows "@xxx" (no whitespace).
+   Click / Enter inserts `@[Display](descriptor)` in markdown form, which
+   mdToHtml then renders as an ADO mention anchor. */
+const mentionState={open:false,query:'',start:-1,rows:[],idx:0,tok:0};
+function findMentionTrigger(ta){
+  const pos=ta.selectionStart;
+  // Walk backward for an "@" with no whitespace or bracketing in between.
+  // Stopping on [ ] ( ) prevents a freshly-inserted "@[Name](descriptor)" from
+  // re-triggering the popup once the caret lands after the closing ).
+  const v=ta.value;let i=pos-1;
+  while(i>=0){
+    const ch=v[i];
+    if(ch==='@'){
+      const prev=i>0?v[i-1]:'';
+      // Trigger only when @ starts a token (after whitespace/punct/start).
+      if(i===0||/\s|[(,;:.]/.test(prev))return {at:i,query:v.slice(i+1,pos)};
+      return null;
+    }
+    if(ch==='\n'||ch===' '||ch==='\t'||ch==='['||ch===']'||ch==='('||ch===')')return null;
+    if(pos-i>40)return null;             // give up after 40 chars without @
+    i--;
+  }
+  return null;
+}
+function closeMention(){
+  const p=$('s_mention');if(p)p.style.display='none';
+  mentionState.open=false;mentionState.query='';mentionState.start=-1;mentionState.rows=[];
+}
+function drawMention(){
+  const p=$('s_mention');if(!p)return;
+  if(!mentionState.rows.length){p.innerHTML='<div class="mempty">no matches — keep typing</div>';return;}
+  p.innerHTML=mentionState.rows.map((r,i)=>
+    `<div class="mrow${i===mentionState.idx?' on':''}" data-i="${i}">`+
+      `<span class="mname">${esc(r.displayName)}${r.isGroup?' <span class="pcnone">(group)</span>':''}</span>`+
+      (r.mail?`<span class="mmail">${esc(r.mail)}</span>`:'')+
+    `</div>`).join('');
+  p.querySelectorAll('.mrow').forEach(r=>{
+    r.onmousedown=e=>{e.preventDefault();mentionState.idx=+r.dataset.i;pickMention();};
+  });
+}
+function positionMention(){
+  const ta=$('s_desc'),p=$('s_mention'),side=$('side');if(!ta||!p||!side)return;
+  // Pin the popup below the textarea (cheap + reliable; the caret-precise
+  // position would need a hidden mirror div). Coords are relative to #side,
+  // including its scroll offsets so the popup tracks the textarea after scroll.
+  const r=ta.getBoundingClientRect(),sr=side.getBoundingClientRect();
+  p.style.left=(r.left-sr.left+side.scrollLeft)+'px';
+  p.style.top=(r.bottom-sr.top+side.scrollTop+4)+'px';
+  p.style.maxWidth=r.width+'px';
+}
+async function openOrUpdateMention(){
+  const ta=$('s_desc');if(!ta)return;
+  const trig=findMentionTrigger(ta);
+  if(!trig){closeMention();return;}
+  mentionState.start=trig.at;mentionState.query=trig.query;mentionState.open=true;
+  const p=$('s_mention');p.style.display='block';positionMention();
+  const tok=++mentionState.tok;
+  if(!trig.query){mentionState.rows=[];mentionState.idx=0;drawMention();return;}
+  let rows=[];
+  try{rows=await api.searchIdentities(trig.query,8);}catch(e){rows=[];}
+  if(tok!==mentionState.tok||!mentionState.open)return;
+  mentionState.rows=rows;mentionState.idx=0;drawMention();
+}
+function pickMention(){
+  const r=mentionState.rows[mentionState.idx];if(!r)return;
+  const ta=$('s_desc'),pos=ta.selectionStart,v=ta.value;
+  const md=r.descriptor?`@[${r.displayName}](${r.descriptor})`:`@${r.displayName}`;
+  ta.value=v.slice(0,mentionState.start)+md+v.slice(pos);
+  const at=mentionState.start+md.length;
+  ta.selectionStart=ta.selectionEnd=at;
+  closeMention();
+  ta.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function moveMention(d){if(!mentionState.rows.length)return;
+  mentionState.idx=(mentionState.idx+d+mentionState.rows.length)%mentionState.rows.length;
+  drawMention();
+}
+
+/* ---------- markdown format buttons (B / I / S / code / H / lists / quote / link) ----------
+   Each action mutates the textarea selection. Bold/italic/strike/code wrap the
+   selection. Heading toggles a cycling # prefix. Lists, quote prefix every line
+   in the selection (toggleable). Link prompts for the URL. */
+function descFormatTarget(){return $('s_desc');}
+function fireDescChange(ta){
+  ta.dispatchEvent(new Event('input',{bubbles:true}));
+  if($('s_desc_prev').style.display!=='none')showDescPreview(true);
+}
+function wrapSel(ta,before,after){
+  // If the textarea is currently hidden (preview mode), there's no meaningful
+  // selection — switch to edit first so the user sees the result of the action.
+  if(ta.offsetParent===null)showDescPreview(false);
+  const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;
+  const sel=v.slice(s,e)||'text';
+  // Toggle: if already wrapped, unwrap.
+  const around=v.slice(Math.max(0,s-before.length),s)===before&&v.slice(e,e+after.length)===after;
+  if(around){
+    ta.value=v.slice(0,s-before.length)+sel+v.slice(e+after.length);
+    ta.selectionStart=s-before.length;ta.selectionEnd=e-before.length;
+  } else {
+    const ins=before+sel+after;
+    ta.value=v.slice(0,s)+ins+v.slice(e);
+    ta.selectionStart=s+before.length;ta.selectionEnd=s+before.length+sel.length;
+  }
+  ta.focus();fireDescChange(ta);
+}
+function prefixLines(ta,getPrefix,toggleable){
+  if(ta.offsetParent===null)showDescPreview(false);
+  const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;
+  const lsRaw=v.lastIndexOf('\n',s-1)+1;
+  const leRaw=v.indexOf('\n',Math.max(e-1,lsRaw));
+  const lEnd=leRaw<0?v.length:leRaw;
+  const block=v.slice(lsRaw,lEnd);
+  const lines=block.split('\n');
+  let newLines;
+  if(toggleable){
+    const p0=getPrefix(0);
+    const all=lines.every(l=>!l.length||l.startsWith(p0));
+    if(all){newLines=lines.map(l=>l.startsWith(p0)?l.slice(p0.length):l);}
+    else{newLines=lines.map((l,i)=>l.length?getPrefix(i)+l:l);}
+  } else {
+    newLines=lines.map((l,i)=>l.length?getPrefix(i)+l:l);
+  }
+  const text=newLines.join('\n');
+  ta.value=v.slice(0,lsRaw)+text+v.slice(lEnd);
+  ta.selectionStart=lsRaw;ta.selectionEnd=lsRaw+text.length;
+  ta.focus();fireDescChange(ta);
+}
+function cycleHeading(ta){
+  if(ta.offsetParent===null)showDescPreview(false);
+  const s=ta.selectionStart,v=ta.value;
+  const ls=v.lastIndexOf('\n',s-1)+1;
+  const le=v.indexOf('\n',s);const lEnd=le<0?v.length:le;
+  const line=v.slice(ls,lEnd);
+  const m=line.match(/^(#{1,3})\s+(.*)$/);
+  let next;
+  if(!m)next='# '+line;
+  else if(m[1].length===1)next='## '+m[2];
+  else if(m[1].length===2)next='### '+m[2];
+  else next=m[2];        // ### → plain text (cycle reset)
+  ta.value=v.slice(0,ls)+next+v.slice(lEnd);
+  const caret=ls+next.length;
+  ta.selectionStart=ta.selectionEnd=caret;
+  ta.focus();fireDescChange(ta);
+}
+function insertLink(ta){
+  if(ta.offsetParent===null)showDescPreview(false);
+  const url=prompt('Link URL (https://…)','https://');
+  if(!url||!/^https?:\/\//i.test(url))return;
+  const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;
+  const sel=v.slice(s,e)||'link text';
+  const ins=`[${sel}](${url})`;
+  ta.value=v.slice(0,s)+ins+v.slice(e);
+  ta.selectionStart=s+1;ta.selectionEnd=s+1+sel.length;     // select the visible label
+  ta.focus();fireDescChange(ta);
+}
+function applyFormat(kind){
+  const ta=descFormatTarget();if(!ta)return;
+  switch(kind){
+    case 'bold':   return wrapSel(ta,'**','**');
+    case 'italic': return wrapSel(ta,'*','*');
+    case 'strike': return wrapSel(ta,'~~','~~');
+    case 'code':   return wrapSel(ta,'`','`');
+    case 'h':      return cycleHeading(ta);
+    case 'ul':     return prefixLines(ta,()=>'- ',true);
+    case 'ol':     return prefixLines(ta,i=>(i+1)+'. ',true);
+    case 'quote':  return prefixLines(ta,()=>'> ',true);
+    case 'link':   return insertLink(ta);
+  }
+}
+
+/* ---------- full-screen editor toggle ---------- */
+let _sideWidthBeforeFs='';
+function toggleFullscreen(force){
+  const side=$('side');
+  const on=force===true||force===false?force:!side.classList.contains('fullscreen');
+  if(on){
+    // The user's inline width (from dragging #resizer) overrides the .fullscreen
+    // class's `width: auto`. Stash it and clear so the panel fills the viewport,
+    // then restore on exit.
+    _sideWidthBeforeFs=side.style.width||'';
+    side.style.width='';
+  } else if(_sideWidthBeforeFs){
+    side.style.width=_sideWidthBeforeFs;
+    _sideWidthBeforeFs='';
+  }
+  side.classList.toggle('fullscreen',on);
+  if(cy)try{cy.resize();}catch(e){}
 }
 function fmtDur(sec){const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600);return d?(d+'d'+(h?' '+h+'h':'')):(h+'h');}
 async function loadTimeline(id){
@@ -1217,7 +1629,9 @@ async function toggleSidebarKids(id,btn){
 }
 async function openItem(id){
   const myToken=++openToken;
-  if(cur!=null&&id!==cur&&dirty()&&!confirm('Discard unsaved changes to #'+cur+'?'))return;  // guard against silent loss
+  // Always ask before clobbering edits — including reopening the SAME dirty
+  // item (which would otherwise silently reload from server and wipe the work).
+  if(cur!=null&&dirty()&&!confirm('Discard unsaved changes to #'+cur+'?'))return;
   $('s_time').innerHTML='';
   loadStart('loading #'+id+'…');
   let d;try{d=await api.item(id);}catch(e){setStatus('ERROR: '+e.message,true);loadEnd();return;}
@@ -1230,6 +1644,9 @@ async function openItem(id){
     ` <span style="color:var(--muted);font-weight:400;font-size:11px">rev${d.rev}</span>`;
   renderItemContext(d);
   $('s_link').href=d.url;$('s_title').value=d.title;assignedEditor.set(d.assigned||'',/*silent*/true);$('s_desc').value=d.desc;
+  descBase=(d.url||'').replace(/\/\d+$/,'');     // e.g. ".../_workitems/edit" for #N autolinks in the preview
+  atchState.wid=d.id;atchState.list=Array.isArray(d.attachments)?d.attachments.slice():[];atchState.uploading=0;
+  clearAttBlobs();renderAttachments();closeMention();
   showDescPreview(true);                          // open in preview; click "edit" to modify
   $('s_prio').value=d.priority?String(d.priority):'';
   $('ac_wrap').style.display=d.has_ac?'block':'none';$('s_ac').value=d.ac;
@@ -1265,7 +1682,38 @@ function dirty(){
     ||v.iter!==orig.iter||v.parent!==orig.parent||v.start!==orig.start||v.target!==orig.target||v.due!==orig.due||v.est!==orig.est
     ||v.tags!==orig.tags;
 }
-function refreshDirty(){const d=dirty();const b=$('s_save');b.disabled=!d;b.textContent=d?'● Save':'Saved';}
+// Hybrid save: pickers (state, priority, assignee, sprint, parent, tags, dates,
+// estimate) auto-commit on change via quickSave(). Only text fields stay manual
+// (title, description, AC). textDirty drives the Save button + status chip;
+// dirty() (full check) still drives the "discard unsaved" prompt so a failed
+// auto-save isn't silently lost.
+function textDirty(){
+  if(cur==null||!orig)return false;
+  const v=editorValues();
+  return v.title!==orig.title||v.desc!==orig.desc||(orig.has_ac&&v.ac!==orig.ac);
+}
+let _saveChipTimer=null;
+function setSaveChip(state,msg){
+  const chip=$('s_status_chip');if(!chip)return;
+  clearTimeout(_saveChipTimer);chip.title=msg||'';
+  if(state==='idle'){chip.className='schip';chip.innerHTML='';}
+  else if(state==='dirty'){chip.className='schip dirty';chip.innerHTML='● Unsaved';}
+  else if(state==='saving'){chip.className='schip saving';chip.innerHTML='<span class="spin"></span> Saving…';}
+  else if(state==='saved'){chip.className='schip saved';chip.innerHTML='✓ Saved';_saveChipTimer=setTimeout(()=>{
+    const c=$('s_status_chip');if(c)c.className='schip';        // clear 'saved' so refreshDirty can re-evaluate
+    refreshDirty();
+  },2500);}
+  else if(state==='error'){chip.className='schip error';chip.innerHTML='⚠ Save failed';}
+}
+function refreshDirty(){
+  const d=textDirty();const b=$('s_save');b.disabled=!d;b.textContent=d?'● Save':'Saved';
+  // The chip only reflects text-field state — 'saving'/'saved' are owned by
+  // quickSave/save and shouldn't be clobbered while in flight.
+  const chip=$('s_status_chip');
+  if(chip&&!chip.classList.contains('saving')&&!chip.classList.contains('saved')&&!chip.classList.contains('error')){
+    setSaveChip(d?'dirty':'idle');
+  }
+}
 function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:$('s_desc').value,ac:$('s_ac').value,prio:$('s_prio').value,
   iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};}
 // editor tags: chips with × remove + a "＋" bubble that reveals an inline input;
@@ -1273,7 +1721,10 @@ function editorValues(){return {title:$('s_title').value,state:$('s_state').valu
 const tagsEditor=(function(){let cur=[],adding=false,committing=false;
   const norm=s=>String(s||'').split(/[;,]/).map(t=>t.trim()).filter(Boolean);
   const uniq=a=>{const seen=new Set(),o=[];a.forEach(t=>{const k=t.toLowerCase();if(!seen.has(k)){seen.add(k);o.push(t);}});return o;};
-  function commit(v){const a=norm(v);if(a.length){cur=uniq(cur.concat(a));refreshDirty();}}
+  // User-initiated tag mutations auto-save via quickSave('tags'); set() skips
+  // it (item load shouldn't fire a PATCH).
+  function touched(){refreshDirty();quickSave('tags');}
+  function commit(v){const a=norm(v);if(a.length){cur=uniq(cur.concat(a));touched();}}
   function render(){const box=$('s_tags');
     let html=cur.map((t,i)=>`<span class="tagchip" style="background:${personColor(t)}">${esc(t)}<b data-i="${i}" title="remove">×</b></span>`).join('');
     if(!cur.length&&!adding)html='<span class="pcnone">no tags</span>';
@@ -1283,7 +1734,7 @@ const tagsEditor=(function(){let cur=[],adding=false,committing=false;
     box.innerHTML=html;
     box.querySelectorAll('b[data-i]').forEach(x=>{
       x.onmousedown=e=>e.preventDefault();
-      x.onclick=()=>{committing=true;cur.splice(+x.dataset.i,1);render();committing=false;refreshDirty();};
+      x.onclick=()=>{committing=true;cur.splice(+x.dataset.i,1);render();committing=false;touched();};
     });
     if(adding){const inp=$('s_taginp'),ok=$('s_tagok');inp.focus();
       function doCommit(){committing=true;commit(inp.value);inp.value='';render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();committing=false;}
@@ -1292,7 +1743,7 @@ const tagsEditor=(function(){let cur=[],adding=false,committing=false;
       inp.addEventListener('keydown',e=>{
         if(e.key==='Enter'||e.key===','){e.preventDefault();doCommit();}
         else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();adding=false;render();}
-        else if(e.key==='Backspace'&&!inp.value&&cur.length){committing=true;cur.pop();render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();committing=false;refreshDirty();}});
+        else if(e.key==='Backspace'&&!inp.value&&cur.length){committing=true;cur.pop();render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();committing=false;touched();}});
       inp.addEventListener('change',()=>{if(inp.value.trim())doCommit();});
       inp.addEventListener('blur',()=>{if(!committing){commit(inp.value);adding=false;render();}});
     }else{const p=$('s_tagplus');if(p)p.onclick=()=>{adding=true;render();};}
@@ -1549,12 +2000,16 @@ function sprintPickerProvider(getNone){
 function createParentField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:itemPickerProvider(opts.getExcludeId)});}
 function createAssigneeField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:assigneePickerProvider()});}
 function createSprintField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:sprintPickerProvider(opts.getNone)});}
-const parentEditor=createParentField('s_parent',{onChange:refreshDirty,getExcludeId:()=>cur});
+// Picker onChange: auto-save the field, then refresh dirty (which now only
+// tracks the manual text fields). quickSave reads orig vs editor so a no-op
+// commit (same value) is a cheap early-return.
+const onPick=field=>()=>{quickSave(field).finally(refreshDirty);};
+const parentEditor=createParentField('s_parent',{onChange:onPick('parent'),getExcludeId:()=>cur});
 const parentNew=createParentField('n_parent',{getExcludeId:()=>null});
-const assignedEditor=createAssigneeField('s_assigned',{onChange:refreshDirty});
+const assignedEditor=createAssigneeField('s_assigned',{onChange:onPick('assigned')});
 const assignedChild=createAssigneeField('c_assigned',{});
 const assignedNew=createAssigneeField('n_assigned',{});
-const sprintEditor=createSprintField('s_iter',{onChange:refreshDirty,getNone:sprintRoot});   // editor: "no sprint" = project root path
+const sprintEditor=createSprintField('s_iter',{onChange:onPick('iteration'),getNone:sprintRoot});   // editor: "no sprint" = project root path
 const sprintNew=createSprintField('n_iter',{getNone:()=>''});                                // new-item modal: "no sprint" = empty
 
 /* ---------- dependency links (sidebar Blocked-by / Blocks + the graph) ----------
@@ -1738,33 +2193,10 @@ function recordEditUndo(id,body,parentChanged,before,beforeParent,newParent){
     async()=>{if(hasFwd)await api.updateItem(id,body);if(parentChanged)await api.setParent(id,newParent);await afterUndo(id);});
 }
 
-async function save(){
-  if(cur==null)return;const id=cur;const v=editorValues();const body={};
-  if(v.title!==orig.title)body.title=v.title;
-  if(v.state!==orig.state)body.state=v.state;
-  if(v.assigned!==orig.assigned)body.assigned=(v.assigned==='me'?(currentUser||v.assigned):v.assigned);
-  if(v.desc!==orig.desc)body.desc=v.desc;
-  if(orig.has_ac&&v.ac!==orig.ac)body.ac=v.ac;
-  const op=orig.priority?String(orig.priority):'';
-  if(v.prio!==op&&v.prio!=='')body.priority=Number(v.prio);
-  if(v.iter!==orig.iter)body.iteration=v.iter;
-  if(v.start!==orig.start)body.start=v.start;
-  if(v.target!==orig.target)body.target=v.target;
-  if(v.due!==orig.due)body.due=v.due;
-  if(v.est!==orig.est)body.estimate=v.est;
-  if(v.tags!==orig.tags)body.tags=v.tags;
-  const parentChanged=v.parent!==orig.parent;   // re-parent is a relations PATCH, handled separately
-  if(!Object.keys(body).length&&!parentChanged){setStatus('no changes');return;}
-  if(parentChanged&&v.parent!==''&&Number(v.parent)===id){setStatus('A work item cannot be its own parent',true);return;}
-  const before={...orig},beforeParent=orig.parent;   // snapshot for undo (orig is overwritten below)
-  const sv=$('s_save');sv.disabled=true;sv.textContent='Saving…';loadStart('saving…');
-  let r;
-  try{
-    if(Object.keys(body).length)r=await api.updateItem(id,body);
-    if(parentChanged)await api.setParent(id,v.parent);   // v.parent==='' detaches (makes it a root)
-  }catch(e){setStatus('ERROR: '+e.message,true);refreshDirty();loadEnd();return;}
-  loadEnd();
-  recordEditUndo(id,body,parentChanged,before,beforeParent,v.parent);
+// Shared post-PATCH visuals: keeps the tree row, store, and cytoscape node in
+// sync with whatever fields the PATCH just touched. Used by both save() (full
+// manual save) and quickSave() (single-field auto-save).
+function applyVisualSync(id,body,v){
   if(selRow&&body.title)selRow.querySelector('.lab').textContent=`#${id} ${body.title}`;
   if(selRow&&body.state)selRow.querySelector('.badge').textContent=body.state;
   if(selRow&&('priority'in body)){let pc=selRow.querySelector('.prio');if(!pc){pc=document.createElement('span');pc.className='prio';selRow.insertBefore(pc,selRow.querySelector('.badge'));}pc.textContent='P'+body.priority;pc.style.background=prioColor(body.priority);}
@@ -1773,27 +2205,103 @@ async function save(){
     if('assigned'in body)s.assigned=body.assigned;
     if('priority'in body)s.priority=body.priority;
     if('iteration'in body)s.iteration=body.iteration;
-    if('start'in body)s.start=v.start;            // keep the store's schedule dates in sync so the
-    if('target'in body)s.target=v.target;         // timeline / sprint Gantt reflect edits on re-render
+    if('start'in body)s.start=v.start;
+    if('target'in body)s.target=v.target;
     if('due'in body)s.due=v.due;
     if('estimate'in body)s.est=(v.est===''?null:Number(v.est));
-    if('tags'in body)s.tags=v.tags;}                // keep graph tag dots in sync
-  // mirror the now-fresh store record onto the cytoscape node so graph badges
-  // (state, tags, est, sprint, dates, assignee…) refresh on save without a full
-  // refresh() — cytoscape mappers re-paint automatically when e.data() changes.
+    if('tags'in body)s.tags=v.tags;}
   if(cy&&store.nodes[id]){const n=cy.getElementById(String(id));if(n.nonempty())n.data(Object.assign({},store.nodes[id]));}
-  orig={...orig,...v};if('priority'in body)orig.priority=body.priority;
-  refreshDirty();setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
-  // Auto-reload the list when the change can shift WHERE the item appears: sprint
-  // moves it across board columns, assignee shifts its grouping, and a re-parent
-  // changes the tree/graph hierarchy. Otherwise re-render the current view from the
-  // (now updated) store so date/title/priority edits show without a full reload.
+}
+
+// Refresh the listing view if a saved field shifts WHERE the item appears.
+function postSaveRefresh(body,parentChanged){
   if('iteration'in body||'assigned'in body||parentChanged)refresh();
   else{
     if(mode==='board')renderBoard();
     else if(mode==='timeline')renderTimeline();
     if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);
   }
+}
+
+// Atomic single-field PATCH triggered by a picker / select / date input change.
+// `field` ∈ {state, assigned, priority, iteration, start, target, due, estimate, tags, parent}.
+// Concurrent calls for different fields don't conflict (independent body keys).
+// Concurrent calls for the SAME field race on the wire — to converge orig with
+// the latest editor value we re-read editorValues() at response time instead of
+// using the request-time snapshot.
+async function quickSave(field){
+  if(cur==null||!orig)return;
+  const id=cur,v=editorValues();
+  let body={},parentChanged=false;
+  if(field==='parent'){
+    if(v.parent===orig.parent)return;
+    if(v.parent!==''&&Number(v.parent)===id){setStatus('A work item cannot be its own parent',true);return;}
+    parentChanged=true;
+  } else if(field==='priority'){
+    const op=orig.priority?String(orig.priority):'';
+    if(v.prio===op||v.prio==='')return;          // empty = "no change" (matches manual save)
+    body.priority=Number(v.prio);
+  } else {
+    const keyMap={iteration:'iter',estimate:'est'};
+    const k=keyMap[field]||field;
+    if(v[k]===orig[k])return;
+    if(field==='assigned')body.assigned=(v.assigned==='me'?(currentUser||v.assigned):v.assigned);
+    else body[field]=v[k];
+  }
+  if(!Object.keys(body).length&&!parentChanged)return;
+  const before={...orig},beforeParent=orig.parent,newParent=v.parent;
+  setSaveChip('saving');
+  let r;
+  try{
+    if(Object.keys(body).length)r=await api.updateItem(id,body);
+    if(parentChanged)await api.setParent(id,newParent);
+  }catch(e){
+    setSaveChip('error',e.message);setStatus('save failed: '+e.message,true);refreshDirty();
+    return;
+  }
+  if(cur!==id)return;                            // user navigated away mid-save
+  recordEditUndo(id,body,parentChanged,before,beforeParent,newParent);
+  // Use the FRESH editor values for orig + visuals — a follow-up edit during
+  // the in-flight PATCH has already fired its own quickSave; we just make sure
+  // orig converges to "whatever's in the editor right now".
+  const vNow=editorValues();
+  applyVisualSync(id,body,vNow);
+  if('state'in body)orig.state=vNow.state;
+  if('assigned'in body)orig.assigned=vNow.assigned;
+  if('priority'in body)orig.priority=body.priority;
+  if('iteration'in body)orig.iter=vNow.iter;
+  if('start'in body)orig.start=vNow.start;
+  if('target'in body)orig.target=vNow.target;
+  if('due'in body)orig.due=vNow.due;
+  if('estimate'in body)orig.est=vNow.est;
+  if('tags'in body)orig.tags=vNow.tags;
+  if(parentChanged)orig.parent=vNow.parent;
+  refreshDirty();setSaveChip('saved');
+  setStatus(`#${id} ${field} saved`+(r?` → rev ${r.rev}`:''));
+  postSaveRefresh(body,parentChanged);
+}
+
+async function save(){
+  if(cur==null)return;const id=cur;const v=editorValues();const body={};
+  // Text fields only — pickers/selects/dates are auto-saved by quickSave().
+  if(v.title!==orig.title)body.title=v.title;
+  if(v.desc!==orig.desc)body.desc=v.desc;
+  if(orig.has_ac&&v.ac!==orig.ac)body.ac=v.ac;
+  if(!Object.keys(body).length){setStatus('no changes');return;}
+  const before={...orig};
+  const sv=$('s_save');sv.disabled=true;sv.textContent='Saving…';setSaveChip('saving');loadStart('saving…');
+  let r;
+  try{
+    r=await api.updateItem(id,body);
+  }catch(e){setStatus('ERROR: '+e.message,true);setSaveChip('error',e.message);refreshDirty();loadEnd();return;}
+  loadEnd();
+  recordEditUndo(id,body,false,before,orig.parent,orig.parent);
+  applyVisualSync(id,body,v);
+  if('title'in body)orig.title=v.title;
+  if('desc'in body)orig.desc=v.desc;
+  if('ac'in body)orig.ac=v.ac;
+  refreshDirty();setSaveChip('saved');setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
+  postSaveRefresh(body,false);
 }
 function toggleComment(){const f=$('comment_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';if(show)$('cm_text').focus();}
 async function postComment(){
@@ -2386,6 +2894,12 @@ function applySideLayout(){
   const side=$('side');if(!side)return;
   sideOrderedIds().forEach(id=>{const el=side.querySelector(`.sgroup[data-sg="${id}"]`);if(el)side.appendChild(el);});
   SIDE_GROUPS.forEach(g=>{const el=side.querySelector(`.sgroup[data-sg="${g.id}"]`);if(el)el.classList.toggle('sg-hidden',sideHidden.has(g.id));});
+  // Shead buttons that act on a specific sgroup are only meaningful while that
+  // sgroup is visible — hide them when the user hides their target via Customize.
+  const descHidden=sideHidden.has('desc');
+  ['s_desc_attach','s_desc_toggle','s_desc_full'].forEach(id=>{
+    const el=$(id);if(el)el.style.display=descHidden?'none':'';
+  });
 }
 function loadBarLayout(){
   try{const o=JSON.parse(localStorage.getItem('ado.barOrder')||'null');if(Array.isArray(o))barOrder=o;}catch(e){}
@@ -2560,9 +3074,86 @@ async function initialBoot(postSetup){
       const w=Math.min(Math.max(window.innerWidth-e.clientX,300),Math.round(window.innerWidth*0.7));side.style.width=w+'px';});
     document.addEventListener('mouseup',()=>{if(drag){drag=false;rz.classList.remove('active');document.body.style.cursor='';if(cy)cy.resize();try{localStorage.setItem('ado.sideWidth',side.style.width);}catch(e){}}});
   })();
-  $('s_save').onclick=save;$('s_comment').onclick=toggleComment;$('s_close').onclick=closePanel;
+  $('s_save').onclick=save;$('s_comment').onclick=toggleComment;
+  // Wrap so the click Event isn't passed as `force` (which would skip the
+  // discard-confirm check inside closePanel).
+  $('s_close').onclick=()=>closePanel();
+  // Native "leave site?" guard for page reload / tab close / Cmd+W. Modern
+  // browsers ignore custom text — assigning any non-empty returnValue is enough
+  // to trigger the dialog.
+  window.addEventListener('beforeunload',e=>{
+    if(dirty()){e.preventDefault();e.returnValue='';return '';}
+  });
   $('s_customize').onclick=()=>{setCustomizeTab('side');showCustomize();};   // gear in the panel header → open Customize on the sidebar tab
   $('s_desc_toggle').onclick=()=>showDescPreview($('s_desc').style.display!=='none');
+  $('s_desc_full').onclick=()=>toggleFullscreen();
+  // Format buttons in the description toolbar — wired via event delegation so
+  // adding a new format type later only needs an entry in applyFormat().
+  $('s_desc_fmt').addEventListener('click',e=>{
+    const b=e.target.closest('.dbtn[data-fmt]');if(!b)return;
+    e.preventDefault();applyFormat(b.dataset.fmt);
+  });
+  // Description: paste / drop files → upload + insert markdown. The "📎 attach"
+  // link opens a hidden <input type=file> as the explicit affordance for users
+  // who'd rather pick than drag.
+  $('s_desc_attach').onclick=e=>{e.preventDefault();if(cur!=null)$('s_desc_file').click();};
+  $('s_desc_file').onchange=e=>{const f=Array.from(e.target.files||[]);e.target.value='';if(f.length)uploadAndLink(f);};
+  (function(){
+    const ta=$('s_desc'),wrap=$('s_desc_wrap');
+    // Paste from clipboard — only fires on the focused textarea. Files in the
+    // clipboard get intercepted and uploaded; everything else (plain text)
+    // falls through to the default paste behavior.
+    ta.addEventListener('paste',e=>{
+      if(cur==null)return;
+      const items=(e.clipboardData&&e.clipboardData.items)||[],files=[];
+      for(const it of items){if(it.kind==='file'){const f=it.getAsFile();if(f)files.push(f);}}
+      if(files.length){e.preventDefault();uploadAndLink(files);}
+    });
+    // Drag-and-drop on the whole description editor (textarea AND preview).
+    // dragenter/leave fire for every child element transition, so a depth
+    // counter keeps the overlay stable instead of flickering.
+    const hasFiles=e=>!!(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files'));
+    let dragDepth=0;
+    wrap.addEventListener('dragenter',e=>{
+      if(!hasFiles(e)||cur==null)return;
+      e.preventDefault();dragDepth++;wrap.classList.add('dragover');
+    });
+    wrap.addEventListener('dragleave',e=>{
+      if(!hasFiles(e))return;
+      dragDepth--;if(dragDepth<=0){dragDepth=0;wrap.classList.remove('dragover');}
+    });
+    wrap.addEventListener('dragover',e=>{if(hasFiles(e))e.preventDefault();});
+    wrap.addEventListener('drop',e=>{
+      dragDepth=0;wrap.classList.remove('dragover');
+      if(cur==null||!hasFiles(e))return;
+      e.preventDefault();
+      const fs=Array.from((e.dataTransfer&&e.dataTransfer.files)||[]);
+      if(fs.length)uploadAndLink(fs);
+    });
+    // @mention typeahead: react to typing in the textarea. The keydown handler
+    // owns ↑/↓/Enter/Esc while the popup is open.
+    ta.addEventListener('input',()=>openOrUpdateMention());
+    ta.addEventListener('click',()=>openOrUpdateMention());
+    ta.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'||e.key==='End')openOrUpdateMention();});
+    ta.addEventListener('keydown',e=>{
+      // Mention popup keys (only when open)
+      if(mentionState.open){
+        if(e.key==='ArrowDown'){e.preventDefault();moveMention(1);return;}
+        if(e.key==='ArrowUp'){e.preventDefault();moveMention(-1);return;}
+        if(e.key==='Enter'){if(mentionState.rows.length){e.preventDefault();pickMention();return;}}
+        if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMention();return;}
+      }
+      // Format shortcuts: Ctrl/Cmd + B / I / K / ` (toggle inline code)
+      if(e.ctrlKey||e.metaKey){
+        const k=e.key.toLowerCase();
+        if(k==='b'){e.preventDefault();applyFormat('bold');}
+        else if(k==='i'){e.preventDefault();applyFormat('italic');}
+        else if(k==='k'){e.preventDefault();applyFormat('link');}
+        else if(e.key==='`'){e.preventDefault();applyFormat('code');}
+      }
+    });
+    ta.addEventListener('blur',()=>setTimeout(closeMention,150));   // give a click on the popup time to fire
+  })();
   $('cm_post').onclick=postComment;$('cm_cancel').onclick=()=>{$('comment_form').style.display='none';};
   $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
   $('s_actbtn').onclick=toggleActivity;
@@ -2572,8 +3163,17 @@ async function initialBoot(postSetup){
   depBlockedByPicker.wire();depBlocksPicker.wire();               // dependency adders (Blocked-by / Blocks)
   assignedEditor.render();assignedChild.render();assignedNew.render();sprintEditor.render();sprintNew.render();tagsEditor.render();   // placeholder cards before first use
   depBlockedByPicker.render();depBlocksPicker.render();renderDeps();   // dep card stubs + empty chip rows
+  // refreshDirty on every keystroke for ALL editable fields, so the chip flips
+  // to "● Unsaved" the moment anything diverges from orig.
   ['s_title','s_state','s_prio','s_desc','s_ac','s_start','s_target','s_due','s_est'].forEach(id=>{
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
+  // Native-input auto-save: state / priority / dates / estimate fire quickSave
+  // on `change` (which means blur or commit for inputs, value-pick for selects).
+  // `input` would be too noisy for est/date.
+  const autoSaveMap={s_state:'state',s_prio:'priority',s_start:'start',s_target:'target',s_due:'due',s_est:'estimate'};
+  Object.entries(autoSaveMap).forEach(([id,field])=>{
+    $(id).addEventListener('change',()=>quickSave(field));
+  });
   document.addEventListener('keydown',e=>{
     const open=!$('side').classList.contains('hidden');
     if((e.ctrlKey||e.metaKey)&&e.code==='KeyS'&&!e.altKey){if(open){e.preventDefault();save();}}
@@ -2586,6 +3186,7 @@ async function initialBoot(postSetup){
       else if(depBlocksPicker.isOpen())depBlocksPicker.close();
       else if($('comment_form').style.display==='flex')$('comment_form').style.display='none';
       else if($('child_form').style.display==='flex')$('child_form').style.display='none';
+      else if($('side').classList.contains('fullscreen'))toggleFullscreen(false);
       else closePanel();
     }
   });

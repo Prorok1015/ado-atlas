@@ -213,13 +213,19 @@ function retryDelay(resp, attempt) {
   return Math.min(500 * Math.pow(2, attempt), 8000) + Math.floor(Math.random() * 250);   // exp backoff + jitter
 }
 
+// Binary bodies (ArrayBuffer / Blob / typed arrays) bypass the JSON encoder so
+// req() can also POST raw bytes (attachment uploads).
+function isBinaryBody(b) {
+  return b instanceof ArrayBuffer || b instanceof Blob || (typeof b === "object" && b && ArrayBuffer.isView(b));
+}
 async function req(method, url, body, ctype) {
   const headers = { Authorization: await authHeader() };
   // Make ADO return a plain 401 instead of redirecting to its sign-in page —
   // the redirect is what makes the browser pop its native login dialog.
   headers["X-TFS-FedAuthRedirect"] = "Suppress";
-  if (body !== undefined) headers["Content-Type"] = ctype || "application/json";
-  const payload = body === undefined ? undefined : JSON.stringify(body);
+  const binary = isBinaryBody(body);
+  if (body !== undefined) headers["Content-Type"] = ctype || (binary ? "application/octet-stream" : "application/json");
+  const payload = body === undefined ? undefined : (binary ? body : JSON.stringify(body));
   for (let attempt = 0; ; attempt++) {
     const resp = await fetch(url, { method, headers, body: payload });
     if (resp.ok) {
@@ -463,6 +469,47 @@ async function getAssignees() {
   return [...names].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 }
 
+// Identity typeahead for @mentions. The IdentityPicker endpoint accepts a free-
+// text query and returns matching org users with their subjectDescriptor — the
+// piece needed to render a real ADO mention anchor (data-vss-mention) that
+// triggers a notification. Falls back to filtering the cached team roster when
+// the endpoint is unavailable (PAT scope too narrow, or 404 on some tenants).
+async function searchIdentities(q, limit) {
+  q = (q || "").trim();
+  if (!q) return [];
+  limit = Math.min(Math.max(limit | 0 || 8, 1), 25);
+  const o = await orgUrl();
+  try {
+    const body = {
+      query: q,
+      identityTypes: ["user", "group"],
+      operationScopes: ["ims", "source"],
+      options: { MinResults: 1, MaxResults: limit },
+      properties: ["DisplayName", "Mail", "SubjectDescriptor", "Account"],
+    };
+    const r = await req("POST", `${o}/_apis/IdentityPicker/Identities?api-version=7.1-preview.1`, body);
+    const out = [];
+    for (const set of (r.results || [])) {
+      for (const id of (set.identities || [])) {
+        out.push({
+          displayName: id.displayName || "",
+          mail: id.mail || "",
+          descriptor: id.subjectDescriptor || "",
+          isGroup: (id.entityType || "").toLowerCase() === "group",
+        });
+      }
+    }
+    if (out.length) return out.slice(0, limit);
+  } catch (_) { /* fall through to local roster */ }
+  // Fallback: substring-match the team roster (no descriptor → no notification,
+  // but the @Name still shows up in the description).
+  const names = await getAssignees();
+  const lq = q.toLowerCase();
+  return names.filter(n => n.toLowerCase().includes(lq))
+    .slice(0, limit)
+    .map(n => ({ displayName: n, mail: "", descriptor: "", isGroup: false }));
+}
+
 // Distinct tags seen on recent items (no dedicated tag endpoint exists for a
 // PAT, so we sample the most-recently-changed items and split their Tags).
 async function tags() {
@@ -637,6 +684,7 @@ async function item(wid) {
     due: f["Microsoft.VSTS.Scheduling.DueDate"],
     tags: f["System.Tags"] || "",
     deps: depsFromRelations(d.relations),
+    attachments: attachmentsFromRelations(d.relations),
     url: await browserUrl(d.id),
   };
 }
@@ -701,6 +749,89 @@ async function removeDependency(fromId, toId) {
   throw new Error("dependency link not found");
 }
 
+// ---------- attachments ----------
+// Pure: split relations into {attachments} (rel === "AttachedFile"). Each attachment
+// is identified by its URL — that's the same URL the work item's HTML description
+// references when an image is inlined, so the two views stay in sync.
+function attachmentsFromRelations(rels) {
+  const out = [];
+  for (const r of (rels || [])) {
+    if (r.rel !== "AttachedFile") continue;
+    const a = r.attributes || {};
+    out.push({
+      url: r.url || "",
+      name: a.name || a.comment || decodeURIComponent((r.url || "").split("?fileName=")[1] || "").split("&")[0] || "attachment",
+      comment: a.comment || "",
+      size: typeof a.resourceSize === "number" ? a.resourceSize : null,
+      date: a.authorizedDate || a.resourceCreatedDate || "",
+    });
+  }
+  return out;
+}
+
+// Upload a file's bytes to the project-scoped attachment endpoint. ADO returns
+// `{id, url}` — the url is what you reference from the description (<img src=...>)
+// and what addAttachmentLink() registers as a relation. Note: an uploaded file
+// is garbage-collected within ~hours if it's never linked, so callers should
+// link or use it immediately.
+// Fetch attachment bytes authenticated (the URLs require an Authorization header
+// that the browser doesn't send for plain <img src=...>, so the preview renderer
+// downloads each image through this and swaps src to a blob: URL).
+async function fetchAttachmentBlob(url) {
+  if (!url) throw new Error("no url");
+  const headers = { Authorization: await authHeader(), "X-TFS-FedAuthRedirect": "Suppress" };
+  const resp = await fetch(url, { headers });
+  if (!resp.ok) throw await errorFrom(resp);
+  return await resp.blob();
+}
+
+async function uploadAttachment(file) {
+  if (!file) throw new Error("no file");
+  const name = file.name || "upload.bin";
+  const proj = await projUrl();
+  const buf = file instanceof Blob ? await file.arrayBuffer() : file;
+  const url = `${proj}/_apis/wit/attachments?fileName=${encodeURIComponent(name)}&${API_VERSION}`;
+  // ADO's attachments endpoint accepts only application/octet-stream for the
+  // raw-bytes upload — sending the file's real MIME (e.g. image/jpeg) is a 400.
+  const res = await req("POST", url, buf, "application/octet-stream");
+  return { id: res.id, url: res.url, name };
+}
+
+// Add an AttachedFile relation pointing at an already-uploaded attachment URL.
+// `name` shows in the ADO Attachments tab; `comment` is the optional caption.
+async function addAttachmentLink(wid, attUrl, name, comment) {
+  if (!wid || !attUrl) throw new Error("wid and url required");
+  const proj = await projUrl();
+  const attrs = {};
+  if (name) attrs.name = name;
+  if (comment) attrs.comment = comment;
+  const ops = [{
+    op: "add", path: "/relations/-",
+    value: { rel: "AttachedFile", url: attUrl, attributes: attrs },
+  }];
+  const r = await req("PATCH", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`,
+    ops, "application/json-patch+json");
+  return { id: r.id, rev: r.rev, attachments: attachmentsFromRelations(r.relations) };
+}
+
+// Remove an AttachedFile relation by its URL. Returns the post-PATCH attachments
+// list so the UI can refresh without an extra round-trip.
+async function removeAttachmentLink(wid, attUrl) {
+  if (!wid || !attUrl) throw new Error("wid and url required");
+  const proj = await projUrl();
+  const d = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`);
+  const rels = d.relations || [];
+  const idx = rels.findIndex(r => r.rel === "AttachedFile" && r.url === attUrl);
+  if (idx < 0) throw new Error("attachment not found");
+  const ops = [
+    { op: "test", path: "/rev", value: d.rev },
+    { op: "remove", path: `/relations/${idx}` },
+  ];
+  const r = await req("PATCH", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`,
+    ops, "application/json-patch+json");
+  return { id: r.id, rev: r.rev, attachments: attachmentsFromRelations(r.relations) };
+}
+
 // Body shape mirrors the old /api/item PATCH endpoint: friendly aliases
 // (title/state/assigned/iteration/desc/ac/priority/estimate/start/target/due).
 async function updateItem(wid, body) {
@@ -721,8 +852,18 @@ async function updateItem(wid, body) {
       if (Number.isFinite(n)) fields.estimate = n;
     }
   }
-  if ("desc" in body) fields.desc = AdoLib.mdToHtml(body.desc);
-  if ("ac" in body) fields.ac = AdoLib.mdToHtml(body.ac);
+  // Render description / AC with #N autolinks pointing at THIS project's
+  // work-item edit URL. Same opts on both fields so the saved HTML matches
+  // what the editor's preview shows.
+  let mdOpts = undefined;
+  if ("desc" in body || "ac" in body) {
+    const { org, project } = await getConfig();
+    if (org && project) {
+      mdOpts = { workItemBase: `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_workitems/edit` };
+    }
+  }
+  if ("desc" in body) fields.desc = AdoLib.mdToHtml(body.desc, mdOpts);
+  if ("ac" in body) fields.ac = AdoLib.mdToHtml(body.ac, mdOpts);
   if (!Object.keys(fields).length) throw new Error("no fields");
   // ADO REST quirks:
   // 1. op:"add" with an empty value is silently dropped on some fields (e.g.
@@ -973,6 +1114,8 @@ window.api = {
   addDependency, removeDependency, dependencies,
   // item ops
   item, updateItem, comment, comments, history, createItem, deleteItem, setParent,
+  // attachments + identities (description editor: upload / link / delete / @-mention)
+  uploadAttachment, addAttachmentLink, removeAttachmentLink, fetchAttachmentBlob, searchIdentities,
   // time
   times, timeline,
   // utils

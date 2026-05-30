@@ -156,6 +156,58 @@ test("md round-trip: html -> markdown -> html keeps formatting", () => {
   assert.ok(html.includes('<a href="https://x.io"'));
 });
 
+// ---- new: images, @mentions, #123 autolinks ----
+test("mdToHtml: ![alt](https://...) -> <img>", () => {
+  const out = lib.mdToHtml("![pic](https://ok.com/a.png)");
+  assert.ok(out.includes('<img alt="pic" src="https://ok.com/a.png"'));
+});
+test("mdToHtml: ![](http://) (non-https) is NOT an image", () => {
+  const out = lib.mdToHtml("![x](http://insecure/a.png)");
+  assert.ok(!out.includes("<img"));
+});
+test("mdToHtml: @[Name](descriptor) -> mention anchor with data-vss-mention", () => {
+  const out = lib.mdToHtml("@[Jane Doe](abc.DEF-123_xyz=)");
+  assert.ok(out.includes('data-vss-mention="version:2.0,abc.DEF-123_xyz="'));
+  assert.ok(out.includes(">@Jane Doe</a>"));
+});
+test("mdToHtml: mention descriptor with bad chars is NOT a mention", () => {
+  const out = lib.mdToHtml("@[X](<script>)");
+  assert.ok(!out.includes("data-vss-mention"));
+});
+test("mdToHtml: #123 autolinks when workItemBase is set", () => {
+  const out = lib.mdToHtml("see #42 for context", { workItemBase: "https://dev.azure.com/o/p/_workitems/edit" });
+  assert.ok(out.includes('<a href="https://dev.azure.com/o/p/_workitems/edit/42"'));
+  assert.ok(out.includes(">#42</a>"));
+});
+test("mdToHtml: #123 stays plain when no workItemBase", () => {
+  const out = lib.mdToHtml("see #42 for context");
+  assert.ok(!/<a[^>]*>#42<\/a>/.test(out));
+});
+test("mdToHtml: #123 inside an existing link is NOT re-linked", () => {
+  const out = lib.mdToHtml("[the #42 ticket](https://x.com/42)", { workItemBase: "https://b" });
+  // exactly one anchor (the original); no nested anchor for #42
+  const anchors = out.match(/<a\b/g) || [];
+  assert.strictEqual(anchors.length, 1);
+});
+test("htmlToMarkdown: <img> -> ![alt](src)", () => {
+  assert.strictEqual(lib.htmlToMarkdown('<img src="https://x/a.png" alt="pic">'), "![pic](https://x/a.png)");
+});
+test("htmlToMarkdown: mention anchor -> @[Name](descriptor)", () => {
+  const md = lib.htmlToMarkdown('<a href="#" data-vss-mention="version:2.0,abc.DEF-1_=">@Jane Doe</a>');
+  assert.strictEqual(md, "@[Jane Doe](abc.DEF-1_=)");
+});
+test("htmlToMarkdown: work-item edit URL -> #N shorthand", () => {
+  const md = lib.htmlToMarkdown('<a href="https://dev.azure.com/o/p/_workitems/edit/42">#42</a>');
+  assert.strictEqual(md, "#42");
+});
+test("round-trip: image + mention + #ref survive md -> html -> md", () => {
+  const src = "see #42, ![pic](https://x/a.png), cc @[Jane](abc.x_=)";
+  const back = lib.htmlToMarkdown(lib.mdToHtml(src, { workItemBase: "https://dev.azure.com/o/p/_workitems/edit" }));
+  assert.ok(back.includes("#42"));
+  assert.ok(back.includes("![pic](https://x/a.png)"));
+  assert.ok(back.includes("@[Jane](abc.x_=)"));
+});
+
 // ---- OAuth helpers ----
 test("base64UrlEncode: url-safe, no padding", () => {
   // bytes [251,255] -> base64 "+/8=" -> base64url "-_8"

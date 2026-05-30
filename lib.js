@@ -137,13 +137,50 @@
   // Hardened: the inner escaper covers all five HTML-significant chars, and the
   // link rule requires an https?:// scheme with no whitespace, emitting
   // rel="noopener noreferrer". Non-matching links stay as escaped literal text.
-  function mdToHtml(src) {
+  //
+  // opts:
+  //   workItemBase  - if set, "#123" gets auto-linked to `<base>/123` (ADO edit URL)
+  //   allowImages   - default true; `![alt](https://...)` becomes <img>
+  function mdToHtml(src, opts) {
+    opts = opts || {};
+    const base = (opts.workItemBase || "").replace(/\/+$/, "");
+    const allowImg = opts.allowImages !== false;
     const h = s => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
-    const inl = t => h(t).replace(/`([^`]+)`/g, "<code>$1</code>")
-      .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/__([^_]+)__/g, "<b>$1</b>")
-      .replace(/~~([^~]+)~~/g, "<s>$1</s>")
-      .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>")
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Inline pass: order matters — pull images out BEFORE links so ![]() isn't
+    // mistaken for a literal "!" followed by [link](...), and pull @-mentions
+    // and #123 BEFORE the regular link rule for the same reason.
+    const MENTION_RE = /@\[([^\]\n]{1,80})\]\(([A-Za-z0-9._\-+=]{1,200})\)/g;
+    const IMG_RE     = /!\[([^\]\n]{0,200})\]\((https:\/\/[^)\s"<>]+)\)/g;
+    const LINK_RE    = /\[([^\]]+)\]\((https?:\/\/[^)\s"<>]+)\)/g;
+    const WID_RE     = /(^|[\s(,;:.])#(\d{1,8})\b/g;
+    function inl(t) {
+      let out = h(t)
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+        .replace(/__([^_]+)__/g, "<b>$1</b>")
+        .replace(/~~([^~]+)~~/g, "<s>$1</s>")
+        .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>");
+      if (allowImg) out = out.replace(IMG_RE, (m, alt, url) => `<img alt="${alt}" src="${url}" style="max-width:100%">`);
+      // @[Name](descriptor) - ADO mention anchor. href stays "#"; the descriptor
+      // goes into data-vss-mention exactly so the saved HTML triggers a real
+      // notification when round-tripped back.
+      out = out.replace(MENTION_RE, (m, name, desc) =>
+        `<a href="#" data-vss-mention="version:2.0,${desc}" class="vss-mention-link">@${name}</a>`);
+      out = out.replace(LINK_RE, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+      if (base) out = autolinkWidOutsideTags(out, base);
+      return out;
+    }
+    // Replace "#NNN" with an anchor ONLY in plain text segments — never inside an
+    // existing <a>...</a> (avoids double-linking a #-id that's already a link)
+    // or inside <img alt="...">. Walks the string between tags.
+    function autolinkWidOutsideTags(s, b) {
+      const parts = s.split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/);
+      for (let i = 0; i < parts.length; i += 2) {
+        parts[i] = parts[i].replace(WID_RE, (m, pre, id) =>
+          `${pre}<a href="${b}/${id}" target="_blank" rel="noopener noreferrer">#${id}</a>`);
+      }
+      return parts.join("");
+    }
     const ls = (src || "").replace(/\r\n/g, "\n").split("\n"); let out = "", ul = false, ol = false, bq = false, code = false, buf = "";
     const close = () => { if (ul) { out += "</ul>"; ul = false; } if (ol) { out += "</ol>"; ol = false; } if (bq) { out += "</blockquote>"; bq = false; } };
     for (const raw of ls) {
@@ -169,9 +206,28 @@
       .replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "*" + c.replace(/<[^>]+>/g, "") + "*")
       .replace(/<(s|strike|del)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "~~" + c.replace(/<[^>]+>/g, "") + "~~")
       .replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (m, c) => "`" + c.replace(/<[^>]+>/g, "") + "`")
-      .replace(/<a\b[^>]*\bhref="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (m, href, c) => {
-        const text = c.replace(/<[^>]+>/g, "").trim();
+      // Anchors. Three special cases handled BEFORE the generic [text](url):
+      //   - ADO mention (data-vss-mention="version:2.0,<descriptor>")  → @[Name](descriptor)
+      //   - work-item edit URL ending in /_workitems/edit/<id>          → #<id>
+      //   - plain anchor                                                → [text](url)
+      .replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (m, attrs, inner) => {
+        const text = inner.replace(/<[^>]+>/g, "").trim();
+        const dm = attrs.match(/\bdata-vss-mention\s*=\s*"version:2\.0,([A-Za-z0-9._\-+=]+)"/i);
+        if (dm) return "@[" + text.replace(/^@/, "") + "](" + dm[1] + ")";
+        const hrefM = attrs.match(/\bhref\s*=\s*"([^"]*)"/i);
+        const href = hrefM ? hrefM[1] : "";
+        const widM = href.match(/\/_workitems\/edit\/(\d{1,8})(?:[/?#]|$)/);
+        if (widM && (text === "#" + widM[1] || text === widM[1])) return "#" + widM[1];
         return href ? "[" + (text || href) + "](" + href + ")" : text;
+      })
+      // <img src="..." alt="..."> → ![alt](src). Order of attributes varies, so
+      // capture them independently and reassemble.
+      .replace(/<img\b([^>]*)\/?>/gi, (m, attrs) => {
+        const srcM = attrs.match(/\bsrc\s*=\s*"([^"]*)"/i);
+        const altM = attrs.match(/\balt\s*=\s*"([^"]*)"/i);
+        const src = srcM ? srcM[1] : "";
+        const alt = altM ? altM[1] : "";
+        return src ? "![" + alt + "](" + src + ")" : "";
       });
   }
   function htmlToMarkdown(s) {

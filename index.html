@@ -82,8 +82,12 @@
   <div id="side" class="hidden">
     <div class="shead">
       <span id="s_hdr" class="ttl">—</span>
+      <span id="s_status_chip" class="schip" title="save status"></span>
+      <button class="btn icon" id="s_desc_attach" title="attach a file (or paste / drop into the description)">📎</button>
+      <button class="btn icon" id="s_desc_toggle" title="toggle description preview / edit">👁</button>
       <button class="btn icon" id="s_customize" title="customize this panel (reorder / show-hide fields)">⚙</button>
       <a class="btn icon" id="s_link" target="_blank" title="open in Azure DevOps">↗</a>
+      <button class="btn icon" id="s_desc_full" title="toggle full-screen editor (Esc to exit)">⛶</button>
       <button class="btn icon" id="s_close" title="close (Esc)">✕</button>
     </div>
     <div class="sgroup" data-sg="nav">
@@ -177,16 +181,36 @@
     <datalist id="tagsdl"></datalist>
     </div>
     <div class="sgroup" data-sg="desc">
-    <label>Description <a id="s_desc_toggle" class="mdlink">preview</a></label>
-    <textarea id="s_desc"></textarea>
-    <div id="s_desc_prev" class="mdview" style="display:none"></div>
+    <div class="desc-tools">
+      <label class="dlabel">Description</label>
+      <div class="dfmt" id="s_desc_fmt">
+        <button type="button" class="dbtn dbtn-i-only" data-fmt="bold"   title="Bold (Ctrl+B)"><b>B</b></button>
+        <button type="button" class="dbtn dbtn-i-only" data-fmt="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+        <button type="button" class="dbtn dbtn-i-only" data-fmt="strike" title="Strikethrough"><s>S</s></button>
+        <button type="button" class="dbtn dbtn-i-only" data-fmt="code"   title="Inline code">&lt;/&gt;</button>
+        <span class="dsep"></span>
+        <button type="button" class="dbtn dbtn-i-only" data-fmt="h"      title="Heading (cycles #, ##, ###)">H</button>
+        <button type="button" class="dbtn dbtn-i-only" data-fmt="ul"     title="Bulleted list">•</button>
+        <button type="button" class="dbtn dbtn-i-only" data-fmt="ol"     title="Numbered list">1.</button>
+        <button type="button" class="dbtn dbtn-i-only" data-fmt="quote"  title="Quote">❝</button>
+        <button type="button" class="dbtn dbtn-i-only" data-fmt="link"   title="Insert link">🔗</button>
+      </div>
+    </div>
+    <input id="s_desc_file" type="file" multiple style="display:none">
+    <div id="s_desc_wrap" class="desc-wrap">
+      <textarea id="s_desc"></textarea>
+      <div id="s_desc_prev" class="mdview" style="display:none"></div>
+      <div id="s_desc_dropzone" class="desc-dropzone"><div class="ddz-inner">📎 Drop to attach</div></div>
+    </div>
+    <div id="s_atch" class="atchlist" style="display:none"></div>
+    <div id="s_mention" class="mention-pop" style="display:none"></div>
     </div>
     <div class="sgroup" data-sg="ac">
     <div id="ac_wrap"><label>Acceptance Criteria</label><textarea id="s_ac"></textarea></div>
     </div>
     <div class="sgroup" data-sg="actions">
     <div class="actions">
-      <button class="btn save" id="s_save" title="Ctrl/Cmd+S">Save</button>
+      <button class="btn save" id="s_save" title="Save title / description / acceptance criteria (Ctrl/Cmd+S). Other fields auto-save on change.">Saved</button>
       <button class="btn" id="s_comment">💬 Comment</button>
       <button class="btn" id="s_childbtn">+ Child</button>
       <button class="btn" id="s_actbtn" title="comments &amp; change history">🕑 Activity</button>
