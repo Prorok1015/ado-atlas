@@ -302,6 +302,7 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .chip.in{background:#1e7a44;border-color:#1e7a44;color:#fff}
 .chip.out{background:#9b2c2c;border-color:#9b2c2c;color:#fff;text-decoration:line-through}
 #filt_count{color:var(--accent);font-weight:700}
+#filt_btn.on #filt_count{color:#fff}   /* button is accent-filled when filters are active → use white for contrast */
 
 /* ---- bulk action bar (tree multi-select) ---- */
 #bulkbar{background:var(--panel);border-bottom:1px solid var(--line);padding:7px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
