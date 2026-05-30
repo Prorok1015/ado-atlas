@@ -1015,8 +1015,11 @@ async function loadSetupOrgs(){
 async function loadSetupProjects(){
   const org=$('setup-org').value.trim();
   if(!org)return;
-  try{fillDatalist('setup-projlist',await api.projects(org));}
-  catch(e){/* project dropdown is optional — manual entry still works */}
+  try{
+    const list=await api.projects(org);
+    fillDatalist('setup-projlist',list);
+    if(list.length&&!$('setup-project').value.trim())$('setup-project').value=list[0];   // prefill the first project if none chosen yet
+  }catch(e){/* project dropdown is optional — manual entry still works */}
 }
 
 /* ---------- PAT validity countdown ----------
