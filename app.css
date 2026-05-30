@@ -20,7 +20,8 @@ body{background:var(--bg);color:var(--txt);font:13px/1.4 -apple-system,Segoe UI,
 #projbadge .pb-proj{font-weight:600;overflow:hidden;text-overflow:ellipsis}
 #projbadge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none}
 .whrs{color:var(--muted);font-size:11px;display:inline-flex;align-items:center;gap:3px}
-.whrs input{width:40px;font-size:12px}
+.whrs input{width:48px;font-size:12px;text-align:center;-moz-appearance:textfield;appearance:textfield}
+.whrs input::-webkit-inner-spin-button,.whrs input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}   /* drop spinners so 2-digit hours don't get clipped */
 .patbadge{display:none;font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid var(--line);color:var(--muted);cursor:pointer;white-space:nowrap;line-height:1}
 .patbadge.patok{color:#3fb950;border-color:#3fb95066}
 .patbadge.patwarn{color:#e0a13c;border-color:#e0a13c66}
