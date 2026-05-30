@@ -317,16 +317,23 @@ async function expandNode(id){
   }finally{loadEnd();}
 }
 const txtColor=()=>document.body.classList.contains('light')?'#1b2330':'#e6edf3';   // theme text colour (matches --txt)
+const HAND_FONT="'Segoe Print','Bradley Hand','Comic Sans MS',cursive";              // Excalidraw-ish hand-drawn label font
+function hexToRgb(h){h=String(h||'').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h||'0',16)||0;return [(n>>16)&255,(n>>8)&255,n&255];}
+function mixHex(hex,toward,t){const a=hexToRgb(hex),b=hexToRgb(toward);return 'rgb('+a.map((v,i)=>Math.round(v+(b[i]-v)*t)).join(',')+')';}
+// Excalidraw-style fill: a soft pastel tint of the type colour toward the canvas
+const nodeFill=type=>{const c=TYPE_COLOR[type]||'#95a5a6';return document.body.classList.contains('light')?mixHex(c,'#ffffff',0.82):mixHex(c,'#11151b',0.70);};
+const nodeStroke=type=>TYPE_COLOR[type]||'#95a5a6';
 function gstyle(){return [
- {selector:'node',style:{'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','shape':'round-rectangle',
+ {selector:'node',style:{'background-color':e=>nodeFill(e.data('type')),'shape':'round-rectangle',
    'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ↓'+k:'')+' · '+e.data('type')+'\n'+e.data('title');},
-   'color':'#fff','text-wrap':'wrap','text-max-width':'190px','font-size':'11px','text-valign':'center',
-   'width':'210px','height':'label','padding':'10px',
+   'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'190px','font-size':'12px','text-valign':'center',
+   'width':'210px','height':'label','padding':'12px',
    // assignee avatar: ringed disc inset into the top-right corner, fully inside the node
    'background-image':e=>{const a=e.data('assigned');return a?avatarDataUri(a):'none';},
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
    'background-width':'26px','background-height':'26px','background-position-x':'94%','background-position-y':'14%',
-   'border-width':e=>((e.data('priority')||9)<=2?4:2),'border-color':e=>prioColor(e.data('priority'))}},
+   // Excalidraw sketch look: same-hue stroke (thicker for high priority)
+   'border-width':e=>((e.data('priority')||9)<=2?3.5:1.8),'border-color':e=>nodeStroke(e.data('type'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
@@ -337,7 +344,7 @@ function gstyle(){return [
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const p=e.data('priority'),v=e.data('via'),k=e.data('childCount');return (p?('P'+p+' · '):'')+'#'+e.data('id')+(v&&v.length?' ↗':'')+(k>0?' · ↓'+k:'')+' · '+e.data('type')+' — '+e.data('title');},
    'text-valign':'top','text-halign':'center','text-margin-y':-4,
-   'font-size':'12px','font-weight':'bold','text-max-width':'400px','text-wrap':'wrap'}},
+   'font-family':HAND_FONT,'font-size':'13px','font-weight':'bold','text-max-width':'400px','text-wrap':'wrap'}},
  {selector:'node:selected',style:{'border-color':'#fff','border-width':4}},
  {selector:'node.bulk',style:{'border-color':'#4c8bf5','border-width':5}},   // bulk-selected (Ctrl/Shift-tap)
  {selector:'edge[kind="hierarchy"]',style:{'width':1,'line-color':'#5b6b7d','line-opacity':0.4,'target-arrow-color':'#5b6b7d','target-arrow-shape':'triangle','curve-style':'bezier'}},
