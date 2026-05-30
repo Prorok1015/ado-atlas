@@ -204,7 +204,7 @@ function syncBulkRows(){                    // reflect bulkSel onto the rendered
     const on=bulkSel.has(+r.dataset.id);r.classList.toggle('bulksel',on);
     const cb=r.querySelector('.tcheck');if(cb)cb.checked=on;});
 }
-function bulkSet(ids,on){ids.forEach(id=>{if(on)bulkSel.add(id);else bulkSel.delete(id);});updateBulkBar();syncBulkRows();}
+function bulkSet(ids,on){ids.forEach(id=>{if(on)bulkSel.add(id);else bulkSel.delete(id);});updateBulkBar();syncBulkRows();syncGraphBulk();}
 function bulkToggle(id){const on=!bulkSel.has(id);bulkSet([id],on);bulkAnchor=id;bulkAnchorOn=on;}
 function bulkRange(toId){                    // apply the anchor's action (select OR deselect) to the whole range
   const ids=bulkEls().map(r=>+r.dataset.id);
@@ -212,7 +212,7 @@ function bulkRange(toId){                    // apply the anchor's action (selec
   let a=bulkAnchor!=null?ids.indexOf(bulkAnchor):-1;if(a<0){a=b;bulkAnchor=toId;}
   bulkSet(ids.slice(Math.min(a,b),Math.max(a,b)+1),bulkAnchorOn);
 }
-function clearBulk(){bulkSel.clear();bulkAnchor=null;updateBulkBar();syncBulkRows();}
+function clearBulk(){bulkSel.clear();bulkAnchor=null;updateBulkBar();syncBulkRows();syncGraphBulk();}
 function updateBulkBar(){const n=bulkSel.size;$('bulkbar').style.display=n?'flex':'none';$('bulk_count').textContent=n+' selected';}
 
 /* ---------- tree drag-to-re-parent (single or bulk) ---------- */
@@ -324,17 +324,21 @@ function gstyle(){return [
    'text-valign':'top','text-halign':'center','text-margin-y':-4,
    'font-size':'12px','font-weight':'bold','text-max-width':'400px','text-wrap':'wrap'}},
  {selector:'node:selected',style:{'border-color':'#fff','border-width':4}},
+ {selector:'node.bulk',style:{'border-color':'#4c8bf5','border-width':5}},   // bulk-selected (Ctrl/Shift-tap)
  {selector:'edge[kind="hierarchy"]',style:{'width':1,'line-color':'#5b6b7d','line-opacity':0.4,'target-arrow-color':'#5b6b7d','target-arrow-shape':'triangle','curve-style':'bezier'}},
  {selector:'edge[kind="dep"]',style:{'width':2,'line-style':'dashed','line-color':'#e0a13c','target-arrow-color':'#e0a13c','target-arrow-shape':'vee','curve-style':'bezier'}},
 ]}
 function initCy(){
-  cy=cytoscape({container:$('cy'),style:gstyle(),wheelSensitivity:0.2});
+  cy=cytoscape({container:$('cy'),style:gstyle(),wheelSensitivity:0.2,autounselectify:true,boxSelectionEnabled:false});
   let tapTimer=null,tapId=null;                 // single tap = open editor; double tap = expand
   cy.on('tap','node',e=>{const id=Number(e.target.data('id'));   // cytoscape gives a string id
+    const oe=e.originalEvent||{};
+    if(oe.ctrlKey||oe.metaKey||oe.shiftKey){bulkToggle(id);return;}   // modifier-tap → bulk select (no open)
     if(tapTimer&&tapId===id){clearTimeout(tapTimer);tapTimer=null;tapId=null;expandNode(id);return;}
     tapId=id;clearTimeout(tapTimer);
     tapTimer=setTimeout(()=>{tapTimer=null;tapId=null;openItem(id);},250);});
 }
+function syncGraphBulk(){if(cy)cy.nodes().forEach(nd=>nd.toggleClass('bulk',bulkSel.has(Number(nd.data('id')))));}
 function runLayout(fit){cy.layout({name:'dagre',rankDir,ranker:'tight-tree',
   nodeSep:55,rankSep:110,edgeSep:25,animate:true,animationDuration:250,fit:!!fit,padding:40}).run();}
 async function renderGraph(opts){
@@ -395,6 +399,7 @@ async function renderGraph(opts){
   if(opts.relayout||added||removed||reparented)runLayout(opts.fit); // relayout on topology change; fit after layout settles
   else if(opts.fit)cy.fit(undefined,40);                        // positions unchanged -> safe to fit now
   setStatus(`${ids.length} nodes · ${edges.length} edges`);
+  syncGraphBulk();                                              // re-apply the bulk highlight to (re)added nodes
 }
 
 /* ---------- board (sprints) ---------- */

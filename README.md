@@ -121,13 +121,14 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   remembered (per browser). "Reset to default" restores the original layout.
 - **Auto-refresh** (in the **⚙** menu) re-fetches the list every 1 / 5 / 15 min
   (paused while you have unsaved edits, are dragging a card, or the tab is hidden).
-- **Bulk edit** (Tree **and Board**): **Ctrl/Cmd-click** toggles a row/card in the
-  selection; **Shift-click** applies your last action to a whole range — select a
-  range after selecting, or *deselect* a range after deselecting. (In the tree you
-  can also hover a row and tick its checkbox, which only appears on hover / when
-  selected.) A plain click still opens the item; a plain drag still moves a card.
-  A bar appears letting you set State, Sprint, Priority, or Assignee on every
-  selected item at once (applied in parallel, then the list refreshes).
+- **Bulk edit** (Tree, Board **and Graph**): **Ctrl/Cmd-click** toggles a
+  row/card/node in the selection; **Shift-click** in the tree/board applies your
+  last action to a whole range (select after selecting, or *deselect* after
+  deselecting). On the graph, **Ctrl/Cmd- or Shift-tap** a node to toggle it. (In
+  the tree you can also hover a row and tick its checkbox, which only appears on
+  hover / when selected.) A plain click still opens the item; a plain drag still
+  moves a card. A bar appears letting you set State, Sprint, Priority, or Assignee
+  on every selected item at once (applied in parallel, then the list refreshes).
 - **Drag to re-parent** (Tree): drag a row onto another row to make it that row's
   child, or onto empty space to make it a root. If the dragged row is part of the
   selection, the whole selection is re-parented. (Cycles are blocked; undoable.)
