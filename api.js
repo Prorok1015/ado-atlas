@@ -528,6 +528,45 @@ async function comment(wid, text) {
   return { ok: true };
 }
 
+// Existing comments on an item (newest first). Comment bodies are HTML → text.
+async function comments(wid) {
+  const proj = await projUrl();
+  try {
+    const r = await req("GET", `${proj}/_apis/wit/workItems/${wid}/comments?api-version=7.1-preview.3&$top=200`);
+    return (r.comments || [])
+      .map(c => ({ text: htmlToText(c.text), by: ((c.createdBy || {}).displayName) || "", date: c.createdDate || c.modifiedDate || "" }))
+      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  } catch (_) { return []; }
+}
+
+// Field-change history (newest first), derived from the revision updates we
+// already fetch for time-in-state. Each entry: {by, date, changes:[{field,from,to}]}.
+const HISTORY_FIELDS = {
+  "System.State": "State", "System.AssignedTo": "Assigned", "System.Title": "Title",
+  "System.IterationPath": "Sprint", "Microsoft.VSTS.Common.Priority": "Priority",
+  "System.Parent": "Parent", "Microsoft.VSTS.Scheduling.TargetDate": "Target",
+  "Microsoft.VSTS.Scheduling.OriginalEstimate": "Estimate", "System.Tags": "Tags",
+};
+async function history(wid) {
+  const ups = await updatesFor(wid);
+  const out = [];
+  for (const u of ups) {
+    const f = u.fields || {};
+    const changes = [];
+    for (const ref of Object.keys(HISTORY_FIELDS)) {
+      if (!(ref in f)) continue;
+      const ov = f[ref] || {};
+      if (!("newValue" in ov) && !("oldValue" in ov)) continue;
+      changes.push({ field: HISTORY_FIELDS[ref], from: personName(ov.oldValue), to: personName(ov.newValue) });
+    }
+    if (!changes.length) continue;
+    const by = personName((u.revisedBy || {}).displayName || (u.revisedBy || {}));
+    const date = ((f["System.ChangedDate"] || {}).newValue) || u.revisedDate || "";
+    out.push({ by, date, changes });
+  }
+  return out.reverse();   // newest first
+}
+
 async function createItem({ type, title, parent, assigned, priority, iteration }) {
   if (!type || !title) throw new Error("type and title required");
   const fields = {};
@@ -553,6 +592,25 @@ async function createItem({ type, title, parent, assigned, priority, iteration }
   const url = `${proj}/_apis/wit/workitems/${encodeURIComponent("$" + type)}?${API_VERSION}`;
   const d = await req("POST", url, ops, "application/json-patch+json");
   return nodeOf(d);
+}
+
+// Re-parent an item: remove its current Hierarchy-Reverse (parent) link and add
+// a new one. Pass newParentId="" / null to detach (make it a root). Uses a /rev
+// test op so a concurrent edit fails loudly instead of clobbering.
+async function setParent(wid, newParentId) {
+  const proj = await projUrl();
+  const d = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`);
+  const rels = d.relations || [];
+  const idx = rels.findIndex(r => r.rel === "System.LinkTypes.Hierarchy-Reverse");
+  const ops = [{ op: "test", path: "/rev", value: d.rev }];
+  if (idx >= 0) ops.push({ op: "remove", path: `/relations/${idx}` });
+  if (newParentId != null && String(newParentId) !== "") {
+    ops.push({ op: "add", path: "/relations/-",
+      value: { rel: "System.LinkTypes.Hierarchy-Reverse", url: `${proj}/_apis/wit/workitems/${newParentId | 0}` } });
+  }
+  if (ops.length === 1) throw new Error("no parent change");   // nothing to remove and nothing to add
+  const r = await req("PATCH", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`, ops, "application/json-patch+json");
+  return { id: r.id, rev: r.rev, parent: (r.fields || {})["System.Parent"] || null };
 }
 
 // ---------- updates / business-hours (active time per item) ----------
@@ -683,7 +741,7 @@ window.api = {
   // graph
   deps,
   // item ops
-  item, updateItem, comment, createItem,
+  item, updateItem, comment, comments, history, createItem, setParent,
   // time
   times, timeline,
 };

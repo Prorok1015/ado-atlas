@@ -58,6 +58,19 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   iterations. Click a chip once to include, again to exclude.
 - Large result sets are capped at 2000 items; when that happens the status bar
   shows `· capped, narrow the filters` so you know you're not seeing everything.
+- **Export** (toolbar): download the current filtered view as **CSV** or **JSON**.
+- **Auto-refresh** dropdown re-fetches the list every 1 / 5 / 15 min (paused
+  while you have unsaved edits, are dragging a card, or the tab is hidden).
+- **Theme** button cycles dark → light → **auto** (follows your OS setting).
+
+## Editing a work item
+
+Click any item to open the side editor. Beyond the usual fields:
+
+- **Parent** — type a work-item id (or clear it) and Save to re-parent the item;
+  the tree/graph hierarchy updates. The **↗** button opens the parent.
+- **🕑 Activity** — shows the item's existing comments and a field-change history
+  (state, assignee, sprint, priority, parent, …) pulled from its revisions.
 
 ## What's inside
 

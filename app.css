@@ -108,6 +108,14 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 .shead .ttl{flex:1;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .btn.icon{padding:2px 8px;line-height:1;text-decoration:none;display:inline-flex;align-items:center}
 .sbadge{font-size:10px;border-radius:10px;padding:1px 8px;color:#fff;font-weight:600}
+#s_activity{margin-top:8px;display:none;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
+#s_activity.show{display:flex}
+#s_activity .asec{color:var(--muted);font-size:11px;margin-top:6px;text-transform:uppercase;letter-spacing:.4px}
+.acard{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px}
+.acard .ah{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:3px}
+.acard .atext{white-space:pre-wrap;word-break:break-word}
+#s_activity .achg{color:var(--muted);font-size:11px}
+#s_activity .achg b{color:var(--txt);font-weight:600}
 #s_ctx{font-size:12px;color:var(--muted)}
 #s_ctx a{color:var(--accent);cursor:pointer;text-decoration:none}
 #s_ctx a:hover{text-decoration:underline}

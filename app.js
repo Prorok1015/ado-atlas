@@ -623,6 +623,7 @@ async function openItem(id){
   let d;try{d=await api.item(id);}catch(e){setStatus('ERROR: '+e.message,true);loadEnd();return;}
   loadEnd();
   cur=id;$('side').classList.remove('hidden');$('resizer').style.display='block';$('child_form').style.display='none';$('comment_form').style.display='none';
+  $('s_activity').classList.remove('show');$('s_activity').innerHTML='';   // collapse activity for the new item
   $('s_hdr').innerHTML=`<i class="dot" style="background:${TYPE_COLOR[d.type]||'#95a5a6'}"></i>#${d.id} ${esc(d.type)}`+
     ` <span class="sbadge" style="background:${stateColor(d.state)}">${esc(d.state)}</span>`+
     ` <span style="color:var(--muted);font-weight:400;font-size:11px">rev${d.rev}</span>`;
@@ -648,12 +649,13 @@ async function openItem(id){
   const curIt=d.iteration||root;
   if(curIt!==root&&!iters.some(it=>it.path===curIt))isel.appendChild(new Option(curIt.split('\\').slice(1).join('\\')||curIt,curIt));
   isel.value=curIt;
+  $('s_parent').value=(d.parent!=null?String(d.parent):'');
   $('s_start').value=(d.start||'').slice(0,10);
   $('s_target').value=(d.target||'').slice(0,10);
   $('s_due').value=(d.due||'').slice(0,10);
   $('s_est').value=(d.est!=null?d.est:'');
   orig={title:d.title,state:d.state,assigned:d.assigned,desc:d.desc,ac:d.ac,has_ac:d.has_ac,priority:d.priority,
-        iter:isel.value,start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};
+        iter:isel.value,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};
   refreshDirty();loadTimeline(id);
   setStatus('#'+id+' loaded');
 }
@@ -662,11 +664,11 @@ function dirty(){
   const v=editorValues();
   return v.title!==orig.title||v.state!==orig.state||v.assigned!==orig.assigned||v.desc!==orig.desc
     ||(orig.has_ac&&v.ac!==orig.ac)||((orig.priority?String(orig.priority):'')!==v.prio)
-    ||v.iter!==orig.iter||v.start!==orig.start||v.target!==orig.target||v.due!==orig.due||v.est!==orig.est;
+    ||v.iter!==orig.iter||v.parent!==orig.parent||v.start!==orig.start||v.target!==orig.target||v.due!==orig.due||v.est!==orig.est;
 }
 function refreshDirty(){const d=dirty();const b=$('s_save');b.disabled=!d;b.textContent=d?'● Save':'Saved';}
 function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:$('s_desc').value,ac:$('s_ac').value,prio:$('s_prio').value,
-  iter:$('s_iter').value,start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};}
+  iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value};}
 async function save(){
   if(cur==null)return;const v=editorValues();const body={};
   if(v.title!==orig.title)body.title=v.title;
@@ -681,9 +683,14 @@ async function save(){
   if(v.target!==orig.target)body.target=v.target;
   if(v.due!==orig.due)body.due=v.due;
   if(v.est!==orig.est)body.estimate=v.est;
-  if(!Object.keys(body).length){setStatus('no changes');return;}
+  const parentChanged=v.parent!==orig.parent;   // re-parent is a relations PATCH, handled separately
+  if(!Object.keys(body).length&&!parentChanged){setStatus('no changes');return;}
   const sv=$('s_save');sv.disabled=true;sv.textContent='Saving…';loadStart('saving…');
-  let r;try{r=await api.updateItem(cur,body);}catch(e){setStatus('ERROR: '+e.message,true);refreshDirty();loadEnd();return;}
+  let r;
+  try{
+    if(Object.keys(body).length)r=await api.updateItem(cur,body);
+    if(parentChanged)await api.setParent(cur,v.parent);   // v.parent==='' detaches (makes it a root)
+  }catch(e){setStatus('ERROR: '+e.message,true);refreshDirty();loadEnd();return;}
   loadEnd();
   if(cy){const n=cy.getElementById(String(cur));if(n.nonempty()){if(body.title)n.data('title',body.title);if(body.state)n.data('state',body.state);if('priority'in body)n.data('priority',body.priority);}}
   if(selRow&&body.title)selRow.querySelector('.lab').textContent=`#${cur} ${body.title}`;
@@ -695,12 +702,11 @@ async function save(){
     if('target'in body)s.target=v.target;
     if('estimate'in body)s.est=(v.est===''?null:Number(v.est));}
   orig={...orig,...v};if('priority'in body)orig.priority=body.priority;
-  refreshDirty();setStatus(`#${cur} saved → rev ${r.rev}`);
-  // Auto-reload list when the change can shift WHERE the item appears (sprint moves it across
-  // board columns; assignee shifts it under another grouping). Tree/graph don't grow new edges
-  // from this save (parent isn't editable from the form), so a board re-render + store update
-  // is enough for the rest. If you change parent via ADO web → use the ⟳ button to pick it up.
-  if('iteration'in body||'assigned'in body)refresh();
+  refreshDirty();setStatus(`#${cur} saved`+(r?` → rev ${r.rev}`:''));
+  // Auto-reload the list when the change can shift WHERE the item appears: sprint
+  // moves it across board columns, assignee shifts its grouping, and a re-parent
+  // changes the tree/graph hierarchy. Otherwise a board re-render + store update suffice.
+  if('iteration'in body||'assigned'in body||parentChanged)refresh();
   else if(mode==='board')renderBoard();         // reflect date/title/priority on the board
 }
 function toggleComment(){const f=$('comment_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';if(show)$('cm_text').focus();}
@@ -708,6 +714,37 @@ async function postComment(){
   const t=$('cm_text').value.trim();if(!t||cur==null)return;
   try{await api.comment(cur,t);}catch(e){setStatus('ERROR: '+e.message,true);return;}
   $('cm_text').value='';$('comment_form').style.display='none';setStatus('#'+cur+' comment added');
+  if($('s_activity').classList.contains('show'))loadActivity();   // reflect the new comment if the panel is open
+}
+
+/* ---------- activity: existing comments + field-change history ---------- */
+let _actId=null;
+function toggleActivity(){
+  const box=$('s_activity');
+  if(box.classList.contains('show')){box.classList.remove('show');return;}
+  box.classList.add('show');loadActivity();
+}
+async function loadActivity(){
+  if(cur==null)return;
+  const box=$('s_activity'),id=cur;_actId=id;
+  box.innerHTML='<div class="asec">loading…</div>';
+  let cs=[],hs=[];
+  try{[cs,hs]=await Promise.all([api.comments(id),api.history(id)]);}catch(e){/* render whatever we got */}
+  if(_actId!==id||cur!==id)return;                 // user switched items mid-load
+  renderActivity(cs,hs);
+}
+function renderActivity(cs,hs){
+  const fd=s=>s?String(s).slice(0,16).replace('T',' '):'';
+  let h='<div class="asec">Comments ('+cs.length+')</div>';
+  if(!cs.length)h+='<div class="achg">no comments</div>';
+  cs.forEach(c=>{h+=`<div class="acard"><div class="ah"><span>${esc(c.by)}</span><span>${fd(c.date)}</span></div><div class="atext">${esc(c.text)}</div></div>`;});
+  h+='<div class="asec">History ('+hs.length+')</div>';
+  if(!hs.length)h+='<div class="achg">no recorded changes</div>';
+  hs.forEach(u=>{
+    const chg=u.changes.map(c=>`<div class="achg">${esc(c.field)}: ${esc(String(c.from)||'∅')} → <b>${esc(String(c.to)||'∅')}</b></div>`).join('');
+    h+=`<div class="acard"><div class="ah"><span>${esc(u.by)}</span><span>${fd(u.date)}</span></div>${chg}</div>`;
+  });
+  $('s_activity').innerHTML=h;
 }
 async function createChild(){
   const type=$('c_type').value,title=$('c_title').value.trim();if(!title||cur==null)return;
@@ -725,6 +762,53 @@ async function createChild(){
 }
 
 function buildLegend(){$('legend').innerHTML=Object.entries(TYPE_COLOR).map(([k,c])=>`<span><i style="background:${c}"></i>${k}</span>`).join('');}
+
+/* ---------- export the current (filtered) view ---------- */
+const EXPORT_COLS=['id','type','title','state','assigned','priority','iteration','parent','start','target','est','tags'];
+function exportRows(){return store.roots.map(id=>store.nodes[id]).filter(Boolean);}
+function downloadFile(name,mime,text){
+  const url=URL.createObjectURL(new Blob([text],{type:mime}));
+  const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportView(kind){
+  const rows=exportRows();
+  if(!rows.length){setStatus('nothing to export',true);return;}
+  if(kind==='json'){
+    downloadFile('ado-atlas-export.json','application/json',JSON.stringify(rows.map(n=>{const o={};EXPORT_COLS.forEach(k=>o[k]=n[k]);return o;}),null,2));
+  }else{
+    const cell=v=>{v=(v==null?'':String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+    const csv=[EXPORT_COLS.join(',')].concat(rows.map(n=>EXPORT_COLS.map(k=>cell(n[k])).join(','))).join('\r\n');
+    downloadFile('ado-atlas-export.csv','text/csv;charset=utf-8','﻿'+csv);   // BOM so Excel reads UTF-8
+  }
+  setStatus('exported '+rows.length+' item(s) to '+kind.toUpperCase());
+}
+
+/* ---------- theme (dark / light / auto-follow-system) + auto-refresh ---------- */
+function systemDark(){try{return !window.matchMedia||window.matchMedia('(prefers-color-scheme: dark)').matches;}catch(e){return true;}}
+function applyTheme(mode){
+  const light=mode==='light'||(mode==='auto'&&!systemDark());
+  document.body.classList.toggle('light',light);
+  $('theme').title='theme: '+mode+(mode==='auto'?' (follows system)':'')+' — click to change';
+}
+function cycleTheme(){
+  let m=localStorage.getItem('ado.theme')||'dark';
+  m=m==='dark'?'light':(m==='light'?'auto':'dark');
+  try{localStorage.setItem('ado.theme',m);}catch(e){}
+  applyTheme(m);
+}
+let autoTimer=null;
+function autoTick(){
+  updatePatBadge();                          // keep the countdown fresh on long-lived tabs
+  if(document.hidden||pdrag||boardBusy)return;   // don't refetch hidden, or yank the board mid-drag
+  if(cur!=null&&dirty())return;              // don't disrupt unsaved editor changes
+  refresh();
+}
+function setAutoRefresh(sec){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+  sec=parseInt(sec,10)||0;
+  if(sec>0)autoTimer=setInterval(autoTick,sec*1000);
+}
 
 /* ---------- setup modal (replaces /setup page) ---------- */
 function showSetup(cancellable){
@@ -903,7 +987,10 @@ async function initialBoot(postSetup){
     }finally{b.classList.remove('spinning');b.disabled=false;}
   };
   $('fit').onclick=()=>cy&&cy.fit(undefined,40);
-  $('theme').onclick=()=>{document.body.classList.toggle('light');try{localStorage.setItem('ado.theme',document.body.classList.contains('light')?'light':'dark');}catch(e){}};
+  $('theme').onclick=cycleTheme;
+  try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')applyTheme('auto');});}catch(e){}
+  $('export').querySelectorAll('button').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
+  $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}setAutoRefresh(s);};
   (function(){const rz=$('resizer'),side=$('side');let drag=false;     // resizable Work Item panel
     rz.addEventListener('mousedown',e=>{drag=true;rz.classList.add('active');document.body.style.cursor='col-resize';e.preventDefault();});
     document.addEventListener('mousemove',e=>{if(!drag)return;
@@ -914,7 +1001,9 @@ async function initialBoot(postSetup){
   $('s_desc_toggle').onclick=()=>showDescPreview($('s_desc').style.display!=='none');
   $('cm_post').onclick=postComment;$('cm_cancel').onclick=()=>{$('comment_form').style.display='none';};
   $('s_me').onclick=()=>{$('s_assigned').value=currentUser||'me';refreshDirty();};
-  ['s_title','s_state','s_prio','s_assigned','s_desc','s_ac','s_iter','s_start','s_target','s_due','s_est'].forEach(id=>{
+  $('s_actbtn').onclick=toggleActivity;
+  $('s_parent_open').onclick=()=>{const p=$('s_parent').value.trim();if(/^\d+$/.test(p))openItem(parseInt(p));};
+  ['s_title','s_state','s_prio','s_assigned','s_desc','s_ac','s_iter','s_parent','s_start','s_target','s_due','s_est'].forEach(id=>{
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
   document.addEventListener('keydown',e=>{
     const open=!$('side').classList.contains('hidden');
@@ -934,13 +1023,12 @@ async function initialBoot(postSetup){
     if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
     const bg=localStorage.getItem('ado.boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
     const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
+    const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;setAutoRefresh(au);}
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
   buildLegend();renderFilters();updateFilterCount();updatePatBadge();
   await loadIdentity();
   try{
-    const savedTheme=localStorage.getItem('ado.theme');
-    if(savedTheme==='light')document.body.classList.add('light');
-    else document.body.classList.remove('light');
+    applyTheme(localStorage.getItem('ado.theme')||'dark');
     const savedWidth=localStorage.getItem('ado.sideWidth');
     if(savedWidth)$('side').style.width=savedWidth;
     const savedMode=localStorage.getItem('ado.mode');

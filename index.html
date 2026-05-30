@@ -20,10 +20,12 @@
   <button class="btn" id="filt_btn" title="filters">Filters <span id="filt_count"></span></button>
   <select id="f_sort" title="sort order"><option value="">sort: id</option><option value="priority">sort: priority</option></select>
   <select id="f_tz" title="timezone for work-hours"></select>
+  <select id="f_auto" title="auto-refresh interval"><option value="0">auto: off</option><option value="60">auto: 1m</option><option value="300">auto: 5m</option><option value="900">auto: 15m</option></select>
   <input id="search" placeholder="search id / title">
   <button class="btn" id="searchbtn">Search</button>
   <button class="btn" id="refreshbtn" title="reload from server (drop caches)">⟳</button>
   <button class="btn" id="fit" title="fit graph">Fit</button>
+  <div class="seg" id="export" title="export the current (filtered) view"><button data-x="csv">⬇ CSV</button><button data-x="json">JSON</button></div>
   <span class="patbadge" id="patbadge" title="PAT validity"></span>
   <button class="btn" id="settingsbtn" title="settings (PAT / org / project)">⚙</button>
   <button class="btn" id="theme">◐</button>
@@ -54,6 +56,11 @@
       <div><label>Assigned</label><div style="display:flex;gap:4px"><input id="s_assigned" list="assignees" style="flex:1"><button class="btn" id="s_me" title="assign to me" style="padding:6px 9px">me</button></div></div>
     </div>
     <label>Sprint</label><select id="s_iter" style="width:100%"></select>
+    <label>Parent</label>
+    <div style="display:flex;gap:4px">
+      <input id="s_parent" type="number" min="0" placeholder="parent id (blank = no parent)" style="flex:1">
+      <button class="btn" id="s_parent_open" title="open parent" style="padding:6px 9px">↗</button>
+    </div>
     <div class="row">
       <div><label>Start</label><input id="s_start" type="date"></div>
       <div><label>Target</label><input id="s_target" type="date"></div>
@@ -69,7 +76,9 @@
       <button class="btn save" id="s_save" title="Ctrl/Cmd+S">Save</button>
       <button class="btn" id="s_comment">💬 Comment</button>
       <button class="btn" id="s_childbtn">+ Child</button>
+      <button class="btn" id="s_actbtn" title="comments &amp; change history">🕑 Activity</button>
     </div>
+    <div id="s_activity"></div>
     <div id="comment_form">
       <textarea id="cm_text" placeholder="add a comment…" style="min-height:64px"></textarea>
       <div class="actions"><button class="btn save" id="cm_post">Post</button><button class="btn" id="cm_cancel">Cancel</button></div>
