@@ -463,7 +463,7 @@ async function renderBoard(){
   groups.forEach(arr=>arr.sort(cmpBySort));  // order within column = toolbar Sort
   const root=iters[0]?iters[0].path.split('\\')[0]:projectName;   // project root = "no sprint"
   const order=iters.map(it=>it.path);   // ALL dated sprints (empties revealed while dragging)
-  if(groups.has('__none__'))order.push('__none__');
+  order.push('__none__');   // always show the "No sprint" column (a drop target even when empty)
   order.forEach(k=>{
     const it=k==='__none__'?null:info[k];const fin=it?it.finish:null;
     const colItems=groups.get(k)||[];
@@ -475,7 +475,7 @@ async function renderBoard(){
     if(k!=='__none__'){h.style.cursor='pointer';h.title='open sprint timeline';h.addEventListener('click',()=>openSprint(k));}
     const wrap=document.createElement('div');wrap.className='bcards';
     colItems.forEach(n=>wrap.appendChild(boardCard(n,fin,today)));
-    if(!colItems.length&&k!=='__none__'){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
+    if(!colItems.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
     col.dataset.field='iteration';col.dataset.val=(k==='__none__')?root:k;   // drop = change sprint
     col.append(h,wrap);el.appendChild(col);
   });
