@@ -155,6 +155,13 @@ Click any item to open the side editor. Beyond the usual fields:
   loaded item, pick a result, or choose **(no parent)** to detach. Save applies
   the re-parent and the tree/graph hierarchy updates. The **↗** button opens the
   parent.
+- **Description / Acceptance Criteria** — edited as **Markdown** with a live
+  **preview** toggle. Supported: headings (`#`–`######`), **bold** (`**`/`__`),
+  *italic* (`*`), ~~strikethrough~~ (`~~`), `inline code`, fenced code blocks,
+  bullet/numbered lists, `>` blockquotes, `---` rules, and `[links](https://…)`.
+  ADO stores descriptions as HTML, so the field round-trips: the item's HTML is
+  converted to Markdown on load and your Markdown back to HTML on save (what the
+  preview shows is what gets saved).
 - **🕑 Activity** — shows the item's existing comments and a field-change history
   (state, assignee, sprint, priority, parent, …) pulled from its revisions.
 

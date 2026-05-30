@@ -139,21 +139,57 @@
   // rel="noopener noreferrer". Non-matching links stay as escaped literal text.
   function mdToHtml(src) {
     const h = s => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
-    const inl = t => h(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    const inl = t => h(t).replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/__([^_]+)__/g, "<b>$1</b>")
+      .replace(/~~([^~]+)~~/g, "<s>$1</s>")
       .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>")
       .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-    const ls = (src || "").replace(/\r\n/g, "\n").split("\n"); let out = "", ul = false, ol = false, code = false, buf = "";
-    const close = () => { if (ul) { out += "</ul>"; ul = false; } if (ol) { out += "</ol>"; ol = false; } };
+    const ls = (src || "").replace(/\r\n/g, "\n").split("\n"); let out = "", ul = false, ol = false, bq = false, code = false, buf = "";
+    const close = () => { if (ul) { out += "</ul>"; ul = false; } if (ol) { out += "</ol>"; ol = false; } if (bq) { out += "</blockquote>"; bq = false; } };
     for (const raw of ls) {
       if (/^```/.test(raw)) { if (code) { out += "<pre>" + h(buf) + "</pre>"; buf = ""; code = false; } else { close(); code = true; } continue; }
       if (code) { buf += raw + "\n"; continue; }
-      let m = raw.match(/^(#{1,4})\s+(.*)/); if (m) { close(); const l = m[1].length + 2; out += `<h${l}>${inl(m[2])}</h${l}>`; continue; }
+      if (/^\s*([-*_])\1\1+\s*$/.test(raw)) { close(); out += "<hr>"; continue; }   // --- / *** / ___
+      let m = raw.match(/^(#{1,6})\s+(.*)/); if (m) { close(); const l = Math.min(6, m[1].length + 2); out += `<h${l}>${inl(m[2])}</h${l}>`; continue; }
+      m = raw.match(/^\s*>\s?(.*)/); if (m) { if (!bq) { close(); out += "<blockquote>"; bq = true; } else out += "<br>"; out += inl(m[1]); continue; }
       m = raw.match(/^\s*[-*]\s+(.*)/); if (m) { if (!ul) { close(); out += "<ul>"; ul = true; } out += "<li>" + inl(m[1]) + "</li>"; continue; }
       m = raw.match(/^\s*\d+\.\s+(.*)/); if (m) { if (!ol) { close(); out += "<ol>"; ol = true; } out += "<li>" + inl(m[1]) + "</li>"; continue; }
       if (!raw.trim()) { close(); continue; }
       close(); out += "<p>" + inl(raw) + "</p>";
     }
     if (code) out += "<pre>" + h(buf) + "</pre>"; close(); return out;
+  }
+
+  // ---- HTML -> markdown-lite (the reverse, so an ADO description round-trips
+  // through the editor without losing bold/italic/strike/code/links/headings/
+  // lists/blockquotes). Used to populate the Description/AC fields on load. ----
+  function inlineHtmlToMd(s) {
+    return String(s)
+      .replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "**" + c.replace(/<[^>]+>/g, "") + "**")
+      .replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "*" + c.replace(/<[^>]+>/g, "") + "*")
+      .replace(/<(s|strike|del)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "~~" + c.replace(/<[^>]+>/g, "") + "~~")
+      .replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (m, c) => "`" + c.replace(/<[^>]+>/g, "") + "`")
+      .replace(/<a\b[^>]*\bhref="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (m, href, c) => {
+        const text = c.replace(/<[^>]+>/g, "").trim();
+        return href ? "[" + (text || href) + "](" + href + ")" : text;
+      });
+  }
+  function htmlToMarkdown(s) {
+    if (!s) return "";
+    let t = String(s).replace(/\r\n/g, "\n");
+    t = t.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (m, c) => "\n```\n" + htmlUnesc(c.replace(/<[^>]+>/g, "")).replace(/\n+$/, "") + "\n```\n");
+    t = t.replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (m, n, c) => "\n" + "#".repeat(Math.max(1, (+n) - 2)) + " " + inlineHtmlToMd(c).replace(/<[^>]+>/g, "").trim() + "\n");
+    t = t.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (m, c) => "\n" + htmlToMarkdown(c).split("\n").map(l => (l ? "> " + l : ">")).join("\n") + "\n");
+    t = t.replace(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (m, c) => { let i = 0; return "\n" + c.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (mm, li) => (++i) + ". " + inlineHtmlToMd(li).replace(/<[^>]+>/g, "").trim() + "\n"); });
+    t = t.replace(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (m, c) => "\n" + c.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (mm, li) => "- " + inlineHtmlToMd(li).replace(/<[^>]+>/g, "").trim() + "\n"));
+    t = t.replace(/<hr\s*\/?>/gi, "\n---\n");
+    t = t.replace(/<br\s*\/?>/gi, "\n");
+    t = inlineHtmlToMd(t);
+    t = t.replace(/<\/(p|div|tr)>/gi, "\n").replace(/<(p|div)\b[^>]*>/gi, "");
+    t = t.replace(/<[^>]+>/g, "");                       // strip any remaining tags
+    t = htmlUnesc(t);
+    t = t.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n");
+    return t.trim();
   }
 
   // ---- OAuth (Microsoft Entra ID) URL/encoding helpers ----
@@ -191,6 +227,6 @@
     } catch (_) { return {}; }
   }
 
-  return { wiqlQuote, buildClauses, htmlEsc, htmlUnesc, htmlToText, textToHtml, businessSeconds, patDaysLeft, mdToHtml,
+  return { wiqlQuote, buildClauses, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml,
            base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams };
 });

@@ -9,7 +9,7 @@ const MAX_RETRIES = 3;   // retries for throttling (429) / transient 5xx
 
 // Pure, dependency-free helpers live in lib.js (loaded before api.js).
 const AdoLib = (typeof globalThis !== "undefined" ? globalThis : window).AdoLib;
-const { wiqlQuote, htmlEsc, htmlUnesc, htmlToText, textToHtml } = AdoLib;
+const { wiqlQuote, htmlEsc, htmlUnesc, htmlToText, htmlToMarkdown } = AdoLib;
 
 const FIELD_ALIASES = {
   title: "System.Title",
@@ -582,8 +582,8 @@ async function item(wid) {
     state: f["System.State"] || "",
     assigned: (a && typeof a === "object") ? (a.displayName || "") : (a || ""),
     priority: f["Microsoft.VSTS.Common.Priority"],
-    desc: htmlToText(f["System.Description"]),
-    ac: htmlToText(f["Microsoft.VSTS.Common.AcceptanceCriteria"]),
+    desc: htmlToMarkdown(f["System.Description"]),
+    ac: htmlToMarkdown(f["Microsoft.VSTS.Common.AcceptanceCriteria"]),
     has_ac: AC_TYPES.has(wtype) || "Microsoft.VSTS.Common.AcceptanceCriteria" in f,
     parent: f["System.Parent"],
     iteration: f["System.IterationPath"],
@@ -615,8 +615,8 @@ async function updateItem(wid, body) {
       if (Number.isFinite(n)) fields.estimate = n;
     }
   }
-  if ("desc" in body) fields.desc = textToHtml(body.desc);
-  if ("ac" in body) fields.ac = textToHtml(body.ac);
+  if ("desc" in body) fields.desc = AdoLib.mdToHtml(body.desc);
+  if ("ac" in body) fields.ac = AdoLib.mdToHtml(body.ac);
   if (!Object.keys(fields).length) throw new Error("no fields");
   const ops = Object.entries(fields).map(([k, v]) => ({
     op: "add", path: `/fields/${resolveField(k)}`, value: v,

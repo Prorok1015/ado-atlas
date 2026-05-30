@@ -127,6 +127,34 @@ test("mdToHtml: angle-bracket injection is escaped", () => {
   assert.ok(out.includes("&lt;img"));
   assert.ok(!out.includes("<img"));
 });
+test("mdToHtml: strikethrough + underscore-bold + hr + blockquote", () => {
+  assert.ok(lib.mdToHtml("~~gone~~").includes("<s>gone</s>"));
+  assert.ok(lib.mdToHtml("__bold__").includes("<b>bold</b>"));
+  assert.ok(lib.mdToHtml("---").includes("<hr>"));
+  assert.ok(lib.mdToHtml("> quote").includes("<blockquote>quote</blockquote>"));
+});
+test("mdToHtml: ordered list", () => {
+  assert.ok(lib.mdToHtml("1. a\n2. b").includes("<ol><li>a</li><li>b</li></ol>"));
+});
+
+// ---- htmlToMarkdown (the reverse, for round-tripping descriptions) ----
+test("htmlToMarkdown: inline formatting + link", () => {
+  assert.strictEqual(lib.htmlToMarkdown("<b>x</b> <i>y</i> <s>z</s> <code>c</code>"), "**x** *y* ~~z~~ `c`");
+  assert.strictEqual(lib.htmlToMarkdown('<a href="https://a.com">t</a>'), "[t](https://a.com)");
+});
+test("htmlToMarkdown: headings and lists", () => {
+  assert.strictEqual(lib.htmlToMarkdown("<h3>Title</h3>"), "# Title");
+  assert.strictEqual(lib.htmlToMarkdown("<ul><li>a</li><li>b</li></ul>"), "- a\n- b");
+  assert.strictEqual(lib.htmlToMarkdown("<ol><li>a</li><li>b</li></ol>"), "1. a\n2. b");
+});
+test("htmlToMarkdown: entities unescaped, tags stripped", () => {
+  assert.strictEqual(lib.htmlToMarkdown("<div>a &amp; b</div>"), "a & b");
+});
+test("md round-trip: html -> markdown -> html keeps formatting", () => {
+  const html = lib.mdToHtml(lib.htmlToMarkdown("<b>bold</b> and <a href=\"https://x.io\">link</a>"));
+  assert.ok(html.includes("<b>bold</b>"));
+  assert.ok(html.includes('<a href="https://x.io"'));
+});
 
 // ---- OAuth helpers ----
 test("base64UrlEncode: url-safe, no padding", () => {
