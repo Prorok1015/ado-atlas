@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — ADO Atlas</title>
+<meta name="description" content="Privacy policy for the ADO Atlas Chrome extension. Your token and data stay on your device; the extension only contacts Azure DevOps.">
+<style>
+  :root { --bg:#0f1216; --panel:#171c23; --line:#2a323d; --txt:#e6edf3; --muted:#9aa7b4; --accent:#4c8bf5; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.65 -apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:48px 20px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:20px; margin:30px 0 8px; }
+  .eff { color:var(--muted); font-size:14px; margin:0 0 8px; }
+  a { color:var(--accent); }
+  ul { padding-left:22px; }
+  li { margin:5px 0; }
+  code { background:#0d1117; border:1px solid var(--line); border-radius:5px; padding:1px 5px; font-size:13px; }
+  .back { display:inline-block; margin-bottom:20px; }
+  footer { margin-top:40px; border-top:1px solid var(--line); padding-top:16px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">&larr; ADO Atlas</a>
+  <h1>Privacy Policy — ADO Atlas</h1>
+  <p class="eff"><b>Effective date:</b> 2026-05-30</p>
+
+  <p>ADO Atlas ("the extension") is an independent browser extension that displays and
+     manages your Azure DevOps work items. This policy explains exactly what data the
+     extension handles and where it goes. In short: <b>everything stays on your device,
+     and the only server it talks to is Azure DevOps itself.</b></p>
+
+  <p>ADO Atlas is <b>not affiliated with, sponsored by, or endorsed by Microsoft</b>.
+     "Azure DevOps" is a trademark of Microsoft Corporation.</p>
+
+  <h2>What the extension stores</h2>
+  <p>All of the following is stored <b>locally on your device</b> (Chrome
+     <code>chrome.storage.local</code> and <code>localStorage</code>) and is never sent to
+     the developer or any third party:</p>
+  <ul>
+    <li><b>Your Personal Access Token (PAT)</b> — entered by you, used to authenticate to Azure DevOps.</li>
+    <li><b>Connection settings</b> — your Azure DevOps organization and project, and an optional PAT expiry date.</li>
+    <li><b>UI preferences</b> — theme, sort order, timezone/working hours, active view, filters, auto-refresh interval, panel width.</li>
+    <li><b>A local cache</b> of recently viewed work items (titles, states, assignees, ids, dates, tags) used to render the
+        last view instantly. This cache is ignored after 24 hours and can be cleared at any time.</li>
+  </ul>
+
+  <h2>What the extension sends, and to whom</h2>
+  <p>The extension makes network requests <b>only</b> to Azure DevOps, over HTTPS, authenticated with your PAT:</p>
+  <ul>
+    <li><code>https://dev.azure.com</code> — to read and update your work items.</li>
+    <li><code>https://app.vssps.visualstudio.com</code> — only when you click <b>Load</b> in setup, to list the
+        organizations and projects your PAT can access (a convenience; you can type them manually instead).</li>
+  </ul>
+  <p>These hosts are the only ones the extension is permitted to contact (enforced by its Content Security Policy).
+     The extension contains <b>no analytics, no telemetry, no advertising, and no third-party servers.</b>
+     No data is ever transmitted to the developer.</p>
+
+  <h2>How your data is used</h2>
+  <p>Your token and settings are used solely to provide the extension's single purpose: viewing and managing your own
+     Azure DevOps work items. Your data is <b>not sold, rented, or shared</b> with anyone, and is <b>not used</b> for
+     advertising, profiling, or any purpose unrelated to that feature.</p>
+
+  <h2>Data retention and your control</h2>
+  <ul>
+    <li>Data persists locally until you remove it. Removing/uninstalling the extension deletes its stored data.</li>
+    <li>You can rotate or replace your PAT at any time via the <b>⚙</b> settings.</li>
+    <li>We recommend a <b>short-lived PAT</b> with the minimum scopes (Work Items read/write, Project &amp; Team read);
+        the extension shows a countdown to its expiry.</li>
+  </ul>
+
+  <h2>Security</h2>
+  <p>Your PAT is stored locally by the browser and transmitted only to Azure DevOps over HTTPS in the standard
+     <code>Authorization</code> header. Because the PAT is a credential, treat your device accordingly and prefer a short
+     expiry. The extension never logs or displays your PAT after entry.</p>
+
+  <h2>Limited Use disclosure</h2>
+  <p>ADO Atlas's use of information received from Azure DevOps adheres to the
+     <a href="https://developer.chrome.com/docs/webstore/program-policies/user-data-faq" target="_blank" rel="noopener noreferrer">Chrome Web Store User Data Policy</a>,
+     including the <b>Limited Use</b> requirements. Specifically, the extension only uses the data to provide and improve
+     its single user-facing purpose, does not transfer the data to third parties (it is sent only to your own Azure DevOps
+     service), does not use it for advertising, and does not allow humans to read it.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy changes, the updated version will be published at this URL with a new effective date.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy: <b>prorok1015@gmail.com</b></p>
+
+  <footer>ADO Atlas — independent project, not affiliated with Microsoft.</footer>
+</div>
+</body>
+</html>

@@ -1,7 +1,12 @@
 # Chrome Web Store listing — copy & answers
 
-Paste these into the Web Store Developer Dashboard. Replace `<PRIVACY_URL>` with
-the public URL where you host `PRIVACY.md` (see PUBLISHING.md, step 3).
+Paste these into the Web Store Developer Dashboard. The privacy/homepage URLs
+below assume GitHub Pages is served from this repo's `docs/` folder at
+`https://prorok1015.github.io/ado-atlas/` (see PUBLISHING.md, Phase 2). **If your
+GitHub username or repo name differs, update the URLs accordingly.**
+
+- **Homepage URL:** `https://prorok1015.github.io/ado-atlas/`
+- **Privacy policy URL:** `https://prorok1015.github.io/ado-atlas/privacy.html`
 
 ---
 
@@ -45,7 +50,7 @@ Privacy first
 ADO Atlas is an independent project and is not affiliated with or endorsed by
 Microsoft. "Azure DevOps" is a trademark of Microsoft Corporation.
 
-Privacy policy: <PRIVACY_URL>
+Privacy policy: https://prorok1015.github.io/ado-atlas/privacy.html
 
 ---
 
@@ -93,7 +98,7 @@ package; nothing is loaded from a remote URL and no `eval` is used.
   lending purposes.
 
 ### Privacy policy URL
-`<PRIVACY_URL>`
+`https://prorok1015.github.io/ado-atlas/privacy.html`
 
 ---
 

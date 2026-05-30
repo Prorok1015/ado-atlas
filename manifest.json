@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Tree / Graph / Board / Sprint Gantt over Azure DevOps work items.",
   "author": "Zakhar Lebediuk",
+  "homepage_url": "https://prorok1015.github.io/ado-atlas/",
   "permissions": ["storage"],
   "host_permissions": [
     "https://dev.azure.com/*",

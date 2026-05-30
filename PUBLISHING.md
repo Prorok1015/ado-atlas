@@ -16,11 +16,16 @@ payment, hosting, screenshots, dashboard) and can't be automated.
 - `build.bat` packages **only** the runtime files (no `tests/`, `package.json`,
   or docs) into `dist/ado-atlas-extension.zip`.
 
-### One thing to confirm yourself
-The in-app **Privacy** link and the README point at
-`https://github.com/Prorok1015/ado-atlas`. If your repository/URL differs, update
-the link in `index.html` (the setup-modal disclaimer) and `README.md` before
-building.
+### One thing to confirm yourself — the URLs
+Everything assumes GitHub user **`prorok1015`** and repo **`ado-atlas`**, giving a
+GitHub Pages site at `https://prorok1015.github.io/ado-atlas/`. If your username
+(lowercased in Pages URLs) or repo name differs, update these 5 spots before
+building:
+- `manifest.json` → `homepage_url`
+- `index.html` → the setup-modal Privacy link
+- `docs/index.html` → the "Source on GitHub" link
+- `STORE_LISTING.md` → homepage + privacy URLs
+- `README.md` → the disclaimer block (repo-relative links are fine as-is)
 
 ## Phase 1 — Developer account  **[you]**
 1. Go to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
@@ -28,15 +33,19 @@ building.
 3. Pay the **one-time $5 registration fee** and accept the developer agreement.
 4. Complete any contact-info/identity verification Google prompts for.
 
-## Phase 2 — Host the privacy policy  **[you]**
-The store requires a public Privacy Policy URL (you handle a PAT = sensitive data).
-Easiest options:
-- **GitHub Pages:** enable Pages on your repo; the policy will be served at
-  `https://<user>.github.io/<repo>/PRIVACY` (or push `PRIVACY.md` content as
-  `index.html` to a `gh-pages` branch).
-- **Or** paste `PRIVACY.md` into a public Gist / any static host.
-Copy the resulting URL — you'll paste it into `STORE_LISTING.md`'s `<PRIVACY_URL>`
-placeholders and the dashboard.
+## Phase 2 — Publish the privacy policy via GitHub Pages  **[you, ~1 min]**
+A ready homepage **and** privacy policy already live in this repo's `docs/` folder
+(`docs/index.html`, `docs/privacy.html`). To make them public:
+1. Push the repo to GitHub (e.g. `Prorok1015/ado-atlas`).
+2. Repo → **Settings → Pages** → *Build and deployment* → Source: **Deploy from a
+   branch** → Branch **`main`**, Folder **`/docs`** → **Save**.
+3. After ~1 minute the pages are live:
+   - Homepage: `https://prorok1015.github.io/ado-atlas/`
+   - Privacy:  `https://prorok1015.github.io/ado-atlas/privacy.html`
+
+These are already filled in as the Homepage URL and Privacy Policy URL in
+`STORE_LISTING.md` and `manifest.json`. (No Pages? Any static host / public Gist
+works too — just update the URLs per the note above.)
 
 ## Phase 3 — Build the package  **[you, 1 command]**
 - Windows: double-click `build.bat`, or run `npm run build` / `powershell -File build.ps1`.
