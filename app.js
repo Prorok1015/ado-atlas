@@ -1445,7 +1445,8 @@ async function save(){
     if('start'in body)s.start=v.start;            // keep the store's schedule dates in sync so the
     if('target'in body)s.target=v.target;         // timeline / sprint Gantt reflect edits on re-render
     if('due'in body)s.due=v.due;
-    if('estimate'in body)s.est=(v.est===''?null:Number(v.est));}
+    if('estimate'in body)s.est=(v.est===''?null:Number(v.est));
+    if('tags'in body)s.tags=v.tags;}                // keep graph tag dots in sync
   orig={...orig,...v};if('priority'in body)orig.priority=body.priority;
   refreshDirty();setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
   // Auto-reload the list when the change can shift WHERE the item appears: sprint
@@ -2265,7 +2266,7 @@ async function loadFilterData(){
       const all=[];per.forEach(arr=>arr.forEach(s=>{if(!all.includes(s))all.push(s);}));
       projectStates=all.length?orderStates(all):[];
     }catch(e){projectStates=[];}})(),
-    (async()=>{try{tagList=await api.tags();}catch(e){tagList=[];}})(),
+    (async()=>{try{tagList=await api.tags();$('tagsdl').innerHTML=tagList.map(x=>`<option value="${esc(x)}">`).join('');}catch(e){tagList=[];}})(),
     (async()=>{try{const its=await getIterations();sprintPaths=its.map(i=>i.path);
       sprintNames={};its.forEach(i=>{sprintNames[i.path]=i.name;});}
       catch(e){sprintPaths=[];sprintNames={};}})(),
