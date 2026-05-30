@@ -1575,6 +1575,66 @@ function wireSetup(){
   $('projbadge').onclick=()=>showSetup(true);
 }
 
+/* ---------- toolbar customization: reorder + show/hide, persisted ---------- */
+const BAR_ITEMS=[
+  {id:'projbadge',label:'Project badge'},
+  {id:'newbtn',label:'New item'},
+  {id:'undobtn',label:'Undo'},
+  {id:'redobtn',label:'Redo'},
+  {id:'mode',label:'View mode (Tree / Graph / Board / Timeline)'},
+  {id:'emode',label:'Graph: edges (Hier / Deps)'},
+  {id:'dir',label:'Graph: direction'},
+  {id:'grp',label:'Board: grouping'},
+  {id:'tlzoom',label:'Timeline: zoom'},
+  {id:'tl_group',label:'Timeline: grouping'},
+  {id:'empty_btn',label:'Empty-columns toggle (∅)'},
+  {id:'filt_btn',label:'Filters'},
+  {id:'fit',label:'Fit graph'},
+  {id:'export',label:'Export (CSV / JSON)'},
+  {id:'patbadge',label:'PAT badge'},
+  {id:'legend',label:'Type legend'},
+  {id:'settings-wrap',label:'Settings menu (⚙)'},
+];
+const BAR_LOCKED=new Set(['settings-wrap']);       // never hidden — it's how you reach this dialog
+let barOrder=BAR_ITEMS.map(i=>i.id), barHidden=new Set();
+function loadBarLayout(){
+  try{const o=JSON.parse(localStorage.getItem('ado.barOrder')||'null');if(Array.isArray(o))barOrder=o;}catch(e){}
+  try{const h=JSON.parse(localStorage.getItem('ado.barHidden')||'null');if(Array.isArray(h))barHidden=new Set(h.filter(id=>!BAR_LOCKED.has(id)));}catch(e){}
+}
+function saveBarLayout(){try{localStorage.setItem('ado.barOrder',JSON.stringify(barOrder));localStorage.setItem('ado.barHidden',JSON.stringify([...barHidden]));}catch(e){}}
+// Ordered id list = saved order (valid ids) then any default not yet placed (new in a future version).
+function barOrderedIds(){const known=new Set(BAR_ITEMS.map(i=>i.id)),seen=new Set(),out=[];
+  barOrder.forEach(id=>{if(known.has(id)&&!seen.has(id)){seen.add(id);out.push(id);}});
+  BAR_ITEMS.forEach(i=>{if(!seen.has(i.id)){seen.add(i.id);out.push(i.id);}});return out;}
+function applyBarLayout(){
+  const bar=$('bar');if(!bar)return;
+  barOrderedIds().forEach(id=>{const el=$(id);if(el)bar.appendChild(el);});   // reorder (h1 isn't listed → stays first)
+  BAR_ITEMS.forEach(i=>{const el=$(i.id);if(el)el.classList.toggle('tb-hidden',barHidden.has(i.id));});
+}
+function showCustomize(){const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}
+  renderCustomizeList();$('customize-overlay').classList.add('show');}
+function closeCustomize(){$('customize-overlay').classList.remove('show');}
+function resetBar(){barOrder=BAR_ITEMS.map(i=>i.id);barHidden=new Set();saveBarLayout();applyBarLayout();renderCustomizeList();}
+function renderCustomizeList(){
+  const list=$('customize-list'),byId=Object.fromEntries(BAR_ITEMS.map(i=>[i.id,i.label]));
+  list.innerHTML=barOrderedIds().map(id=>{
+    const locked=BAR_LOCKED.has(id),checked=!barHidden.has(id);
+    return `<div class="czrow" draggable="true" data-id="${id}"><span class="czgrip" title="drag to reorder">⠿</span>`+
+      `<label class="czlab"><input type="checkbox" ${checked?'checked':''} ${locked?'disabled':''} data-id="${id}">${esc(byId[id])}</label></div>`;
+  }).join('');
+  list.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
+    const id=cb.dataset.id;if(cb.checked)barHidden.delete(id);else barHidden.add(id);saveBarLayout();applyBarLayout();});
+  let dragging=null;
+  list.querySelectorAll('.czrow').forEach(row=>{
+    row.addEventListener('dragstart',()=>{dragging=row;setTimeout(()=>row.classList.add('dragging'),0);});
+    row.addEventListener('dragend',()=>{row.classList.remove('dragging');dragging=null;
+      barOrder=[...list.querySelectorAll('.czrow')].map(r=>r.dataset.id);saveBarLayout();applyBarLayout();});});
+  list.ondragover=e=>{e.preventDefault();if(!dragging)return;
+    const rows=[...list.querySelectorAll('.czrow:not(.dragging)')];
+    const after=rows.find(r=>{const b=r.getBoundingClientRect();return e.clientY<b.top+b.height/2;});
+    if(after)list.insertBefore(dragging,after);else list.appendChild(dragging);};
+}
+
 /* ---------- main init (runs after PAT is verified) ---------- */
 let _booted=false;
 async function initialBoot(postSetup){
@@ -1714,6 +1774,11 @@ async function initialBoot(postSetup){
     if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeSprintModal();}
     else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();createSprintSubmit();}});
   $('sp_name').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createSprintSubmit();}});
+  // customize-toolbar dialog
+  $('cz_open').onclick=showCustomize;$('cz_done').onclick=closeCustomize;$('cz_reset').onclick=resetBar;
+  $('customize-overlay').addEventListener('mousedown',e=>{if(e.target===$('customize-overlay'))closeCustomize();});
+  $('customize-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeCustomize();}});
+  loadBarLayout();applyBarLayout();              // apply the saved toolbar order / hidden set
   try{const sf=localStorage.getItem('ado.filters');if(sf)Object.assign(fstate,JSON.parse(sf));
     const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
     if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}

@@ -39,6 +39,7 @@
         <select id="f_tz" title="timezone for work-hours / active-time"></select></div>
       <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours</span>
         <span class="whrs"><input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span></div>
+      <div class="mrow mrow-full"><button class="btn" id="cz_open" title="reorder / show-hide toolbar buttons">⠿ Customize toolbar…</button></div>
       <div class="mrow mrow-full"><button class="btn" id="settingsbtn" title="Azure DevOps connection (PAT / org / project)">⚙ Connection (PAT / org / project)…</button></div>
     </div>
   </span>
@@ -176,6 +177,19 @@
     <div id="sprint-actions">
       <button class="btn save" id="sp_create" title="Ctrl/Cmd+Enter">Create sprint</button>
       <button class="btn" id="sp_cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customize toolbar: reorder (drag) and show/hide (checkbox) the toolbar controls. -->
+<div id="customize-overlay">
+  <div id="customize-box">
+    <h1>Customize toolbar</h1>
+    <p class="hint">Drag rows to reorder, uncheck to hide. Changes apply live and are remembered.</p>
+    <div id="customize-list"></div>
+    <div id="customize-actions">
+      <button class="btn" id="cz_reset">Reset to default</button>
+      <button class="btn save" id="cz_done">Done</button>
     </div>
   </div>
 </div>

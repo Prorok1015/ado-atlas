@@ -304,3 +304,19 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 #sprint-actions{display:flex;gap:8px;margin-top:14px}
 #sprint-actions .btn{flex:1;padding:7px 12px;font-size:13px}
 #sprint-err{color:#e06c75;font-size:12px;min-height:16px;margin-top:6px}
+
+/* toolbar customization: hidden controls + the Customize dialog */
+.tb-hidden{display:none!important}
+#customize-overlay{position:fixed;inset:0;background:rgba(8,11,15,0.85);z-index:10000;display:none;align-items:center;justify-content:center}
+#customize-overlay.show{display:flex}
+#customize-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px;width:380px;max-width:92vw;color:var(--txt)}
+#customize-box h1{font-size:16px;margin:0 0 6px}
+#customize-box .hint{color:var(--muted);font-size:12px;margin:0 0 10px}
+#customize-list{max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.czrow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+.czrow:last-child{border-bottom:0}
+.czrow.dragging{opacity:.45}
+.czrow .czgrip{cursor:grab;color:var(--muted);user-select:none;font-size:13px}
+.czrow .czlab{display:flex;align-items:center;gap:7px;font-size:13px;flex:1;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#customize-actions{display:flex;gap:8px;margin-top:14px}
+#customize-actions .btn{flex:1;padding:7px 12px;font-size:13px}

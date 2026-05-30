@@ -114,8 +114,11 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - **Export** (toolbar): download the current filtered view as **CSV** or **JSON**.
 - **⚙ Settings menu** (top-right of the toolbar) groups the less-frequently-used
   controls in one popover: **Theme** (dark → light → **auto**, follows your OS),
-  **Auto-refresh**, **Timezone**, **Work hours**, and the **Connection** button
-  that reopens the PAT / org / project modal.
+  **Auto-refresh**, **Timezone**, **Work hours**, **Customize toolbar…**, and the
+  **Connection** button that reopens the PAT / org / project modal.
+- **Customize toolbar** (⚙ menu) — drag the rows to reorder the toolbar controls
+  and uncheck any you don't use to hide them; changes apply live and are
+  remembered (per browser). "Reset to default" restores the original layout.
 - **Auto-refresh** (in the **⚙** menu) re-fetches the list every 1 / 5 / 15 min
   (paused while you have unsaved edits, are dragging a card, or the tab is hidden).
 - **Bulk edit** (Tree view): tick the checkboxes on tree rows — a bar appears
