@@ -325,6 +325,12 @@ async function getIterations(){                     // sprint dates — fetched 
   if(!iterCache){try{iterCache=await api.iterations();}catch(e){iterCache=[];setStatus('ERROR: '+e.message,true);}}
   return iterCache;
 }
+function isCurrentSprint(it){const t=new Date().toISOString().slice(0,10);return !!(it.start&&it.finish&&t>=it.start.slice(0,10)&&t<=it.finish.slice(0,10));}
+// <option> label for a sprint dropdown: 🔵 prefix for the current sprint + its date range.
+function sprintOptLabel(it){
+  const range=(it.start||it.finish)?`  (${(it.start||'?').slice(0,10)} → ${(it.finish||'?').slice(0,10)})`:'';
+  return (isCurrentSprint(it)?'🔵 ':'')+it.name+range;
+}
 const BOARD_TIME_CAP=200;
 function hh(h){return h>=24?(Math.floor(h/24)+'d '+Math.round(h%24)+'h'):(Math.round(h*10)/10+'h');}
 function colMeta(items){const se=items.reduce((s,n)=>s+(n.est||0),0);
@@ -819,9 +825,7 @@ async function openItem(id){
   const isel=$('s_iter');isel.innerHTML='';
   const root=iters[0]?iters[0].path.split('\\')[0]:projectName;
   isel.appendChild(new Option('(no sprint)',root));
-  const _t=new Date().toISOString().slice(0,10);
-  iters.forEach(it=>{const cur=it.start&&it.finish&&_t>=it.start.slice(0,10)&&_t<=it.finish.slice(0,10);
-    isel.appendChild(new Option(it.name+(cur?'  • current':''),it.path));});
+  iters.forEach(it=>{isel.appendChild(new Option(sprintOptLabel(it),it.path));});
   const curIt=d.iteration||root;
   if(curIt!==root&&!iters.some(it=>it.path===curIt))isel.appendChild(new Option(curIt.split('\\').slice(1).join('\\')||curIt,curIt));
   isel.value=curIt;
@@ -1103,9 +1107,7 @@ async function showNewItem(parentId){
   try{
     const iters=await getIterations();
     _newIterRoot=iters[0]?iters[0].path.split('\\')[0]:(projectName||'');
-    const _t=new Date().toISOString().slice(0,10);
-    iters.forEach(it=>{const cur=it.start&&it.finish&&_t>=it.start.slice(0,10)&&_t<=it.finish.slice(0,10);
-      isel.appendChild(new Option(it.name+(cur?'  • current':''),it.path));});
+    iters.forEach(it=>{isel.appendChild(new Option(sprintOptLabel(it),it.path));});
   }catch(e){/* sprints are optional — leave just "(no sprint)" */}
   $('newitem-overlay').classList.add('show');
   $('n_title').focus();
