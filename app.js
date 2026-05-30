@@ -1746,12 +1746,12 @@ async function save(){
   }catch(e){setStatus('ERROR: '+e.message,true);refreshDirty();loadEnd();return;}
   loadEnd();
   recordEditUndo(id,body,parentChanged,before,beforeParent,v.parent);
-  if(cy){const n=cy.getElementById(String(id));if(n.nonempty()){if(body.title)n.data('title',body.title);if(body.state)n.data('state',body.state);if('priority'in body)n.data('priority',body.priority);}}
   if(selRow&&body.title)selRow.querySelector('.lab').textContent=`#${id} ${body.title}`;
   if(selRow&&body.state)selRow.querySelector('.badge').textContent=body.state;
   if(selRow&&('priority'in body)){let pc=selRow.querySelector('.prio');if(!pc){pc=document.createElement('span');pc.className='prio';selRow.insertBefore(pc,selRow.querySelector('.badge'));}pc.textContent='P'+body.priority;pc.style.background=prioColor(body.priority);}
   if(selRow&&('tags'in body)){selRow.querySelectorAll('.ttag').forEach(t=>t.remove());const bdg=selRow.querySelector('.badge');if(bdg){bdg.style.marginLeft='';const ts=tagList_(v.tags);if(ts.length){const show=ts.slice(0,3),extra=ts.length-show.length;bdg.style.marginLeft='0';show.forEach((t,i)=>{const tc=document.createElement('span');tc.className='ttag';tc.textContent=t;tc.style.background=personColor(t);tc.title=t;if(i===0)tc.style.marginLeft='auto';selRow.insertBefore(tc,bdg);});if(extra>0){const tc=document.createElement('span');tc.className='ttag';tc.textContent='+'+extra;tc.style.background='var(--muted)';selRow.insertBefore(tc,bdg);}}}}
   if(store.nodes[id]){const s=store.nodes[id];s.title=v.title;s.state=v.state;
+    if('assigned'in body)s.assigned=body.assigned;
     if('priority'in body)s.priority=body.priority;
     if('iteration'in body)s.iteration=body.iteration;
     if('start'in body)s.start=v.start;            // keep the store's schedule dates in sync so the
@@ -1759,6 +1759,10 @@ async function save(){
     if('due'in body)s.due=v.due;
     if('estimate'in body)s.est=(v.est===''?null:Number(v.est));
     if('tags'in body)s.tags=v.tags;}                // keep graph tag dots in sync
+  // mirror the now-fresh store record onto the cytoscape node so graph badges
+  // (state, tags, est, sprint, dates, assignee…) refresh on save without a full
+  // refresh() — cytoscape mappers re-paint automatically when e.data() changes.
+  if(cy&&store.nodes[id]){const n=cy.getElementById(String(id));if(n.nonempty())n.data(Object.assign({},store.nodes[id]));}
   orig={...orig,...v};if('priority'in body)orig.priority=body.priority;
   refreshDirty();setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
   // Auto-reload the list when the change can shift WHERE the item appears: sprint
