@@ -215,6 +215,9 @@ function retryDelay(resp, attempt) {
 
 async function req(method, url, body, ctype) {
   const headers = { Authorization: await authHeader() };
+  // Make ADO return a plain 401 instead of redirecting to its sign-in page —
+  // the redirect is what makes the browser pop its native login dialog.
+  headers["X-TFS-FedAuthRedirect"] = "Suppress";
   if (body !== undefined) headers["Content-Type"] = ctype || "application/json";
   const payload = body === undefined ? undefined : JSON.stringify(body);
   for (let attempt = 0; ; attempt++) {

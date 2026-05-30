@@ -42,10 +42,12 @@ Either way you then pick an **Organization** and **Project**.
 - **Organization** — your ADO org (the `<org>` in `dev.azure.com/<org>/...`).
 - **Project** — the ADO project (the `<project>` in `dev.azure.com/<org>/<project>/...`).
 
-After pasting the PAT, click **Load** (or press Enter): the extension lists the
-organizations that PAT can access and the projects inside the org you pick, so
-you can choose them from the dropdowns instead of typing. If your PAT is scoped
-too narrowly to enumerate them, just type the org/project names in directly.
+After pasting the PAT, the extension **automatically** lists the organizations
+that PAT can access and the projects inside the org you pick, so you can choose
+them from the dropdowns instead of typing (there's also a **Load** button to
+re-run it). If your PAT is scoped too narrowly to enumerate them, just type the
+org/project names in directly — you can read them from your
+`dev.azure.com/<org>/<project>` URL.
 
 All three fields are required — the extension ships with no built-in defaults,
 so it is not tied to any particular organization or project.

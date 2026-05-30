@@ -984,7 +984,8 @@ async function warnIfPatExpiring(){
    Lets the user CHOOSE an org/project after pasting a PAT instead of typing.
    Both calls can legitimately fail for a narrowly-scoped PAT, so the inputs
    stay free-text and we just fall back to manual entry on error. */
-const SETUP_HINT='Paste a PAT and click <b>Load</b> to pick your organization and project from the dropdowns, or just type them in.';
+const SETUP_HINT='Paste a PAT — your organizations and projects load automatically. Or just type them in.';
+let patAutoTimer=null;   // debounce for auto-loading org/project after a PAT is pasted
 function fillDatalist(id,items){
   const dl=$(id);if(!dl)return;
   dl.innerHTML=(items||[]).map(v=>`<option value="${String(v).replace(/"/g,'&quot;')}"></option>`).join('');
@@ -1079,6 +1080,10 @@ function wireSetup(){
   $('setup-save').onclick=saveSetup;
   $('setup-load').onclick=loadSetupOrgs;
   $('setup-pat').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadSetupOrgs();}});  // Enter on PAT loads orgs
+  $('setup-pat').addEventListener('input',()=>{   // auto-load org/project shortly after a PAT is pasted/typed
+    clearTimeout(patAutoTimer);
+    patAutoTimer=setTimeout(()=>{if(setupAuthMode==='pat'&&$('setup-pat').value.trim())loadSetupOrgs();},700);
+  });
   $('setup-org').addEventListener('change',loadSetupProjects);   // org chosen → fetch its projects
   $('setup-expiry').addEventListener('change',updateSetupExpiryInfo);
   $('setup-expiry').addEventListener('input',updateSetupExpiryInfo);
