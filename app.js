@@ -329,25 +329,29 @@ function gstyle(){return [
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
    'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'180px','font-size':'12px','text-valign':'center',
    'width':'210px','height':'label','padding':'12px',
-   // top-left badge row (cytoscape multi-background): child-count · priority · assignee (all bookmarks)
+   // top-left badge row (child-count · priority · assignee bookmarks) + state pill top-right
    'background-image':e=>[e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     e.data('assigned')?bookmarkUri(personColor(e.data('assigned')),personInitials(e.data('assigned')),'down'):BLANK_IMG],
+     e.data('assigned')?bookmarkUri(personColor(e.data('assigned')),personInitials(e.data('assigned')),'down'):BLANK_IMG,
+     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':['18px','18px','20px'],'background-height':['24px','24px','24px'],
-   'background-position-x':['4px','23px','42px'],'background-position-y':['0','0','0'],
+   'background-width':e=>['18px','18px','20px',(e.data('state')?statePillW(e.data('state')):1)+'px'],
+   'background-height':['24px','24px','24px','22px'],
+   'background-position-x':['4px','23px','42px','100%'],'background-position-y':['0','0','0','2px'],
    // Excalidraw sketch look: same-hue stroke (thicker for high priority)
    'border-width':e=>((e.data('priority')||9)<=2?3.5:1.8),'border-color':e=>nodeStroke(e.data('type'))}},
  // compound (parent) nodes: render as a translucent container with a header strip
  {selector:':parent',style:{
    'background-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','background-opacity':0.08,
-   // top-left badge row in the header strip: child-count · priority · assignee (all bookmarks)
+   // top-left badge row (child-count · priority · assignee bookmarks) + state pill top-right
    'background-image':e=>[e.data('childCount')>0?bookmarkUri('#2f6fed',e.data('childCount'),'down'):BLANK_IMG,
      e.data('priority')?bookmarkUri(prioColor(e.data('priority')),'P'+e.data('priority'),'down'):BLANK_IMG,
-     e.data('assigned')?bookmarkUri(personColor(e.data('assigned')),personInitials(e.data('assigned')),'down'):BLANK_IMG],
+     e.data('assigned')?bookmarkUri(personColor(e.data('assigned')),personInitials(e.data('assigned')),'down'):BLANK_IMG,
+     e.data('state')?statePillUri(e.data('state'),stateColor(e.data('state'))):BLANK_IMG],
    'background-image-containment':'inside','background-clip':'none','background-fit':'none',
-   'background-width':['18px','18px','20px'],'background-height':['24px','24px','24px'],
-   'background-position-x':['4px','23px','42px'],'background-position-y':['0','0','0'],
+   'background-width':e=>['18px','18px','20px',(e.data('state')?statePillW(e.data('state')):1)+'px'],
+   'background-height':['24px','24px','24px','22px'],
+   'background-position-x':['4px','23px','42px','100%'],'background-position-y':['0','0','0','2px'],
    'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':2,'border-opacity':0.7,
    'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
    'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
@@ -1231,6 +1235,15 @@ function bookmarkUri(color,text,dir){
   const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='52'>${body} font-size='${fs}' font-family='sans-serif' font-weight='700' fill='#ffffff' text-anchor='middle'>${esc(text)}</text></svg>`;
   return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
 }
+// readable text colour for a coloured chip (black on light fills, white on dark)
+function idealText(hex){const[r,g,b]=hexToRgb(hex);return (0.299*r+0.587*g+0.114*b)>150?'#1b2330':'#ffffff';}
+// state "pill": a rounded tag whose width grows with the label (capped)
+function statePillW(text){return Math.round(Math.min(150,Math.max(34,14+String(text).length*7.2)));}
+function statePillUri(text,color){const w=statePillW(text);
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='22'>`+
+    `<rect x='1' y='1' rx='10' ry='10' width='${w-2}' height='20' fill='${color}'/>`+
+    `<text x='${w/2}' y='15.5' font-size='12' font-family='sans-serif' font-weight='700' fill='${idealText(color)}' text-anchor='middle'>${esc(text)}</text></svg>`;
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);}
 function assigneePeople(){const seen=new Set(),out=[];   // current user first, then the deduped roster
   [currentUser,...assignees].forEach(a=>{if(a&&!seen.has(a)){seen.add(a);out.push(a);}});return out;}
 function assigneePickerProvider(){
