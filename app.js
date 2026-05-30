@@ -291,7 +291,7 @@ async function renderGraph(opts){
 }
 
 /* ---------- board (sprints) ---------- */
-const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
 const DONE_STATES=['Closed','Resolved','Removed','Done'];
 let iterCache=null;
 async function getIterations(){                     // sprint dates — fetched once, cached
@@ -618,24 +618,7 @@ function closePanel(){
   if(selRow){selRow.classList.remove('sel');selRow=null;}
   if(cy)cy.$(':selected').unselect();
 }
-function mdToHtml(src){
-  const h=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-  const inl=t=>h(t).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
-    .replace(/(^|[^*])\*([^*\s][^*]*)\*/g,'$1<i>$2</i>')
-    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g,'<a href="$2" target="_blank">$1</a>');
-  const ls=(src||'').replace(/\r\n/g,'\n').split('\n');let out='',ul=false,ol=false,code=false,buf='';
-  const close=()=>{if(ul){out+='</ul>';ul=false;}if(ol){out+='</ol>';ol=false;}};
-  for(const raw of ls){
-    if(/^```/.test(raw)){if(code){out+='<pre>'+h(buf)+'</pre>';buf='';code=false;}else{close();code=true;}continue;}
-    if(code){buf+=raw+'\n';continue;}
-    let m=raw.match(/^(#{1,4})\s+(.*)/);if(m){close();const l=m[1].length+2;out+=`<h${l}>${inl(m[2])}</h${l}>`;continue;}
-    m=raw.match(/^\s*[-*]\s+(.*)/);if(m){if(!ul){close();out+='<ul>';ul=true;}out+='<li>'+inl(m[1])+'</li>';continue;}
-    m=raw.match(/^\s*\d+\.\s+(.*)/);if(m){if(!ol){close();out+='<ol>';ol=true;}out+='<li>'+inl(m[1])+'</li>';continue;}
-    if(!raw.trim()){close();continue;}
-    close();out+='<p>'+inl(raw)+'</p>';
-  }
-  if(code)out+='<pre>'+h(buf)+'</pre>';close();return out;
-}
+const mdToHtml=AdoLib.mdToHtml;                     // pure, hardened renderer in lib.js
 function showDescPreview(on){
   const ta=$('s_desc'),pv=$('s_desc_prev'),tg=$('s_desc_toggle');
   if(on){pv.innerHTML=mdToHtml(ta.value);ta.style.display='none';pv.style.display='block';tg.textContent='edit';}

@@ -133,5 +133,28 @@
     return Math.round((exp - today) / 86400000);
   }
 
-  return { wiqlQuote, buildClauses, htmlEsc, htmlUnesc, htmlToText, textToHtml, businessSeconds, patDaysLeft };
+  // ---- markdown-lite -> HTML (used for work-item Description preview) ----
+  // Hardened: the inner escaper covers all five HTML-significant chars, and the
+  // link rule requires an https?:// scheme with no whitespace, emitting
+  // rel="noopener noreferrer". Non-matching links stay as escaped literal text.
+  function mdToHtml(src) {
+    const h = s => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    const inl = t => h(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+      .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    const ls = (src || "").replace(/\r\n/g, "\n").split("\n"); let out = "", ul = false, ol = false, code = false, buf = "";
+    const close = () => { if (ul) { out += "</ul>"; ul = false; } if (ol) { out += "</ol>"; ol = false; } };
+    for (const raw of ls) {
+      if (/^```/.test(raw)) { if (code) { out += "<pre>" + h(buf) + "</pre>"; buf = ""; code = false; } else { close(); code = true; } continue; }
+      if (code) { buf += raw + "\n"; continue; }
+      let m = raw.match(/^(#{1,4})\s+(.*)/); if (m) { close(); const l = m[1].length + 2; out += `<h${l}>${inl(m[2])}</h${l}>`; continue; }
+      m = raw.match(/^\s*[-*]\s+(.*)/); if (m) { if (!ul) { close(); out += "<ul>"; ul = true; } out += "<li>" + inl(m[1]) + "</li>"; continue; }
+      m = raw.match(/^\s*\d+\.\s+(.*)/); if (m) { if (!ol) { close(); out += "<ol>"; ol = true; } out += "<li>" + inl(m[1]) + "</li>"; continue; }
+      if (!raw.trim()) { close(); continue; }
+      close(); out += "<p>" + inl(raw) + "</p>";
+    }
+    if (code) out += "<pre>" + h(buf) + "</pre>"; close(); return out;
+  }
+
+  return { wiqlQuote, buildClauses, htmlEsc, htmlUnesc, htmlToText, textToHtml, businessSeconds, patDaysLeft, mdToHtml };
 });

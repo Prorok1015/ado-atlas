@@ -105,5 +105,28 @@ test("patDaysLeft: empty/invalid -> null", () => {
   assert.strictEqual(lib.patDaysLeft("not-a-date", now), null);
 });
 
+// ---- mdToHtml (markdown-lite -> safe HTML) ----
+test("mdToHtml: valid http link -> safe anchor", () => {
+  assert.ok(lib.mdToHtml("[x](https://ok.com)").includes('<a href="https://ok.com" target="_blank" rel="noopener noreferrer">x</a>'));
+});
+test("mdToHtml: javascript: link is not an anchor", () => {
+  assert.ok(!lib.mdToHtml("[x](javascript:alert(1))").includes("<a"));
+});
+test("mdToHtml: href quote-breakout cannot inject an attribute", () => {
+  const out = lib.mdToHtml('[x](https://a" onmouseover="alert(1)');
+  assert.ok(!/<a[^>]*\sonmouseover=/.test(out));
+});
+test("mdToHtml: bold renders", () => {
+  assert.ok(lib.mdToHtml("**bold**").includes("<b>bold</b>"));
+});
+test("mdToHtml: dash line becomes a list", () => {
+  assert.ok(lib.mdToHtml("- a").includes("<ul><li>a</li></ul>"));
+});
+test("mdToHtml: angle-bracket injection is escaped", () => {
+  const out = lib.mdToHtml("<img src=x onerror=alert(1)>");
+  assert.ok(out.includes("&lt;img"));
+  assert.ok(!out.includes("<img"));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
