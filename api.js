@@ -357,6 +357,28 @@ async function states(wtype) {
   }
 }
 
+// The work-item types actually defined in this project's process, with their
+// process colour — the single source of truth for the create dropdowns and the
+// type-colour map (so nothing about types is hard-coded). Disabled types, and
+// the "hidden" category (Code Review Request, Feedback Request/Response, Shared
+// Steps, … — the ones ADO itself keeps out of the New Work Item menu) are
+// dropped. The result keeps ADO's own ordering.
+async function workItemTypes() {
+  const proj = await projUrl();
+  let hidden = new Set();
+  try {
+    const h = await req("GET", `${proj}/_apis/wit/workitemtypecategories/Microsoft.HiddenCategory?${API_VERSION}`);
+    for (const t of (h.workItemTypes || [])) if (t && t.name) hidden.add(t.name);
+  } catch (_) { /* no hidden category exposed — keep them all */ }
+  const r = await req("GET", `${proj}/_apis/wit/workitemtypes?${API_VERSION}`);
+  return (r.value || [])
+    .filter(t => t && t.name && !t.isDisabled && !hidden.has(t.name))
+    .map(t => {
+      const c = String(t.color || "").replace(/^#/, "");
+      return { name: t.name, color: /^[0-9a-fA-F]{6}$/.test(c) ? ("#" + c) : "" };
+    });
+}
+
 // Members of all project teams (deduped). Falls back to AssignedTo distinct
 // values from recent items if the team API isn't permitted by the PAT scope.
 async function getAssignees() {
@@ -757,7 +779,7 @@ window.api = {
   // setup picker (org / project discovery)
   orgs, projects,
   // primitives
-  me, iterations, states, assignees: getAssignees, tags, browserUrl,
+  me, iterations, states, workItemTypes, assignees: getAssignees, tags, browserUrl,
   // work-hours config (active-time window)
   setWorkHours, getWorkHours,
   // list / search / children / parents

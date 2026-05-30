@@ -8,7 +8,9 @@
 //   3. Run the original initialisation (legend, filters, refresh).
 
 cytoscape.use(cytoscapeDagre);
-const TYPE_COLOR={Epic:'#8e44ad',Feature:'#e67e22','User Story':'#3498db',Bug:'#e74c3c',Task:'#7f8c8d',Issue:'#16a085'};
+// Type colours: seeded with sensible defaults for instant first paint, then
+// overwritten by the project's real process colours once they load from ADO.
+let TYPE_COLOR={Epic:'#8e44ad',Feature:'#e67e22','User Story':'#3498db',Bug:'#e74c3c',Task:'#7f8c8d',Issue:'#16a085'};
 const PRIO_COLOR={1:'#e74c3c',2:'#e67e22',3:'#f1c40f',4:'#95a5a6'};   // P1 urgent … P4 low
 const prioColor=p=>PRIO_COLOR[p]||'#5b6b7d';
 const STATE_COLOR={New:'#6b7785',Active:'#2f6fed',Resolved:'#1e7a44',Closed:'#5b6b7d',Removed:'#9b2c2c',Done:'#1e7a44'};
@@ -20,7 +22,11 @@ function orderStates(list){const seen=new Set(),out=[];
   STATE_ORDER.forEach(s=>{if(list.includes(s)&&!seen.has(s)){seen.add(s);out.push(s);}});
   list.forEach(s=>{if(!seen.has(s)){seen.add(s);out.push(s);}});
   return out;}
+// Offline fallback only — the real types come from ADO (api.workItemTypes),
+// loaded into `typeList` at boot. Used if that call ever fails.
 const TYPES=['Epic','Feature','User Story','Bug','Task','Issue'];
+let typeList=[];                          // [{name,color}] of the project's real work-item types
+const typeNames=()=>typeList.length?typeList.map(t=>t.name):TYPES;
 const $=id=>document.getElementById(id);
 let cy=null, mode='tree', edgeMode='hierarchy', rankDir='LR', cur=null, orig={}, selRow=null;
 let depCache={}, renderToken=0, boardToken=0;   // tokens drop superseded async renders
@@ -67,7 +73,7 @@ async function withLoad(label,fn){loadStart(label);try{return await fn();}finall
    Add a field: one entry here + one in FILTER_FIELDS in api.js. */
 const FILTERS=[
   {key:'state',label:'State',values:()=>projectStates.length?projectStates:['New','Active','Resolved','Closed','Removed']},
-  {key:'type',label:'Type',values:()=>TYPES},
+  {key:'type',label:'Type',values:()=>typeNames()},
   {key:'priority',label:'Priority',values:()=>[1,2,3,4],fmt:v=>'P'+v},
   {key:'assigned',label:'Assigned',values:()=>['me',...assignees]},
   {key:'iteration',label:'Sprint',values:()=>sprintPaths,fmt:p=>sprintNames[p]||p},
@@ -798,7 +804,7 @@ async function showNewItem(parentId){
   $('newitem-err').textContent='';
   $('n_title').value='';$('n_prio').value='';$('n_assigned').value='';
   $('n_parent').value=(parentId!=null?String(parentId):'');
-  $('n_type').value='Task';
+  fillTypeSelect('n_type','Task');           // ensure options match the project's real types
   // sprint dropdown — same source as the editor's, default to "(no sprint)"
   const isel=$('n_iter');isel.innerHTML='<option value="">(no sprint)</option>';
   try{
@@ -832,7 +838,29 @@ async function createNew(){
   openItem(r.id);                                  // jump straight into the new item's editor
 }
 
-function buildLegend(){$('legend').innerHTML=Object.entries(TYPE_COLOR).map(([k,c])=>`<span><i style="background:${c}"></i>${k}</span>`).join('');}
+/* ---------- work-item types (sourced from ADO — no hard-coded list) ---------- */
+async function loadTypes(){
+  let types=[];
+  try{types=await api.workItemTypes();}catch(e){types=[];}
+  if(types.length){
+    typeList=types;
+    types.forEach(t=>{if(t.color)TYPE_COLOR[t.name]=t.color;});   // adopt the project's real process colours
+  }else if(!typeList.length){
+    typeList=TYPES.map(n=>({name:n,color:TYPE_COLOR[n]||''}));     // offline fallback to the static defaults
+  }
+  fillTypeSelect('c_type','Task');fillTypeSelect('n_type','Task');
+  buildLegend();
+}
+// (Re)populate a type <select> from the loaded types, keeping the current
+// choice if it's still valid, else falling back to `preferred` then the first.
+function fillTypeSelect(id,preferred){
+  const sel=$(id);if(!sel)return;
+  const names=typeNames(),prev=sel.value;
+  sel.innerHTML='';names.forEach(n=>sel.appendChild(new Option(n,n)));
+  sel.value=names.includes(prev)?prev:(names.includes(preferred)?preferred:(names[0]||''));
+}
+
+function buildLegend(){$('legend').innerHTML=typeNames().map(k=>`<span><i style="background:${TYPE_COLOR[k]||'#95a5a6'}"></i>${esc(k)}</span>`).join('');}
 
 /* ---------- export the current (filtered) view ---------- */
 const EXPORT_COLS=['id','type','title','state','assigned','priority','iteration','parent','start','target','est','tags'];
@@ -1148,13 +1176,12 @@ function wireSetup(){
 let _booted=false;
 async function initialBoot(postSetup){
   if(_booted){                           // settings re-save: just reload data
-    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};
+    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];
     await loadIdentity();await refresh();warnIfPatExpiring();return;
   }
   _booted=true;
 
-  TYPES.forEach(t=>{$('c_type').appendChild(new Option(t,t));$('n_type').appendChild(new Option(t,t));});
-  $('c_type').value='Task';$('n_type').value='Task';
+  fillTypeSelect('c_type','Task');fillTypeSelect('n_type','Task');   // seed with fallback now; loadTypes() refills from ADO
   // switching view is render-only (no API): graph draws from the store, tree DOM persists
   $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>switchMode(b.dataset.m));
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderGraph();});
@@ -1293,9 +1320,10 @@ async function loadIdentity(){
 //   - Tags:  distinct tags sampled from recent items
 //   - Sprint: dated iterations (chip value = path, label = short name)
 async function loadFilterData(){
+  await loadTypes();                          // real work-item types first (drives the lines below + create dropdowns)
   await Promise.all([
     (async()=>{try{
-      const per=await Promise.all(TYPES.map(t=>api.states(t).catch(()=>[])));
+      const per=await Promise.all(typeNames().map(t=>api.states(t).catch(()=>[])));
       const all=[];per.forEach(arr=>arr.forEach(s=>{if(!all.includes(s))all.push(s);}));
       projectStates=all.length?orderStates(all):[];
     }catch(e){projectStates=[];}})(),

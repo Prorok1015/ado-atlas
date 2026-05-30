@@ -72,8 +72,9 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
   change its state), or **by Assignee**. Dragging also works to change sprint
   (by-Sprint) or reassign (by-Assignee).
 - **Filters** (chip panel): State, Type, Priority, Assigned, **Sprint**, and
-  **Tags**. State and Tag values are read from your project, sprints from its
-  iterations. Click a chip once to include, again to exclude.
+  **Tags**. State, **Type**, and Tag values are read from your project (the Type
+  list is your process's real work-item types — no hard-coded list), sprints
+  from its iterations. Click a chip once to include, again to exclude.
 - Large result sets are capped at 2000 items; when that happens the status bar
   shows `· capped, narrow the filters` so you know you're not seeing everything.
 - **Export** (toolbar): download the current filtered view as **CSV** or **JSON**.
@@ -98,8 +99,10 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 ## Creating a work item
 
 - **✚ New** (toolbar) — create a brand-new item from scratch. Pick a **Type**
-  and **Title** (required); **Priority**, **Assignee**, **Sprint**, and an
-  optional **Parent** id are all optional — leave Parent blank for a top-level
+  (the dropdown lists your process's real work-item types, fetched from ADO —
+  not a hard-coded set) and **Title** (required); **Priority**, **Assignee**,
+  **Sprint**, and an optional **Parent** id are all optional — leave Parent
+  blank for a top-level
   item. On save the list refreshes and the new item opens in the editor.
   Shortcuts: press **N** anywhere (when not typing) to open it, **Ctrl/Cmd+Enter**
   to submit, **Esc** to cancel. Also reachable from the **Command palette**
