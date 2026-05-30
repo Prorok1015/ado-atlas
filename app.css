@@ -151,7 +151,8 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 .btn.busy::after{content:'';position:absolute;left:50%;top:50%;width:11px;height:11px;margin:-6px 0 0 -6px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 #refreshbtn.spinning .ricon{display:inline-block;animation:spin .8s linear infinite}
 a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
-.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-left:auto}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+#export{margin-left:auto}   /* pin the Export + PAT + legend group to the right edge */
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 /* ---- overflow "⋯" display-options popover (auto-refresh, timezone, work hours) ---- */
 .popwrap{position:relative;display:inline-flex}
