@@ -1251,7 +1251,7 @@ function editorValues(){return {title:$('s_title').value,state:$('s_state').valu
   iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};}
 // editor tags: chips with × remove + a "＋" bubble that reveals an inline input;
 // the input commits on Enter/comma/blur and hides again. value() is ADO's "a; b".
-const tagsEditor=(function(){let cur=[],adding=false;
+const tagsEditor=(function(){let cur=[],adding=false,committing=false;
   const norm=s=>String(s||'').split(/[;,]/).map(t=>t.trim()).filter(Boolean);
   const uniq=a=>{const seen=new Set(),o=[];a.forEach(t=>{const k=t.toLowerCase();if(!seen.has(k)){seen.add(k);o.push(t);}});return o;};
   function commit(v){const a=norm(v);if(a.length){cur=uniq(cur.concat(a));refreshDirty();}}
@@ -1263,19 +1263,18 @@ const tagsEditor=(function(){let cur=[],adding=false;
       : `<button type="button" class="tagadd" id="s_tagplus" title="add a tag">＋</button>`;
     box.innerHTML=html;
     box.querySelectorAll('b[data-i]').forEach(x=>{
-      x.onmousedown=e=>e.preventDefault();   // keep input focus when clicking × (prevents blur → DOM rebuild race)
-      x.onclick=()=>{cur.splice(+x.dataset.i,1);render();refreshDirty();};
+      x.onmousedown=e=>e.preventDefault();
+      x.onclick=()=>{committing=true;cur.splice(+x.dataset.i,1);render();committing=false;refreshDirty();};
     });
     if(adding){const inp=$('s_taginp'),ok=$('s_tagok');inp.focus();
-      let committing=false;
       function doCommit(){committing=true;commit(inp.value);inp.value='';render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();committing=false;}
-      ok.onmousedown=e=>e.preventDefault();   // keep focus on input when clicking ✓
+      ok.onmousedown=e=>e.preventDefault();
       ok.onclick=doCommit;
       inp.addEventListener('keydown',e=>{
         if(e.key==='Enter'||e.key===','){e.preventDefault();doCommit();}
         else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();adding=false;render();}
-        else if(e.key==='Backspace'&&!inp.value&&cur.length){cur.pop();render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();refreshDirty();}});
-      inp.addEventListener('change',()=>{if(inp.value.trim())doCommit();});   // datalist option selected by mouse
+        else if(e.key==='Backspace'&&!inp.value&&cur.length){committing=true;cur.pop();render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();committing=false;refreshDirty();}});
+      inp.addEventListener('change',()=>{if(inp.value.trim())doCommit();});
       inp.addEventListener('blur',()=>{if(!committing){commit(inp.value);adding=false;render();}});
     }else{const p=$('s_tagplus');if(p)p.onclick=()=>{adding=true;render();};}
   }
@@ -2538,6 +2537,7 @@ async function initialBoot(postSetup){
     document.addEventListener('mouseup',()=>{if(drag){drag=false;rz.classList.remove('active');document.body.style.cursor='';if(cy)cy.resize();try{localStorage.setItem('ado.sideWidth',side.style.width);}catch(e){}}});
   })();
   $('s_save').onclick=save;$('s_comment').onclick=toggleComment;$('s_close').onclick=closePanel;
+  $('s_customize').onclick=()=>{setCustomizeTab('side');showCustomize();};   // gear in the panel header → open Customize on the sidebar tab
   $('s_desc_toggle').onclick=()=>showDescPreview($('s_desc').style.display!=='none');
   $('cm_post').onclick=postComment;$('cm_cancel').onclick=()=>{$('comment_form').style.display='none';};
   $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
