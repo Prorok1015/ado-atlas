@@ -83,6 +83,7 @@ async function setConfig(patch) {
 }
 async function clearConfig() {
   await chrome.storage.local.remove(STORE_KEYS);
+  try { const all = await chrome.storage.local.get(null); const snaps = Object.keys(all).filter(k => k.startsWith("snap:")); if (snaps.length) await chrome.storage.local.remove(snaps); } catch (_) {}
 }
 
 // ---------- HTTP ----------
@@ -669,4 +670,6 @@ window.api = {
   item, updateItem, comment, comments, history, createItem, setParent,
   // time
   times, timeline,
+  // utils
+  pool, chunk200,
 };

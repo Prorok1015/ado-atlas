@@ -11,6 +11,7 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; connect-src https://dev.azure.com https://app.vssps.visualstudio.com" },
   "action": {
     "default_title": "ADO Atlas",
     "default_icon": {

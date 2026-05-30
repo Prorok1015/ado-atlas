@@ -180,16 +180,15 @@ function buildBulkControls(){            // (re)fill the bar's dropdowns from lo
 }
 async function bulkApply(field,val){     // field: state | iteration | assigned | priority
   const ids=[...bulkSel];if(!ids.length)return;
+  if(!confirm('Apply '+field+' = "'+val+'" to '+ids.length+' item(s)?'))return;
   if(field==='assigned'&&val==='me')val=currentUser||'me';
-  let ok=0,fail=0,idx=0;
   loadStart(`updating ${ids.length} item(s)…`);
-  const worker=async()=>{while(idx<ids.length){const id=ids[idx++];
-    try{const body={};body[field]=(field==='priority'?Number(val):val);await api.updateItem(id,body);ok++;}
-    catch(e){fail++;}}};
-  await Promise.all(Array.from({length:Math.min(6,ids.length)},worker));   // 6-wide pool
+  const results=await api.pool(ids.map(wid=>async()=>{try{const body={};body[field]=(field==='priority'?Number(val):val);await api.updateItem(wid,body);return true;}catch(e){return false;}}),6);
+  const ok=results.filter(Boolean).length,fail=results.length-ok;
   loadEnd();
   setStatus(`bulk ${field}: ${ok} updated`+(fail?`, ${fail} failed`:''),!!fail);
   await refresh();                       // rebuild from server (prunes selection to what still matches)
+  if(fail)setStatus('bulk '+field+': '+ok+' updated, '+fail+' failed',true);
 }
 
 /* ---------- graph ---------- */
@@ -715,6 +714,7 @@ async function save(){
   if(v.est!==orig.est)body.estimate=v.est;
   const parentChanged=v.parent!==orig.parent;   // re-parent is a relations PATCH, handled separately
   if(!Object.keys(body).length&&!parentChanged){setStatus('no changes');return;}
+  if(parentChanged&&v.parent!==''&&Number(v.parent)===id){setStatus('A work item cannot be its own parent',true);return;}
   const sv=$('s_save');sv.disabled=true;sv.textContent='Saving…';loadStart('saving…');
   let r;
   try{
@@ -856,6 +856,7 @@ async function loadSnapshot(){
     const key=await snapKey();if(!key)return false;
     const r=await chrome.storage.local.get([key]);const d=r[key];
     if(!d||!d.roots||!d.roots.length)return false;
+    if(d.ts&&(Date.now()-d.ts)>86400000)return false;   // ignore snapshots older than 24h
     store.nodes=d.nodes||{};store.roots=d.roots;store.top=d.top||d.roots;store.kids=d.kids||{};store.expanded=new Set(d.expanded||[]);
     renderTree();                              // instant tree from the cached snapshot
     const age=Math.round((Date.now()-(d.ts||Date.now()))/60000);
