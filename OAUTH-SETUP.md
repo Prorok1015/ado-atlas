@@ -44,8 +44,11 @@ minutes. After that, signing in is one click.
 
 1. App registration → **Overview** → copy the **Application (client) ID**.
 2. In the extension's **Microsoft sign-in** tab, paste the **Application (client)
-   ID**. Leave **Tenant** as `organizations` (or enter your tenant ID to restrict
-   to one org).
+   ID** and pick the **Account type / tenant** from the dropdown:
+   *Work or school* (`organizations`), *Any Microsoft account* (`common`),
+   *Personal only* (`consumers`), or *Specific tenant ID* (paste a tenant GUID to
+   pin one organization). It must match the **Supported account types** you chose
+   in step 1.
 3. Click **Sign in with Microsoft**, complete the Microsoft prompt and consent.
 4. Pick your **organization** and **project** (they auto-populate after sign-in)
    → **Save & Connect**.

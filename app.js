@@ -920,8 +920,15 @@ function setAuthPane(mode){
   $('auth-oauth').style.display=setupAuthMode==='oauth'?'block':'none';
   $('auth-mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.am===setupAuthMode));
 }
+function oauthTenantValue(){   // resolve the tenant dropdown (preset name or the custom GUID)
+  const m=$('oauth-tenant-mode').value;
+  return m==='custom'?$('oauth-tenant-id').value.trim():m;
+}
+function updateTenantField(){
+  $('oauth-tenant-id').style.display=$('oauth-tenant-mode').value==='custom'?'block':'none';
+}
 async function doOauthSignIn(){
-  const cid=$('oauth-client').value.trim(),tenant=$('oauth-tenant').value.trim();
+  const cid=$('oauth-client').value.trim(),tenant=oauthTenantValue();
   if(!cid){$('oauth-status').textContent='Enter the Application (client) ID first.';return;}
   const btn=$('oauth-signin');btn.disabled=true;btn.textContent='Signing in…';$('setup-err').textContent='';$('oauth-status').textContent='';
   try{
@@ -940,7 +947,11 @@ function showSetup(cancellable){
   cfg.then(c=>{
     $('setup-pat').value=c.pat||'';$('setup-org').value=c.org||'';$('setup-project').value=c.project||'';
     $('setup-expiry').value=c.patExpiry||'';updateSetupExpiryInfo();
-    $('oauth-client').value=c.oauthClientId||'';$('oauth-tenant').value=c.oauthTenant||'';
+    $('oauth-client').value=c.oauthClientId||'';
+    const t=c.oauthTenant||'organizations';
+    if(['organizations','common','consumers'].includes(t)){$('oauth-tenant-mode').value=t;$('oauth-tenant-id').value='';}
+    else{$('oauth-tenant-mode').value='custom';$('oauth-tenant-id').value=t;}
+    updateTenantField();
     setAuthPane(c.authMode==='oauth'?'oauth':'pat');
     $('oauth-status').textContent=(c.authMode==='oauth'&&c.oauthAccess)?(currentUser?('✓ Signed in as '+currentUser):'✓ Signed in'):'';
     const signedIn=(c.authMode==='oauth')?!!c.oauthAccess:!!c.pat;
@@ -1073,6 +1084,7 @@ function wireSetup(){
   $('setup-expiry').addEventListener('input',updateSetupExpiryInfo);
   $('auth-mode').querySelectorAll('button').forEach(b=>b.onclick=()=>setAuthPane(b.dataset.am));
   $('oauth-signin').onclick=doOauthSignIn;
+  $('oauth-tenant-mode').onchange=updateTenantField;
   $('oauth-copy').onclick=()=>{const i=$('oauth-redirect');try{navigator.clipboard.writeText(i.value);$('oauth-copy').textContent='copied';setTimeout(()=>{$('oauth-copy').textContent='copy';},1200);}catch(e){if(i.select)i.select();}};
   $('setup-cancel').onclick=hideSetup;
   $('settingsbtn').onclick=()=>showSetup(true);

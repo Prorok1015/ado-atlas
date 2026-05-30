@@ -74,8 +74,11 @@
   <h2>4. Connect the extension</h2>
   <ol>
     <li>App registration → <b>Overview</b> → copy the <b>Application (client) ID</b>.</li>
-    <li>In the extension's <b>Microsoft sign-in</b> tab, paste the <b>Application (client) ID</b>.
-        Leave <b>Tenant</b> as <code>organizations</code> (or enter your tenant ID to restrict to one org).</li>
+    <li>In the extension's <b>Microsoft sign-in</b> tab, paste the <b>Application (client) ID</b> and pick the
+        <b>Account type / tenant</b> from the dropdown: <i>Work or school</i> (<code>organizations</code>),
+        <i>Any Microsoft account</i> (<code>common</code>), <i>Personal only</i> (<code>consumers</code>), or
+        <i>Specific tenant ID</i> (paste a tenant GUID to pin one organization). It must match the
+        <b>Supported account types</b> you chose in step 1.</li>
     <li>Click <b>Sign in with Microsoft</b>, complete the prompt and consent.</li>
     <li>Pick your <b>organization</b> and <b>project</b> (they auto-populate after sign-in) → <b>Save &amp; Connect</b>.</li>
   </ol>

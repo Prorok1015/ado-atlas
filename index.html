@@ -138,8 +138,14 @@
          <a href="https://prorok1015.github.io/ado-atlas/oauth-setup.html" target="_blank" rel="noopener noreferrer">the setup guide</a>.</p>
       <label>Application (client) ID</label>
       <input id="oauth-client" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off">
-      <label>Tenant <span style="color:var(--muted);font-weight:400">(optional — default: organizations)</span></label>
-      <input id="oauth-tenant" placeholder="organizations" autocomplete="off">
+      <label>Account type / tenant</label>
+      <select id="oauth-tenant-mode" style="width:100%">
+        <option value="organizations">Work or school account (organizations)</option>
+        <option value="common">Any Microsoft account (common)</option>
+        <option value="consumers">Personal account only (consumers)</option>
+        <option value="custom">Specific tenant ID…</option>
+      </select>
+      <input id="oauth-tenant-id" placeholder="tenant ID (GUID)" autocomplete="off" style="display:none">
       <label>Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact value in your Entra app)</span></label>
       <div style="display:flex;gap:6px">
         <input id="oauth-redirect" readonly style="flex:1">
