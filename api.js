@@ -357,6 +357,43 @@ async function states(wtype) {
   }
 }
 
+// The project's default team name (for assigning a freshly-created iteration so
+// it shows up in ADO's native sprint planning too). Null if it can't be read.
+async function defaultTeamName() {
+  const o = await orgUrl();
+  const { project } = await getConfig();
+  try {
+    const p = await req("GET", `${o}/_apis/projects/${encodeURIComponent(project)}?${API_VERSION}`);
+    return (p.defaultTeam && (p.defaultTeam.name || p.defaultTeam.id)) || null;
+  } catch (_) { return null; }
+}
+
+// Create a sprint = a dated iteration classification node under the project root
+// (which is exactly what iterations() reads, so it appears on the board). Then,
+// best-effort, add it to the default team's iterations so native ADO planning
+// sees it too. A 403 here means the caller lacks "Create child nodes" rights.
+async function createSprint({ name, start, finish }) {
+  if (!name) throw new Error("sprint name required");
+  const proj = await projUrl();
+  const toIso = d => (d && d.length === 10) ? d + "T00:00:00Z" : (d || null);
+  const attributes = {};
+  if (start) attributes.startDate = toIso(start);
+  if (finish) attributes.finishDate = toIso(finish);
+  const node = await req("POST", `${proj}/_apis/wit/classificationnodes/iterations?${API_VERSION}`,
+    { name, attributes }, "application/json");
+  try {
+    const team = await defaultTeamName(), ident = node && node.identifier;
+    if (team && ident) {
+      const o = await orgUrl();
+      const { project } = await getConfig();
+      await req("POST",
+        `${o}/${encodeURIComponent(project)}/${encodeURIComponent(team)}/_apis/work/teamsettings/iterations?${API_VERSION}`,
+        { id: ident }, "application/json");
+    }
+  } catch (_) { /* team assignment is optional — the node already exists */ }
+  return node;
+}
+
 // The work-item types actually defined in this project's process, with their
 // process colour — the single source of truth for the create dropdowns and the
 // type-colour map (so nothing about types is hard-coded). Disabled types, and
@@ -786,7 +823,7 @@ window.api = {
   // setup picker (org / project discovery)
   orgs, projects,
   // primitives
-  me, iterations, states, workItemTypes, assignees: getAssignees, tags, browserUrl,
+  me, iterations, states, workItemTypes, createSprint, assignees: getAssignees, tags, browserUrl,
   // work-hours config (active-time window)
   setWorkHours, getWorkHours,
   // list / search / children / parents

@@ -156,6 +156,25 @@
   </div>
 </div>
 
+<!-- New sprint modal: opened from the "＋ New sprint" column on Board → By Sprint.
+     Creates a dated iteration; needs permission to add iteration nodes in ADO. -->
+<div id="sprint-overlay">
+  <div id="sprint-box">
+    <h1>New sprint</h1>
+    <label>Name</label>
+    <input id="sp_name" placeholder="e.g. Sprint 7" style="width:100%" autocomplete="off">
+    <div class="row">
+      <div><label>Start</label><input id="sp_start" type="date" style="width:100%"></div>
+      <div><label>Finish</label><input id="sp_finish" type="date" style="width:100%"></div>
+    </div>
+    <div id="sprint-err"></div>
+    <div id="sprint-actions">
+      <button class="btn save" id="sp_create" title="Ctrl/Cmd+Enter">Create sprint</button>
+      <button class="btn" id="sp_cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- First-run / settings modal. The whole UI is invisible until the PAT
      check passes (handled by app.js boot). -->
 <div id="setup-overlay">

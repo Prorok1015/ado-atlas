@@ -42,6 +42,8 @@ let boardBusy=false;                            // true while a card move PATCH 
 let pdrag=null, suppressClick=false;            // custom pointer-based drag for board cards
 let boardScroll=null;                           // saved board scroll to restore from the sprint view
 let boardGroup='sprint';                        // board grouping: 'sprint' | 'assignee' | 'state'
+let canCreateSprint=true;                       // show the "add sprint" column until a create is denied (403)
+const newSprints=new Set();                     // sprint paths created this session — stay visible while still empty
 let tzOffset=Math.round(-new Date().getTimezoneOffset()/60);   // UTC offset for work-hours (default: browser TZ)
 let sprintGroup='none';                         // expanded-sprint grouping: 'none' | 'assignee'
 let currentUser='';                      // display name of the PAT owner (for the "me" shortcuts)
@@ -368,7 +370,7 @@ async function renderBoard(){
     const it=k==='__none__'?null:info[k];const fin=it?it.finish:null;
     const colItems=groups.get(k)||[];
     const col=document.createElement('div');col.className='bcol';
-    if(k!=='__none__'&&!colItems.length)col.classList.add('empty-sprint');   // hidden until a drag starts
+    if(k!=='__none__'&&!colItems.length&&!newSprints.has(k))col.classList.add('empty-sprint');   // hidden until a drag starts (but keep a just-created one visible)
     if(it&&it.start&&it.finish&&today>=it.start.slice(0,10)&&today<=it.finish.slice(0,10))col.classList.add('current');
     const h=document.createElement('div');h.className='bhead';
     h.innerHTML=(k==='__none__'?'No sprint':`${esc(it.name)} <small>${(it.start||'').slice(0,10)}→${(fin||'').slice(0,10)}</small>`)+'<br>'+colMeta(colItems);
@@ -379,6 +381,11 @@ async function renderBoard(){
     col.dataset.field='iteration';col.dataset.val=(k==='__none__')?root:k;   // drop = change sprint
     col.append(h,wrap);el.appendChild(col);
   });
+  if(canCreateSprint){                              // phantom "add sprint" column at the right end
+    const add=document.createElement('div');add.className='bcol addcol';add.title='create a new sprint';
+    add.innerHTML='<div class="addinner"><span class="plus">＋</span>New sprint</div>';
+    add.onclick=showSprintModal;el.appendChild(add);
+  }
   setStatus(`${items.length} items`+capNote());annotateBoardTimes();
 }
 function renderBoardByAssignee(el,items){
@@ -978,6 +985,34 @@ async function createNew(){
   openItem(r.id);                                  // jump straight into the new item's editor
 }
 
+/* ---------- create a sprint (Board → By Sprint "＋" column) ---------- */
+function showSprintModal(){
+  $('sprint-err').textContent='';
+  $('sp_name').value='';$('sp_start').value='';$('sp_finish').value='';
+  $('sprint-overlay').classList.add('show');
+  $('sp_name').focus();
+}
+function closeSprintModal(){$('sprint-overlay').classList.remove('show');}
+async function createSprintSubmit(){
+  const name=$('sp_name').value.trim();
+  if(!name){$('sprint-err').textContent='Sprint name is required.';$('sp_name').focus();return;}
+  const start=$('sp_start').value,finish=$('sp_finish').value;
+  if(start&&finish&&finish<start){$('sprint-err').textContent='Finish date is before the start date.';return;}
+  const btn=$('sp_create');btn.disabled=true;btn.textContent='Creating…';loadStart('creating sprint…');
+  try{
+    await api.createSprint({name,start,finish});
+    iterCache=null;                                // sprint list changed → drop the cache
+    newSprints.add((projectName||'')+'\\'+name);   // keep the (still-empty) new column visible
+    closeSprintModal();
+    setStatus(`sprint "${name}" created`);
+    await refresh();                               // re-fetch iterations + re-render the board
+  }catch(e){
+    if(/HTTP 403/.test(e.message)){canCreateSprint=false;closeSprintModal();
+      setStatus("you don't have permission to create sprints",true);if(mode==='board')renderBoard();}
+    else $('sprint-err').textContent='ERROR: '+e.message;
+  }finally{btn.disabled=false;btn.textContent='Create sprint';loadEnd();}
+}
+
 /* ---------- work-item types (sourced from ADO — no hard-coded list) ---------- */
 async function loadTypes(){
   let types=[];
@@ -1329,7 +1364,7 @@ let _booted=false;
 async function initialBoot(postSetup){
   updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
-    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;
+    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;canCreateSprint=true;newSprints.clear();
     await loadIdentity();await refresh();warnIfPatExpiring();return;
   }
   _booted=true;
@@ -1445,6 +1480,13 @@ async function initialBoot(postSetup){
   $('newitem-box').addEventListener('keydown',e=>{
     if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(parentNew.isOpen())parentNew.close();else closeNewItem();}
     else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();createNew();}});
+  // new-sprint modal (Board → By Sprint "＋" column)
+  $('sp_create').onclick=createSprintSubmit;$('sp_cancel').onclick=closeSprintModal;
+  $('sprint-overlay').addEventListener('mousedown',e=>{if(e.target===$('sprint-overlay'))closeSprintModal();});
+  $('sprint-box').addEventListener('keydown',e=>{
+    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeSprintModal();}
+    else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();createSprintSubmit();}});
+  $('sp_name').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createSprintSubmit();}});
   try{const sf=localStorage.getItem('ado.filters');if(sf)Object.assign(fstate,JSON.parse(sf));
     const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
     if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
