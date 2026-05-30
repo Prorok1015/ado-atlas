@@ -542,12 +542,16 @@ function renderSprint(path){
     const row=document.createElement('div');row.className='grow';row.dataset.id=n.id;
     const lab=document.createElement('div');lab.className='glabel';lab.textContent=`#${n.id} ${n.title}`;lab.title=n.title;
     const track=document.createElement('div');track.className='gtrack';track.style.backgroundSize=(100/N)+'% 100%';
-    const bs=n.start?Date.parse(n.start.slice(0,10)):s0, be=n.target?Date.parse(n.target.slice(0,10)):f0;
+    const ps=d=>d?Date.parse(d.slice(0,10)):null;
+    let bs=ps(n.start),be=ps(n.target||n.due),soft=false;
+    if(bs==null&&be==null){bs=s0;be=f0;soft=true;}   // no own dates → span the sprint (hatched)
+    else{if(bs==null)bs=be;if(be==null)be=bs;}        // a single date → a point bar
+    if(be<bs)be=bs;
     let si=Math.round((bs-s0)/DAY),ei=Math.round((be-s0)/DAY);
     si=Math.max(0,Math.min(si,N-1));ei=Math.max(si,Math.min(ei,N-1));
-    const bar=document.createElement('div');bar.className='gbar';
+    const bar=document.createElement('div');bar.className='gbar'+(soft?' soft':'');
     bar.style.left=(si/N*100)+'%';bar.style.width=((ei-si+1)/N*100)+'%';
-    bar.style.background=tyColor(n.type);
+    bar.style.backgroundColor=tyColor(n.type);
     bar.textContent=(n.priority?'P'+n.priority+' ':'')+'#'+n.id+' '+n.title;bar.title=n.title;
     bar.onclick=()=>openItem(n.id);
     track.appendChild(bar);
@@ -676,7 +680,7 @@ async function renderTimeline(){
   // rows
   const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${tyColor(n.type)}"></i><span class="tllab">#${n.id} ${esc(n.title)}</span></div>`;
   const rowHTML=n=>{const t=n._tl,tip=`${n.start||(t.soft?'sprint start':'?')} → ${(n.target||n.due)||(t.soft?'sprint finish':'?')}`;
-    return `<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background:${tyColor(n.type)}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
+    return `<div class="tlrow" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${esc(tip)}">#${n.id} ${esc(n.title)}</div></div></div>`;};
   const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
   const groupHead=(k,arr)=>{const gs=Math.min(...arr.map(n=>n._tl.s)),ge=Math.max(...arr.map(n=>n._tl.e));
     return `<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">${esc(k)} · ${arr.length}</div><div class="tlgrouptrack" style="width:${W}px"><div class="tlgroupbar" style="left:${xOf(gs)}px;width:${wOf(gs,ge)}px"></div></div></div>`;};

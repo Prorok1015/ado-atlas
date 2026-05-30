@@ -83,6 +83,7 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .gtrack{position:relative;flex:1;height:26px;background-image:linear-gradient(90deg,var(--line) 1px,transparent 1px);background-repeat:repeat}
 .gbar{position:absolute;top:3px;bottom:3px;border-radius:5px;color:#fff;font-size:11px;line-height:20px;padding:0 7px;overflow:hidden;white-space:nowrap;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .gbar:hover{filter:brightness(1.1)}
+.gbar.soft{opacity:.6;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0 5px,transparent 5px 10px)}
 .gtoday{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#e74c3c;opacity:.7;pointer-events:none;z-index:3}
 .gdays>div.gtodaycol{color:#e74c3c;font-weight:700}
 .gright{width:120px;flex:none;font-size:10px;color:var(--muted);text-align:right;padding:0 6px;white-space:nowrap}
