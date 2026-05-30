@@ -108,9 +108,10 @@ HTTP 401 and the setup modal reopens automatically asking for a fresh token.
 - **✚ New** (toolbar) — create a brand-new item from scratch. Pick a **Type**
   (the dropdown lists your process's real work-item types, fetched from ADO —
   not a hard-coded set) and **Title** (required); **Priority**, **Assignee**,
-  **Sprint**, and an optional **Parent** id are all optional — leave Parent
-  blank for a top-level
-  item. On save the list refreshes and the new item opens in the editor.
+  **Sprint**, and **Parent** are all optional. The Parent uses the same
+  searchable card picker as the editor — search by id/title or leave it
+  **(no parent)** for a top-level item. On save the list refreshes and the new
+  item opens in the editor.
   Shortcuts: press **N** anywhere (when not typing) to open it, **Ctrl/Cmd+Enter**
   to submit, **Esc** to cancel. Also reachable from the **Command palette**
   (Ctrl/Cmd-K → "New work item").

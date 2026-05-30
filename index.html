@@ -86,12 +86,12 @@
     <label>Parent</label>
     <input type="hidden" id="s_parent">
     <div class="prow-field">
-      <button type="button" class="btn" id="s_parent_card" title="click to change parent"></button>
+      <button type="button" class="btn pcard" id="s_parent_card" title="click to change parent"></button>
       <button type="button" class="btn" id="s_parent_open" title="open parent" style="padding:6px 9px">↗</button>
     </div>
     <div id="s_parent_pick" class="ppick" style="display:none">
-      <input id="s_parent_search" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
-      <div id="s_parent_results"></div>
+      <input id="s_parent_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+      <div id="s_parent_results" class="presults"></div>
     </div>
     <div class="row">
       <div><label>Start</label><input id="s_start" type="date"></div>
@@ -137,9 +137,15 @@
     </div>
     <label>Title</label>
     <input id="n_title" placeholder="work item title" style="width:100%">
-    <div class="row">
-      <div><label>Assigned</label><div style="display:flex;gap:4px"><input id="n_assigned" list="assignees" style="flex:1"><button class="btn" id="n_me" title="assign to me" style="padding:6px 9px">me</button></div></div>
-      <div><label>Parent</label><input id="n_parent" type="number" min="0" placeholder="id (blank = top-level)" style="width:100%"></div>
+    <div><label>Assigned</label><div style="display:flex;gap:4px"><input id="n_assigned" list="assignees" style="flex:1"><button class="btn" id="n_me" title="assign to me" style="padding:6px 9px">me</button></div></div>
+    <label>Parent</label>
+    <input type="hidden" id="n_parent">
+    <div class="prow-field">
+      <button type="button" class="btn pcard" id="n_parent_card" title="click to choose a parent"></button>
+    </div>
+    <div id="n_parent_pick" class="ppick" style="display:none">
+      <input id="n_parent_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+      <div id="n_parent_results" class="presults"></div>
     </div>
     <label>Sprint</label><select id="n_iter" style="width:100%"></select>
     <div id="newitem-err"></div>
