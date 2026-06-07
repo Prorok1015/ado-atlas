@@ -385,6 +385,26 @@
   </div>
 </div>
 
+<!-- Custom link insert modal -->
+<div id="link-overlay" class="modal-backdrop" style="display:none">
+  <div id="link-box">
+    <h1 id="link-dialog-title">Insert Link</h1>
+    <div>
+      <label for="link-dialog-text">Text to display</label>
+      <input id="link-dialog-text" placeholder="link text" autocomplete="off">
+    </div>
+    <div>
+      <label for="link-dialog-url">Address (URL)</label>
+      <input id="link-dialog-url" placeholder="https://example.com" autocomplete="off">
+    </div>
+    <div id="link-dialog-err" style="color:#e06c75; font-size:11px; margin-top:2px;"></div>
+    <div id="link-actions">
+      <button class="btn" id="link-cancel">Cancel</button>
+      <button class="btn save" id="link-ok">Insert</button>
+    </div>
+  </div>
+</div>
+
 <!-- Command palette (Ctrl/Cmd+K): fuzzy-find loaded items + quick actions. -->
 <div id="palette">
   <div id="palette-box">

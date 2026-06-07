@@ -610,7 +610,7 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .prow-field{display:flex;gap:4px;align-items:stretch}
 .pcard{flex:1;display:flex;align-items:center;gap:6px;text-align:left;overflow:hidden;min-height:32px;padding:5px 9px}
 /* line every panel field up with the CardPicker card (32px tall) so rows align */
-#side select,#side>input,#side .row input,#newitem-box select,#newitem-box input,#child_form input,#child_form select{min-height:32px}
+#side select,#side>input,#side .row input,#newitem-box select,#newitem-box input,#child_form input,#child_form select,#link-box input{min-height:32px}
 .prow-field .btn{min-height:32px}
 .pcard .pcid{color:var(--muted);flex:none;font-size:12px}
 .pcard .pctitle{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -703,16 +703,16 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 #customize-actions{display:flex;gap:8px;margin-top:14px}
 #customize-actions .btn{flex:1;padding:7px 12px;font-size:13px}
 
-/* ---- custom confirmation modal ---- */
-#confirm-overlay {
+/* ---- custom confirmation / link modals ---- */
+#confirm-overlay, #link-overlay {
   z-index: 20000; /* above everything else, including settings / customize overlays */
 }
-#confirm-overlay.show {
+#confirm-overlay.show, #link-overlay.show {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-#confirm-box {
+#confirm-box, #link-box {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -729,7 +729,7 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: scale(1); }
 }
-#confirm-box h1 {
+#confirm-box h1, #link-box h1 {
   font-size: 15px;
   margin: 0;
   font-weight: 600;
@@ -741,13 +741,13 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
   margin: 0;
   line-height: 1.5;
 }
-#confirm-actions {
+#confirm-actions, #link-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
   margin-top: 8px;
 }
-#confirm-actions .btn {
+#confirm-actions .btn, #link-actions .btn {
   min-width: 80px;
   min-height: 32px;
 }

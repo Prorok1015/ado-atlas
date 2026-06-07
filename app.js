@@ -112,6 +112,66 @@ function customConfirm(message, title = 'Confirm Action') {
     ok.focus();
   });
 }
+function customLinkPrompt(defaultText) {
+  return new Promise((resolve) => {
+    const overlay = $('link-overlay');
+    const txtInput = $('link-dialog-text');
+    const urlInput = $('link-dialog-url');
+    const errDiv = $('link-dialog-err');
+    
+    txtInput.value = defaultText || '';
+    urlInput.value = 'https://';
+    errDiv.textContent = '';
+    
+    overlay.style.display = 'flex';
+    overlay.classList.add('show');
+    
+    if (defaultText) {
+      urlInput.focus();
+      urlInput.setSelectionRange(8, 8);
+    } else {
+      txtInput.focus();
+    }
+    
+    const ok = $('link-ok');
+    const cancel = $('link-cancel');
+    
+    const cleanup = () => {
+      overlay.style.display = 'none';
+      overlay.classList.remove('show');
+      ok.onclick = null;
+      cancel.onclick = null;
+      document.removeEventListener('keydown', onKey);
+    };
+    
+    const submit = () => {
+      const text = txtInput.value.trim();
+      const url = urlInput.value.trim();
+      if (!url || !/^https?:\/\//i.test(url)) {
+        errDiv.textContent = 'Please enter a valid URL (starting with http:// or https://)';
+        urlInput.focus();
+        return;
+      }
+      cleanup();
+      resolve({ text: text || url, url });
+    };
+    
+    const onKey = e => {
+      if (e.key === 'Enter') { 
+        e.preventDefault(); 
+        submit(); 
+      } else if (e.key === 'Escape') { 
+        e.preventDefault(); 
+        cleanup(); 
+        resolve(null); 
+      }
+    };
+    
+    ok.onclick = submit;
+    cancel.onclick = () => { cleanup(); resolve(null); };
+    document.addEventListener('keydown', onKey);
+  });
+}
 function capNote(){return listCapped?' · capped, narrow the filters':'';}   // appended to count statuses when LIST_CAP was hit
 // ---- loading indicator (refcounted: top progress bar shows while any async work runs) ----
 let _loads=0;

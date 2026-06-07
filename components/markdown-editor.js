@@ -293,17 +293,34 @@ class MarkdownEditor {
     ta.focus(); this.fireChange();
   }
 
-  insertLink() {
+  async insertLink() {
     if (!this.isEditMode) this.togglePreview(false);
-    const url = prompt('Link URL (https://…)', 'https://');
-    if (!url || !/^https?:\/\//i.test(url)) return;
     const ta = this.textarea;
     const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
-    const sel = v.slice(s, e) || 'link text';
-    const ins = `[${sel}](${url})`;
+    const sel = v.slice(s, e);
+    
+    if (typeof customLinkPrompt !== 'function') {
+      const url = prompt('Link URL (https://…)', 'https://');
+      if (!url || !/^https?:\/\//i.test(url)) return;
+      const ins = `[${sel || 'link text'}](${url})`;
+      ta.value = v.slice(0, s) + ins + v.slice(e);
+      ta.selectionStart = s + 1; ta.selectionEnd = s + 1 + (sel || 'link text').length;
+      ta.focus(); this.fireChange();
+      return;
+    }
+    
+    const result = await customLinkPrompt(sel);
+    if (!result) {
+      ta.focus();
+      return;
+    }
+    
+    const ins = `[${result.text}](${result.url})`;
     ta.value = v.slice(0, s) + ins + v.slice(e);
-    ta.selectionStart = s + 1; ta.selectionEnd = s + 1 + sel.length;
-    ta.focus(); this.fireChange();
+    ta.selectionStart = s + 1;
+    ta.selectionEnd = s + 1 + result.text.length;
+    ta.focus();
+    this.fireChange();
   }
 
   insertAtCursor(text) {
