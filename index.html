@@ -208,6 +208,51 @@
     <div id="s_tags" class="tagedit"></div>
     <datalist id="tagsdl"></datalist>
     </div>
+    <div class="sgroup" data-sg="area">
+      <label>Area Path</label>
+      <input id="s_area">
+    </div>
+    <div class="sgroup" data-sg="storypoints">
+      <label>Story Points</label>
+      <input id="s_storypoints" type="number" min="0" step="0.1">
+    </div>
+    <div class="sgroup" data-sg="remaining">
+      <label>Remaining Work</label>
+      <input id="s_remaining" type="number" min="0" step="0.1">
+    </div>
+    <div class="sgroup" data-sg="completed">
+      <label>Completed Work</label>
+      <input id="s_completed" type="number" min="0" step="0.1">
+    </div>
+    <div class="sgroup" data-sg="activity">
+      <label>Activity</label>
+      <select id="s_activity_field" style="width:100%">
+        <option value="">—</option>
+        <option>Development</option>
+        <option>Testing</option>
+        <option>Requirements</option>
+        <option>Design</option>
+        <option>Documentation</option>
+        <option>Deployment</option>
+      </select>
+    </div>
+    <div class="sgroup" data-sg="risk">
+      <label>Risk</label>
+      <select id="s_risk" style="width:100%">
+        <option value="">—</option>
+        <option>High</option>
+        <option>Medium</option>
+        <option>Low</option>
+      </select>
+    </div>
+    <div class="sgroup" data-sg="valuearea">
+      <label>Value Area</label>
+      <select id="s_valuearea" style="width:100%">
+        <option value="">—</option>
+        <option>Business</option>
+        <option>Architectural</option>
+      </select>
+    </div>
     <div class="sgroup" data-sg="attachments" id="s_atch_group" style="display:none">
       <label>Attachments</label>
       <div class="atch-wrap">

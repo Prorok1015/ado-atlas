@@ -211,7 +211,15 @@ class MarkdownEditor {
   }
 
   renderPreview() {
-    this.previewDiv.innerHTML = mdToHtml(this.textarea.value, descRenderOpts());
+    let html = mdToHtml(this.textarea.value, descRenderOpts());
+    // Replace src of ADO attachment URLs with a placeholder BEFORE setting innerHTML
+    // to prevent the browser from firing unauthenticated requests (→ 401/500 redirect).
+    // The real URL is stashed in data-src for hydratePreviewImages to pick up.
+    html = html.replace(
+      /(<img\s[^>]*?)src="(https:\/\/[^"]+\/_apis\/wit\/attachments\/[^"]+)"/gi,
+      '$1src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="$2"'
+    );
+    this.previewDiv.innerHTML = html;
     hydratePreviewImages(this.previewDiv);
     if (typeof colorMentions === 'function') colorMentions(this.previewDiv);
   }

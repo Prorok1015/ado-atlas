@@ -259,6 +259,31 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 /* sidebar field groups (logical chunks reordered/hidden via the Customize dialog) */
 .sgroup{display:flex;flex-direction:column;gap:5px}
 .sgroup.sg-hidden{display:none!important}
+@keyframes skeleton-pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+.loading-skeleton {
+  animation: skeleton-pulse 1.5s infinite ease-in-out;
+  background: var(--panel2);
+  border-radius: 6px;
+  min-height: 56px;
+  position: relative;
+  overflow: hidden;
+}
+.loading-skeleton::after {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 2s infinite;
+}
 /* tabs at the top of the Customize dialog (Toolbar / Sidebar) */
 #cz_tabs{display:flex;gap:4px;margin:0 0 10px;border-bottom:1px solid var(--line)}
 #cz_tabs button{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:6px 12px;cursor:pointer;font:inherit;font-size:12px}

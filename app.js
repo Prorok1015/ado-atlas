@@ -48,7 +48,7 @@ let openItemAbortCtrl=null;                     // AbortController for the in-fl
 function lockSidebar(lock){
   const side=$('side');if(!side)return;
   side.classList.toggle('sidebar-loading',!!lock);
-  ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est'].forEach(id=>{const el=$(id);if(el)el.disabled=!!lock;});
+  ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est','s_area','s_storypoints','s_remaining','s_completed','s_activity_field','s_risk','s_valuearea'].forEach(id=>{const el=$(id);if(el)el.disabled=!!lock;});
   const trigger = $('side-range-trigger');
   if (trigger) trigger.disabled = !!lock;
   if (lock) {
@@ -60,6 +60,147 @@ function lockSidebar(lock){
   if(sprintEditor&&sprintEditor.setDisabled)sprintEditor.setDisabled(lock);
   if(parentEditor&&parentEditor.setDisabled)parentEditor.setDisabled(lock);
   if(tagsEditor&&tagsEditor.setDisabled)tagsEditor.setDisabled(lock);
+}
+
+const LAZY_GROUPS = new Set(['desc', 'ac', 'tags', 'attachments', 'deps', 'area', 'storypoints', 'remaining', 'completed', 'activity', 'risk', 'valuearea']);
+const HEAVY_FIELD_MAP = {
+  desc: ['System.Description'],
+  ac: ['Microsoft.VSTS.Common.AcceptanceCriteria'],
+  tags: ['System.Tags'],
+  area: ['System.AreaPath'],
+  storypoints: ['Microsoft.VSTS.Scheduling.StoryPoints'],
+  remaining: ['Microsoft.VSTS.Scheduling.RemainingWork'],
+  completed: ['Microsoft.VSTS.Scheduling.CompletedWork'],
+  activity: ['Microsoft.VSTS.Common.Activity'],
+  risk: ['Microsoft.VSTS.Common.Risk'],
+  valuearea: ['Microsoft.VSTS.Common.ValueArea']
+};
+
+function lockSidebarHeavy(lock, groupIds) {
+  const targetGroups = groupIds || [...LAZY_GROUPS];
+  targetGroups.forEach(g => {
+    if (g === 'desc' && descEditor) descEditor.setDisabled(lock);
+    if (g === 'ac' && acEditor) acEditor.setDisabled(lock);
+    if (g === 'tags' && tagsEditor) tagsEditor.setDisabled(lock);
+    if (g === 'area') { const el = $('s_area'); if (el) el.disabled = lock; }
+    if (g === 'storypoints') { const el = $('s_storypoints'); if (el) el.disabled = lock; }
+    if (g === 'remaining') { const el = $('s_remaining'); if (el) el.disabled = lock; }
+    if (g === 'completed') { const el = $('s_completed'); if (el) el.disabled = lock; }
+    if (g === 'activity') { const el = $('s_activity_field'); if (el) el.disabled = lock; }
+    if (g === 'risk') { const el = $('s_risk'); if (el) el.disabled = lock; }
+    if (g === 'valuearea') { const el = $('s_valuearea'); if (el) el.disabled = lock; }
+    if (g === 'attachments') { const el = $('s_atch_group'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
+    if (g === 'deps') { const el = $('s_deps'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
+  });
+}
+
+async function ensureFieldLoaded(groupId) {
+  if (cur == null || !orig) return;
+  const id = cur;
+  const myToken = openToken;                      // capture to detect stale responses
+  const fieldKeyMap = {
+    desc: 'desc', ac: 'ac', tags: 'tags', area: 'area',
+    storypoints: 'storypoints', remaining: 'remaining', completed: 'completed',
+    activity: 'activity', risk: 'risk', valuearea: 'valuearea'
+  };
+  const key = fieldKeyMap[groupId];
+  if (key && orig[key] !== undefined && orig[key] !== '' && orig[key] !== null) return;
+  // For scalar fields that were initialized with '' or null in orig, check a flag
+  if (key && orig['_loaded_' + key]) return;
+  if ((groupId === 'deps' || groupId === 'attachments') && orig._relationsLoaded) return;
+  
+  lockSidebarHeavy(true, [groupId]);
+  if (groupId === 'desc') $('editor_desc_container').classList.add('loading-skeleton');
+  if (groupId === 'ac') $('editor_ac_container').classList.add('loading-skeleton');
+  
+  let fieldsToFetch = HEAVY_FIELD_MAP[groupId] || [];
+  let needRelations = (groupId === 'deps' || groupId === 'attachments');
+  
+  // If no fields to fetch and no relations needed, nothing to do
+  if (fieldsToFetch.length === 0 && !needRelations) {
+    lockSidebarHeavy(false, [groupId]);
+    return;
+  }
+  
+  try {
+    const signal = openItemAbortCtrl ? openItemAbortCtrl.signal : undefined;
+    const d = await api.item(id, { fields: fieldsToFetch.length > 0 ? fieldsToFetch : undefined, expandRelations: needRelations, signal });
+    if (cur !== id || myToken !== openToken) return;  // switched items — discard stale data
+    
+    if (groupId === 'desc') {
+      descEditor.value = d.desc || '';
+      descEditor.togglePreview(true);
+      orig.desc = d.desc;
+      orig._loaded_desc = true;
+      $('editor_desc_container').classList.remove('loading-skeleton');
+    }
+    if (groupId === 'ac') {
+      acEditor.value = d.ac || '';
+      acEditor.togglePreview(true);
+      orig.ac = d.ac;
+      orig.has_ac = d.has_ac;
+      orig._loaded_ac = true;
+      $('editor_ac_container').style.display = d.has_ac ? 'block' : 'none';
+      $('editor_ac_container').classList.remove('loading-skeleton');
+    }
+    if (groupId === 'tags') {
+      tagsEditor.set(d.tags || '', /*silent*/true);
+      orig.tags = d.tags;
+      orig._loaded_tags = true;
+    }
+    if (groupId === 'area') {
+      $('s_area').value = d.area || '';
+      orig.area = d.area || '';
+      orig._loaded_area = true;
+    }
+    if (groupId === 'storypoints') {
+      $('s_storypoints').value = d.storypoints != null ? d.storypoints : '';
+      orig.storypoints = d.storypoints;
+      orig._loaded_storypoints = true;
+    }
+    if (groupId === 'remaining') {
+      $('s_remaining').value = d.remaining != null ? d.remaining : '';
+      orig.remaining = d.remaining;
+      orig._loaded_remaining = true;
+    }
+    if (groupId === 'completed') {
+      $('s_completed').value = d.completed != null ? d.completed : '';
+      orig.completed = d.completed;
+      orig._loaded_completed = true;
+    }
+    if (groupId === 'activity') {
+      $('s_activity_field').value = d.activity || '';
+      orig.activity = d.activity || '';
+      orig._loaded_activity = true;
+    }
+    if (groupId === 'risk') {
+      $('s_risk').value = d.risk || '';
+      orig.risk = d.risk || '';
+      orig._loaded_risk = true;
+    }
+    if (groupId === 'valuearea') {
+      $('s_valuearea').value = d.valuearea || '';
+      orig.valuearea = d.valuearea || '';
+      orig._loaded_valuearea = true;
+    }
+    if (groupId === 'attachments') {
+      atchState.list = Array.isArray(d.attachments) ? d.attachments.slice() : [];
+      renderAttachments();
+      orig._relationsLoaded = true;
+    }
+    if (groupId === 'deps') {
+      loadDeps(id, d.deps);
+      orig._relationsLoaded = true;
+    }
+    
+    lockSidebarHeavy(false, [groupId]);
+    refreshDirty();
+  } catch(e) {
+    if (e.name === 'AbortError') return;           // silently exit — a newer openItem() is running
+    if (cur !== id || myToken !== openToken) return; // stale — discard
+    setStatus('Failed to load lazy field: ' + e.message, true);
+    lockSidebarHeavy(false, [groupId]);
+  }
 }
 let boardBusy=false;                            // true while a card move PATCH is in flight
 let pdrag=null, suppressClick=false;            // custom pointer-based drag for board cards
@@ -1568,21 +1709,22 @@ function clearAttBlobs(){
 }
 async function hydratePreviewImages(container){
   const pv=container||$('s_desc_prev');if(!pv)return;
-  const imgs=Array.from(pv.querySelectorAll('img[src]'));
+  const imgs=Array.from(pv.querySelectorAll('img[data-src], img[src]'));
   const signal=openItemAbortCtrl?.signal;
   for(const img of imgs){
     if(signal?.aborted)return;
-    const src=img.getAttribute('src');
+    // Prefer data-src (set by renderPreview to avoid unauthenticated browser fetch)
+    const src=img.getAttribute('data-src')||img.getAttribute('src');
     if(!isAdoAttachmentUrl(src))continue;
     const cached=attBlobs.get(src);
-    if(cached){img.src=cached;continue;}
+    if(cached){img.src=cached;img.removeAttribute('data-src');continue;}
     try{
       const blob=await api.fetchAttachmentBlob(src,{signal});
       const blobUrl=URL.createObjectURL(blob);
       attBlobs.set(src,blobUrl);
       // Preview may have been re-rendered (or the user may have closed the panel)
       // by the time the blob arrives — only patch the element if it's still in the DOM.
-      if(img.isConnected && !(signal?.aborted))img.src=blobUrl;
+      if(img.isConnected && !(signal?.aborted)){img.src=blobUrl;img.removeAttribute('data-src');}
     }catch(e){
       if(e.name==='AbortError')return;
       img.alt=(img.alt||'')+' [failed to load: '+e.message+']';
@@ -1633,7 +1775,7 @@ function renderAttachments(){
     const size=a.size!=null?fmtBytes(a.size):'';
     return `<div class="atchrow" data-i="${i}">`+
       `<span class="aico">${icon}</span>`+
-      `<a class="aname" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(a.name)}</a>`+
+      `<a class="aname" href="#" title="${esc(a.url)}">${esc(a.name)}</a>`+
       (size?`<span class="asize">${size}</span>`:'')+
       `<button class="ains" title="insert ${isImageName(a.name)?'image':'link'} into the description">↩ insert</button>`+
       `<button class="axdel" title="remove attachment">✕</button>`+
@@ -1929,9 +2071,19 @@ async function openItem(id){
   toggleActivityExpand(false);
   loadStart('loading #'+id+'…');
 
+  const LIGHT_FIELDS = [
+    "System.Id", "System.WorkItemType", "System.Title", "System.State",
+    "System.AssignedTo", "System.Parent", "Microsoft.VSTS.Common.Priority",
+    "System.IterationPath", "Microsoft.VSTS.Scheduling.StartDate",
+    "Microsoft.VSTS.Scheduling.TargetDate", "Microsoft.VSTS.Scheduling.FinishDate",
+    "Microsoft.VSTS.Scheduling.DueDate", "Microsoft.VSTS.Scheduling.OriginalEstimate"
+  ];
+
   // ── Fetch the item (cancellable) ──
   let d;
-  try{d=await api.item(id,{signal});}catch(e){
+  try{
+    d = await api.item(id, { fields: LIGHT_FIELDS, expandRelations: false, signal });
+  }catch(e){
     loadEnd();
     if(e.name==='AbortError')return;               // silently exit — a newer openItem() is already running
     setStatus('ERROR: '+e.message,true);lockSidebar(false);return;
@@ -1953,13 +2105,10 @@ async function openItem(id){
     ` <span class="sbadge" style="background:${stateColor(d.state)}">${esc(d.state)}</span>`+
     ` <span style="color:var(--muted);font-weight:400;font-size:11px">rev${d.rev}</span>`;
   renderItemContext(d);
-  $('s_link').href=d.url;$('s_title').value=d.title;assignedEditor.set(d.assigned||'',/*silent*/true);descEditor.value=d.desc;
+  $('s_link').href=d.url;$('s_title').value=d.title;assignedEditor.set(d.assigned||'',/*silent*/true);
   descBase=(d.url||'').replace(/\/\d+$/,'');     // e.g. ".../_workitems/edit" for #N autolinks in the preview
-  atchState.wid=d.id;atchState.list=Array.isArray(d.attachments)?d.attachments.slice():[];atchState.uploading=0;
-  clearAttBlobs();renderAttachments();closeMention();
-  descEditor.togglePreview(true);
+  
   $('s_prio').value=d.priority?String(d.priority):'';
-  $('editor_ac_container').style.display=d.has_ac?'block':'none';acEditor.value=d.ac;acEditor.togglePreview(true);
   const sel=$('s_state');sel.innerHTML='';
   let states;try{states=await api.states(d.type);}catch(e){states=['New','Active','Resolved','Closed','Removed'];}
   if(myToken!==openToken)return;                  // a newer openItem() superseded this one
@@ -1979,23 +2128,151 @@ async function openItem(id){
   $('s_due').value=(d.due||'').slice(0,10);
   syncSideDuePicker($('s_due').value);
   $('s_est').value=(d.est!=null?d.est:'');
-  tagsEditor.set(d.tags||'',/*silent*/true);
-  loadDeps(id,d.deps);                            // seed from item() result; no extra round-trip
-  orig={title:d.title,state:d.state,assigned:d.assigned,desc:d.desc,ac:d.ac,has_ac:d.has_ac,priority:d.priority,
-        iter:curIt,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};
 
-  // ── Unlock the sidebar — the user can now edit safely ──
+  // Reset lazy field inputs to empty
+  $('s_area').value='';
+  $('s_storypoints').value='';
+  $('s_remaining').value='';
+  $('s_completed').value='';
+  $('s_activity_field').value='';
+  $('s_risk').value='';
+  $('s_valuearea').value='';
+
+  orig={
+    title:d.title,state:d.state,assigned:d.assigned,priority:d.priority,
+    iter:curIt,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,
+    desc:'', ac:'', has_ac:false, tags:'', area:'', storypoints:null, remaining:null, completed:null, activity:'', risk:'', valuearea:'', _relationsLoaded:false
+  };
+
+  // ── Unlock the sidebar (Phase 1 fields only) ──
   lockSidebar(false);
   refreshDirty();loadTimeline(id);
-  setStatus('#'+id+' loaded');
+  setStatus('#'+id+' partially loaded');
+
+  // ── Phase 2: Lazy loading of heavy/hidden fields that are actually visible ──
+  const activeLazyGroups = [...LAZY_GROUPS].filter(g => !sideHidden.has(g));
+  if (activeLazyGroups.length > 0) {
+    lockSidebarHeavy(true, activeLazyGroups);
+    activeLazyGroups.forEach(g => {
+      if (g === 'desc') $('editor_desc_container').classList.add('loading-skeleton');
+      if (g === 'ac') $('editor_ac_container').classList.add('loading-skeleton');
+    });
+
+    let fieldsToFetch = [];
+    let needRelations = false;
+    activeLazyGroups.forEach(g => {
+      if (HEAVY_FIELD_MAP[g]) fieldsToFetch.push(...HEAVY_FIELD_MAP[g]);
+      if (g === 'deps' || g === 'attachments') needRelations = true;
+    });
+
+    // Skip Phase 2 entirely if there's nothing to fetch
+    if (fieldsToFetch.length === 0 && !needRelations) {
+      lockSidebarHeavy(false, activeLazyGroups);
+    } else {
+      const phase2Token = openToken;                  // capture for stale-detection
+      api.item(id, { fields: fieldsToFetch.length > 0 ? fieldsToFetch : undefined, expandRelations: needRelations, signal }).then(fullD => {
+        if (cur !== id || phase2Token !== openToken) return; // switched items — discard stale data
+
+        if (activeLazyGroups.includes('desc')) {
+          descEditor.value = fullD.desc || '';
+          descEditor.togglePreview(true);
+          orig.desc = fullD.desc;
+          orig._loaded_desc = true;
+          $('editor_desc_container').classList.remove('loading-skeleton');
+        }
+        if (activeLazyGroups.includes('ac')) {
+          acEditor.value = fullD.ac || '';
+          acEditor.togglePreview(true);
+          orig.ac = fullD.ac;
+          orig.has_ac = fullD.has_ac;
+          orig._loaded_ac = true;
+          $('editor_ac_container').style.display = fullD.has_ac ? 'block' : 'none';
+          $('editor_ac_container').classList.remove('loading-skeleton');
+        }
+        if (activeLazyGroups.includes('tags')) {
+          tagsEditor.set(fullD.tags || '', /*silent*/true);
+          orig.tags = fullD.tags;
+          orig._loaded_tags = true;
+        }
+        if (activeLazyGroups.includes('area')) {
+          $('s_area').value = fullD.area || '';
+          orig.area = fullD.area || '';
+          orig._loaded_area = true;
+        }
+        if (activeLazyGroups.includes('storypoints')) {
+          $('s_storypoints').value = fullD.storypoints != null ? fullD.storypoints : '';
+          orig.storypoints = fullD.storypoints;
+          orig._loaded_storypoints = true;
+        }
+        if (activeLazyGroups.includes('remaining')) {
+          $('s_remaining').value = fullD.remaining != null ? fullD.remaining : '';
+          orig.remaining = fullD.remaining;
+          orig._loaded_remaining = true;
+        }
+        if (activeLazyGroups.includes('completed')) {
+          $('s_completed').value = fullD.completed != null ? fullD.completed : '';
+          orig.completed = fullD.completed;
+          orig._loaded_completed = true;
+        }
+        if (activeLazyGroups.includes('activity')) {
+          $('s_activity_field').value = fullD.activity || '';
+          orig.activity = fullD.activity || '';
+          orig._loaded_activity = true;
+        }
+        if (activeLazyGroups.includes('risk')) {
+          $('s_risk').value = fullD.risk || '';
+          orig.risk = fullD.risk || '';
+          orig._loaded_risk = true;
+        }
+        if (activeLazyGroups.includes('valuearea')) {
+          $('s_valuearea').value = fullD.valuearea || '';
+          orig.valuearea = fullD.valuearea || '';
+          orig._loaded_valuearea = true;
+        }
+        if (activeLazyGroups.includes('attachments')) {
+          atchState.list = Array.isArray(fullD.attachments) ? fullD.attachments.slice() : [];
+          renderAttachments();
+        }
+        if (activeLazyGroups.includes('deps')) {
+          loadDeps(id, fullD.deps);
+        }
+        if (needRelations) {
+          orig._relationsLoaded = true;
+        }
+
+        lockSidebarHeavy(false, activeLazyGroups);
+        refreshDirty();
+        setStatus('#'+id+' loaded');
+      }).catch(err => {
+        if (err.name === 'AbortError') return;        // silently exit — a newer openItem() is running
+        if (cur !== id || phase2Token !== openToken) return; // stale
+        setStatus('Failed to load details: ' + err.message, true);
+        lockSidebarHeavy(false, activeLazyGroups);
+      });
+    }
+  }
 }
 function dirty(){
   if(cur==null||!orig)return false;
   const v=editorValues();
-  return v.title!==orig.title||v.state!==orig.state||v.assigned!==orig.assigned||v.desc!==orig.desc
-    ||(orig.has_ac&&v.ac!==orig.ac)||((orig.priority?String(orig.priority):'')!==v.prio)
-    ||v.iter!==orig.iter||v.parent!==orig.parent||v.start!==orig.start||v.target!==orig.target||v.due!==orig.due||v.est!==orig.est
-    ||v.tags!==orig.tags;
+  const numEq=(a,b)=>(a===''||a==null)&&(b===''||b==null) ? true : String(a)===String(b);
+  // Phase 1 (always-loaded) fields
+  if(v.title!==orig.title||v.state!==orig.state||v.assigned!==orig.assigned
+    ||((orig.priority?String(orig.priority):'')!==v.prio)
+    ||v.iter!==orig.iter||v.parent!==orig.parent||v.start!==orig.start||v.target!==orig.target||v.due!==orig.due||v.est!==orig.est)
+    return true;
+  // Lazy fields — only compare if they've actually been loaded into orig
+  if(orig._loaded_desc && v.desc!==orig.desc) return true;
+  if(orig._loaded_ac && orig.has_ac && v.ac!==orig.ac) return true;
+  if(orig._loaded_tags && v.tags!==orig.tags) return true;
+  if(orig._loaded_area && v.area!==orig.area) return true;
+  if(orig._loaded_storypoints && !numEq(v.storypoints,orig.storypoints)) return true;
+  if(orig._loaded_remaining && !numEq(v.remaining,orig.remaining)) return true;
+  if(orig._loaded_completed && !numEq(v.completed,orig.completed)) return true;
+  if(orig._loaded_activity && v.activity!==orig.activity) return true;
+  if(orig._loaded_risk && v.risk!==orig.risk) return true;
+  if(orig._loaded_valuearea && v.valuearea!==orig.valuearea) return true;
+  return false;
 }
 // Hybrid save: pickers (state, priority, assignee, sprint, parent, tags, dates,
 // estimate) auto-commit on change via quickSave(). Only text fields stay manual
@@ -2060,10 +2337,18 @@ function discardChanges(){
   if(orig.has_ac){
     acEditor.value=orig.ac;
   }
+  $('s_area').value=orig.area||'';
+  $('s_storypoints').value=orig.storypoints!=null?orig.storypoints:'';
+  $('s_remaining').value=orig.remaining!=null?orig.remaining:'';
+  $('s_completed').value=orig.completed!=null?orig.completed:'';
+  $('s_activity_field').value=orig.activity||'';
+  $('s_risk').value=orig.risk||'';
+  $('s_valuearea').value=orig.valuearea||'';
   refreshDirty();
 }
 function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:descEditor.value,ac:acEditor.value,prio:$('s_prio').value,
-  iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};}
+  iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value(),
+  area:$('s_area').value,storypoints:$('s_storypoints').value,remaining:$('s_remaining').value,completed:$('s_completed').value,activity:$('s_activity_field').value,risk:$('s_risk').value,valuearea:$('s_valuearea').value};}
 
 // Picker onChange: auto-save the field, then refresh dirty (which now only
 // tracks the manual text fields). quickSave reads orig vs editor so a no-op
@@ -2298,6 +2583,7 @@ async function quickSave(field){
   if(cur==null||!orig)return;
   const id=cur,v=editorValues();
   let body={},parentChanged=false;
+  const numEq=(a,b)=>(a===''||a==null)&&(b===''||b==null) ? true : String(a)===String(b);
   if(field==='parent'){
     if(v.parent===orig.parent)return;
     if(v.parent!==''&&Number(v.parent)===id){setStatus('A work item cannot be its own parent',true);return;}
@@ -2306,6 +2592,9 @@ async function quickSave(field){
     const op=orig.priority?String(orig.priority):'';
     if(v.prio===op||v.prio==='')return;          // empty = "no change" (matches manual save)
     body.priority=Number(v.prio);
+  } else if(field==='storypoints' || field==='remaining' || field==='completed') {
+    if(numEq(v[field], orig[field])) return;
+    body[field] = v[field] === '' ? '' : Number(v[field]);
   } else {
     const keyMap={iteration:'iter',estimate:'est'};
     const k=keyMap[field]||field;
@@ -2340,6 +2629,13 @@ async function quickSave(field){
   if('due'in body)orig.due=vNow.due;
   if('estimate'in body)orig.est=vNow.est;
   if('tags'in body){orig.tags=vNow.tags; registerNewTags(vNow.tags);}
+  if('area'in body)orig.area=vNow.area;
+  if('storypoints'in body)orig.storypoints=body.storypoints === '' ? null : Number(body.storypoints);
+  if('remaining'in body)orig.remaining=body.remaining === '' ? null : Number(body.remaining);
+  if('completed'in body)orig.completed=body.completed === '' ? null : Number(body.completed);
+  if('activity'in body)orig.activity=vNow.activity;
+  if('risk'in body)orig.risk=vNow.risk;
+  if('valuearea'in body)orig.valuearea=vNow.valuearea;
   if(parentChanged)orig.parent=vNow.parent;
   refreshDirty();setSaveChip('saved');
   setStatus(`#${id} ${field} saved`+(r?` → rev ${r.rev}`:''));
@@ -3629,13 +3925,34 @@ const SIDE_GROUPS=[
   {id:'attachments',label:'Attachments'},
   {id:'desc',    label:'Description'},
   {id:'ac',      label:'Acceptance Criteria'},
+  {id:'area',    label:'Area Path'},
+  {id:'storypoints',label:'Story Points'},
+  {id:'remaining',label:'Remaining Work'},
+  {id:'completed',label:'Completed Work'},
+  {id:'activity',label:'Activity'},
+  {id:'risk',    label:'Risk'},
+  {id:'valuearea',label:'Value Area'},
   {id:'actions', label:'Actions row + activity / comment / child forms'},
 ];
 const SIDE_LOCKED=new Set(['title','actions']);    // editor unusable without these
 let sideOrder=SIDE_GROUPS.map(g=>g.id), sideHidden=new Set();
 function loadSideLayout(){
   try{const o=JSON.parse(localStorage.getItem('ado.sideOrder')||'null');if(Array.isArray(o))sideOrder=o;}catch(e){}
-  try{const h=JSON.parse(localStorage.getItem('ado.sideHidden')||'null');if(Array.isArray(h))sideHidden=new Set(h.filter(id=>!SIDE_LOCKED.has(id)));}catch(e){}
+  const savedHidden = localStorage.getItem('ado.sideHidden');
+  if(savedHidden){
+    try{
+      const h=JSON.parse(savedHidden);
+      sideHidden=new Set(h.filter(id=>!SIDE_LOCKED.has(id)));
+      const existingIds = new Set(sideOrder.concat([...sideHidden]));
+      ['area', 'storypoints', 'remaining', 'completed', 'activity', 'risk', 'valuearea'].forEach(id => {
+        if (!existingIds.has(id)) {
+          sideHidden.add(id);
+        }
+      });
+    }catch(e){}
+  }else{
+    sideHidden=new Set(['area', 'storypoints', 'remaining', 'completed', 'activity', 'risk', 'valuearea']);
+  }
 }
 function saveSideLayout(){try{localStorage.setItem('ado.sideOrder',JSON.stringify(sideOrder));localStorage.setItem('ado.sideHidden',JSON.stringify([...sideHidden]));}catch(e){}}
 function sideOrderedIds(){     // same recovery as barOrderedIds — re-insert missing ids near their defaults
@@ -3652,7 +3969,16 @@ function sideOrderedIds(){     // same recovery as barOrderedIds — re-insert m
 function applySideLayout(){
   const side=$('side');if(!side)return;
   sideOrderedIds().forEach(id=>{const el=side.querySelector(`.sgroup[data-sg="${id}"]`);if(el)side.appendChild(el);});
-  SIDE_GROUPS.forEach(g=>{const el=side.querySelector(`.sgroup[data-sg="${g.id}"]`);if(el)el.classList.toggle('sg-hidden',sideHidden.has(g.id));});
+  SIDE_GROUPS.forEach(g=>{
+    const el=side.querySelector(`.sgroup[data-sg="${g.id}"]`);
+    if(el) {
+      const hidden = sideHidden.has(g.id);
+      el.classList.toggle('sg-hidden', hidden);
+      if (!hidden && cur != null) {
+        ensureFieldLoaded(g.id);
+      }
+    }
+  });
   // Shead buttons that act on a specific sgroup are only meaningful while that
   // sgroup is visible — hide them when the user hides their target via Customize.
   const descHidden=sideHidden.has('desc');
@@ -3943,14 +4269,18 @@ async function initialBoot(postSetup){
   depBlockedByPicker.render();depBlocksPicker.render();renderDeps();   // dep card stubs + empty chip rows
   // refreshDirty on every keystroke for ALL editable fields, so the chip flips
   // to "● Unsaved" the moment anything diverges from orig.
-  ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est'].forEach(id=>{
-    $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
+  ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est','s_area','s_storypoints','s_remaining','s_completed','s_activity_field','s_risk','s_valuearea'].forEach(id=>{
+    const el = $(id);
+    if (el) { el.addEventListener('input',refreshDirty);el.addEventListener('change',refreshDirty); } });
   // Native-input auto-save: state / priority / dates / estimate fire quickSave
   // on `change` (which means blur or commit for inputs, value-pick for selects).
   // `input` would be too noisy for est/date.
-  const autoSaveMap={s_state:'state',s_prio:'priority',s_start:'start',s_target:'target',s_due:'due',s_est:'estimate'};
+  const autoSaveMap={s_state:'state',s_prio:'priority',s_start:'start',s_target:'target',s_due:'due',s_est:'estimate',
+    s_area:'area',s_storypoints:'storypoints',s_remaining:'remaining',s_completed:'completed',
+    s_activity_field:'activity',s_risk:'risk',s_valuearea:'valuearea'};
   Object.entries(autoSaveMap).forEach(([id,field])=>{
-    $(id).addEventListener('change',()=>quickSave(field));
+    const el = $(id);
+    if (el) { el.addEventListener('change',()=>quickSave(field)); }
   });
   document.addEventListener('keydown',e=>{
     const open=!$('side').classList.contains('hidden');

@@ -28,6 +28,12 @@ const FIELD_ALIASES = {
   start: "Microsoft.VSTS.Scheduling.StartDate",
   target: "Microsoft.VSTS.Scheduling.TargetDate",
   due: "Microsoft.VSTS.Scheduling.DueDate",
+  storypoints: "Microsoft.VSTS.Scheduling.StoryPoints",
+  remaining: "Microsoft.VSTS.Scheduling.RemainingWork",
+  completed: "Microsoft.VSTS.Scheduling.CompletedWork",
+  activity: "Microsoft.VSTS.Common.Activity",
+  risk: "Microsoft.VSTS.Common.Risk",
+  valuearea: "Microsoft.VSTS.Common.ValueArea",
 };
 
 const DEFAULT_FIELDS = [
@@ -677,7 +683,15 @@ function depsFromRelations(rels) {
 
 async function item(wid, options) {
   const proj = await projUrl();
-  const d = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`, undefined, undefined, options);
+  let url = `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`;
+  const hasFields = options && Array.isArray(options.fields) && options.fields.length > 0;
+  const expandRelations = (options && options.expandRelations !== undefined) ? !!options.expandRelations : (hasFields ? false : true);
+  if (expandRelations) {
+    url += `&$expand=relations`;
+  } else if (hasFields) {
+    url += `&fields=${options.fields.map(resolveField).join(",")}`;
+  }
+  const d = await req("GET", url, undefined, undefined, options);
   const f = d.fields || {};
   if ("Microsoft.VSTS.Scheduling.FinishDate" in f) {
     detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
@@ -702,6 +716,13 @@ async function item(wid, options) {
     target: f["Microsoft.VSTS.Scheduling.TargetDate"] || f["Microsoft.VSTS.Scheduling.FinishDate"],
     due: f["Microsoft.VSTS.Scheduling.DueDate"],
     tags: f["System.Tags"] || "",
+    area: f["System.AreaPath"] || "",
+    storypoints: f["Microsoft.VSTS.Scheduling.StoryPoints"],
+    remaining: f["Microsoft.VSTS.Scheduling.RemainingWork"],
+    completed: f["Microsoft.VSTS.Scheduling.CompletedWork"],
+    activity: f["Microsoft.VSTS.Common.Activity"] || "",
+    risk: f["Microsoft.VSTS.Common.Risk"] || "",
+    valuearea: f["Microsoft.VSTS.Common.ValueArea"] || "",
     deps: depsFromRelations(d.relations),
     attachments: attachmentsFromRelations(d.relations),
     url: await browserUrl(d.id),
@@ -872,7 +893,7 @@ async function updateItem(wid, body) {
     } catch (_) {}
   }
   const fields = {};
-  for (const k of ["title","state","assigned","iteration","start","target","due","tags"]) {
+  for (const k of ["title","state","assigned","iteration","start","target","due","tags","area","activity","risk","valuearea"]) {
     if (k in body) fields[k] = body[k];
   }
   if (fields.assigned === "me") {
@@ -880,6 +901,30 @@ async function updateItem(wid, body) {
     if (u) fields.assigned = u;
   }
   if ("priority" in body) fields.priority = body.priority;
+  if ("storypoints" in body) {
+    const v = body.storypoints;
+    if (v === "") fields.storypoints = "";
+    else {
+      const n = parseFloat(v);
+      if (Number.isFinite(n)) fields.storypoints = n;
+    }
+  }
+  if ("remaining" in body) {
+    const v = body.remaining;
+    if (v === "") fields.remaining = "";
+    else {
+      const n = parseFloat(v);
+      if (Number.isFinite(n)) fields.remaining = n;
+    }
+  }
+  if ("completed" in body) {
+    const v = body.completed;
+    if (v === "") fields.completed = "";
+    else {
+      const n = parseFloat(v);
+      if (Number.isFinite(n)) fields.completed = n;
+    }
+  }
   if ("estimate" in body) {
     const v = body.estimate;
     if (v === "") fields.estimate = "";
