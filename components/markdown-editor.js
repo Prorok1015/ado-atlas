@@ -39,7 +39,7 @@ class MarkdownEditor {
       <div class="desc-wrap">
         <textarea placeholder="${esc(this.options.placeholder)}"></textarea>
         <div class="mdview" style="display:none"></div>
-        ${this.options.allowAttachments ? '<div class="desc-dropzone"><div class="ddz-inner">📎 Drop to attach</div></div>' : ''}
+        ${this.options.allowAttachments ? '<div class="desc-dropzone"><div class="ddz-inner">📎 Drop to attach & insert into description</div></div>' : ''}
       </div>
       ${this.options.allowAttachments ? '<input type="file" multiple style="display:none">' : ''}
     `;
@@ -95,7 +95,7 @@ class MarkdownEditor {
       this.fileInput.onchange = (e) => {
         const f = Array.from(e.target.files || []);
         e.target.value = '';
-        if (f.length) this.uploadFiles(f);
+        if (f.length) this.uploadFiles(f, false);
       };
       this.textarea.addEventListener('paste', (e) => {
         if (cur == null) return;
@@ -108,7 +108,7 @@ class MarkdownEditor {
         }
         if (files.length) {
           e.preventDefault();
-          this.uploadFiles(files);
+          this.uploadFiles(files, true);
         }
       });
 
@@ -128,7 +128,7 @@ class MarkdownEditor {
         if (cur == null || !hasFiles(e)) return;
         e.preventDefault();
         const fs = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
-        if (fs.length) this.uploadFiles(fs);
+        if (fs.length) this.uploadFiles(fs, true);
       });
     }
 
@@ -334,7 +334,7 @@ class MarkdownEditor {
     }
   }
 
-  async uploadFiles(files) {
+  async uploadFiles(files, insertIntoEditor = false) {
     if (!files || !files.length || cur == null) return;
     const wid = cur;
     for (const f of files) {
@@ -348,8 +348,10 @@ class MarkdownEditor {
       atchState.uploading--;
       if (cur !== wid) { renderAttachments(); continue; }
       atchState.list = res.attachments || [];
-      const md = (isImageMime(f.type) || isImageName(f.name) ? '!' : '') + `[${up.name}](${up.url})`;
-      this.insertAtCursor(md);
+      if (insertIntoEditor) {
+        const md = (isImageMime(f.type) || isImageName(f.name) ? '!' : '') + `[${up.name}](${up.url})`;
+        this.insertAtCursor(md);
+      }
       renderAttachments();
       setStatus('#' + wid + ' attached ' + up.name);
     }

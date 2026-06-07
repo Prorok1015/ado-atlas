@@ -508,7 +508,12 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .desc-wrap.dragover .desc-dropzone{display:flex}
 .desc-dropzone .ddz-inner{font-size:14px;font-weight:600;color:var(--accent);background:var(--panel);padding:8px 16px;border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
 /* attachments list under the description */
+.atch-wrap{position:relative}
+.atch-dropzone{position:absolute;inset:0;display:none;align-items:center;justify-content:center;border:2px dashed var(--accent);border-radius:8px;background:rgba(47,111,237,.18);backdrop-filter:blur(2px);pointer-events:none;z-index:5}
+.atch-wrap.dragover .atch-dropzone{display:flex}
+.atch-dropzone .ddz-inner{font-size:12px;font-weight:600;color:var(--accent);background:var(--panel);padding:6px 12px;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 .atchlist{display:flex;flex-direction:column;gap:3px;border:1px solid var(--line);border-radius:8px;padding:6px;font-size:12px}
+.atch-empty{border:1px dashed var(--line);border-radius:6px;padding:12px;text-align:center;color:var(--muted);font-size:11px;background:transparent;transition:all .2s ease;pointer-events:none}
 .atchrow{display:flex;align-items:center;gap:7px;padding:3px 4px;border-radius:6px}
 .atchrow:hover{background:var(--panel2)}
 .atchrow .aname{flex:1;color:var(--txt);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

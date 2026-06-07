@@ -1342,12 +1342,16 @@ function renderAttachments(){
   const box=$('s_atch');if(!box)return;
   const group=$('s_atch_group');
   const arr=atchState.list||[];
-  if(!arr.length&&!atchState.uploading){
+  if(cur==null || (group && group.classList.contains('sg-hidden'))){
     if(group)group.style.display='none';
     box.innerHTML='';
     return;
   }
   if(group)group.style.display='block';
+  if(!arr.length&&!atchState.uploading){
+    box.innerHTML=`<div class="atch-empty">Drop files here to attach</div>`;
+    return;
+  }
   const head=`<div class="atchhead"><span class="acount">${arr.length}</span> file(s)`+
     (atchState.uploading?` · <span class="spin"></span> uploading ${atchState.uploading}…`:'')+`</div>`;
   const rows=arr.map((a,i)=>{
@@ -3136,6 +3140,38 @@ async function initialBoot(postSetup){
     allowMentions: true,
     onInput: refreshDirty
   });
+  const atchWrap = document.querySelector('.atch-wrap');
+  if (atchWrap) {
+    const hasFiles = e => !!(e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files'));
+    let atchDragDepth = 0;
+    atchWrap.addEventListener('dragenter', e => {
+      if (!hasFiles(e) || cur == null) return;
+      e.preventDefault();
+      atchDragDepth++;
+      atchWrap.classList.add('dragover');
+    });
+    atchWrap.addEventListener('dragleave', e => {
+      if (!hasFiles(e)) return;
+      atchDragDepth--;
+      if (atchDragDepth <= 0) {
+        atchDragDepth = 0;
+        atchWrap.classList.remove('dragover');
+      }
+    });
+    atchWrap.addEventListener('dragover', e => {
+      if (hasFiles(e)) e.preventDefault();
+    });
+    atchWrap.addEventListener('drop', e => {
+      atchDragDepth = 0;
+      atchWrap.classList.remove('dragover');
+      if (cur == null || !hasFiles(e)) return;
+      e.preventDefault();
+      const fs = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+      if (fs.length && descEditor) {
+        descEditor.uploadFiles(fs, false);
+      }
+    });
+  }
   acEditor = new MarkdownEditor('editor_ac_container', {
     label: 'Acceptance Criteria',
     placeholder: 'add acceptance criteria…',
