@@ -1340,9 +1340,14 @@ function isImageName(n){return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(n||'');}
 function isImageMime(t){return /^image\//.test(t||'');}
 function renderAttachments(){
   const box=$('s_atch');if(!box)return;
+  const group=$('s_atch_group');
   const arr=atchState.list||[];
-  if(!arr.length&&!atchState.uploading){box.style.display='none';box.innerHTML='';return;}
-  box.style.display='block';
+  if(!arr.length&&!atchState.uploading){
+    if(group)group.style.display='none';
+    box.innerHTML='';
+    return;
+  }
+  if(group)group.style.display='block';
   const head=`<div class="atchhead">Attachments <span class="acount">${arr.length}</span>`+
     (atchState.uploading?` <span class="spin"></span> uploading ${atchState.uploading}…`:'')+`</div>`;
   const rows=arr.map((a,i)=>{
@@ -2904,6 +2909,7 @@ const SIDE_GROUPS=[
   {id:'deps',    label:'Dependencies (blocked by · blocks)'},
   {id:'schedule',label:'Schedule (Start · Target · Due · Estimate · time in state)'},
   {id:'tags',    label:'Tags'},
+  {id:'attachments',label:'Attachments'},
   {id:'desc',    label:'Description'},
   {id:'ac',      label:'Acceptance Criteria'},
   {id:'actions', label:'Actions row + activity / comment / child forms'},

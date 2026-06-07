@@ -225,7 +225,7 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 #side>*{flex:none}
 /* sidebar field groups (logical chunks reordered/hidden via the Customize dialog) */
 .sgroup{display:flex;flex-direction:column;gap:5px}
-.sgroup.sg-hidden{display:none}
+.sgroup.sg-hidden{display:none!important}
 /* tabs at the top of the Customize dialog (Toolbar / Sidebar) */
 #cz_tabs{display:flex;gap:4px;margin:0 0 10px;border-bottom:1px solid var(--line)}
 #cz_tabs button{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:6px 12px;cursor:pointer;font:inherit;font-size:12px}
