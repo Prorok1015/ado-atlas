@@ -62,18 +62,15 @@ function lockSidebar(lock){
   if(tagsEditor&&tagsEditor.setDisabled)tagsEditor.setDisabled(lock);
 }
 
-const LAZY_GROUPS = new Set(['desc', 'ac', 'tags', 'attachments', 'deps', 'area', 'storypoints', 'remaining', 'completed', 'activity', 'risk', 'valuearea']);
+const LAZY_GROUPS = new Set(['desc', 'ac', 'tags', 'attachments', 'deps', 'area', 'effort', 'activity', 'classification']);
 const HEAVY_FIELD_MAP = {
   desc: ['System.Description'],
   ac: ['Microsoft.VSTS.Common.AcceptanceCriteria'],
   tags: ['System.Tags'],
   area: ['System.AreaPath'],
-  storypoints: ['Microsoft.VSTS.Scheduling.StoryPoints'],
-  remaining: ['Microsoft.VSTS.Scheduling.RemainingWork'],
-  completed: ['Microsoft.VSTS.Scheduling.CompletedWork'],
+  effort: ['Microsoft.VSTS.Scheduling.StoryPoints', 'Microsoft.VSTS.Scheduling.RemainingWork', 'Microsoft.VSTS.Scheduling.CompletedWork'],
   activity: ['Microsoft.VSTS.Common.Activity'],
-  risk: ['Microsoft.VSTS.Common.Risk'],
-  valuearea: ['Microsoft.VSTS.Common.ValueArea']
+  classification: ['Microsoft.VSTS.Common.Risk', 'Microsoft.VSTS.Common.ValueArea']
 };
 
 function lockSidebarHeavy(lock, groupIds) {
@@ -83,12 +80,13 @@ function lockSidebarHeavy(lock, groupIds) {
     if (g === 'ac' && acEditor) acEditor.setDisabled(lock);
     if (g === 'tags' && tagsEditor) tagsEditor.setDisabled(lock);
     if (g === 'area') { const el = $('s_area'); if (el) el.disabled = lock; }
-    if (g === 'storypoints') { const el = $('s_storypoints'); if (el) el.disabled = lock; }
-    if (g === 'remaining') { const el = $('s_remaining'); if (el) el.disabled = lock; }
-    if (g === 'completed') { const el = $('s_completed'); if (el) el.disabled = lock; }
+    if (g === 'effort') {
+      ['s_storypoints', 's_remaining', 's_completed'].forEach(id => { const el = $(id); if (el) el.disabled = lock; });
+    }
     if (g === 'activity') { const el = $('s_activity_field'); if (el) el.disabled = lock; }
-    if (g === 'risk') { const el = $('s_risk'); if (el) el.disabled = lock; }
-    if (g === 'valuearea') { const el = $('s_valuearea'); if (el) el.disabled = lock; }
+    if (g === 'classification') {
+      ['s_risk', 's_valuearea'].forEach(id => { const el = $(id); if (el) el.disabled = lock; });
+    }
     if (g === 'attachments') { const el = $('s_atch_group'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
     if (g === 'deps') { const el = $('s_deps'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
   });
@@ -100,8 +98,8 @@ async function ensureFieldLoaded(groupId) {
   const myToken = openToken;                      // capture to detect stale responses
   const fieldKeyMap = {
     desc: 'desc', ac: 'ac', tags: 'tags', area: 'area',
-    storypoints: 'storypoints', remaining: 'remaining', completed: 'completed',
-    activity: 'activity', risk: 'risk', valuearea: 'valuearea'
+    effort: 'storypoints', // if storypoints is loaded, consider effort loaded
+    activity: 'activity', classification: 'risk' // if risk is loaded, consider classification loaded
   };
   const key = fieldKeyMap[groupId];
   if (key && orig[key] !== undefined && orig[key] !== '' && orig[key] !== null) return;
@@ -153,19 +151,15 @@ async function ensureFieldLoaded(groupId) {
       orig.area = d.area || '';
       orig._loaded_area = true;
     }
-    if (groupId === 'storypoints') {
+    if (groupId === 'effort') {
       $('s_storypoints').value = d.storypoints != null ? d.storypoints : '';
-      orig.storypoints = d.storypoints;
-      orig._loaded_storypoints = true;
-    }
-    if (groupId === 'remaining') {
       $('s_remaining').value = d.remaining != null ? d.remaining : '';
-      orig.remaining = d.remaining;
-      orig._loaded_remaining = true;
-    }
-    if (groupId === 'completed') {
       $('s_completed').value = d.completed != null ? d.completed : '';
+      orig.storypoints = d.storypoints;
+      orig.remaining = d.remaining;
       orig.completed = d.completed;
+      orig._loaded_storypoints = true;
+      orig._loaded_remaining = true;
       orig._loaded_completed = true;
     }
     if (groupId === 'activity') {
@@ -173,14 +167,12 @@ async function ensureFieldLoaded(groupId) {
       orig.activity = d.activity || '';
       orig._loaded_activity = true;
     }
-    if (groupId === 'risk') {
+    if (groupId === 'classification') {
       $('s_risk').value = d.risk || '';
-      orig.risk = d.risk || '';
-      orig._loaded_risk = true;
-    }
-    if (groupId === 'valuearea') {
       $('s_valuearea').value = d.valuearea || '';
+      orig.risk = d.risk || '';
       orig.valuearea = d.valuearea || '';
+      orig._loaded_risk = true;
       orig._loaded_valuearea = true;
     }
     if (groupId === 'attachments') {
@@ -258,11 +250,13 @@ function customConfirm(message, title = 'Confirm Action') {
     const overlay = $('confirm-overlay');
     overlay.style.display = 'flex';
     overlay.classList.add('show');
+    if (window.LayerManager) window.LayerManager.open(overlay);
     const ok = $('confirm-ok');
     const cancel = $('confirm-cancel');
     const cleanup = () => {
       overlay.style.display = 'none';
       overlay.classList.remove('show');
+      if (window.LayerManager) window.LayerManager.close(overlay);
       ok.onclick = null;
       cancel.onclick = null;
       document.removeEventListener('keydown', onKey);
@@ -290,6 +284,7 @@ function customLinkPrompt(defaultText) {
     
     overlay.style.display = 'flex';
     overlay.classList.add('show');
+    if (window.LayerManager) window.LayerManager.open(overlay);
     
     if (defaultText) {
       urlInput.focus();
@@ -304,6 +299,7 @@ function customLinkPrompt(defaultText) {
     const cleanup = () => {
       overlay.style.display = 'none';
       overlay.classList.remove('show');
+      if (window.LayerManager) window.LayerManager.close(overlay);
       ok.onclick = null;
       cancel.onclick = null;
       document.removeEventListener('keydown', onKey);
@@ -323,12 +319,12 @@ function customLinkPrompt(defaultText) {
     
     const onKey = e => {
       if (e.key === 'Enter') { 
-        e.preventDefault(); 
-        submit(); 
+         e.preventDefault(); 
+         submit(); 
       } else if (e.key === 'Escape') { 
-        e.preventDefault(); 
-        cleanup(); 
-        resolve(null); 
+         e.preventDefault(); 
+         cleanup(); 
+         resolve(null); 
       }
     };
     
@@ -478,6 +474,7 @@ function renderFilters(){
               inp.value='';
               updateClearBtn();
               dropdown.style.display='none';
+              if (window.LayerManager) window.LayerManager.close(dropdown);
               renderFilters();
               updateFilterCount();
               scheduleApply();
@@ -486,6 +483,7 @@ function renderFilters(){
           });
         }
         dropdown.style.display='flex';
+        if (window.LayerManager) window.LayerManager.open(dropdown, null, { isPopover: true });
         dropdown.style.left='0';
         dropdown.style.right='auto';
         dropdown.style.top='100%';
@@ -515,6 +513,7 @@ function renderFilters(){
       };
       inp.onblur=()=>{
         dropdown.style.display='none';
+        if (window.LayerManager) window.LayerManager.close(dropdown);
         clearBtn.style.display='none';
       };
       clearBtn.onmousedown=e=>{
@@ -530,6 +529,7 @@ function renderFilters(){
       inp.onkeydown=e=>{
         if(e.key==='Escape'){
           dropdown.style.display='none';
+          if (window.LayerManager) window.LayerManager.close(dropdown);
           clearBtn.style.display='none';
           inp.blur();
         } else if(e.key==='Enter'){
@@ -1532,7 +1532,10 @@ function setMode(m){
   $('board').classList.toggle('show',m==='board');$('timeline').classList.toggle('show',m==='timeline');
   $('emode').style.display=$('dir').style.display=(m==='graph')?'inline-flex':'none';
   $('fit').style.display=(m==='graph')?'inline-block':'none';   // Fit only makes sense on the graph
-  if(m!=='graph')$('badgepanel').style.display='none';            // badges popover lives inside the Controls header — graph-only
+  if(m!=='graph'){
+    $('badgepanel').style.display='none';
+    if (window.LayerManager) window.LayerManager.close($('badgepanel'));
+  }            // badges popover lives inside the Controls header — graph-only
   $('empty_btn').style.display=(m==='board')?'inline-block':'none';
   $('grp').style.display=(m==='board')?'inline-flex':'none';
   $('tlzoom').style.display=(m==='timeline')?'inline-flex':'none';
@@ -1553,7 +1556,11 @@ function renderViewHelp(){
   const box=$('viewhelp'),rows=VIEW_HELP[mode];
   const show=!!rows&&!$('sprintview').classList.contains('show');   // hide over the sprint detail
   box.classList.toggle('show',show);
-  if(!show){$('badgepanel').style.display='none';return;}
+  if(!show){
+    $('badgepanel').style.display='none';
+    if (window.LayerManager) window.LayerManager.close($('badgepanel'));
+    return;
+  }
   const collapsed=viewHelpCollapsed();
   box.classList.toggle('collapsed',collapsed);
   // The ⚙ gear in the Controls header is per-view: every view that defines a
@@ -1567,7 +1574,10 @@ function renderViewHelp(){
   $('vhh').querySelector('.vhctrl').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
   const gb=$('vhbadge');if(gb)gb.onclick=e=>{e.stopPropagation();toggleBadgePanel();};
   // If the gear vanished (mode without fields, but somehow panel is open), hide the popover.
-  if(!hasFields)$('badgepanel').style.display='none';
+  if(!hasFields){
+    $('badgepanel').style.display='none';
+    if (window.LayerManager) window.LayerManager.close($('badgepanel'));
+  }
 }
 // Per-view "Show on …" popover (anchored on the Controls box's bottom-left corner).
 // Toggling a checkbox re-renders the matching view so the change shows immediately.
@@ -1575,7 +1585,11 @@ const BADGE_PANEL_HEADER={graph:'Show on nodes',board:'Show on cards',tree:'Show
 function renderBadgePanel(){
   const view=mode,fields=BADGE_FIELDS_BY_VIEW[view]||[];
   const p=$('badgepanel');
-  if(!fields.length){p.style.display='none';return;}
+  if(!fields.length){
+    p.style.display='none';
+    if (window.LayerManager) window.LayerManager.close(p);
+    return;
+  }
   p.innerHTML=`<div class="bph">${esc(BADGE_PANEL_HEADER[view]||'Show')}</div>`+
     fields.map(f=>`<label><input type="checkbox" data-k="${f.key}"${badgeOn(f.key,view)?' checked':''}> ${esc(f.label)}</label>`).join('');
   p.querySelectorAll('input[data-k]').forEach(cb=>cb.onchange=()=>{
@@ -1587,7 +1601,17 @@ function renderBadgePanel(){
     else if(view==='timeline')renderTimeline();
   });
 }
-function toggleBadgePanel(){const p=$('badgepanel');if(p.style.display==='none'){renderBadgePanel();p.style.display='block';}else p.style.display='none';}
+function toggleBadgePanel(){
+  const p=$('badgepanel');
+  if(p.style.display==='none'){
+    renderBadgePanel();
+    p.style.display='block';
+    if (window.LayerManager) window.LayerManager.open(p, null, { isPopover: true });
+  } else {
+    p.style.display='none';
+    if (window.LayerManager) window.LayerManager.close(p);
+  }
+}
 async function resolveSkippedAncestors(skippers,inSet){
   // For each skipper (parent not in set), climb the chain until an in-set ancestor
   // is found (≤6 levels). Returns {id: {target, via:[skipped ids]}}.
@@ -1848,7 +1872,10 @@ function scheduleCloseMention(){
 }
 function closeMention(){
   if(closeMentionTimeout){clearTimeout(closeMentionTimeout);closeMentionTimeout=null;}
-  const p=$('s_mention');if(p)p.style.display='none';
+  const p=$('s_mention');if(p){
+    p.style.display='none';
+    if (window.LayerManager) window.LayerManager.close(p);
+  }
   mentionState.open=false;mentionState.query='';mentionState.start=-1;mentionState.rows=[];
 }
 function drawMention(){
@@ -1927,7 +1954,9 @@ async function openOrUpdateMention(){
   const trig=findMentionTrigger(ta);
   if(!trig){closeMention();return;}
   mentionState.start=trig.at;mentionState.query=trig.query;mentionState.open=true;
-  const p=$('s_mention');p.style.display='block';positionMention();
+  const p=$('s_mention');p.style.display='block';
+  if (window.LayerManager) window.LayerManager.open(p, null, { isPopover: true });
+  positionMention();
   const tok=++mentionState.tok;
   if(!trig.query){mentionState.rows=[];mentionState.idx=0;drawMention();return;}
   let rows=[];
@@ -1984,7 +2013,14 @@ function toggleFullscreen(force){
     // then restore on exit.
     _sideWidthBeforeFs=side.style.width||'';
     side.style.width='';
+    
+    if (window.LayerManager) {
+      window.LayerManager.open(side, backdrop);
+    }
   } else {
+    if (window.LayerManager) {
+      window.LayerManager.close(side);
+    }
     if (backdrop) {
       backdrop.remove();
     }
@@ -2199,19 +2235,15 @@ async function openItem(id){
           orig.area = fullD.area || '';
           orig._loaded_area = true;
         }
-        if (activeLazyGroups.includes('storypoints')) {
+        if (activeLazyGroups.includes('effort')) {
           $('s_storypoints').value = fullD.storypoints != null ? fullD.storypoints : '';
-          orig.storypoints = fullD.storypoints;
-          orig._loaded_storypoints = true;
-        }
-        if (activeLazyGroups.includes('remaining')) {
           $('s_remaining').value = fullD.remaining != null ? fullD.remaining : '';
-          orig.remaining = fullD.remaining;
-          orig._loaded_remaining = true;
-        }
-        if (activeLazyGroups.includes('completed')) {
           $('s_completed').value = fullD.completed != null ? fullD.completed : '';
+          orig.storypoints = fullD.storypoints;
+          orig.remaining = fullD.remaining;
           orig.completed = fullD.completed;
+          orig._loaded_storypoints = true;
+          orig._loaded_remaining = true;
           orig._loaded_completed = true;
         }
         if (activeLazyGroups.includes('activity')) {
@@ -2219,14 +2251,12 @@ async function openItem(id){
           orig.activity = fullD.activity || '';
           orig._loaded_activity = true;
         }
-        if (activeLazyGroups.includes('risk')) {
+        if (activeLazyGroups.includes('classification')) {
           $('s_risk').value = fullD.risk || '';
-          orig.risk = fullD.risk || '';
-          orig._loaded_risk = true;
-        }
-        if (activeLazyGroups.includes('valuearea')) {
           $('s_valuearea').value = fullD.valuearea || '';
+          orig.risk = fullD.risk || '';
           orig.valuearea = fullD.valuearea || '';
+          orig._loaded_risk = true;
           orig._loaded_valuearea = true;
         }
         if (activeLazyGroups.includes('attachments')) {
@@ -2511,6 +2541,15 @@ function recordEditUndo(id,body,parentChanged,before,beforeParent,newParent){
   if('target'in body)rev.target=before.target;
   if('due'in body)rev.due=before.due;
   if('estimate'in body)rev.estimate=before.est;
+  
+  if('area'in body)rev.area=before.area;
+  if('storypoints'in body)rev.storypoints=before.storypoints;
+  if('remaining'in body)rev.remaining=before.remaining;
+  if('completed'in body)rev.completed=before.completed;
+  if('activity'in body)rev.activity=before.activity;
+  if('risk'in body)rev.risk=before.risk;
+  if('valuearea'in body)rev.valuearea=before.valuearea;
+
   const hasRev=Object.keys(rev).length>0,hasFwd=Object.keys(body).length>0;
   if(!hasRev&&!parentChanged)return;
   pushAction('edit #'+id,
@@ -2573,6 +2612,96 @@ function registerNewTags(tagsStr) {
   }
 }
 
+function getWorkDayHours() {
+  let ws = 9, we = 17;
+  try {
+    const wh = localStorage.getItem('ado.workHours');
+    if (wh && /^\d+-\d+$/.test(wh)) {
+      const m = wh.split('-');
+      ws = +m[0];
+      we = +m[1];
+    }
+  } catch (e) {}
+  return Math.max(1, we - ws);
+}
+
+function formatTimePreview(str) {
+  if (typeof str !== 'string') return '';
+  str = str.replace(/\s+/g, '').toLowerCase();
+  if (!str) return '';
+  
+  const tokenRegex = /([+-]?\d+(?:\.\d+)?)([hdw]?)|([+-])/g;
+  const workHours = getWorkDayHours();
+  const weekHours = workHours * 5;
+  
+  let terms = [];
+  let totalHours = 0;
+  let currentSign = 1;
+  let match;
+  let parsedAny = false;
+
+  while ((match = tokenRegex.exec(str)) !== null) {
+    if (match[3]) {
+      currentSign = match[3] === '-' ? -1 : 1;
+      parsedAny = true;
+    } else if (match[1]) {
+      const val = parseFloat(match[1]);
+      const unit = match[2] || 'h';
+      let multiplier = 1;
+      let unitLabel = 'h';
+      if (unit === 'd') { multiplier = workHours; unitLabel = 'd'; }
+      else if (unit === 'w') { multiplier = weekHours; unitLabel = 'w'; }
+      
+      const termHours = val * multiplier;
+      totalHours += currentSign * termHours;
+      
+      const signStr = terms.length > 0 ? (currentSign === -1 ? ' - ' : ' + ') : (currentSign === -1 ? '-' : '');
+      
+      let label = `${val}${unitLabel}`;
+      if (unitLabel !== 'h') {
+        label += ` (${termHours}h)`;
+      }
+      terms.push(signStr + label);
+      parsedAny = true;
+      currentSign = 1;
+    }
+  }
+  
+  if (!parsedAny) return '';
+  return `⏱ = ${totalHours}h` + (terms.length > 0 ? ` [${terms.join('')}]` : '');
+}
+
+function parseTimeExpr(str) {
+  if (typeof str !== 'string') return NaN;
+  str = str.replace(/\s+/g, '').toLowerCase();
+  if (!str) return NaN;
+  if (/^[+-]?\d+(\.\d+)?$/.test(str)) return Number(str);
+  
+  const tokenRegex = /([+-]?\d+(?:\.\d+)?)([hdw]?)|([+-])/g;
+  const workHours = getWorkDayHours();
+  let totalHours = 0;
+  let currentSign = 1;
+  let match;
+  let parsedAny = false;
+
+  while ((match = tokenRegex.exec(str)) !== null) {
+    if (match[3]) {
+      currentSign = match[3] === '-' ? -1 : 1;
+      parsedAny = true;
+    } else if (match[1]) {
+      const val = parseFloat(match[1]);
+      const unit = match[2] || 'h';
+      let multiplier = 1;
+      if (unit === 'd') multiplier = workHours;
+      else if (unit === 'w') multiplier = workHours * 5;
+      totalHours += currentSign * val * multiplier;
+      parsedAny = true;
+      currentSign = 1; 
+    }
+  }
+  return parsedAny ? totalHours : NaN;
+}
+
 // Atomic single-field PATCH triggered by a picker / select / date input change.
 // `field` ∈ {state, assigned, priority, iteration, start, target, due, estimate, tags, parent}.
 // Concurrent calls for different fields don't conflict (independent body keys).
@@ -2581,7 +2710,21 @@ function registerNewTags(tagsStr) {
 // using the request-time snapshot.
 async function quickSave(field){
   if(cur==null||!orig)return;
-  const id=cur,v=editorValues();
+  const id=cur;
+  
+  // Perform math parsing for estimate (s_est), storypoints, remaining, completed
+  if (field === 'estimate' || field === 'storypoints' || field === 'remaining' || field === 'completed') {
+    const inputId = {estimate: 's_est', storypoints: 's_storypoints', remaining: 's_remaining', completed: 's_completed'}[field];
+    const el = $(inputId);
+    if (el) {
+      const parsedVal = parseTimeExpr(el.value);
+      if (!isNaN(parsedVal)) {
+        el.value = String(Number(parsedVal.toFixed(2))); // round to 2 decimal places max
+      }
+    }
+  }
+
+  const v=editorValues();
   let body={},parentChanged=false;
   const numEq=(a,b)=>(a===''||a==null)&&(b===''||b==null) ? true : String(a)===String(b);
   if(field==='parent'){
@@ -2765,7 +2908,7 @@ function toggleActivityFullscreen(forceOn) {
     if (!bd) {
       bd = document.createElement('div');
       bd.id = 'act-backdrop';
-      bd.className = 'modal-backdrop editor-backdrop';
+      bd.className = 'modal-backdrop activity-backdrop';
       bd.onclick = () => toggleActivityFullscreen(false);
       const sideEl = $('side');
       if (sideEl) {
@@ -2774,7 +2917,34 @@ function toggleActivityFullscreen(forceOn) {
         document.body.appendChild(bd);
       }
     }
+    
+    // Move actionsGroup to document.body to break stacking context bugs
+    if (!this._actionsOrigParent) {
+      this._actionsOrigParent = actionsGroup.parentNode;
+      this._actionsOrigNextSibling = actionsGroup.nextSibling;
+    }
+    document.body.appendChild(actionsGroup);
+
+    if (window.LayerManager) {
+      window.LayerManager.open(actionsGroup, bd);
+    }
   } else {
+    if (window.LayerManager) {
+      window.LayerManager.close(actionsGroup);
+    }
+    
+    // Restore actionsGroup to original parent
+    const sideEl = $('side');
+    if (sideEl && this._actionsOrigParent) {
+      if (this._actionsOrigNextSibling) {
+        this._actionsOrigParent.insertBefore(actionsGroup, this._actionsOrigNextSibling);
+      } else {
+        this._actionsOrigParent.appendChild(actionsGroup);
+      }
+      this._actionsOrigParent = null;
+      this._actionsOrigNextSibling = null;
+    }
+
     actionsGroup.classList.remove('fullscreen');
     if (btn) btn.classList.remove('on');
     if (arrow) {
@@ -2861,11 +3031,13 @@ function showEmojiPicker(e, commentId) {
   
   btn.parentElement.appendChild(pop);
   activeEmojiPicker = pop;
+  if (window.LayerManager) window.LayerManager.open(pop, null, { isPopover: true });
   
   document.addEventListener('click', closeEmojiPickerOutside);
 }
 function closeEmojiPicker() {
   if (activeEmojiPicker) {
+    if (window.LayerManager) window.LayerManager.close(activeEmojiPicker);
     activeEmojiPicker.remove();
     activeEmojiPicker = null;
   }
@@ -3128,10 +3300,23 @@ async function showNewItem(parentId){
   try{const iters=await getIterations();_newIterRoot=iters[0]?iters[0].path.split('\\')[0]:(projectName||'');}
   catch(e){/* sprints are optional */}
   sprintNew.set('',/*silent*/true);
-  $('newitem-overlay').classList.add('show');
+  const overlay = $('newitem-overlay');
+  overlay.classList.add('show');
+  if (window.LayerManager) {
+    window.LayerManager.open(overlay);
+  }
   $('n_title').focus();
 }
-function closeNewItem(){parentNew.close();assignedNew.close();sprintNew.close();$('newitem-overlay').classList.remove('show');}
+function closeNewItem(){
+  parentNew.close();
+  assignedNew.close();
+  sprintNew.close();
+  const overlay = $('newitem-overlay');
+  overlay.classList.remove('show');
+  if (window.LayerManager) {
+    window.LayerManager.close(overlay);
+  }
+}
 async function createNew(){
   const type=$('n_type').value,title=$('n_title').value.trim();
   if(!title){$('newitem-err').textContent='Title is required.';$('n_title').focus();return;}
@@ -3178,13 +3363,20 @@ function initSprintDatePickerEvents() {
     trigger.dataset.init = '1';
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();
-      $('sprint-range-picker').classList.toggle('show');
+      const popover = $('sprint-range-picker');
+      const show = !popover.classList.contains('show');
+      popover.classList.toggle('show', show);
+      if (window.LayerManager) {
+        if (show) window.LayerManager.open(popover, null, { isPopover: true });
+        else window.LayerManager.close(popover);
+      }
     });
     window.addEventListener('mousedown', (e) => {
       const popover = $('sprint-range-picker');
       if (popover && popover.classList.contains('show')) {
         if (!popover.contains(e.target) && !trigger.contains(e.target)) {
           popover.classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close(popover);
         }
       }
     });
@@ -3275,12 +3467,18 @@ function syncSideDatePicker(start, target) {
     trigger.dataset.init = '1';
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();
-      popover.classList.toggle('show');
+      const show = !popover.classList.contains('show');
+      popover.classList.toggle('show', show);
+      if (window.LayerManager) {
+        if (show) window.LayerManager.open(popover, null, { isPopover: true });
+        else window.LayerManager.close(popover);
+      }
     });
     window.addEventListener('mousedown', (e) => {
       if (popover.classList.contains('show')) {
         if (!popover.contains(e.target) && !trigger.contains(e.target)) {
           popover.classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close(popover);
         }
       }
     });
@@ -3311,6 +3509,7 @@ function syncSideDatePicker(start, target) {
         syncSideDatePicker(s, t);
         if (s && t) {
           popover.classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close(popover);
         }
       }
     });
@@ -3329,12 +3528,18 @@ function syncSideDuePicker(due) {
     trigger.dataset.init = '1';
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();
-      popover.classList.toggle('show');
+      const show = !popover.classList.contains('show');
+      popover.classList.toggle('show', show);
+      if (window.LayerManager) {
+        if (show) window.LayerManager.open(popover, null, { isPopover: true });
+        else window.LayerManager.close(popover);
+      }
     });
     window.addEventListener('mousedown', (e) => {
       if (popover.classList.contains('show')) {
         if (!popover.contains(e.target) && !trigger.contains(e.target)) {
           popover.classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close(popover);
         }
       }
     });
@@ -3360,6 +3565,7 @@ function syncSideDuePicker(due) {
         syncSideDuePicker(d);
         if (d) {
           popover.classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close(popover);
         }
       }
     });
@@ -3428,7 +3634,9 @@ function showSprintModal(){                        // create a new sprint
   updateSprintRangeDisplay('', '');
   updatePendingSprintItems();
   $('sp_create').textContent='Create sprint';
-  $('sprint-overlay').classList.add('show');$('sp_name').focus();
+  $('sprint-overlay').classList.add('show');
+  if (window.LayerManager) window.LayerManager.open($('sprint-overlay'));
+  $('sp_name').focus();
 }
 function showSprintEdit(path){                     // edit an existing sprint's dates
   const it=_sprint(path);if(!it)return;
@@ -3438,6 +3646,7 @@ function showSprintEdit(path){                     // edit an existing sprint's 
   $('sp_name').readOnly=true;$('sp_name').value=it.name||'';
   $('sp_start').value=(it.start||'').slice(0,10);$('sp_finish').value=(it.finish||'').slice(0,10);
   $('sprint-range-picker').classList.remove('show');
+  if (window.LayerManager) window.LayerManager.close($('sprint-range-picker'));
   initSprintDatePickerEvents();
   if(!sprintRangePicker){
     sprintRangePicker=new DateRangePicker('sprint-range-picker',{
@@ -3449,6 +3658,7 @@ function showSprintEdit(path){                     // edit an existing sprint's 
         updateSprintRangeDisplay(start, finish);
         if (start && finish) {
           $('sprint-range-picker').classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close($('sprint-range-picker'));
         }
       }
     });
@@ -3459,10 +3669,13 @@ function showSprintEdit(path){                     // edit an existing sprint's 
   updatePendingSprintItems();
   $('sp_create').textContent='Save dates';
   $('sprint-overlay').classList.add('show');
+  if (window.LayerManager) window.LayerManager.open($('sprint-overlay'));
 }
 function closeSprintModal(){
   $('sprint-overlay').classList.remove('show');
+  if (window.LayerManager) window.LayerManager.close($('sprint-overlay'));
   $('sprint-range-picker').classList.remove('show');
+  if (window.LayerManager) window.LayerManager.close($('sprint-range-picker'));
   pendingSprintItems=null;
   updatePendingSprintItems();
 }
@@ -3654,8 +3867,8 @@ const PALETTE_ACTIONS=[
   {kind:'cmd',title:'Open settings',run:()=>showSetup(true)},
   {kind:'cmd',title:'Clear bulk selection',run:()=>clearBulk()},
 ];
-function openPalette(){$('palette').classList.add('show');const i=$('palette-input');i.value='';renderPalette('');i.focus();}
-function closePalette(){$('palette').classList.remove('show');}
+function openPalette(){$('palette').classList.add('show');if (window.LayerManager) window.LayerManager.open($('palette'));const i=$('palette-input');i.value='';renderPalette('');i.focus();}
+function closePalette(){$('palette').classList.remove('show');if (window.LayerManager) window.LayerManager.close($('palette'));}
 function paletteMatches(q){
   q=(q||'').trim().toLowerCase();
   const toks=q.split(/\s+/).filter(Boolean),out=[];
@@ -3735,9 +3948,19 @@ function showSetup(cancellable){
   });
   $('setup-err').textContent='';
   $('setup-cancel').style.display=cancellable?'inline-block':'none';
-  $('setup-overlay').classList.add('show');
+  const overlay = $('setup-overlay');
+  overlay.classList.add('show');
+  if (window.LayerManager) {
+    window.LayerManager.open(overlay);
+  }
 }
-function hideSetup(){$('setup-overlay').classList.remove('show');}
+function hideSetup(){
+  const overlay = $('setup-overlay');
+  overlay.classList.remove('show');
+  if (window.LayerManager) {
+    window.LayerManager.close(overlay);
+  }
+}
 
 // api.js dispatches 'ado-401' on any HTTP 401 — the PAT expired or was revoked
 // mid-session. Reopen setup with a clear message instead of spraying errors.
@@ -3917,6 +4140,8 @@ const SIDE_GROUPS=[
   {id:'nav',     label:'Hierarchy nav (↑ parent · ↓ children)'},
   {id:'title',   label:'Title'},
   {id:'workflow',label:'State · Priority · Assignee'},
+  {id:'effort',  label:'Effort (Story Points · Remaining · Completed)'},
+  {id:'classification',label:'Classification (Risk · Value Area)'},
   {id:'sprint',  label:'Sprint'},
   {id:'parent',  label:'Parent'},
   {id:'deps',    label:'Dependencies (blocked by · blocks)'},
@@ -3926,16 +4151,11 @@ const SIDE_GROUPS=[
   {id:'desc',    label:'Description'},
   {id:'ac',      label:'Acceptance Criteria'},
   {id:'area',    label:'Area Path'},
-  {id:'storypoints',label:'Story Points'},
-  {id:'remaining',label:'Remaining Work'},
-  {id:'completed',label:'Completed Work'},
   {id:'activity',label:'Activity'},
-  {id:'risk',    label:'Risk'},
-  {id:'valuearea',label:'Value Area'},
   {id:'actions', label:'Actions row + activity / comment / child forms'},
 ];
 const SIDE_LOCKED=new Set(['title','actions']);    // editor unusable without these
-let sideOrder=SIDE_GROUPS.map(g=>g.id), sideHidden=new Set();
+let sideOrder=SIDE_GROUPS.map(g=>g.id), sideHidden=new Set(['area', 'activity']);
 function loadSideLayout(){
   try{const o=JSON.parse(localStorage.getItem('ado.sideOrder')||'null');if(Array.isArray(o))sideOrder=o;}catch(e){}
   const savedHidden = localStorage.getItem('ado.sideHidden');
@@ -3944,17 +4164,17 @@ function loadSideLayout(){
       const h=JSON.parse(savedHidden);
       sideHidden=new Set(h.filter(id=>!SIDE_LOCKED.has(id)));
       const existingIds = new Set(sideOrder.concat([...sideHidden]));
-      ['area', 'storypoints', 'remaining', 'completed', 'activity', 'risk', 'valuearea'].forEach(id => {
+      ['area', 'effort', 'activity', 'classification'].forEach(id => {
         if (!existingIds.has(id)) {
           sideHidden.add(id);
         }
       });
     }catch(e){}
   }else{
-    sideHidden=new Set(['area', 'storypoints', 'remaining', 'completed', 'activity', 'risk', 'valuearea']);
+    sideHidden=new Set(['area', 'activity']);
   }
 }
-function saveSideLayout(){try{localStorage.setItem('ado.sideOrder',JSON.stringify(sideOrder));localStorage.setItem('ado.sideHidden',JSON.stringify([...sideHidden]));}catch(e){}}
+function saveSideLayout(){try{localStorage.setItem('ado.sideOrder',JSON.stringify(sideOrderedIds()));localStorage.setItem('ado.sideHidden',JSON.stringify([...sideHidden]));}catch(e){}}
 function sideOrderedIds(){     // same recovery as barOrderedIds — re-insert missing ids near their defaults
   const def=SIDE_GROUPS.map(g=>g.id),defSet=new Set(def);
   const result=sideOrder.filter((id,i)=>defSet.has(id)&&sideOrder.indexOf(id)===i);
@@ -3990,7 +4210,7 @@ function loadBarLayout(){
   try{const o=JSON.parse(localStorage.getItem('ado.barOrder')||'null');if(Array.isArray(o))barOrder=o;}catch(e){}
   try{const h=JSON.parse(localStorage.getItem('ado.barHidden')||'null');if(Array.isArray(h))barHidden=new Set(h.filter(id=>!BAR_LOCKED.has(id)));}catch(e){}
 }
-function saveBarLayout(){try{localStorage.setItem('ado.barOrder',JSON.stringify(barOrder));localStorage.setItem('ado.barHidden',JSON.stringify([...barHidden]));}catch(e){}}
+function saveBarLayout(){try{localStorage.setItem('ado.barOrder',JSON.stringify(barOrderedIds()));localStorage.setItem('ado.barHidden',JSON.stringify([...barHidden]));}catch(e){}}
 // Ordered id list = the saved order, with any default id missing from it (new in
 // a later version) re-inserted near its default neighbours rather than dumped at
 // the end — so e.g. the spacer lands in the right place for pre-existing layouts.
@@ -4011,11 +4231,13 @@ function applyBarLayout(){
   BAR_ITEMS.forEach(i=>{const el=$(i.id);if(el)el.classList.toggle('tb-hidden',barHidden.has(i.id));});
 }
 let czTab='bar';                                           // 'bar' | 'side' — which list the Customize dialog is editing
-function showCustomize(){const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}
-  renderCustomizeList();$('customize-overlay').classList.add('show');}
-function closeCustomize(){$('customize-overlay').classList.remove('show');}
+function showCustomize(){const mp=$('morepanel');if(mp){mp.style.display='none';if (window.LayerManager) window.LayerManager.close(mp);$('morebtn').classList.remove('on');}
+  renderCustomizeList();$('customize-overlay').classList.add('show');
+  if (window.LayerManager) window.LayerManager.open($('customize-overlay'));}
+function closeCustomize(){$('customize-overlay').classList.remove('show');
+  if (window.LayerManager) window.LayerManager.close($('customize-overlay'));}
 function resetCustomize(){       // reset only the currently-active tab to defaults
-  if(czTab==='side'){sideOrder=SIDE_GROUPS.map(g=>g.id);sideHidden=new Set();saveSideLayout();applySideLayout();}
+  if(czTab==='side'){sideOrder=SIDE_GROUPS.map(g=>g.id);sideHidden=new Set(['area', 'activity']);saveSideLayout();applySideLayout();}
   else{barOrder=BAR_ITEMS.map(i=>i.id);barHidden=new Set();saveBarLayout();applyBarLayout();}
   renderCustomizeList();
 }
@@ -4032,19 +4254,24 @@ function renderCustomizeList(){
   const byId=Object.fromEntries(cfg.items.map(i=>[i.id,i.label]));
   list.innerHTML=cfg.orderedIds().map(id=>{
     const locked=cfg.locked.has(id),checked=!cfg.isHidden(id);
-    return `<div class="czrow" draggable="true" data-id="${id}"><span class="czgrip" title="drag to reorder">⠿</span>`+
+    const grip=locked?'<span class="czgrip disabled" title="locked field">🔒</span>':'<span class="czgrip" title="drag to reorder">⠿</span>';
+    return `<div class="czrow${locked?' locked':''}" draggable="${!locked}" data-id="${id}">${grip}`+
       `<label class="czlab"><input type="checkbox" ${checked?'checked':''} ${locked?'disabled':''} data-id="${id}">${esc(byId[id])}</label></div>`;
   }).join('');
   list.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
     const id=cb.dataset.id;if(cb.checked)cfg.show(id);else cfg.hide(id);cfg.save();cfg.apply();});
   let dragging=null;
   list.querySelectorAll('.czrow').forEach(row=>{
+    if (row.classList.contains('locked')) return;
     row.addEventListener('dragstart',()=>{dragging=row;setTimeout(()=>row.classList.add('dragging'),0);});
     row.addEventListener('dragend',()=>{row.classList.remove('dragging');dragging=null;
       cfg.setOrder([...list.querySelectorAll('.czrow')].map(r=>r.dataset.id));cfg.save();cfg.apply();});});
   list.ondragover=e=>{e.preventDefault();if(!dragging)return;
     const rows=[...list.querySelectorAll('.czrow:not(.dragging)')];
-    const after=rows.find(r=>{const b=r.getBoundingClientRect();return e.clientY<b.top+b.height/2;});
+    const after=rows.find(r=>{
+      if (r.classList.contains('locked')) return false; // do not insert before/after locked rows if they are title/actions to preserve boundary, or we can just let it move around other non-locked rows.
+      const b=r.getBoundingClientRect();return e.clientY<b.top+b.height/2;
+    });
     if(after)list.insertBefore(dragging,after);else list.appendChild(dragging);};
 }
 
@@ -4094,8 +4321,13 @@ async function initialBoot(postSetup){
   $('filt_clear_all').onclick=()=>{for(const k in fstate)delete fstate[k];renderFilters();updateFilterCount();scheduleApply();};
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
   const moreP=$('morepanel'),moreB=$('morebtn');
-  const closeMore=()=>{moreP.style.display='none';moreB.classList.remove('on');};
-  moreB.onclick=e=>{e.stopPropagation();const show=moreP.style.display==='none';moreP.style.display=show?'flex':'none';moreB.classList.toggle('on',show);};
+  const closeMore=()=>{moreP.style.display='none';moreB.classList.remove('on');if (window.LayerManager) window.LayerManager.close(moreP);};
+  moreB.onclick=e=>{e.stopPropagation();const show=moreP.style.display==='none';moreP.style.display=show?'flex':'none';moreB.classList.toggle('on',show);
+    if (window.LayerManager) {
+      if (show) window.LayerManager.open(moreP, null, { isPopover: true });
+      else window.LayerManager.close(moreP);
+    }
+  };
   document.addEventListener('mousedown',e=>{if(moreP.style.display!=='none'&&!moreP.contains(e.target)&&e.target!==moreB)closeMore();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&moreP.style.display!=='none')closeMore();});
   const updateSearchClear=()=>{
@@ -4282,29 +4514,87 @@ async function initialBoot(postSetup){
     const el = $(id);
     if (el) { el.addEventListener('change',()=>quickSave(field)); }
   });
+  ['s_est', 's_remaining', 's_completed'].forEach(id => {
+    const el = $(id);
+    const prev = $(id + '_preview');
+    if (el && prev) {
+      const update = () => {
+        const txt = formatTimePreview(el.value);
+        prev.textContent = txt;
+        prev.style.display = txt ? 'block' : 'none';
+      };
+      el.addEventListener('input', update);
+      el.addEventListener('focus', update);
+      el.addEventListener('blur', () => { prev.style.display = 'none'; });
+    }
+  });
   document.addEventListener('keydown',e=>{
     const open=!$('side').classList.contains('hidden');
     if((e.ctrlKey||e.metaKey)&&e.code==='KeyS'&&!e.altKey){if(open){e.preventDefault();save();}}
-    else if(e.key==='Escape'&&open){
-      const fsAct = document.querySelector('.sgroup[data-sg="actions"].fullscreen');
-      const fsEditor = document.querySelector('.md-editor.fullscreen');
-      if(fsAct){
-        toggleActivityFullscreen(false);
+    else if(e.key==='Escape'){
+      if (window.LayerManager && window.LayerManager.stack.length > 0) {
+        const topLayer = window.LayerManager.stack[window.LayerManager.stack.length - 1];
+        const el = topLayer.element;
+        if (el.id === 'palette') { e.preventDefault(); e.stopPropagation(); closePalette(); return; }
+        if (el.id === 'newitem-overlay') {
+          e.preventDefault(); e.stopPropagation();
+          if(parentNew.isOpen())parentNew.close();
+          else if(assignedNew.isOpen())assignedNew.close();
+          else if(sprintNew.isOpen())sprintNew.close();
+          else closeNewItem();
+          return;
+        }
+        if (el.id === 'sprint-overlay') { e.preventDefault(); e.stopPropagation(); closeSprintModal(); return; }
+        if (el.id === 'customize-overlay') { e.preventDefault(); e.stopPropagation(); closeCustomize(); return; }
+        if (el.id === 'setup-overlay') { e.preventDefault(); e.stopPropagation(); hideSetup(); return; }
+        if (el.id === 'confirm-overlay') { return; }
+        if (el.id === 'link-overlay') { return; }
+        if (el.id === 'morepanel') { e.preventDefault(); e.stopPropagation(); closeMore(); return; }
+        if (el.id === 'badgepanel') { e.preventDefault(); e.stopPropagation(); toggleBadgePanel(); return; }
+        if (el.id === 's_mention') { e.preventDefault(); e.stopPropagation(); closeMention(); return; }
+        if (el.classList.contains('drp-popover')) {
+          e.preventDefault(); e.stopPropagation();
+          el.classList.remove('show');
+          window.LayerManager.close(el);
+          return;
+        }
+        if (el.classList.contains('ppick')) {
+          e.preventDefault(); e.stopPropagation();
+          [parentEditor, assignedEditor, assignedChild, assignedNew, sprintEditor, sprintNew, parentNew, depBlockedByPicker, depBlocksPicker].forEach(p => {
+            if (p && p.isOpen && p.isOpen()) p.close();
+          });
+          return;
+        }
+        if (el.classList.contains('reactions-popover')) {
+          e.preventDefault(); e.stopPropagation();
+          closeEmojiPicker();
+          return;
+        }
+        if (el.classList.contains('fullscreen') || el.id === 'side') {
+          e.preventDefault(); e.stopPropagation();
+          if (el.classList.contains('md-editor')) {
+            const btn = el.querySelector('.dbtn-full');
+            if(btn)btn.click();
+          } else if (el.dataset.sg === 'actions') {
+            toggleActivityFullscreen(false);
+          } else if (el.id === 'side') {
+            toggleFullscreen(false);
+          }
+          return;
+        }
       }
-      else if(fsEditor){
-        const btn = fsEditor.querySelector('.dbtn-full');
-        if(btn)btn.click();
+      if (open) {
+        if(parentEditor.isOpen())parentEditor.close();
+        else if(assignedEditor.isOpen())assignedEditor.close();
+        else if(assignedChild.isOpen())assignedChild.close();
+        else if(sprintEditor.isOpen())sprintEditor.close();
+        else if(depBlockedByPicker.isOpen())depBlockedByPicker.close();
+        else if(depBlocksPicker.isOpen())depBlocksPicker.close();
+        else if($('comment_editor_container').style.display==='flex'){closeCommentForm();}
+        else if($('child_form').style.display==='flex'){$('child_form').style.display='none';const cb=$('s_childbtn');if(cb)cb.classList.remove('on');}
+        else if($('side').classList.contains('fullscreen'))toggleFullscreen(false);
+        else closePanel();
       }
-      else if(parentEditor.isOpen())parentEditor.close();
-      else if(assignedEditor.isOpen())assignedEditor.close();
-      else if(assignedChild.isOpen())assignedChild.close();
-      else if(sprintEditor.isOpen())sprintEditor.close();
-      else if(depBlockedByPicker.isOpen())depBlockedByPicker.close();
-      else if(depBlocksPicker.isOpen())depBlocksPicker.close();
-      else if($('comment_editor_container').style.display==='flex'){closeCommentForm();}
-      else if($('child_form').style.display==='flex'){$('child_form').style.display='none';const cb=$('s_childbtn');if(cb)cb.classList.remove('on');}
-      else if($('side').classList.contains('fullscreen'))toggleFullscreen(false);
-      else closePanel();
     }
   });
   $('s_childbtn').onclick=()=>{toggleActivityExpand(true);const f=$('child_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';f.style.flexDirection='column';$('s_childbtn').classList.toggle('on', show);if(show){$('c_prio').value = $('s_prio').value || '';$('c_title').focus();}};

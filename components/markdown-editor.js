@@ -181,31 +181,59 @@ class MarkdownEditor {
 
   toggleFullscreen(forceOn) {
     const on = forceOn !== undefined ? forceOn : !this.container.classList.contains('fullscreen');
-    this.container.classList.toggle('fullscreen', on);
-    this.fullBtn.classList.toggle('on', on);
-    this.fullBtn.title = on ? 'Exit fullscreen mode' : 'Toggle fullscreen mode (Esc to exit)';
     
     let backdropId = 's_editor_backdrop_' + this.container.id;
     let backdrop = document.getElementById(backdropId);
+    
     if (on) {
+      if (!this._origParent) {
+        this._origParent = this.container.parentNode;
+        this._origNextSibling = this.container.nextSibling;
+      }
+      this.container.classList.add('fullscreen');
+      this.fullBtn.classList.add('on');
+      this.fullBtn.title = 'Exit fullscreen mode';
+
       if (!backdrop) {
         backdrop = document.createElement('div');
         backdrop.id = backdropId;
         backdrop.className = 'modal-backdrop editor-backdrop';
         backdrop.onclick = () => this.toggleFullscreen(false);
-        const fsParent = this.container.parentNode.closest('.sgroup.fullscreen, #side.fullscreen');
-        if (fsParent) {
-          fsParent.appendChild(backdrop);
-        } else {
-          document.body.appendChild(backdrop);
-        }
+        document.body.appendChild(backdrop);
       }
+      
+      // Move editor container to body to break out of any parent stacking context
+      document.body.appendChild(this.container);
+
+      if (window.LayerManager) {
+        window.LayerManager.open(this.container, backdrop);
+      }
+
       if (this.isEditMode) {
         this.textarea.focus();
       }
     } else {
+      this.container.classList.remove('fullscreen');
+      this.fullBtn.classList.remove('on');
+      this.fullBtn.title = 'Toggle fullscreen mode (Esc to exit)';
+      
+      if (window.LayerManager) {
+        window.LayerManager.close(this.container);
+      }
+      
       if (backdrop) {
         backdrop.remove();
+      }
+      
+      // Restore to original parent
+      if (this._origParent) {
+        if (this._origNextSibling) {
+          this._origParent.insertBefore(this.container, this._origNextSibling);
+        } else {
+          this._origParent.appendChild(this.container);
+        }
+        this._origParent = null;
+        this._origNextSibling = null;
       }
     }
   }

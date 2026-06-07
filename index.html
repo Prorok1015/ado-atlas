@@ -199,7 +199,14 @@
         </div>
         <input id="s_due" type="hidden">
       </div>
-      <div style="flex: 0.5; max-width:60px;"><label>Est h</label><input id="s_est" type="number" min="0" step="0.5"></div>
+      <div style="flex: 0.5; max-width:76px;">
+        <label>Est h</label>
+        <div class="time-input-wrap">
+          <input id="s_est" type="text" placeholder="e.g. 1d + 2h">
+          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+          <div id="s_est_preview" class="time-preview-text"></div>
+        </div>
+      </div>
     </div>
     <div id="s_time" class="stime"></div>
     </div>
@@ -212,17 +219,30 @@
       <label>Area Path</label>
       <input id="s_area">
     </div>
-    <div class="sgroup" data-sg="storypoints">
-      <label>Story Points</label>
-      <input id="s_storypoints" type="number" min="0" step="0.1">
-    </div>
-    <div class="sgroup" data-sg="remaining">
-      <label>Remaining Work</label>
-      <input id="s_remaining" type="number" min="0" step="0.1">
-    </div>
-    <div class="sgroup" data-sg="completed">
-      <label>Completed Work</label>
-      <input id="s_completed" type="number" min="0" step="0.1">
+    <div class="sgroup" data-sg="effort">
+      <label>Effort</label>
+      <div class="row">
+        <div>
+          <label style="font-size:9px; text-transform:none;">Story Points</label>
+          <input id="s_storypoints" type="text">
+        </div>
+        <div>
+          <label style="font-size:9px; text-transform:none;">Remaining</label>
+          <div class="time-input-wrap">
+            <input id="s_remaining" type="text" placeholder="e.g. 4h">
+            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+            <div id="s_remaining_preview" class="time-preview-text"></div>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:9px; text-transform:none;">Completed</label>
+          <div class="time-input-wrap">
+            <input id="s_completed" type="text" placeholder="e.g. 2d">
+            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+            <div id="s_completed_preview" class="time-preview-text"></div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="sgroup" data-sg="activity">
       <label>Activity</label>
@@ -236,22 +256,27 @@
         <option>Deployment</option>
       </select>
     </div>
-    <div class="sgroup" data-sg="risk">
-      <label>Risk</label>
-      <select id="s_risk" style="width:100%">
-        <option value="">—</option>
-        <option>High</option>
-        <option>Medium</option>
-        <option>Low</option>
-      </select>
-    </div>
-    <div class="sgroup" data-sg="valuearea">
-      <label>Value Area</label>
-      <select id="s_valuearea" style="width:100%">
-        <option value="">—</option>
-        <option>Business</option>
-        <option>Architectural</option>
-      </select>
+    <div class="sgroup" data-sg="classification">
+      <label>Classification</label>
+      <div class="row">
+        <div>
+          <label style="font-size:9px; text-transform:none;">Risk</label>
+          <select id="s_risk" style="width:100%">
+            <option value="">—</option>
+            <option>High</option>
+            <option>Medium</option>
+            <option>Low</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:9px; text-transform:none;">Value Area</label>
+          <select id="s_valuearea" style="width:100%">
+            <option value="">—</option>
+            <option>Business</option>
+            <option>Architectural</option>
+          </select>
+        </div>
+      </div>
     </div>
     <div class="sgroup" data-sg="attachments" id="s_atch_group" style="display:none">
       <label>Attachments</label>
@@ -492,6 +517,7 @@
   </div>
 </div>
 
+<script src="components/layer-manager.js"></script>
 <script src="lib.js"></script>
 <script src="api.js"></script>
 <script src="components/markdown-editor.js"></script>

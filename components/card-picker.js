@@ -14,14 +14,16 @@ function createCardPicker(base,opts){
   function render(){
     const v=V().value.trim(),card=Card(),openBtn=Open();
     card.dataset.val=v;                              // lets the provider drop stale async card renders
-    if(openBtn)openBtn.style.visibility=(v&&prov.openValue)?'visible':'hidden';
+    if(openBtn)openBtn.style.display=(v&&prov.openValue)?'':'none';
     prov.renderCard(v,card);
   }
   function set(v,silent){V().value=(v==null?'':String(v));render();close();if(!silent)onChange();}
   function get(){return V().value.trim();}
   function open(){const p=Pick();if(p.style.display!=='none'){close();return;}   // toggle
-    p.style.display='block';const i=Search();i.value='';results('');i.focus();}
-  function close(){const p=Pick();if(p)p.style.display='none';}
+    p.style.display='block';
+    if (window.LayerManager) window.LayerManager.open(p, null, { isPopover: true });
+    const i=Search();i.value='';results('');i.focus();}
+  function close(){const p=Pick();if(p){p.style.display='none';if (window.LayerManager) window.LayerManager.close(p);}}
   function isOpen(){const p=Pick();return !!p&&p.style.display!=='none';}
   function results(q){
     rows=prov.localRows(q);idx=0;

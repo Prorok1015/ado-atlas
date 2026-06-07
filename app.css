@@ -237,10 +237,10 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 .ttag{font-size:10px;font-weight:600;color:#fff;border-radius:10px;padding:1px 6px;flex:none;max-width:72px;overflow:hidden;text-overflow:ellipsis}
 .empty{color:var(--muted);font-size:12px;padding:2px 8px}
 .skip{color:var(--accent);font-weight:600;cursor:help}
-#side{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:10px 12px 0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:5px;position:relative}
+#side{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:10px 12px 0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:8px;position:relative}
 /* Full-screen editor: pin #side to the viewport with a dim backdrop so the user
    can focus on the description. Layout stays the same — the sidebar just grows. */
-#side.fullscreen{position:fixed;inset:0;width:auto;max-width:1100px;margin:0 auto;z-index:5000;border-left:0;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:16px 22px 0}
+#side.fullscreen{position:fixed;inset:0;width:auto;max-width:1100px;margin:0 auto;border-left:0;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:16px 22px 0}
 #side.fullscreen #s_desc,#side.fullscreen #s_desc_prev,
 #side.fullscreen #editor_desc_container textarea,
 #side.fullscreen #editor_desc_container .mdview{min-height:50vh}
@@ -259,6 +259,7 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 /* sidebar field groups (logical chunks reordered/hidden via the Customize dialog) */
 .sgroup{display:flex;flex-direction:column;gap:5px}
 .sgroup.sg-hidden{display:none!important}
+}
 @keyframes skeleton-pulse {
   0% { opacity: 0.6; }
   50% { opacity: 1; }
@@ -299,9 +300,9 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 /* Sticky actions: keep Save reachable on long descriptions. The actions sgroup
    pins to the bottom of the scrolling sidebar with a top border so it visually
    separates from the form below the fold. */
-.sgroup[data-sg="actions"]{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line);margin-top:auto;z-index:50;padding:6px 14px 10px;margin-left:-14px;margin-right:-14px;margin-bottom:0;box-shadow:0 -4px 16px rgba(0,0,0,0.12)}
+.sgroup[data-sg="actions"]{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line);margin-top:auto;z-index:50;padding:6px 14px 10px;margin-left:-12px;margin-right:-12px;margin-bottom:0;box-shadow:0 -4px 16px rgba(0,0,0,0.12)}
 body.light .sgroup[data-sg="actions"]{box-shadow:0 -4px 16px rgba(0,0,0,0.06)}
-#side.fullscreen .sgroup[data-sg="actions"]{padding-left:24px;padding-right:24px;margin-left:-24px;margin-right:-24px}
+#side.fullscreen .sgroup[data-sg="actions"]{padding-left:24px;padding-right:24px;margin-left:-22px;margin-right:-22px}
 body.light .comment-card,body.light #child_form,body.light #comment_editor_container{background:var(--panel)!important}
 
 /* Save status chip: ● dirty / spinner saving / ✓ saved / ⚠ error */
@@ -328,8 +329,8 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
   position: static;
   padding: 0 0 6px;
 }
-.shead{display:flex;align-items:center;gap:6px;position:sticky;top:-12px;background:var(--panel);z-index:12;padding:6px 14px;margin-left:-14px;margin-right:-14px;border-bottom:1px solid var(--line);min-height:34px}
-#side.fullscreen .shead{top:-18px;margin-left:-24px;margin-right:-24px;padding-left:24px;padding-right:24px;padding-top:10px;padding-bottom:10px;min-height:42px}
+.shead{display:flex;align-items:center;gap:6px;position:sticky;top:-12px;background:var(--panel);z-index:12;padding:6px 14px;margin-left:-12px;margin-right:-12px;border-bottom:1px solid var(--line);min-height:34px}
+#side.fullscreen .shead{top:-18px;margin-left:-22px;margin-right:-22px;padding-left:24px;padding-right:24px;padding-top:10px;padding-bottom:10px;min-height:42px}
 .shead .ttl{flex:1;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
 .shead #s_desc_full.on,.shead #s_desc_full.btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #side.fullscreen .shead #s_desc_full{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -423,7 +424,7 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 /* Activity Resizer & Fullscreen activity styles */
 .activity-resizer{position:absolute;top:0;left:0;right:0;height:6px;cursor:ns-resize;background:transparent;z-index:10;transition:background .15s}
 .activity-resizer:hover,.activity-resizer.active{background:var(--accent)}
-.sgroup[data-sg="actions"].fullscreen{position:fixed!important;top:24px!important;bottom:24px!important;left:24px!important;right:24px!important;inset:24px!important;width:calc(100% - 48px)!important;max-width:1000px!important;margin:0 auto!important;z-index:6000!important;background:var(--panel)!important;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.55)!important;padding:20px!important;display:flex;flex-direction:column;gap:10px}
+.sgroup[data-sg="actions"].fullscreen{position:fixed!important;top:24px!important;bottom:24px!important;left:24px!important;right:24px!important;inset:24px!important;width:calc(100% - 48px)!important;max-width:1000px!important;margin:0 auto!important;background:var(--panel)!important;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.55)!important;padding:20px!important;display:flex;flex-direction:column;gap:10px}
 .sgroup[data-sg="actions"].fullscreen #activity-content{flex:1;display:flex;flex-direction:column;min-height:0;width:100%}
 .sgroup[data-sg="actions"].fullscreen #s_activity{max-height:none !important;flex:1;overflow-y:auto;width:100%}
 .sgroup[data-sg="actions"].fullscreen .comment-card,
@@ -510,7 +511,6 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
   inset: 24px;
   max-width: 1000px;
   margin: 0 auto;
-  z-index: 6000;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -521,7 +521,6 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
   gap: 10px;
 }
 .sgroup:has(.md-editor.fullscreen) {
-  z-index: 7000 !important;
 }
 /* modal backdrop styles for fullscreen elements */
 .modal-backdrop {
@@ -531,10 +530,10 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
   cursor: default;
 }
 .modal-backdrop.sidebar-backdrop {
-  z-index: 4999;
+}
+.modal-backdrop.activity-backdrop {
 }
 .modal-backdrop.editor-backdrop {
-  z-index: 5999;
 }
 .md-editor.fullscreen .desc-tools {
   margin: 0;
@@ -662,7 +661,7 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
   color: var(--txt);
 }
 @keyframes slideUpFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.f-dropdown{position:absolute;top:100%;left:0;z-index:1000;width:max-content;max-width:280px;max-height:180px;overflow-y:auto;background:rgba(127, 127, 127, 0.08);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2);margin-top:4px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;animation:slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1)}
+.f-dropdown{position:absolute;top:100%;left:0;z-index:2000;width:max-content;max-width:280px;max-height:180px;overflow-y:auto;background:rgba(127, 127, 127, 0.08);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2);margin-top:4px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;animation:slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1)}
 .f-dropdown-item{border:1px solid var(--line);border-radius:14px;padding:2px 10px;font-size:12px;cursor:pointer;background:var(--field);color:var(--txt);user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .f-dropdown-item:hover{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
 .f-dropdown-item.empty{border:0;background:transparent;color:var(--muted);cursor:default;width:100%;text-align:center}
@@ -884,7 +883,7 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 1000;
+  z-index: 9500;
   margin-top: 4px;
 }
 .drp-popover.show, #sprint-range-picker.show, #side-range-picker.show, #side-due-picker.show {
@@ -1020,6 +1019,52 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .drp-item-large.active {
   background-color: var(--accent) !important;
   color: #fff !important;
+}
+
+/* Time Input Math Indicator styling */
+.time-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.time-input-wrap input {
+  padding-right: 20px !important;
+}
+.time-input-wrap .time-hint-icon {
+  position: absolute;
+  right: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: help;
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s;
+  user-select: none;
+}
+.time-input-wrap:focus-within .time-hint-icon {
+  opacity: 1;
+  color: var(--accent);
+}
+.time-input-wrap:hover .time-hint-icon {
+  opacity: 0.9;
+}
+.time-preview-text {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  white-space: nowrap;
+  z-index: 2000;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  font-size: 10px;
+  color: var(--accent);
+  display: none;
+  font-weight: 500;
+  user-select: none;
+  line-height: 1.2;
 }
 
 
