@@ -1328,6 +1328,18 @@ async function hydratePreviewImages(container){
     }
   }
 }
+function colorMentions(container){
+  if(!container)return;
+  const links=container.querySelectorAll('a.vss-mention-link');
+  links.forEach(a=>{
+    const name=a.textContent.replace(/^@/,'').trim();
+    if(!name)return;
+    const baseColor=personColor(name);
+    const bg=baseColor.replace('hsl','hsla').replace(')',', 0.12)');
+    a.style.color=baseColor;
+    a.style.background=bg;
+  });
+}
 
 /* ---------- attachments + paste/drop + @mention typeahead (description editor) ----------
    atchState mirrors the AttachedFile relations for the open item. Add/remove are
@@ -1425,7 +1437,13 @@ function findMentionTrigger(ta){
   }
   return null;
 }
+let closeMentionTimeout = null;
+function scheduleCloseMention(){
+  if(closeMentionTimeout) clearTimeout(closeMentionTimeout);
+  closeMentionTimeout = setTimeout(closeMention, 150);
+}
 function closeMention(){
+  if(closeMentionTimeout){clearTimeout(closeMentionTimeout);closeMentionTimeout=null;}
   const p=$('s_mention');if(p)p.style.display='none';
   mentionState.open=false;mentionState.query='';mentionState.start=-1;mentionState.rows=[];
 }
@@ -1441,18 +1459,65 @@ function drawMention(){
     r.onmousedown=e=>{e.preventDefault();mentionState.idx=+r.dataset.i;pickMention();};
   });
 }
+function getCaretCoordinates(element, position) {
+  const div = document.createElement('div');
+  document.body.appendChild(div);
+
+  const style = div.style;
+  const computed = window.getComputedStyle(element);
+
+  style.whiteSpace = 'pre-wrap';
+  style.wordWrap = 'break-word';
+  style.position = 'absolute';
+  style.visibility = 'hidden';
+
+  const properties = [
+    'direction', 'boxSizing', 'width', 'height', 'overflowX', 'overflowY',
+    'borderStyle', 'borderWidth', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'fontStyle', 'fontVariant', 'fontWeight', 'fontStretch', 'fontSize',
+    'lineHeight', 'fontFamily', 'textAlign', 'textTransform', 'textIndent',
+    'textDecoration', 'letterSpacing', 'wordSpacing'
+  ];
+
+  properties.forEach(prop => {
+    style[prop] = computed[prop];
+  });
+
+  div.textContent = element.value.substring(0, position);
+
+  const span = document.createElement('span');
+  span.textContent = element.value.substring(position) || '.';
+  div.appendChild(span);
+
+  const lh = parseInt(computed.lineHeight || 0);
+  const coordinates = {
+    top: span.offsetTop + parseInt(computed.borderTopWidth || 0),
+    left: span.offsetLeft + parseInt(computed.borderLeftWidth || 0),
+    height: !isNaN(lh) && lh > 0 ? lh : (span.offsetHeight || 16)
+  };
+
+  document.body.removeChild(div);
+  return coordinates;
+}
 function positionMention(){
   if(!activeEditor)return;
   const ta=activeEditor.textarea,p=$('s_mention'),side=$('side');if(!ta||!p||!side)return;
-  // Pin the popup below the textarea (cheap + reliable; the caret-precise
-  // position would need a hidden mirror div). Coords are relative to #side,
-  // including its scroll offsets so the popup tracks the textarea after scroll.
+  const caretPos=mentionState.start;
+  const coords=getCaretCoordinates(ta,caretPos);
   const r=ta.getBoundingClientRect(),sr=side.getBoundingClientRect();
-  p.style.left=(r.left-sr.left+side.scrollLeft)+'px';
-  p.style.top=(r.bottom-sr.top+side.scrollTop+4)+'px';
+  
+  const pWidth=p.offsetWidth||220;
+  const maxLeft=r.right-sr.left-pWidth+side.scrollLeft-8;
+  const computedLeft=r.left-sr.left+coords.left-ta.scrollLeft+side.scrollLeft;
+  const left=Math.max(r.left-sr.left+side.scrollLeft+8,Math.min(computedLeft,maxLeft));
+  const top=r.top-sr.top+coords.top+coords.height-ta.scrollTop+side.scrollTop+4;
+  
+  p.style.left=left+'px';
+  p.style.top=top+'px';
   p.style.maxWidth=r.width+'px';
 }
 async function openOrUpdateMention(){
+  if(closeMentionTimeout){clearTimeout(closeMentionTimeout);closeMentionTimeout=null;}
   if(!activeEditor)return;
   const ta=activeEditor.textarea;if(!ta)return;
   const trig=findMentionTrigger(ta);
@@ -2359,6 +2424,7 @@ function renderActivity(cs,hs){
   
   $('s_activity').innerHTML=h;
   hydratePreviewImages($('s_activity'));
+  colorMentions($('s_activity'));
   
   const ach = $('activity_comments_header');
   if (ach) {

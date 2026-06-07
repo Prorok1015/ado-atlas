@@ -141,7 +141,7 @@ class MarkdownEditor {
           activeEditor = this; openOrUpdateMention();
         }
       });
-      this.textarea.addEventListener('blur', () => { setTimeout(closeMention, 150); });
+      this.textarea.addEventListener('blur', () => { scheduleCloseMention(); });
     }
   }
 
@@ -213,6 +213,7 @@ class MarkdownEditor {
   renderPreview() {
     this.previewDiv.innerHTML = mdToHtml(this.textarea.value, descRenderOpts());
     hydratePreviewImages(this.previewDiv);
+    if (typeof colorMentions === 'function') colorMentions(this.previewDiv);
   }
 
   handleFormat(kind) {

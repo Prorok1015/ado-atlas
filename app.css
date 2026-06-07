@@ -404,7 +404,7 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .mdview pre{background:var(--panel2);border-radius:6px;padding:8px;overflow:auto}
 .mdview a{color:var(--accent)}
 .mdview img{max-width:100%;border-radius:6px;margin:4px 0;display:block}
-.mdview a.vss-mention-link{background:rgba(47,111,237,.14);color:var(--accent);padding:0 5px;border-radius:10px;text-decoration:none;font-weight:600}
+a.vss-mention-link{background:rgba(59,125,224,0.1);color:var(--accent);padding:2px 6px;border-radius:10px;text-decoration:none;font-weight:600;cursor:pointer;display:inline-block}
 /* Description mini-toolbar: label + format cluster + action buttons. Sticky to
    the top of the scrolling sidebar so it stays reachable on long descriptions.
    The negative `top` value tucks it under #side's own 10px padding so the bar
@@ -527,7 +527,7 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .atchhead{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:6px;padding:0 2px 3px}
 .atchhead .acount{color:var(--accent);font-weight:700}
 /* @mention typeahead popup */
-.mention-pop{position:absolute;z-index:50;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:220px;max-width:340px;box-shadow:0 6px 22px rgba(0,0,0,.4)}
+.mention-pop{position:absolute;z-index:10000;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:220px;max-width:340px;box-shadow:0 6px 22px rgba(0,0,0,.4)}
 .mention-pop .mrow{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;font-size:12px}
 .mention-pop .mrow.on{background:rgba(47,111,237,.18)}
 .mention-pop .mrow .mname{flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
