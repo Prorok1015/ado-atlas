@@ -1359,6 +1359,24 @@ function renderAttachments(){
   box.innerHTML=head+rows;
   box.querySelectorAll('.atchrow').forEach(row=>{
     const i=+row.dataset.i,a=arr[i];
+    row.querySelector('.aname').onclick=async e=>{
+      e.preventDefault();
+      try{
+        setStatus('downloading '+a.name+'…');
+        const blob=await api.fetchAttachmentBlob(a.url);
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url;
+        link.download=a.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setStatus('downloaded '+a.name);
+      }catch(err){
+        setStatus('download failed: '+err.message,true);
+      }
+    };
     row.querySelector('.ains').onclick=e=>{e.preventDefault();descEditor.insertAtCursor((isImageName(a.name)?'!':'')+`[${a.name}](${a.url})`);refreshDirty();};
     row.querySelector('.axdel').onclick=e=>{e.preventDefault();removeAttachment(a);};
   });
