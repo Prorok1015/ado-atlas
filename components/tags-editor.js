@@ -29,7 +29,7 @@ const tagsEditor=(function(){let cur=[],adding=false,committing=false,disabled=f
     }else{const p=$('s_tagplus');if(p)p.onclick=()=>{adding=true;render();};}
     if(disabled){box.querySelectorAll('button').forEach(b=>b.disabled=true);box.style.pointerEvents='none';}else{box.style.pointerEvents='';}
   }
-  function setDisabled(d){disabled=!!d;const box=$('s_tags');if(box)box.style.pointerEvents=d?'none':'';}
+  function setDisabled(d){disabled=!!d;const box=$('s_tags');if(box){box.style.pointerEvents=d?'none':'';box.querySelectorAll('button').forEach(b=>b.disabled=d);}}
   return {render,setDisabled,
     add(s){commit(s);render();},
     set(s,silent){cur=uniq(norm(s));adding=false;render();if(!silent)refreshDirty();},
