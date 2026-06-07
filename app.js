@@ -2625,81 +2625,144 @@ function getWorkDayHours() {
   return Math.max(1, we - ws);
 }
 
-function formatTimePreview(str) {
-  if (typeof str !== 'string') return '';
-  str = str.replace(/\s+/g, '').toLowerCase();
-  if (!str) return '';
-  
-  const tokenRegex = /([+-]?\d+(?:\.\d+)?)([hdw]?)|([+-])/g;
-  const workHours = getWorkDayHours();
+function timeExprToMath(str, workHours) {
   const weekHours = workHours * 5;
-  
-  let terms = [];
-  let totalHours = 0;
-  let currentSign = 1;
-  let match;
-  let parsedAny = false;
+  let res = str.toLowerCase();
+  res = res.replace(/(\d+(?:\.\d+)?)\s*w/g, '($1 * ' + weekHours + ')');
+  res = res.replace(/(\d+(?:\.\d+)?)\s*d/g, '($1 * ' + workHours + ')');
+  res = res.replace(/(\d+(?:\.\d+)?)\s*h/g, '($1 * 1)');
+  return res;
+}
 
-  while ((match = tokenRegex.exec(str)) !== null) {
-    if (match[3]) {
-      currentSign = match[3] === '-' ? -1 : 1;
-      parsedAny = true;
-    } else if (match[1]) {
-      const val = parseFloat(match[1]);
-      const unit = match[2] || 'h';
-      let multiplier = 1;
-      let unitLabel = 'h';
-      if (unit === 'd') { multiplier = workHours; unitLabel = 'd'; }
-      else if (unit === 'w') { multiplier = weekHours; unitLabel = 'w'; }
-      
-      const termHours = val * multiplier;
-      totalHours += currentSign * termHours;
-      
-      const signStr = terms.length > 0 ? (currentSign === -1 ? ' - ' : ' + ') : (currentSign === -1 ? '-' : '');
-      
-      let label = `${val}${unitLabel}`;
-      if (unitLabel !== 'h') {
-        label += ` (${termHours}h)`;
-      }
-      terms.push(signStr + label);
-      parsedAny = true;
-      currentSign = 1;
+function evaluateMath(str) {
+  let pos = 0;
+  let hasError = false;
+  
+  function consume(char) {
+    if (str[pos] === char) {
+      pos++;
+      return true;
+    }
+    return false;
+  }
+  
+  function skipWhitespace() {
+    while (pos < str.length && /\s/.test(str[pos])) {
+      pos++;
     }
   }
   
-  if (!parsedAny) return '';
-  return `⏱ = ${totalHours}h` + (terms.length > 0 ? ` [${terms.join('')}]` : '');
+  function parseExpression() {
+    let val = parseTerm();
+    skipWhitespace();
+    while (pos < str.length) {
+      if (consume('+')) {
+        val += parseTerm();
+      } else if (consume('-')) {
+        val -= parseTerm();
+      } else {
+        break;
+      }
+      skipWhitespace();
+    }
+    return val;
+  }
+  
+  function parseTerm() {
+    let val = parseFactor();
+    skipWhitespace();
+    while (pos < str.length) {
+      if (consume('*')) {
+        val *= parseFactor();
+      } else if (consume('/')) {
+        const den = parseFactor();
+        if (den === 0) {
+          hasError = true;
+          val = 0;
+        } else {
+          val /= den;
+        }
+      } else {
+        break;
+      }
+      skipWhitespace();
+    }
+    return val;
+  }
+  
+  function parseFactor() {
+    skipWhitespace();
+    if (consume('(')) {
+      const val = parseExpression();
+      skipWhitespace();
+      if (!consume(')')) {
+        hasError = true;
+      }
+      return val;
+    }
+    
+    let start = pos;
+    if (str[pos] === '-' || str[pos] === '+') {
+      pos++;
+    }
+    while (pos < str.length && (/[0-9.]/.test(str[pos]))) {
+      pos++;
+    }
+    if (start === pos) {
+      hasError = true;
+      pos++; // Avoid infinite loop
+      return NaN;
+    }
+    const numStr = str.substring(start, pos);
+    const val = parseFloat(numStr);
+    if (isNaN(val)) {
+      hasError = true;
+      return NaN;
+    }
+    return val;
+  }
+  
+  const result = parseExpression();
+  if (hasError || isNaN(result) || pos < str.length) {
+    return NaN;
+  }
+  return result;
+}
+
+function formatTimePreview(str) {
+  if (typeof str !== 'string') return '';
+  const cleaned = str.trim();
+  if (!cleaned) return '';
+  
+  const workHours = getWorkDayHours();
+  const weekHours = workHours * 5;
+  
+  const mathExpr = timeExprToMath(cleaned, workHours);
+  const total = evaluateMath(mathExpr);
+  if (isNaN(total) || !isFinite(total)) return '';
+  
+  let breakdown = cleaned
+    .replace(/(\d+(?:\.\d+)?)\s*w/gi, '$1w (' + weekHours + 'h)')
+    .replace(/(\d+(?:\.\d+)?)\s*d/gi, '$1d (' + workHours + 'h)')
+    .replace(/(\d+(?:\.\d+)?)\s*h/gi, '$1h');
+  
+  breakdown = breakdown
+    .replace(/\s*([+\-*/])\s*/g, ' $1 ')
+    .replace(/\s*\(\s*/g, '(')
+    .replace(/\s*\)\s*/g, ')');
+    
+  return `⏱ = ${parseFloat(total.toFixed(2))}h [${breakdown}]`;
 }
 
 function parseTimeExpr(str) {
   if (typeof str !== 'string') return NaN;
-  str = str.replace(/\s+/g, '').toLowerCase();
-  if (!str) return NaN;
-  if (/^[+-]?\d+(\.\d+)?$/.test(str)) return Number(str);
+  const cleaned = str.trim();
+  if (!cleaned) return NaN;
   
-  const tokenRegex = /([+-]?\d+(?:\.\d+)?)([hdw]?)|([+-])/g;
   const workHours = getWorkDayHours();
-  let totalHours = 0;
-  let currentSign = 1;
-  let match;
-  let parsedAny = false;
-
-  while ((match = tokenRegex.exec(str)) !== null) {
-    if (match[3]) {
-      currentSign = match[3] === '-' ? -1 : 1;
-      parsedAny = true;
-    } else if (match[1]) {
-      const val = parseFloat(match[1]);
-      const unit = match[2] || 'h';
-      let multiplier = 1;
-      if (unit === 'd') multiplier = workHours;
-      else if (unit === 'w') multiplier = workHours * 5;
-      totalHours += currentSign * val * multiplier;
-      parsedAny = true;
-      currentSign = 1; 
-    }
-  }
-  return parsedAny ? totalHours : NaN;
+  const mathExpr = timeExprToMath(cleaned, workHours);
+  const total = evaluateMath(mathExpr);
+  return isNaN(total) ? NaN : total;
 }
 
 // Atomic single-field PATCH triggered by a picker / select / date input change.
