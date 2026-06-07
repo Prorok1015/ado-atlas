@@ -343,7 +343,7 @@ async function iterations() {
     const name = node.name || "";
     const path = prefix ? prefix + "\\" + name : name;
     const a = node.attributes || {};
-    if (a.startDate || a.finishDate) {
+    if (prefix) {
       out.push({ path, name, start: a.startDate || null, finish: a.finishDate || null });
     }
     for (const ch of (node.children || [])) walk(ch, path);

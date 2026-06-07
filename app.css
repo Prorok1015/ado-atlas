@@ -187,12 +187,38 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .bcol.addcol .plus{display:block;font-size:24px;line-height:1;margin-bottom:4px}
 .bcol{transition:min-width .15s ease,max-width .15s ease}
 .bcol.empty-sprint{display:none;opacity:.9}
-/* empty sprints appear ONLY while dragging AND only if the toggle is on; narrow, expand on hover */
-#board.drag.showempty .bcol.empty-sprint{display:flex;min-width:44px;max-width:44px;overflow:hidden}
-#board.drag.showempty .bcol.empty-sprint.dropover{min-width:240px;max-width:260px;overflow:visible}
-#board.drag.showempty .bcol.empty-sprint .bhead{color:var(--muted)}
-#board.drag.showempty .bcol.empty-sprint:not(.dropover) .bhead{writing-mode:vertical-rl;white-space:nowrap;border:0;padding:6px 2px;font-size:11px}
-#board.drag.showempty .bcol.empty-sprint:not(.dropover) .bcards{display:none}
+/* empty sprints appear when showempty is toggled; narrow by default, expand on hover or drag-over */
+#board.showempty .bcol.empty-sprint{display:flex;min-width:44px;max-width:44px;overflow:hidden}
+#board.showempty .bcol.empty-sprint.dropover,
+#board.showempty .bcol.empty-sprint:hover{min-width:240px;max-width:260px;overflow:visible}
+#board.showempty .bcol.empty-sprint .bhead{color:var(--muted)}
+#board.showempty .bcol.empty-sprint:not(.dropover):not(:hover) .bhead{writing-mode:vertical-rl;white-space:nowrap;border:0;padding:6px 2px;font-size:11px}
+#board.showempty .bcol.empty-sprint:not(.dropover):not(:hover) .bcards{display:none}
+/* dateless sprint header yellow-black stripe indicator (always) */
+.bcol.dateless::before {
+  content: '';
+  height: 6px;
+  width: 100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    #e0a13c,
+    #e0a13c 5px,
+    #171c23 5px,
+    #171c23 10px
+  );
+  border-top-left-radius: 9px;
+  border-top-right-radius: 9px;
+  flex: none;
+}
+body.light .bcol.dateless::before {
+  background: repeating-linear-gradient(
+    -45deg,
+    #e0a13c,
+    #e0a13c 5px,
+    #fff 5px,
+    #fff 10px
+  );
+}
 /* empty "No sprint": always visible but narrow, expands when a drag hovers it */
 .bcol.collapsed{min-width:44px;max-width:44px;overflow:hidden;opacity:.9}
 .bcol.collapsed:not(.dropover) .bhead{writing-mode:vertical-rl;white-space:nowrap;border:0;padding:6px 2px;font-size:11px;color:var(--muted)}
@@ -575,7 +601,8 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .frow .fl{width:74px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;flex:none}
 /* search + sort row at the top of the filter panel */
 #filter-query{padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:2px}
-#filter-query .fsearch{flex:1;width:auto;min-width:160px;max-width:340px}
+.fsearch-container{position:relative;display:inline-block;flex:1;min-width:160px;max-width:340px}
+#filter-query .fsearch{width:100%;padding-right:22px !important}
 #filter-query .fl-sort{width:auto;margin-left:6px}
 #filter-query #refreshbtn{margin-left:auto}   /* park Refresh at the right end of the row */
 .chip{border:1px solid var(--line);border-radius:14px;padding:2px 10px;margin:3px 0;font-size:12px;cursor:pointer;background:var(--field);color:var(--txt);user-select:none}
@@ -586,6 +613,35 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 /* per-row "✕" clear button — only rendered when that filter has a selection */
 .fclear{width:22px;background:transparent;border:0;color:#e0524d;cursor:pointer;font:inherit;font-size:13px;line-height:1;padding:2px 0;border-radius:6px;font-weight:700;flex:none;text-align:center}
 .fclear:hover{background:rgba(224,82,77,0.16)}
+.tag-search{border:0;border-radius:14px;padding:3px 22px 3px 10px;margin:3px 0;font-size:12px;background:rgba(127,127,127,0.15);color:var(--txt);width:110px;transition:width .15s ease,background-color .15s ease}
+.tag-search:focus{width:180px;background:rgba(127,127,127,0.25);outline:none}
+.f-dropdown-container{position:relative;display:inline-block}
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px;
+  font-size: 11px;
+  line-height: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+.search-clear-btn:hover {
+  color: var(--txt);
+}
+@keyframes slideUpFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.f-dropdown{position:absolute;top:100%;left:0;z-index:1000;width:max-content;max-width:280px;max-height:180px;overflow-y:auto;background:rgba(127, 127, 127, 0.08);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2);margin-top:4px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;animation:slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1)}
+.f-dropdown-item{border:1px solid var(--line);border-radius:14px;padding:2px 10px;font-size:12px;cursor:pointer;background:var(--field);color:var(--txt);user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f-dropdown-item:hover{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
+.f-dropdown-item.empty{border:0;background:transparent;color:var(--muted);cursor:default;width:100%;text-align:center}
+.f-dropdown-item.empty:hover{background:transparent;color:var(--muted)}
 /* "✕ Clear all" — appears above the rows when any filter is active */
 
 /* ---- bulk action bar (tree multi-select) ---- */
@@ -768,6 +824,177 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .sgroup[data-sg="actions"]:not(.expanded) .activity-header {
   margin-bottom: 0 !important;
   border-bottom: 0 !important;
+}
+
+/* ---- column pin button ---- */
+.pin-btn {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px;
+  opacity: .35;
+  transition: opacity .15s, transform .15s;
+  float: right;
+  line-height: 1;
+}
+.pin-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+.pin-btn.pinned {
+  opacity: 1;
+}
+/* In collapsed columns, hide the pin button so it doesn't look weird vertically */
+#board.showempty .bcol.empty-sprint:not(.dropover):not(:hover) .pin-btn {
+  display: none;
+}
+
+/* ---- Visual Date Range Picker ---- */
+.drp-wrapper {
+  position: relative;
+}
+.drp-popover, #sprint-range-picker, #side-range-picker, #side-due-picker {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  margin-top: 4px;
+}
+.drp-popover.show, #sprint-range-picker.show, #side-range-picker.show, #side-due-picker.show {
+  display: block;
+}
+.drp-container {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  user-select: none;
+  font-family: inherit;
+  width: 240px;
+  box-sizing: border-box;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+}
+.drp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.drp-month-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--txt);
+}
+.drp-month-select, .drp-year-select {
+  background: transparent;
+  border: none;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--txt);
+  cursor: pointer;
+  padding: 0 2px;
+  outline: none;
+  font-family: inherit;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  text-align: center;
+}
+.drp-month-select:hover, .drp-year-select:hover {
+  color: var(--accent);
+}
+.drp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.drp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.drp-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--txt);
+  transition: background-color 0.1s, color 0.1s;
+}
+.drp-day:hover:not(.drp-empty) {
+  background-color: var(--line);
+}
+.drp-day.drp-empty {
+  cursor: default;
+}
+.drp-day.drp-today {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  font-weight: 700;
+}
+.drp-day.drp-selected {
+  background-color: var(--accent) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+.drp-day.drp-in-range {
+  background-color: rgba(76, 139, 245, 0.18);
+  border-radius: 0;
+}
+.drp-day.drp-hover-range {
+  background-color: rgba(76, 139, 245, 0.12);
+  border-radius: 0;
+}
+.drp-day.drp-hover-finish {
+  background-color: rgba(76, 139, 245, 0.3);
+  font-weight: 700;
+}
+.drp-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.drp-range-summary {
+  font-size: 11px;
+  color: var(--muted);
+}
+.drp-clear {
+  padding: 2px 8px;
+  font-size: 11px;
+  min-height: 20px;
+  line-height: 1.2;
+}
+.drp-grid-large {
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 8px 4px;
+}
+.drp-item-large {
+  padding: 12px 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--txt);
+  transition: background-color 0.1s, color 0.1s;
+}
+.drp-item-large:hover {
+  background-color: var(--line);
+}
+.drp-item-large.active {
+  background-color: var(--accent) !important;
+  color: #fff !important;
 }
 
 

@@ -49,6 +49,12 @@ function lockSidebar(lock){
   const side=$('side');if(!side)return;
   side.classList.toggle('sidebar-loading',!!lock);
   ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est'].forEach(id=>{const el=$(id);if(el)el.disabled=!!lock;});
+  const trigger = $('side-range-trigger');
+  if (trigger) trigger.disabled = !!lock;
+  if (lock) {
+    const popover = $('side-range-picker');
+    if (popover) popover.classList.remove('show');
+  }
   if(descEditor)descEditor.setDisabled(lock);if(acEditor)acEditor.setDisabled(lock);
   if(assignedEditor&&assignedEditor.setDisabled)assignedEditor.setDisabled(lock);
   if(sprintEditor&&sprintEditor.setDisabled)sprintEditor.setDisabled(lock);
@@ -74,6 +80,13 @@ let tagList=[];                          // distinct tags seen on recent items (
 let sprintPaths=[];                      // iteration paths for the Sprint filter (chip value = path)
 let sprintNames={};                      // iteration path -> short sprint name (chip label)
 let listCapped=false;                    // true when the last list() hit LIST_CAP (UI warns)
+let pinnedSprints=new Set();            // iteration paths pinned to stay expanded
+try{const s=localStorage.getItem('ado.pinnedSprints');if(s){const p=JSON.parse(s);if(Array.isArray(p))pinnedSprints=new Set(p);}}catch(_){}
+function togglePinSprint(path){
+  if(pinnedSprints.has(path))pinnedSprints.delete(path);else pinnedSprints.add(path);
+  try{localStorage.setItem('ado.pinnedSprints',JSON.stringify([...pinnedSprints]));}catch(_){}
+  renderBoard();
+}
 let treeEverLoaded=false;                // false only before the very first successful list load
 // client-side mirror of already-loaded data; BOTH views render from THIS store.
 // `expanded` is the shared expand/collapse state, so tree and graph stay in sync.
@@ -189,6 +202,28 @@ let _loads=0;
 function loadStart(label){_loads++;const l=$('loading');if(l)l.classList.add('on');if(label)setStatus(label);}
 function loadEnd(){_loads=Math.max(0,_loads-1);if(_loads===0){const l=$('loading');if(l)l.classList.remove('on');}}
 async function withLoad(label,fn){loadStart(label);try{return await fn();}finally{loadEnd();}}
+function getContextPopular(key, allVals){
+  const counts={};
+  const nodes=Object.values(store.nodes||{});
+  nodes.forEach(n=>{
+    if(key==='tags'){
+      const ts=tagList_(n.tags);
+      ts.forEach(t=>{counts[t]=(counts[t]||0)+1;});
+    } else {
+      const val=n[key];
+      if(val!=null&&val!==''){
+        counts[val]=(counts[val]||0)+1;
+      }
+    }
+  });
+  const sorted=allVals.slice().sort((a,b)=>{
+    const ca=counts[a]||0;
+    const cb=counts[b]||0;
+    if(cb!==ca)return cb-ca;
+    return allVals.indexOf(a)-allVals.indexOf(b);
+  });
+  return sorted.slice(0,10);
+}
 /* ---------- extensible chip filters (data-driven) ----------
    Add a field: one entry here + one in FILTER_FIELDS in api.js. */
 const FILTERS=[
@@ -219,8 +254,19 @@ function renderFilters(){
   // keeps its slot reserved so the search input never shifts when filters appear
   const all=$('filt_clear_all');if(all)all.style.visibility=filterCount()>0?'visible':'hidden';
   FILTERS.forEach(f=>{
-    const vals=f.values()||[];
-    if(!vals.length&&!Object.keys(fstate[f.key]||{}).length)return;   // skip empty rows (e.g. tags/sprints not loaded yet)
+    const allVals=f.values()||[];
+    if(!allVals.length&&!Object.keys(fstate[f.key]||{}).length)return;   // skip empty rows (e.g. tags/sprints not loaded yet)
+    
+    const limit = 10;
+    const isLarge = allVals.length > limit;
+    let valsToShow = allVals;
+    if(isLarge){
+      const selected=Object.keys(fstate[f.key]||{});
+      const popular=getContextPopular(f.key, allVals);
+      const union=new Set([...selected,...popular]);
+      valsToShow=allVals.filter(v=>union.has(String(v)));
+    }
+
     const row=document.createElement('div');row.className='frow';
     const lab=document.createElement('span');lab.className='fl';lab.textContent=f.label;row.appendChild(lab);
     // per-row clear "✕" sits left of the chips. ALWAYS rendered so the chip
@@ -232,13 +278,129 @@ function renderFilters(){
       x.onclick=()=>{delete fstate[f.key];renderFilters();updateFilterCount();scheduleApply();};
     else{x.style.visibility='hidden';x.tabIndex=-1;}
     row.appendChild(x);
-    vals.forEach(v=>{
+    valsToShow.forEach(v=>{
       const ch=document.createElement('span');ch.className='chip';
       const st=(fstate[f.key]||{})[String(v)];if(st)ch.classList.add(st);
       ch.textContent=f.fmt?f.fmt(v):v;
       ch.onclick=()=>{cycleChip(f.key,v);renderFilters();updateFilterCount();scheduleApply();};
       row.appendChild(ch);
     });
+    if(isLarge){
+      const wrap=document.createElement('div');
+      wrap.className='f-dropdown-container';
+
+      const inp=document.createElement('input');
+      inp.type='text';
+      inp.className='tag-search';
+      inp.placeholder='Search ' + f.label.toLowerCase() + '...';
+      inp.autocomplete='off';
+      wrap.appendChild(inp);
+
+      const clearBtn=document.createElement('button');
+      clearBtn.type='button';
+      clearBtn.className='search-clear-btn';
+      clearBtn.textContent='✕';
+      clearBtn.style.display='none';
+      wrap.appendChild(clearBtn);
+
+      const updateClearBtn=()=>{
+        clearBtn.style.display=inp.value?'inline-flex':'none';
+      };
+
+      const dropdown=document.createElement('div');
+      dropdown.className='f-dropdown';
+      dropdown.style.display='none';
+      wrap.appendChild(dropdown);
+
+      const showMatches=(q)=>{
+        const query=q.toLowerCase().trim();
+        const shownSet=new Set(valsToShow.map(String));
+        const matches=allVals.filter(v=>{
+          if(shownSet.has(String(v)))return false;
+          return String(f.fmt?f.fmt(v):v).toLowerCase().includes(query);
+        });
+        dropdown.innerHTML='';
+        if(!matches.length){
+          const empty=document.createElement('div');
+          empty.className='f-dropdown-item empty';
+          empty.textContent='No matches';
+          dropdown.appendChild(empty);
+        } else {
+          matches.forEach(val=>{
+            const item=document.createElement('div');
+            item.className='f-dropdown-item';
+            item.textContent=f.fmt?f.fmt(val):val;
+            item.onmousedown=(e)=>{
+              e.preventDefault();
+              const m=fstate[f.key]||(fstate[f.key]={});
+              m[String(val)]='in';
+              inp.value='';
+              updateClearBtn();
+              dropdown.style.display='none';
+              renderFilters();
+              updateFilterCount();
+              scheduleApply();
+            };
+            dropdown.appendChild(item);
+          });
+        }
+        dropdown.style.display='flex';
+        dropdown.style.left='0';
+        dropdown.style.right='auto';
+        dropdown.style.top='100%';
+        dropdown.style.bottom='auto';
+        dropdown.style.marginTop='4px';
+        dropdown.style.marginBottom='0';
+        const rect=dropdown.getBoundingClientRect();
+        if(rect.right>window.innerWidth){
+          dropdown.style.left='auto';
+          dropdown.style.right='0';
+        }
+        if(rect.bottom>window.innerHeight){
+          dropdown.style.top='auto';
+          dropdown.style.bottom='100%';
+          dropdown.style.marginTop='0';
+          dropdown.style.marginBottom='4px';
+        }
+      };
+
+      inp.onfocus=()=>{
+        updateClearBtn();
+        showMatches(inp.value);
+      };
+      inp.oninput=()=>{
+        updateClearBtn();
+        showMatches(inp.value);
+      };
+      inp.onblur=()=>{
+        dropdown.style.display='none';
+        clearBtn.style.display='none';
+      };
+      clearBtn.onmousedown=e=>{
+        e.preventDefault();
+      };
+      clearBtn.onclick=e=>{
+        e.stopPropagation();
+        inp.value='';
+        updateClearBtn();
+        showMatches('');
+        inp.focus();
+      };
+      inp.onkeydown=e=>{
+        if(e.key==='Escape'){
+          dropdown.style.display='none';
+          clearBtn.style.display='none';
+          inp.blur();
+        } else if(e.key==='Enter'){
+          e.preventDefault();
+          const firstItem=dropdown.querySelector('.f-dropdown-item:not(.empty)');
+          if(firstItem){
+            firstItem.dispatchEvent(new MouseEvent('mousedown'));
+          }
+        }
+      };
+      row.appendChild(wrap);
+    }
     el.appendChild(row);
   });
   buildBulkControls();                      // keep the bulk-bar dropdowns in sync with loaded data
@@ -430,6 +592,7 @@ async function bulkApply(field,val){     // field: state | iteration | assigned 
     async()=>{await api.pool(olds.map(o=>async()=>{try{const b={};b[field]=(o.old==null?'':o.old);await api.updateItem(o.id,b);}catch(e){}}),6);await afterUndo(null);},
     async()=>{await api.pool(ids.map(wid=>async()=>{try{const b={};b[field]=(field==='priority'?Number(val):val);await api.updateItem(wid,b);}catch(e){}}),6);await afterUndo(null);});
   setStatus(`bulk ${field}: ${ok} updated`+(fail?`, ${fail} failed`:''),!!fail);
+  if(field==='assigned') registerNewAssignee(val);
   await refresh();                       // rebuild from server (prunes selection to what still matches)
   if(fail)setStatus('bulk '+field+': '+ok+' updated, '+fail+' failed',true);
 }
@@ -805,7 +968,7 @@ async function renderBoard(){
   if(boardGroup==='assignee'){renderBoardByAssignee(el,items);setStatus(`${items.length} items`+capNote());annotateBoardTimes();return;}
   if(boardGroup==='state'){renderBoardByState(el,items);setStatus(`${items.length} items`+capNote());annotateBoardTimes();return;}
   const groups=new Map();
-  items.forEach(n=>{const k=finish[n.iteration]?n.iteration:'__none__';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
+  items.forEach(n=>{const k=info[n.iteration]?n.iteration:'__none__';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
   groups.forEach(arr=>arr.sort(cmpBySort));  // order within column = toolbar Sort
   const root=iters[0]?iters[0].path.split('\\')[0]:projectName;   // project root = "no sprint"
   const order=iters.map(it=>it.path);   // ALL dated sprints (empties revealed while dragging)
@@ -814,12 +977,30 @@ async function renderBoard(){
     const it=k==='__none__'?null:info[k];const fin=it?it.finish:null;
     const colItems=groups.get(k)||[];
     const col=document.createElement('div');col.className='bcol';
-    if(k!=='__none__'&&!colItems.length&&!newSprints.has(k))col.classList.add('empty-sprint');   // hidden until a drag starts (but keep a just-created one visible)
+    if(it&&(!it.start||!it.finish))col.classList.add('dateless');
+    const isPinned=pinnedSprints.has(k);
+    if(k!=='__none__'&&!colItems.length&&!newSprints.has(k)&&!isPinned)col.classList.add('empty-sprint');   // hidden until a drag starts (but keep a just-created one visible)
     if(k==='__none__'&&!colItems.length)col.classList.add('collapsed');   // empty "No sprint" → narrow, expands on drag-hover
     if(it&&it.start&&it.finish&&today>=it.start.slice(0,10)&&today<=it.finish.slice(0,10))col.classList.add('current');
     const h=document.createElement('div');h.className='bhead';
-    h.innerHTML=(k==='__none__'?'No sprint':`${esc(it.name)} <small>${(it.start||'').slice(0,10)}→${(fin||'').slice(0,10)}</small>`)+'<br>'+colMeta(colItems);
-    if(k!=='__none__'){h.style.cursor='pointer';h.title='open sprint timeline';h.addEventListener('click',()=>openSprint(k));}
+    const dateBadge=it
+      ?((!it.start||!it.finish)
+        ?''
+        :`<small>${(it.start||'').slice(0,10)}→${(fin||'').slice(0,10)}</small>`)
+      :'';
+    const pinBtn=k!=='__none__'?`<button class="pin-btn${isPinned?' pinned':''}" data-path="${esc(k)}" title="${isPinned?'Unpin column':'Pin column'}">📌</button>`:'';
+    h.innerHTML=(k==='__none__'?'No sprint':`${esc(it.name)} ${dateBadge} ${pinBtn}`)+'<br>'+colMeta(colItems);
+    if(k!=='__none__'){
+      h.style.cursor='pointer';h.title='open sprint timeline';
+      h.addEventListener('click',(e)=>{
+        if(e.target.closest('.pin-btn')){
+          e.preventDefault();e.stopPropagation();
+          togglePinSprint(k);
+          return;
+        }
+        openSprint(k);
+      });
+    }
     const wrap=document.createElement('div');wrap.className='bcards';
     colItems.forEach(n=>wrap.appendChild(boardCard(n,fin,today)));
     if(!colItems.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
@@ -1075,6 +1256,7 @@ function openSprint(path){
   if(!_sprint(path))return;
   boardScroll={l:$('board').scrollLeft,t:$('board').scrollTop};
   if(renderSprint(path)){openSprintPath=path;$('board').classList.remove('show');$('sprintview').classList.add('show');renderViewHelp();}
+  else{showSprintEdit(path);}
 }
 function backToBoard(){
   openSprintPath=null;$('sprintview').classList.remove('show');$('board').classList.add('show');
@@ -1793,7 +1975,9 @@ async function openItem(id){
   parentEditor.set(d.parent!=null?String(d.parent):'',/*silent*/true);   // set value + render card without flipping dirty
   $('s_start').value=(d.start||'').slice(0,10);
   $('s_target').value=(d.target||'').slice(0,10);
+  syncSideDatePicker($('s_start').value, $('s_target').value);
   $('s_due').value=(d.due||'').slice(0,10);
+  syncSideDuePicker($('s_due').value);
   $('s_est').value=(d.est!=null?d.est:'');
   tagsEditor.set(d.tags||'',/*silent*/true);
   loadDeps(id,d.deps);                            // seed from item() result; no extra round-trip
@@ -2078,6 +2262,31 @@ function postSaveRefresh(body,parentChanged){
     if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);
   }
 }
+function registerNewAssignee(name) {
+  if(name && name !== currentUser && !assignees.includes(name)) {
+    assignees.push(name);
+    assignees.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    const dl = $('assignees');
+    if (dl) dl.innerHTML = ['me', ...assignees].map(a => `<option value="${String(a).replace(/"/g,'&quot;')}">`).join('');
+    renderFilters();
+  }
+}
+function registerNewTags(tagsStr) {
+  const ts = tagList_(tagsStr);
+  let changed = false;
+  ts.forEach(t => {
+    if (!tagList.includes(t)) {
+      tagList.push(t);
+      changed = true;
+    }
+  });
+  if (changed) {
+    tagList.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    const dl = $('tagsdl');
+    if (dl) dl.innerHTML = tagList.map(x => `<option value="${esc(x)}">`).join('');
+    renderFilters();
+  }
+}
 
 // Atomic single-field PATCH triggered by a picker / select / date input change.
 // `field` ∈ {state, assigned, priority, iteration, start, target, due, estimate, tags, parent}.
@@ -2123,14 +2332,14 @@ async function quickSave(field){
   const vNow=editorValues();
   applyVisualSync(id,body,vNow);
   if('state'in body)orig.state=vNow.state;
-  if('assigned'in body)orig.assigned=vNow.assigned;
+  if('assigned'in body){orig.assigned=vNow.assigned; registerNewAssignee(vNow.assigned);}
   if('priority'in body)orig.priority=body.priority;
   if('iteration'in body)orig.iter=vNow.iter;
   if('start'in body)orig.start=vNow.start;
   if('target'in body)orig.target=vNow.target;
   if('due'in body)orig.due=vNow.due;
   if('estimate'in body)orig.est=vNow.est;
-  if('tags'in body)orig.tags=vNow.tags;
+  if('tags'in body){orig.tags=vNow.tags; registerNewTags(vNow.tags);}
   if(parentChanged)orig.parent=vNow.parent;
   refreshDirty();setSaveChip('saved');
   setStatus(`#${id} ${field} saved`+(r?` → rev ${r.rev}`:''));
@@ -2649,12 +2858,279 @@ async function createNew(){
 }
 
 /* ---------- create / edit a sprint (Board → By Sprint "＋" column; sprint screen "✎") ---------- */
-let sprintMode='create',sprintEditPath=null;
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.slice(0, 10).split('-');
+  if (parts.length !== 3) return dateStr;
+  const d = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+function updateSprintRangeDisplay(start, finish) {
+  const trigger = $('sprint-range-trigger');
+  if (!trigger) return;
+  if (start || finish) {
+    const sPart = start ? formatDisplayDate(start) : '?';
+    const fPart = finish ? formatDisplayDate(finish) : '?';
+    trigger.value = `${sPart} — ${fPart}`;
+  } else {
+    trigger.value = '';
+  }
+}
+function initSprintDatePickerEvents() {
+  const trigger = $('sprint-range-trigger');
+  if (trigger && !trigger.dataset.init) {
+    trigger.dataset.init = '1';
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      $('sprint-range-picker').classList.toggle('show');
+    });
+    window.addEventListener('mousedown', (e) => {
+      const popover = $('sprint-range-picker');
+      if (popover && popover.classList.contains('show')) {
+        if (!popover.contains(e.target) && !trigger.contains(e.target)) {
+          popover.classList.remove('show');
+        }
+      }
+    });
+    wireManualDateInput('sprint-range-trigger', 'sp_start', 'sp_finish', updateSprintRangeDisplay, false);
+  }
+}
+
+function wireManualDateInput(triggerId, hiddenStartId, hiddenFinishId, syncFunc, isSingle) {
+  const trigger = document.getElementById(triggerId);
+  if (!trigger) return;
+  
+  trigger.addEventListener('change', () => {
+    const text = trigger.value.trim();
+    if (!text) {
+      $(hiddenStartId).value = '';
+      if (hiddenFinishId) $(hiddenFinishId).value = '';
+      $(hiddenStartId).dispatchEvent(new Event('input'));
+      $(hiddenStartId).dispatchEvent(new Event('change'));
+      if (hiddenFinishId) {
+        $(hiddenFinishId).dispatchEvent(new Event('input'));
+        $(hiddenFinishId).dispatchEvent(new Event('change'));
+      }
+      syncFunc('', '');
+      return;
+    }
+    
+    const parsed = parseManualDates(text, isSingle);
+    if (parsed) {
+      $(hiddenStartId).value = parsed.start;
+      if (hiddenFinishId) $(hiddenFinishId).value = parsed.finish;
+      $(hiddenStartId).dispatchEvent(new Event('input'));
+      $(hiddenStartId).dispatchEvent(new Event('change'));
+      if (hiddenFinishId) {
+        $(hiddenFinishId).dispatchEvent(new Event('input'));
+        $(hiddenFinishId).dispatchEvent(new Event('change'));
+      }
+      syncFunc(parsed.start, parsed.finish);
+    } else {
+      const currentStart = $(hiddenStartId).value;
+      const currentFinish = hiddenFinishId ? $(hiddenFinishId).value : '';
+      syncFunc(currentStart, currentFinish);
+    }
+  });
+  
+  trigger.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      trigger.blur();
+    }
+  });
+}
+
+function parseManualDates(text, isSingle) {
+  const parts = text.split(/[-—–~–]|\sto\s/).map(s => s.trim()).filter(Boolean);
+  
+  const parseSingle = (str) => {
+    if (!str) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      return str;
+    }
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    return null;
+  };
+  
+  const startStr = parseSingle(parts[0]);
+  if (!startStr) return null;
+  
+  if (isSingle) {
+    return { start: startStr, finish: startStr };
+  } else {
+    const finishStr = parseSingle(parts[1]) || startStr;
+    return { start: startStr, finish: finishStr };
+  }
+}
+
+let sideRangePicker = null;
+function syncSideDatePicker(start, target) {
+  const trigger = $('side-range-trigger');
+  const popover = $('side-range-picker');
+  if (!trigger || !popover) return;
+  
+  if (!trigger.dataset.init) {
+    trigger.dataset.init = '1';
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      popover.classList.toggle('show');
+    });
+    window.addEventListener('mousedown', (e) => {
+      if (popover.classList.contains('show')) {
+        if (!popover.contains(e.target) && !trigger.contains(e.target)) {
+          popover.classList.remove('show');
+        }
+      }
+    });
+    wireManualDateInput('side-range-trigger', 's_start', 's_target', syncSideDatePicker, false);
+  }
+  
+  if (start || target) {
+    const sPart = start ? formatDisplayDate(start) : '?';
+    const tPart = target ? formatDisplayDate(target) : '?';
+    trigger.value = `${sPart} — ${tPart}`;
+  } else {
+    trigger.value = '';
+  }
+  
+  if (!sideRangePicker) {
+    sideRangePicker = new DateRangePicker('side-range-picker', {
+      start,
+      finish: target,
+      onChange: ({start: s, finish: t}) => {
+        $('s_start').value = s;
+        $('s_target').value = t;
+        
+        $('s_start').dispatchEvent(new Event('input'));
+        $('s_start').dispatchEvent(new Event('change'));
+        $('s_target').dispatchEvent(new Event('input'));
+        $('s_target').dispatchEvent(new Event('change'));
+        
+        syncSideDatePicker(s, t);
+        if (s && t) {
+          popover.classList.remove('show');
+        }
+      }
+    });
+  } else {
+    sideRangePicker.setRange(start, target);
+  }
+}
+
+let sideDuePicker = null;
+function syncSideDuePicker(due) {
+  const trigger = $('side-due-trigger');
+  const popover = $('side-due-picker');
+  if (!trigger || !popover) return;
+  
+  if (!trigger.dataset.init) {
+    trigger.dataset.init = '1';
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      popover.classList.toggle('show');
+    });
+    window.addEventListener('mousedown', (e) => {
+      if (popover.classList.contains('show')) {
+        if (!popover.contains(e.target) && !trigger.contains(e.target)) {
+          popover.classList.remove('show');
+        }
+      }
+    });
+    wireManualDateInput('side-due-trigger', 's_due', null, syncSideDuePicker, true);
+  }
+  
+  if (due) {
+    trigger.value = formatDisplayDate(due);
+  } else {
+    trigger.value = '';
+  }
+  
+  if (!sideDuePicker) {
+    sideDuePicker = new DateRangePicker('side-due-picker', {
+      start: due,
+      single: true,
+      onChange: ({start: d}) => {
+        $('s_due').value = d;
+        
+        $('s_due').dispatchEvent(new Event('input'));
+        $('s_due').dispatchEvent(new Event('change'));
+        
+        syncSideDuePicker(d);
+        if (d) {
+          popover.classList.remove('show');
+        }
+      }
+    });
+  } else {
+    sideDuePicker.setRange(due, due);
+  }
+}
+
+function updatePendingSprintItems() {
+  const container = $('sprint-pending-container');
+  const list = $('sprint-pending-list');
+  if (!container || !list) return;
+  if (pendingSprintItems && pendingSprintItems.length > 0) {
+    container.style.display = 'block';
+    list.innerHTML = '';
+    pendingSprintItems.forEach(id => {
+      const n = store.nodes[id];
+      if (!n) return;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; align-items:center; gap:6px; font-size:12px; margin-bottom:4px; padding:4px 6px; background:var(--panel2); border-radius:4px; border:1px solid var(--line);';
+      
+      const dot = document.createElement('i');
+      dot.className = 'dot';
+      dot.style.display = 'inline-block';
+      dot.style.background = tyColor(n.type);
+      
+      const idSpan = document.createElement('span');
+      idSpan.style.cssText = 'color:var(--muted); font-weight:600; flex:none;';
+      idSpan.textContent = `#${id}`;
+      
+      const titleSpan = document.createElement('span');
+      titleSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; color:var(--txt);';
+      titleSpan.textContent = n.title || '';
+      
+      row.append(dot, idSpan, titleSpan);
+      list.appendChild(row);
+    });
+  } else {
+    container.style.display = 'none';
+    list.innerHTML = '';
+  }
+}
+
+let sprintMode='create',sprintEditPath=null,sprintRangePicker=null;
 function showSprintModal(){                        // create a new sprint
   sprintMode='create';sprintEditPath=null;
   $('sprint-title').textContent='New sprint';
   $('sprint-err').textContent='';
   $('sp_name').readOnly=false;$('sp_name').value='';$('sp_start').value='';$('sp_finish').value='';
+  $('sprint-range-picker').classList.remove('show');
+  initSprintDatePickerEvents();
+  if(!sprintRangePicker){
+    sprintRangePicker=new DateRangePicker('sprint-range-picker',{
+      onChange:({start,finish})=>{
+        $('sp_start').value=start;
+        $('sp_finish').value=finish;
+        updateSprintRangeDisplay(start, finish);
+        if (start && finish) {
+          $('sprint-range-picker').classList.remove('show');
+        }
+      }
+    });
+  }else{
+    sprintRangePicker.setRange('','');
+  }
+  updateSprintRangeDisplay('', '');
+  updatePendingSprintItems();
   $('sp_create').textContent='Create sprint';
   $('sprint-overlay').classList.add('show');$('sp_name').focus();
 }
@@ -2665,10 +3141,35 @@ function showSprintEdit(path){                     // edit an existing sprint's 
   $('sprint-err').textContent='';
   $('sp_name').readOnly=true;$('sp_name').value=it.name||'';
   $('sp_start').value=(it.start||'').slice(0,10);$('sp_finish').value=(it.finish||'').slice(0,10);
+  $('sprint-range-picker').classList.remove('show');
+  initSprintDatePickerEvents();
+  if(!sprintRangePicker){
+    sprintRangePicker=new DateRangePicker('sprint-range-picker',{
+      start:it.start,
+      finish:it.finish,
+      onChange:({start,finish})=>{
+        $('sp_start').value=start;
+        $('sp_finish').value=finish;
+        updateSprintRangeDisplay(start, finish);
+        if (start && finish) {
+          $('sprint-range-picker').classList.remove('show');
+        }
+      }
+    });
+  }else{
+    sprintRangePicker.setRange(it.start,it.finish);
+  }
+  updateSprintRangeDisplay($('sp_start').value, $('sp_finish').value);
+  updatePendingSprintItems();
   $('sp_create').textContent='Save dates';
-  $('sprint-overlay').classList.add('show');$('sp_start').focus();
+  $('sprint-overlay').classList.add('show');
 }
-function closeSprintModal(){$('sprint-overlay').classList.remove('show');pendingSprintItems=null;}
+function closeSprintModal(){
+  $('sprint-overlay').classList.remove('show');
+  $('sprint-range-picker').classList.remove('show');
+  pendingSprintItems=null;
+  updatePendingSprintItems();
+}
 // Re-derive the Sprint filter chips + bulk dropdown from the (refreshed) iteration
 // list — otherwise a newly created sprint is missing from the filter.
 async function reloadSprintFilter(){
@@ -3271,6 +3772,27 @@ async function initialBoot(postSetup){
   moreB.onclick=e=>{e.stopPropagation();const show=moreP.style.display==='none';moreP.style.display=show?'flex':'none';moreB.classList.toggle('on',show);};
   document.addEventListener('mousedown',e=>{if(moreP.style.display!=='none'&&!moreP.contains(e.target)&&e.target!==moreB)closeMore();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&moreP.style.display!=='none')closeMore();});
+  const updateSearchClear=()=>{
+    const btn=$('search-clear');
+    if(btn)btn.style.display=$('search').value?'inline-flex':'none';
+  };
+  $('search').addEventListener('input',updateSearchClear);
+  $('search').addEventListener('focus',updateSearchClear);
+  $('search').addEventListener('blur',()=>{
+    const btn=$('search-clear');
+    if(btn)setTimeout(()=>{btn.style.display='none';},150);
+  });
+  const clearBtn=$('search-clear');
+  if(clearBtn){
+    clearBtn.onmousedown=e=>e.preventDefault();
+    clearBtn.onclick=e=>{
+      e.stopPropagation();
+      $('search').value='';
+      updateSearchClear();
+      $('search').focus();
+      refresh();
+    };
+  }
   $('searchbtn').onclick=()=>{const t=$('search').value.trim();if(/^\d+$/.test(t)){openItem(parseInt(t));return;}refresh();};
   $('search').addEventListener('keydown',e=>{if(e.key==='Enter')$('searchbtn').click();});
   // hard refresh: drop every per-session cache and re-fetch everything from the server

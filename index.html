@@ -51,7 +51,10 @@
   <div class="frow" id="filter-query">
     <span class="fl">Find</span>
     <button class="fclear" id="filt_clear_all" title="clear all filters" style="visibility:hidden">✕</button>
-    <input id="search" class="fsearch" placeholder="id or text…">
+    <div class="fsearch-container">
+      <input id="search" class="fsearch" placeholder="id or text…">
+      <button type="button" class="search-clear-btn" id="search-clear" style="display:none">✕</button>
+    </div>
     <button class="btn" id="searchbtn">Search</button>
     <span class="fl fl-sort">Sort</span>
     <select id="f_sort" title="sort order"><option value="">id</option><option value="priority">priority</option></select>
@@ -172,11 +175,31 @@
     </div>
     </div>
     <div class="sgroup" data-sg="schedule">
-    <div class="row">
-      <div><label>Start</label><input id="s_start" type="date"></div>
-      <div><label>Target</label><input id="s_target" type="date"></div>
-      <div><label>Due</label><input id="s_due" type="date"></div>
-      <div style="max-width:70px"><label>Est h</label><input id="s_est" type="number" min="0" step="0.5"></div>
+    <div class="row" style="align-items: flex-end;">
+      <div style="flex: 1.5; min-width: 140px;">
+        <label>Start — Target</label>
+        <div class="drp-wrapper" style="position:relative;">
+          <div style="position:relative; display:flex; align-items:center; width:100%;">
+            <input type="text" class="btn pcard" id="side-range-trigger" placeholder="Select dates..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+            <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+          </div>
+          <div id="side-range-picker" class="drp-popover"></div>
+        </div>
+        <input id="s_start" type="hidden">
+        <input id="s_target" type="hidden">
+      </div>
+      <div style="flex: 1; min-width: 100px;">
+        <label>Due</label>
+        <div class="drp-wrapper" style="position:relative;">
+          <div style="position:relative; display:flex; align-items:center; width:100%;">
+            <input type="text" class="btn pcard" id="side-due-trigger" placeholder="Select date..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+            <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+          </div>
+          <div id="side-due-picker" class="drp-popover"></div>
+        </div>
+        <input id="s_due" type="hidden">
+      </div>
+      <div style="flex: 0.5; max-width:60px;"><label>Est h</label><input id="s_est" type="number" min="0" step="0.5"></div>
     </div>
     <div id="s_time" class="stime"></div>
     </div>
@@ -285,9 +308,18 @@
     <h1 id="sprint-title">New sprint</h1>
     <label>Name</label>
     <input id="sp_name" placeholder="e.g. Sprint 7" style="width:100%" autocomplete="off">
-    <div class="row">
-      <div><label>Start</label><input id="sp_start" type="date" style="width:100%"></div>
-      <div><label>Finish</label><input id="sp_finish" type="date" style="width:100%"></div>
+    <input id="sp_start" type="hidden">
+    <input id="sp_finish" type="hidden">
+    <div class="drp-wrapper" style="margin:6px 0 10px; position:relative;">
+      <div style="position:relative; display:flex; align-items:center; width:100%;">
+        <input type="text" class="btn pcard" id="sprint-range-trigger" placeholder="Select dates..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+        <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+      </div>
+      <div id="sprint-range-picker" class="drp-popover"></div>
+    </div>
+    <div id="sprint-pending-container" style="display:none; margin:10px 0; border-top:1px solid var(--line); padding-top:10px;">
+      <label style="margin-bottom:6px; display:block;">Items to move to this sprint:</label>
+      <div id="sprint-pending-list" style="max-height:120px; overflow-y:auto;"></div>
     </div>
     <div id="sprint-err"></div>
     <div id="sprint-actions">
@@ -420,6 +452,7 @@
 <script src="components/markdown-editor.js"></script>
 <script src="components/card-picker.js"></script>
 <script src="components/tags-editor.js"></script>
+<script src="components/date-range-picker.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

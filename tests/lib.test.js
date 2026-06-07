@@ -41,7 +41,7 @@ test("buildClauses: identity @me + named", () => {
 });
 test("buildClauses: tags use CONTAINS / NOT CONTAINS", () => {
   assert.deepStrictEqual(lib.buildClauses(FF, { tags: { in: ["ux"], not: ["wip"] } }),
-    ["([System.Tags] CONTAINS 'ux')", "([System.Tags] NOT CONTAINS 'wip')"]);
+    ["([System.Tags] CONTAINS 'ux')", "(NOT [System.Tags] CONTAINS 'wip')"]);
 });
 test("buildClauses: values are WIQL-escaped", () => {
   assert.deepStrictEqual(lib.buildClauses(FF, { state: { in: ["O'Brien"], not: [] } }),

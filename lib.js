@@ -29,7 +29,7 @@
       };
       if (contains) {
         if (inc.length) clauses.push("(" + inc.map(v => `[${ref}] CONTAINS '${wiqlQuote(v)}'`).join(" OR ") + ")");
-        if (exc.length) clauses.push("(" + exc.map(v => `[${ref}] NOT CONTAINS '${wiqlQuote(v)}'`).join(" AND ") + ")");
+        if (exc.length) clauses.push("(" + exc.map(v => `NOT [${ref}] CONTAINS '${wiqlQuote(v)}'`).join(" AND ") + ")");
         continue;
       }
       if (inc.length) {
