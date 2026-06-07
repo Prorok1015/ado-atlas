@@ -893,17 +893,37 @@ async function comment(wid, text) {
   text = (text || "").trim();
   if (!text) throw new Error("empty");
   const proj = await projUrl();
-  await req("POST", `${proj}/_apis/wit/workItems/${wid}/comments?api-version=7.1-preview.3`, { text });
+  const { org, project } = await getConfig();
+  const mdOpts = (org && project) ? { workItemBase: `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_workitems/edit` } : undefined;
+  const htmlText = AdoLib.mdToHtml(text, mdOpts);
+  await req("POST", `${proj}/_apis/wit/workItems/${wid}/comments?api-version=7.1-preview.3`, { text: htmlText });
   return { ok: true };
 }
 
-// Existing comments on an item (newest first). Comment bodies are HTML → text.
+async function updateComment(wid, commentId, text) {
+  text = (text || "").trim();
+  if (!text) throw new Error("empty");
+  const proj = await projUrl();
+  const { org, project } = await getConfig();
+  const mdOpts = (org && project) ? { workItemBase: `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_workitems/edit` } : undefined;
+  const htmlText = AdoLib.mdToHtml(text, mdOpts);
+  await req("PATCH", `${proj}/_apis/wit/workItems/${wid}/comments/${commentId}?api-version=7.1-preview.3`, { text: htmlText });
+  return { ok: true };
+}
+
+async function deleteComment(wid, commentId) {
+  const proj = await projUrl();
+  await req("DELETE", `${proj}/_apis/wit/workItems/${wid}/comments/${commentId}?api-version=7.1-preview.3`);
+  return { ok: true };
+}
+
+// Existing comments on an item (newest first). Comment bodies are HTML → markdown.
 async function comments(wid) {
   const proj = await projUrl();
   try {
     const r = await req("GET", `${proj}/_apis/wit/workItems/${wid}/comments?api-version=7.1-preview.3&$top=200`);
     return (r.comments || [])
-      .map(c => ({ text: htmlToText(c.text), by: ((c.createdBy || {}).displayName) || "", date: c.createdDate || c.modifiedDate || "" }))
+      .map(c => ({ id: c.id, text: htmlToMarkdown(c.text), by: ((c.createdBy || {}).displayName) || "", date: c.createdDate || c.modifiedDate || "" }))
       .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   } catch (_) { return []; }
 }
@@ -1113,7 +1133,7 @@ window.api = {
   // dependency links (create / remove / per-item lookup)
   addDependency, removeDependency, dependencies,
   // item ops
-  item, updateItem, comment, comments, history, createItem, deleteItem, setParent,
+  item, updateItem, comment, comments, updateComment, deleteComment, history, createItem, deleteItem, setParent,
   // attachments + identities (description editor: upload / link / delete / @-mention)
   uploadAttachment, addAttachmentLink, removeAttachmentLink, fetchAttachmentBlob, searchIdentities,
   // time

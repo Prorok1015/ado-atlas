@@ -193,9 +193,9 @@ class MarkdownEditor {
         backdrop.id = backdropId;
         backdrop.className = 'modal-backdrop editor-backdrop';
         backdrop.onclick = () => this.toggleFullscreen(false);
-        const sideEl = document.getElementById('side');
-        if (sideEl) {
-          sideEl.appendChild(backdrop);
+        const fsParent = this.container.parentNode.closest('.sgroup.fullscreen, #side.fullscreen');
+        if (fsParent) {
+          fsParent.appendChild(backdrop);
         } else {
           document.body.appendChild(backdrop);
         }

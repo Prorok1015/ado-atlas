@@ -8,7 +8,14 @@ const vm = require("vm");
 const path = require("path");
 
 const root = path.join(__dirname, "..");
-const files = ["lib.js", "api.js", "app.js"];
+const files = [
+  "lib.js",
+  "api.js",
+  "components/markdown-editor.js",
+  "components/card-picker.js",
+  "components/tags-editor.js",
+  "app.js"
+];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
 
 try {
