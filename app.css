@@ -211,10 +211,10 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 .ttag{font-size:10px;font-weight:600;color:#fff;border-radius:10px;padding:1px 6px;flex:none;max-width:72px;overflow:hidden;text-overflow:ellipsis}
 .empty{color:var(--muted);font-size:12px;padding:2px 8px}
 .skip{color:var(--accent);font-weight:600;cursor:help}
-#side{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:10px 12px;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:5px;position:relative}
+#side{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:10px 12px 0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:5px;position:relative}
 /* Full-screen editor: pin #side to the viewport with a dim backdrop so the user
    can focus on the description. Layout stays the same — the sidebar just grows. */
-#side.fullscreen{position:fixed;inset:0;width:auto;max-width:1100px;margin:0 auto;z-index:5000;border-left:0;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:16px 22px}
+#side.fullscreen{position:fixed;inset:0;width:auto;max-width:1100px;margin:0 auto;z-index:5000;border-left:0;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:16px 22px 0}
 #side.fullscreen #s_desc,#side.fullscreen #s_desc_prev,
 #side.fullscreen #editor_desc_container textarea,
 #side.fullscreen #editor_desc_container .mdview{min-height:50vh}
@@ -241,7 +241,7 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 /* Sticky actions: keep Save reachable on long descriptions. The actions sgroup
    pins to the bottom of the scrolling sidebar with a top border so it visually
    separates from the form below the fold. */
-.sgroup[data-sg="actions"]{position:sticky;bottom:-12px;background:var(--bg);border-top:1px solid var(--line);margin-top:10px;z-index:50;padding:6px 14px 4px;margin-left:-14px;margin-right:-14px;box-shadow:0 -4px 16px rgba(0,0,0,0.12)}
+.sgroup[data-sg="actions"]{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line);margin-top:auto;z-index:50;padding:6px 14px 10px;margin-left:-14px;margin-right:-14px;margin-bottom:0;box-shadow:0 -4px 16px rgba(0,0,0,0.12)}
 body.light .sgroup[data-sg="actions"]{box-shadow:0 -4px 16px rgba(0,0,0,0.06)}
 #side.fullscreen .sgroup[data-sg="actions"]{padding-left:24px;padding-right:24px;margin-left:-24px;margin-right:-24px}
 body.light .comment-card,body.light #child_form,body.light #comment_editor_container{background:var(--panel)!important}
@@ -378,7 +378,7 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 #s_comment.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .toggle-arrow.spinning{display:inline-block;animation:spin 0.8s linear infinite}
-#side.fullscreen .sgroup[data-sg="actions"]{bottom:-18px;padding-bottom:10px}
+#side.fullscreen .sgroup[data-sg="actions"]{bottom:0 !important;margin-bottom:0 !important;padding-bottom:16px !important}
 #s_ctx{font-size:12px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap}
 #s_ctx a{color:var(--accent);cursor:pointer;text-decoration:none}
 #s_ctx a:hover{text-decoration:underline}
@@ -426,7 +426,7 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
   z-index: 10;
 }
 #side.fullscreen .desc-tools {
-  top: 14px;
+  top: 24px;
 }
 .md-editor.preview-mode .dfmt {
   display: none;
@@ -697,3 +697,63 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .czrow .czlab input[type=checkbox]{flex:none;width:14px;height:14px;margin:0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox}
 #customize-actions{display:flex;gap:8px;margin-top:14px}
 #customize-actions .btn{flex:1;padding:7px 12px;font-size:13px}
+
+/* ---- custom confirmation modal ---- */
+#confirm-overlay {
+  z-index: 20000; /* above everything else, including settings / customize overlays */
+}
+#confirm-overlay.show {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#confirm-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  width: 380px;
+  max-width: 90vw;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: confirmPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+}
+@keyframes confirmPop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+#confirm-box h1 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 600;
+  color: var(--txt);
+}
+#confirm-message {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.5;
+}
+#confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+#confirm-actions .btn {
+  min-width: 80px;
+  min-height: 32px;
+}
+
+/* ---- collapsed activity styles ---- */
+.sgroup[data-sg="actions"]:not(.expanded) {
+  padding-bottom: 0 !important;
+}
+.sgroup[data-sg="actions"]:not(.expanded) .activity-header {
+  margin-bottom: 0 !important;
+  border-bottom: 0 !important;
+}
+
+

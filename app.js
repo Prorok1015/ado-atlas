@@ -86,6 +86,32 @@ async function ensureKids(id){            // load children once, cache in the st
 }
 
 function setStatus(t,err){const s=$('status');if(!s)return;s.textContent=t;s.style.color=err?'#e06c75':'var(--muted)';}
+function customConfirm(message, title = 'Confirm Action') {
+  return new Promise((resolve) => {
+    $('confirm-title').textContent = title;
+    $('confirm-message').textContent = message;
+    const overlay = $('confirm-overlay');
+    overlay.style.display = 'flex';
+    overlay.classList.add('show');
+    const ok = $('confirm-ok');
+    const cancel = $('confirm-cancel');
+    const cleanup = () => {
+      overlay.style.display = 'none';
+      overlay.classList.remove('show');
+      ok.onclick = null;
+      cancel.onclick = null;
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = e => {
+      if (e.key === 'Enter') { e.preventDefault(); cleanup(); resolve(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); cleanup(); resolve(false); }
+    };
+    ok.onclick = () => { cleanup(); resolve(true); };
+    cancel.onclick = () => { cleanup(); resolve(false); };
+    document.addEventListener('keydown', onKey);
+    ok.focus();
+  });
+}
 function capNote(){return listCapped?' · capped, narrow the filters':'';}   // appended to count statuses when LIST_CAP was hit
 // ---- loading indicator (refcounted: top progress bar shows while any async work runs) ----
 let _loads=0;
@@ -205,7 +231,7 @@ function treeNode(n){
   row.onclick=(e)=>{
     if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(n.id);return;}        // Ctrl/Cmd: toggle in selection
     if(e.shiftKey){e.preventDefault();bulkRange(n.id);return;}                    // Shift: select the range from the anchor
-    if(selRow)selRow.classList.remove('sel');selRow=row;row.classList.add('sel');openItem(n.id);   // plain click: open
+    openItem(n.id);   // plain click: open
   };
   li.appendChild(row);
   if(open&&hasKids)li.appendChild(childrenUl(n.id));    // auto-expand from shared state (never for a known-leaf)
@@ -322,7 +348,7 @@ function buildBulkControls(){            // (re)fill the bar's dropdowns from lo
 }
 async function bulkApply(field,val){     // field: state | iteration | assigned | priority
   const ids=[...bulkSel];if(!ids.length)return;
-  if(!confirm('Apply '+field+' = "'+val+'" to '+ids.length+' item(s)?'))return;
+  if(!await customConfirm('Apply '+field+' = "'+val+'" to '+ids.length+' item(s)?', 'Bulk Apply'))return;
   if(field==='assigned'&&val==='me')val=currentUser||'me';
   const olds=ids.map(wid=>({id:wid,old:(store.nodes[wid]?store.nodes[wid][field]:undefined)}));   // snapshot for undo
   loadStart(`updating ${ids.length} item(s)…`);
@@ -504,7 +530,7 @@ function initCy(){
   // Click on a dep edge → confirm + delete.
   cy.on('tap','edge[kind="dep"]',async e=>{
     const ed=e.target,s=Number(ed.data('source')),t=Number(ed.data('target'));
-    if(!confirm(`Remove dependency #${s} → #${t}?`))return;
+    if(!await customConfirm(`Remove dependency #${s} → #${t}?`, 'Remove Dependency'))return;
     await removeDepLink(s,t,'blocks');
   });
   cy.on('mouseover','edge[kind="dep"]',e=>e.target.addClass('hot'));
@@ -870,7 +896,7 @@ document.addEventListener('mousemove',e=>{
   if(pdrag.hot&&pdrag.hot!==c)pdrag.hot.classList.remove('dropover');
   pdrag.hot=c;if(c)c.classList.add('dropover');
 });
-document.addEventListener('mouseup',()=>{
+document.addEventListener('mouseup',async ()=>{
   if(!pdrag)return;const d=pdrag;pdrag=null;
   if(!d.active)return;                              // was a plain click — let onclick handle it
   (d.dragEls||[d.card]).forEach(el=>el.classList.remove('dragging'));if(d.clone)d.clone.remove();
@@ -887,7 +913,7 @@ document.addEventListener('mouseup',()=>{
   const node=store.nodes[d.id],curVal=node?(node[field]||''):'';   // field: iteration | assigned | state
   if(val===curVal&&!bulk)return;
   if(field==='iteration'){const it=_sprint(val),fin=it&&it.finish?it.finish.slice(0,10):null,today=new Date().toISOString().slice(0,10);
-    if(fin&&fin<today&&!confirm(`Sprint "${it.name}" ended ${fin}. Move ${bulk?bulkSel.size+' items':'#'+d.id} there anyway?`))return;}
+    if(fin&&fin<today&&!await customConfirm(`Sprint "${it.name}" ended ${fin}. Move ${bulk?bulkSel.size+' items':'#'+d.id} there anyway?`, 'Confirm Move'))return;}
   if(bulk)moveCards([...bulkSel],field,val);else moveCard(d.id,field,val);
 });
 
@@ -1253,8 +1279,8 @@ async function loadChildCounts(ids){      // top-level refresh path: guarded so 
 }
 
 /* ---------- editor ---------- */
-function closePanel(force){
-  if(!force&&dirty()&&!confirm('Discard unsaved changes?'))return;
+async function closePanel(force){
+  if(!force&&dirty()&&!await customConfirm('Discard unsaved changes?', 'Discard Changes'))return;
   document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
   parentEditor.close();depBlockedByPicker.close();depBlocksPicker.close();closeMention();
   if($('side').classList.contains('fullscreen'))toggleFullscreen(false);   // restore inline width before hiding
@@ -1340,7 +1366,7 @@ function renderAttachments(){
 async function removeAttachment(a){
   if(cur==null)return;
   const wid=cur;
-  if(!confirm('Remove attachment "'+a.name+'"?'))return;
+  if(!await customConfirm('Remove attachment "'+a.name+'"?', 'Remove Attachment'))return;
   try{
     const res=await api.removeAttachmentLink(wid,a.url);
     if(cur===wid){atchState.list=res.attachments||[];renderAttachments();}
@@ -1503,7 +1529,10 @@ async function openItem(id){
   const myToken=++openToken;
   // Always ask before clobbering edits — including reopening the SAME dirty
   // item (which would otherwise silently reload from server and wipe the work).
-  if(cur!=null&&dirty()&&!confirm('Discard unsaved changes to #'+cur+'?'))return;
+  if(cur!=null&&dirty()&&!await customConfirm('Discard unsaved changes to #'+cur+'?', 'Discard Changes'))return;
+  if(selRow)selRow.classList.remove('sel');
+  const targetRow=document.querySelector(`#tree .trow[data-id="${id}"]`);
+  if(targetRow){targetRow.classList.add('sel');selRow=targetRow;}else{selRow=null;}
   $('s_time').innerHTML='';
   loadStart('loading #'+id+'…');
   let d;try{d=await api.item(id);}catch(e){setStatus('ERROR: '+e.message,true);loadEnd();return;}
@@ -2180,7 +2209,7 @@ async function saveEditComment(e, commentId) {
 }
 
 async function deleteCommentAction(commentId) {
-  if (!confirm("Delete this comment?")) return;
+  if (!await customConfirm("Delete this comment?", "Delete Comment")) return;
   loadStart('deleting…');
   try {
     await api.deleteComment(cur, commentId);
