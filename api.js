@@ -218,7 +218,7 @@ function retryDelay(resp, attempt) {
 function isBinaryBody(b) {
   return b instanceof ArrayBuffer || b instanceof Blob || (typeof b === "object" && b && ArrayBuffer.isView(b));
 }
-async function req(method, url, body, ctype) {
+async function req(method, url, body, ctype, options) {
   const headers = { Authorization: await authHeader() };
   // Make ADO return a plain 401 instead of redirecting to its sign-in page —
   // the redirect is what makes the browser pop its native login dialog.
@@ -227,7 +227,7 @@ async function req(method, url, body, ctype) {
   if (body !== undefined) headers["Content-Type"] = ctype || (binary ? "application/octet-stream" : "application/json");
   const payload = body === undefined ? undefined : (binary ? body : JSON.stringify(body));
   for (let attempt = 0; ; attempt++) {
-    const resp = await fetch(url, { method, headers, body: payload });
+    const resp = await fetch(url, { method, headers, body: payload, signal: options && options.signal });
     if (resp.ok) {
       const text = await resp.text();
       if (!text) return {};
@@ -496,6 +496,7 @@ async function searchIdentities(q, limit) {
           mail: id.mail || "",
           descriptor: id.subjectDescriptor || "",
           isGroup: (id.entityType || "").toLowerCase() === "group",
+          id: id.entityId || id.localId || ""
         });
       }
     }
@@ -661,9 +662,9 @@ function depsFromRelations(rels) {
   return { blocks, blockedBy };
 }
 
-async function item(wid) {
+async function item(wid, options) {
   const proj = await projUrl();
-  const d = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`);
+  const d = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`, undefined, undefined, options);
   const f = d.fields || {};
   const wtype = f["System.WorkItemType"];
   const a = f["System.AssignedTo"];
@@ -777,10 +778,10 @@ function attachmentsFromRelations(rels) {
 // Fetch attachment bytes authenticated (the URLs require an Authorization header
 // that the browser doesn't send for plain <img src=...>, so the preview renderer
 // downloads each image through this and swaps src to a blob: URL).
-async function fetchAttachmentBlob(url) {
+async function fetchAttachmentBlob(url, options) {
   if (!url) throw new Error("no url");
   const headers = { Authorization: await authHeader(), "X-TFS-FedAuthRedirect": "Suppress" };
-  const resp = await fetch(url, { headers });
+  const resp = await fetch(url, { headers, signal: options?.signal });
   if (!resp.ok) throw await errorFrom(resp);
   return await resp.blob();
 }
@@ -918,10 +919,10 @@ async function deleteComment(wid, commentId) {
 }
 
 // Existing comments on an item (newest first). Comment bodies are HTML → markdown.
-async function comments(wid) {
+async function comments(wid, options) {
   const proj = await projUrl();
   try {
-    const r = await req("GET", `${proj}/_apis/wit/workItems/${wid}/comments?api-version=7.1-preview.3&$top=200`);
+    const r = await req("GET", `${proj}/_apis/wit/workItems/${wid}/comments?api-version=7.1-preview.3&$top=200`, undefined, undefined, options);
     return (r.comments || [])
       .map(c => ({ id: c.id, text: htmlToMarkdown(c.text), by: ((c.createdBy || {}).displayName) || "", date: c.createdDate || c.modifiedDate || "" }))
       .sort((a, b) => (b.date || "").localeCompare(a.date || ""));

@@ -64,7 +64,8 @@ function createCardPicker(base,opts){
     const ob=Open();if(ob)ob.onclick=()=>{const v=get();if(prov.openValue)prov.openValue(v);};
     document.addEventListener('mousedown',e=>{if(isOpen()&&!Pick().contains(e.target)&&!Card().contains(e.target))close();});
   }
-  return {set,get,render,open,close,isOpen,wire};
+  function setDisabled(d){const c=Card();if(c)c.style.pointerEvents=d?'none':'';const v=V();if(v)v.disabled=!!d;}
+  return {set,get,render,open,close,isOpen,wire,setDisabled};
 }
 
 /* --- provider: parent / any work-item (id+title, with server-side search) --- */

@@ -339,6 +339,12 @@ class MarkdownEditor {
     ta.focus(); this.fireChange();
   }
 
+  setDisabled(disabled) {
+    this.textarea.disabled = !!disabled;
+    this.container.classList.toggle('disabled', !!disabled);
+    if (disabled && this.isEditMode) this.togglePreview(true);
+  }
+
   fireChange() {
     this.textarea.dispatchEvent(new Event('input', { bubbles: true }));
     if (!this.isEditMode) {

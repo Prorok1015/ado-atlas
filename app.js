@@ -44,6 +44,17 @@ let descEditor = null, acEditor = null, commentEditor = null, activeEditor = nul
 let depCache={}, renderToken=0, boardToken=0, tlToken=0;   // tokens drop superseded async renders
 let tlZoom='week', tlGroup='none';               // timeline view: zoom (day|week|month) + row grouping
 let openToken=0;                                // drops superseded openItem() calls
+let openItemAbortCtrl=null;                     // AbortController for the in-flight openItem() fetch
+function lockSidebar(lock){
+  const side=$('side');if(!side)return;
+  side.classList.toggle('sidebar-loading',!!lock);
+  ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est'].forEach(id=>{const el=$(id);if(el)el.disabled=!!lock;});
+  if(descEditor)descEditor.setDisabled(lock);if(acEditor)acEditor.setDisabled(lock);
+  if(assignedEditor&&assignedEditor.setDisabled)assignedEditor.setDisabled(lock);
+  if(sprintEditor&&sprintEditor.setDisabled)sprintEditor.setDisabled(lock);
+  if(parentEditor&&parentEditor.setDisabled)parentEditor.setDisabled(lock);
+  if(tagsEditor&&tagsEditor.setDisabled)tagsEditor.setDisabled(lock);
+}
 let boardBusy=false;                            // true while a card move PATCH is in flight
 let pdrag=null, suppressClick=false;            // custom pointer-based drag for board cards
 let boardScroll=null;                           // saved board scroll to restore from the sprint view
@@ -1366,23 +1377,32 @@ function descRenderOpts(){return {workItemBase:descBase};}
 // switch so memory doesn't grow without bound.
 const attBlobs=new Map();
 function isAdoAttachmentUrl(u){return /^https:\/\/[^/]+\/.+\/_apis\/wit\/attachments\/[^/?#]+/.test(u||'');}
-function clearAttBlobs(){for(const u of attBlobs.values())try{URL.revokeObjectURL(u);}catch(e){}attBlobs.clear();}
+function clearAttBlobs(){
+  const urls=Array.from(attBlobs.values());
+  attBlobs.clear();
+  setTimeout(()=>{
+    for(const u of urls)try{URL.revokeObjectURL(u);}catch(e){}
+  },1000);
+}
 async function hydratePreviewImages(container){
   const pv=container||$('s_desc_prev');if(!pv)return;
   const imgs=Array.from(pv.querySelectorAll('img[src]'));
+  const signal=openItemAbortCtrl?.signal;
   for(const img of imgs){
+    if(signal?.aborted)return;
     const src=img.getAttribute('src');
     if(!isAdoAttachmentUrl(src))continue;
     const cached=attBlobs.get(src);
     if(cached){img.src=cached;continue;}
     try{
-      const blob=await api.fetchAttachmentBlob(src);
+      const blob=await api.fetchAttachmentBlob(src,{signal});
       const blobUrl=URL.createObjectURL(blob);
       attBlobs.set(src,blobUrl);
       // Preview may have been re-rendered (or the user may have closed the panel)
       // by the time the blob arrives — only patch the element if it's still in the DOM.
-      if(img.isConnected)img.src=blobUrl;
+      if(img.isConnected && !(signal?.aborted))img.src=blobUrl;
     }catch(e){
+      if(e.name==='AbortError')return;
       img.alt=(img.alt||'')+' [failed to load: '+e.message+']';
       img.style.opacity='.4';
     }
@@ -1390,7 +1410,7 @@ async function hydratePreviewImages(container){
 }
 function colorMentions(container){
   if(!container)return;
-  const links=container.querySelectorAll('a.vss-mention-link');
+  const links=container.querySelectorAll('a[data-vss-mention]');
   links.forEach(a=>{
     const name=a.textContent.replace(/^@/,'').trim();
     if(!name)return;
@@ -1595,7 +1615,19 @@ function pickMention(){
   if(!activeEditor)return;
   const r=mentionState.rows[mentionState.idx];if(!r)return;
   const ta=activeEditor.textarea,pos=ta.selectionStart,v=ta.value;
-  const md=r.descriptor?`@[${r.displayName}](${r.descriptor})`:`@${r.displayName}`;
+  
+  let vsid = r.id || "";
+  
+  if (vsid.includes('.')) {
+     vsid = vsid.split('.').pop();
+  }
+  
+  if (/^[a-f0-9]{32}$/i.test(vsid)) {
+     vsid = `${vsid.slice(0, 8)}-${vsid.slice(8, 12)}-${vsid.slice(12, 16)}-${vsid.slice(16, 20)}-${vsid.slice(20)}`;
+  }
+  
+  const md = vsid ? `@[${r.displayName}](${vsid})` : `@${r.displayName}`;
+
   ta.value=v.slice(0,mentionState.start)+md+v.slice(pos);
   const at=mentionState.start+md.length;
   ta.selectionStart=ta.selectionEnd=at;
@@ -1644,6 +1676,7 @@ function fmtDur(sec){const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600);
 async function loadTimeline(id){
   $('s_time').innerHTML='';
   let t;try{t=await api.timeline(id,tzOffset);}catch(e){return;}
+  if(cur!==id)return;                              // user switched items while timeline was loading
   if(!t.durations)return;
   const ent=Object.entries(t.durations).sort((a,b)=>b[1]-a[1]);
   if(!ent.length)return;
@@ -1682,16 +1715,50 @@ async function openItem(id){
   // Always ask before clobbering edits — including reopening the SAME dirty
   // item (which would otherwise silently reload from server and wipe the work).
   if(cur!=null&&dirty()&&!await customConfirm('Discard unsaved changes to #'+cur+'?', 'Discard Changes'))return;
+  // After the async confirm another openItem() may have started — bail if superseded.
+  if(myToken!==openToken)return;
+
+  // ── Abort any in-flight fetch from a previous openItem ──
+  if(openItemAbortCtrl)openItemAbortCtrl.abort();
+  openItemAbortCtrl=new AbortController();
+  const signal=openItemAbortCtrl.signal;
+
+  // ── Synchronous reset: block saves for the OLD item ──
+  cur=null;orig=null;                              // dirty()→false, quickSave()→early return
+  lockSidebar(true);                               // dim + disable all interactive fields
+
+  // ── Clear stale field values so the user never sees the previous item's data ──
+  $('s_title').value='';$('s_hdr').innerHTML='<span style="color:var(--muted)">loading…</span>';
+  $('s_time').innerHTML='';$('s_ctx').innerHTML='';$('s_kidlist').innerHTML='';
+  if(descEditor)descEditor.value='';if(acEditor)acEditor.value='';
+  atchState.list=[];atchState.uploading=0;renderAttachments();
+  depsState.blockedBy=[];depsState.blocks=[];renderDeps();
+  closeMention();setSaveChip('idle');
+
+  // ── Highlight the target row in the tree ──
   if(selRow)selRow.classList.remove('sel');
   const targetRow=document.querySelector(`#tree .trow[data-id="${id}"]`);
   if(targetRow){targetRow.classList.add('sel');selRow=targetRow;}else{selRow=null;}
-  $('s_time').innerHTML='';
-  loadStart('loading #'+id+'…');
-  let d;try{d=await api.item(id);}catch(e){setStatus('ERROR: '+e.message,true);loadEnd();return;}
-  loadEnd();
-  if(myToken!==openToken)return;                  // a newer openItem() superseded this one
-  cur=id;$('side').classList.remove('hidden');$('resizer').style.display='block';$('child_form').style.display='none';closeCommentForm();const chbtn=$('s_childbtn');if(chbtn)chbtn.classList.remove('on');
+
+  // ── Show the sidebar shell + start the loading indicator ──
+  $('side').classList.remove('hidden');$('resizer').style.display='block';
+  $('child_form').style.display='none';closeCommentForm();
+  const chbtn=$('s_childbtn');if(chbtn)chbtn.classList.remove('on');
   toggleActivityExpand(false);
+  loadStart('loading #'+id+'…');
+
+  // ── Fetch the item (cancellable) ──
+  let d;
+  try{d=await api.item(id,{signal});}catch(e){
+    loadEnd();
+    if(e.name==='AbortError')return;               // silently exit — a newer openItem() is already running
+    setStatus('ERROR: '+e.message,true);lockSidebar(false);return;
+  }
+  loadEnd();
+  if(myToken!==openToken)return;                   // a newer openItem() superseded this one
+
+  // ── Populate the sidebar with fresh data ──
+  cur=id;
   api.comments(id).then(cs => {
     if (cur !== id) return;
     const badge = $('s_activity_count');
@@ -1732,6 +1799,9 @@ async function openItem(id){
   loadDeps(id,d.deps);                            // seed from item() result; no extra round-trip
   orig={title:d.title,state:d.state,assigned:d.assigned,desc:d.desc,ac:d.ac,has_ac:d.has_ac,priority:d.priority,
         iter:curIt,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};
+
+  // ── Unlock the sidebar — the user can now edit safely ──
+  lockSidebar(false);
   refreshDirty();loadTimeline(id);
   setStatus('#'+id+' loaded');
 }

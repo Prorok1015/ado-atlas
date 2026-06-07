@@ -1,4 +1,4 @@
-const tagsEditor=(function(){let cur=[],adding=false,committing=false;
+const tagsEditor=(function(){let cur=[],adding=false,committing=false,disabled=false;
   const norm=s=>String(s||'').split(/[;,]/).map(t=>t.trim()).filter(Boolean);
   const uniq=a=>{const seen=new Set(),o=[];a.forEach(t=>{const k=t.toLowerCase();if(!seen.has(k)){seen.add(k);o.push(t);}});return o;};
   // User-initiated tag mutations auto-save via quickSave('tags'); set() skips
@@ -27,8 +27,10 @@ const tagsEditor=(function(){let cur=[],adding=false,committing=false;
       inp.addEventListener('change',()=>{if(inp.value.trim())doCommit();});
       inp.addEventListener('blur',()=>{if(!committing){commit(inp.value);adding=false;render();}});
     }else{const p=$('s_tagplus');if(p)p.onclick=()=>{adding=true;render();};}
+    if(disabled){box.querySelectorAll('button').forEach(b=>b.disabled=true);box.style.pointerEvents='none';}else{box.style.pointerEvents='';}
   }
-  return {render,
+  function setDisabled(d){disabled=!!d;const box=$('s_tags');if(box)box.style.pointerEvents=d?'none':'';}
+  return {render,setDisabled,
     add(s){commit(s);render();},
     set(s,silent){cur=uniq(norm(s));adding=false;render();if(!silent)refreshDirty();},
     value(){return cur.join('; ');}};

@@ -149,7 +149,7 @@
     // Inline pass: order matters — pull images out BEFORE links so ![]() isn't
     // mistaken for a literal "!" followed by [link](...), and pull @-mentions
     // and #123 BEFORE the regular link rule for the same reason.
-    const MENTION_RE = /@\[([^\]\n]{1,80})\]\(([A-Za-z0-9._\-+=]{1,200})\)/g;
+    const MENTION_RE = /@\[([^\]\n]{1,80})\]\(([a-f0-9-]{36})\)/gi;
     const IMG_RE     = /!\[([^\]\n]{0,200})\]\((https:\/\/[^)\s"<>]+)\)/g;
     const LINK_RE    = /\[([^\]]+)\]\((https?:\/\/[^)\s"<>]+)\)/g;
     const WID_RE     = /(^|[\s(,;:.])#(\d{1,8})\b/g;
@@ -164,8 +164,8 @@
       // @[Name](descriptor) - ADO mention anchor. href stays "#"; the descriptor
       // goes into data-vss-mention exactly so the saved HTML triggers a real
       // notification when round-tripped back.
-      out = out.replace(MENTION_RE, (m, name, desc) =>
-        `<a href="#" data-vss-mention="version:2.0,${desc}" class="vss-mention-link">@${name}</a>`);
+      out = out.replace(MENTION_RE, (m, name, guid) =>
+      `<a href="#" data-vss-mention="version:2.0,${guid}">@${name}</a>`);
       out = out.replace(LINK_RE, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
       if (base) out = autolinkWidOutsideTags(out, base);
       return out;
@@ -212,7 +212,7 @@
       //   - plain anchor                                                → [text](url)
       .replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (m, attrs, inner) => {
         const text = inner.replace(/<[^>]+>/g, "").trim();
-        const dm = attrs.match(/\bdata-vss-mention\s*=\s*"version:2\.0,([A-Za-z0-9._\-+=]+)"/i);
+        const dm = attrs.match(/\bdata-vss-mention\s*=\s*"version:2\.0,([a-f0-9-]+)"/i);
         if (dm) return "@[" + text.replace(/^@/, "") + "](" + dm[1] + ")";
         const hrefM = attrs.match(/\bhref\s*=\s*"([^"]*)"/i);
         const href = hrefM ? hrefM[1] : "";

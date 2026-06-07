@@ -219,6 +219,13 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 #side.fullscreen #editor_desc_container textarea,
 #side.fullscreen #editor_desc_container .mdview{min-height:50vh}
 #side.hidden{display:none}
+/* Loading state: dim + block all interactive fields while a new item is being fetched.
+   Prevents accidental edits to the previous item's data during the async gap. */
+#side.sidebar-loading input,#side.sidebar-loading select,#side.sidebar-loading textarea{pointer-events:none;opacity:.45}
+#side.sidebar-loading .pcard,#side.sidebar-loading .tagchip,#side.sidebar-loading .tagadd,
+#side.sidebar-loading .depchip,#side.sidebar-loading .ctxnav,#side.sidebar-loading .dbtn,
+#side.sidebar-loading .btn:not(.icon){pointer-events:none;opacity:.45}
+#side.sidebar-loading .md-editor{pointer-events:none;opacity:.55}
 .hidden{display:none!important}
 /* keep each field at its natural height — when the form is taller than the panel,
    the whole card scrolls instead of squashing blocks (e.g. the children list) */
@@ -404,7 +411,9 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .mdview pre{background:var(--panel2);border-radius:6px;padding:8px;overflow:auto}
 .mdview a{color:var(--accent)}
 .mdview img{max-width:100%;border-radius:6px;margin:4px 0;display:block}
-a.vss-mention-link{background:rgba(59,125,224,0.1);color:var(--accent);padding:2px 6px;border-radius:10px;text-decoration:none;font-weight:600;cursor:pointer;display:inline-block}
+a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:2px 6px;border-radius:10px;text-decoration:none;font-weight:600;cursor:pointer;display:inline-block}
+
+
 /* Description mini-toolbar: label + format cluster + action buttons. Sticky to
    the top of the scrolling sidebar so it stays reachable on long descriptions.
    The negative `top` value tucks it under #side's own 10px padding so the bar
