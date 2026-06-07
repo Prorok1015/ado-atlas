@@ -211,12 +211,15 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 .ttag{font-size:10px;font-weight:600;color:#fff;border-radius:10px;padding:1px 6px;flex:none;max-width:72px;overflow:hidden;text-overflow:ellipsis}
 .empty{color:var(--muted);font-size:12px;padding:2px 8px}
 .skip{color:var(--accent);font-weight:600;cursor:help}
-#side{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:10px 12px;overflow:auto;display:flex;flex-direction:column;gap:5px;position:relative}
+#side{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:10px 12px;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:5px;position:relative}
 /* Full-screen editor: pin #side to the viewport with a dim backdrop so the user
    can focus on the description. Layout stays the same — the sidebar just grows. */
-#side.fullscreen{position:fixed;inset:0;width:auto;max-width:1100px;margin:0 auto;z-index:5000;border-left:0;border-radius:10px;box-shadow:0 0 0 100vmax rgba(8,11,15,.78),0 12px 40px rgba(0,0,0,.5);padding:16px 22px}
-#side.fullscreen #s_desc,#side.fullscreen #s_desc_prev{min-height:50vh}
+#side.fullscreen{position:fixed;inset:0;width:auto;max-width:1100px;margin:0 auto;z-index:5000;border-left:0;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:16px 22px}
+#side.fullscreen #s_desc,#side.fullscreen #s_desc_prev,
+#side.fullscreen #editor_desc_container textarea,
+#side.fullscreen #editor_desc_container .mdview{min-height:50vh}
 #side.hidden{display:none}
+.hidden{display:none!important}
 /* keep each field at its natural height — when the form is taller than the panel,
    the whole card scrolls instead of squashing blocks (e.g. the children list) */
 #side>*{flex:none}
@@ -238,7 +241,11 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 /* Sticky actions: keep Save reachable on long descriptions. The actions sgroup
    pins to the bottom of the scrolling sidebar with a top border so it visually
    separates from the form below the fold. */
-.sgroup[data-sg="actions"]{position:sticky;bottom:-10px;background:var(--panel);padding:6px 0 2px;z-index:5;border-top:1px solid var(--line);margin-top:4px}
+.sgroup[data-sg="actions"]{position:sticky;bottom:-12px;background:var(--bg);border-top:1px solid var(--line);margin-top:10px;z-index:50;padding:6px 14px 4px;margin-left:-14px;margin-right:-14px;box-shadow:0 -4px 16px rgba(0,0,0,0.12)}
+body.light .sgroup[data-sg="actions"]{box-shadow:0 -4px 16px rgba(0,0,0,0.06)}
+#side.fullscreen .sgroup[data-sg="actions"]{padding-left:24px;padding-right:24px;margin-left:-24px;margin-right:-24px}
+body.light .comment-card,body.light #child_form,body.light #comment_editor_container{background:var(--panel)!important}
+
 /* Save status chip: ● dirty / spinner saving / ✓ saved / ⚠ error */
 .schip{flex:none;font-size:11px;padding:2px 7px;border-radius:10px;border:1px solid transparent;color:var(--muted);display:inline-flex;align-items:center;gap:4px;line-height:1.4;min-height:18px}
 .schip:empty{padding:0;min-height:0;border:0}
@@ -248,21 +255,130 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 .schip.error{color:#e0524d;border-color:rgba(224,82,77,.35);background:rgba(224,82,77,.10)}
 .schip .spin{width:9px;height:9px;border-width:2px}
 .save{background:var(--accent);color:#fff;border-color:var(--accent)}
-#child_form{display:none;gap:8px;border:1px dashed var(--line);border-radius:8px;padding:8px}
-.shead{display:flex;align-items:center;gap:6px;position:sticky;top:-10px;background:var(--panel);z-index:7;padding:6px 0 5px;border-bottom:1px solid var(--line)}
+#child_form, #comment_editor_container {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--panel2);
+  margin-bottom: 8px;
+}
+#comment_editor_container .desc-tools {
+  background: transparent;
+  position: static;
+  padding: 0 0 6px;
+}
+.shead{display:flex;align-items:center;gap:6px;position:sticky;top:-12px;background:var(--panel);z-index:12;padding:6px 14px;margin-left:-14px;margin-right:-14px;border-bottom:1px solid var(--line);min-height:34px}
+#side.fullscreen .shead{top:-18px;margin-left:-24px;margin-right:-24px;padding-left:24px;padding-right:24px;padding-top:10px;padding-bottom:10px;min-height:42px}
 .shead .ttl{flex:1;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
 .shead #s_desc_full.on,.shead #s_desc_full.btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #side.fullscreen .shead #s_desc_full{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn.icon{padding:2px 8px;line-height:1;text-decoration:none;display:inline-flex;align-items:center}
 .sbadge{font-size:10px;border-radius:10px;padding:1px 8px;color:#fff;font-weight:600}
-#s_activity{margin-top:8px;display:none;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
-#s_activity.show{display:flex}
+#s_activity{margin-top:8px;display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto}
+
+/* Unsaved changes header buttons */
+.unsaved-header-btns {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.unsaved-header-btns.hidden {
+  display: none !important;
+}
+.unsaved-header-btns .btn {
+  padding: 2px 7px;
+  font-size: 11px;
+  min-height: 20px;
+  line-height: 1.2;
+}
+.unsaved-header-btns .btn.save {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.unsaved-header-btns .btn.discard {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+.unsaved-header-btns .btn.discard:hover {
+  color: var(--txt);
+  background: var(--panel2);
+  border-color: var(--muted);
+}
+
+/* Activity header inside actions group */
+.activity-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.activity-header h2{font-size:13px;margin:0;color:var(--muted);font-weight:600}
+.activity-header h2 .toggle-arrow {display:inline-block;font-size:10px;color:var(--muted);margin-left:4px;transition:transform 0.1s ease}
+.acount-badge{background:var(--line);color:var(--txt);font-size:10px;font-weight:600;border-radius:10px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.ah-actions{display:flex;gap:6px}
+.btn-sm{font-size:11px;padding:3px 8px;min-height:24px}
+
 #s_activity .asec{color:var(--muted);font-size:11px;margin-top:6px;text-transform:uppercase;letter-spacing:.4px}
-.acard{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px}
-.acard .ah{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:3px}
-.acard .atext{white-space:pre-wrap;word-break:break-word}
-#s_activity .achg{color:var(--muted);font-size:11px}
-#s_activity .achg b{color:var(--txt);font-weight:600}
+
+/* Rich Comment Cards */
+.comment-card{display:flex;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);margin-bottom:6px;position:relative;font-size:12px}
+.comment-card:hover .comment-actions{opacity:1}
+.comment-avatar{width:28px;height:28px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px;flex:none}
+.comment-main{flex:1;min-width:0}
+.comment-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;position:relative}
+.comment-author{font-weight:600;color:var(--txt)}
+.comment-time{font-size:10px;color:var(--muted)}
+.comment-actions{display:flex;gap:4px;position:absolute;right:0;top:-2px;opacity:0;transition:opacity 0.15s ease;background:var(--panel2);padding-left:6px}
+.c-action-btn{background:transparent;border:0;cursor:pointer;padding:2px 4px;font-size:11px;border-radius:4px;transition:background 0.1s ease}
+.c-action-btn:hover{background:var(--line)}
+.comment-reactions{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.reaction-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;background:var(--field);border:1px solid var(--line);border-radius:12px;font-size:10px;cursor:pointer;user-select:none;transition:all 0.1s ease}
+.reaction-chip:hover{border-color:var(--muted);background:var(--line)}
+.reaction-chip.active{background:rgba(47,111,237,.10);border-color:var(--accent);color:var(--accent)}
+.rc-count{font-weight:600}
+
+/* Emoji Reactions Popover */
+.reactions-popover{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:4px 6px;display:flex;gap:4px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:1000;right:0;top:-36px;animation:popIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)}
+@keyframes popIn{from{opacity:0;transform:scale(0.8) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.reaction-emoji-btn{font-size:15px;background:transparent;border:0;cursor:pointer;padding:1px 3px;border-radius:50%;transition:transform 0.1s ease,background 0.1s ease}
+.reaction-emoji-btn:hover{transform:scale(1.25);background:var(--line)}
+
+/* Inline Comment Editor */
+.inline-comment-edit-textarea{width:100%;min-height:56px;font-family:inherit;font-size:12px;background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 7px;resize:vertical;margin-bottom:6px}
+.inline-comment-edit-actions{display:flex;gap:6px;justify-content:flex-end}
+
+/* Timeline History Events */
+.history-item{display:flex;gap:10px;padding:6px 10px;font-size:11px;margin-bottom:4px}
+.history-avatar{width:22px;height:22px;border-radius:50%;background:var(--line);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:10px;flex:none}
+.history-main{flex:1;min-width:0}
+.history-header{display:flex;align-items:center;gap:6px;margin-bottom:3px;color:var(--muted)}
+.history-author{font-weight:600}
+.history-time{font-size:9px}
+.history-changes{display:flex;flex-direction:column;gap:2px;color:var(--muted)}
+.achg-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.achg-field{color:var(--muted)}
+.achg-from{text-decoration:line-through;opacity:0.7}
+.achg-arrow{color:var(--muted)}
+.achg-to{color:var(--txt);font-weight:600}
+
+/* Activity Resizer & Fullscreen activity styles */
+.activity-resizer{position:absolute;top:0;left:0;right:0;height:6px;cursor:ns-resize;background:transparent;z-index:10;transition:background .15s}
+.activity-resizer:hover,.activity-resizer.active{background:var(--accent)}
+.sgroup[data-sg="actions"].fullscreen{position:fixed!important;top:24px!important;bottom:24px!important;left:24px!important;right:24px!important;inset:24px!important;width:calc(100% - 48px)!important;max-width:1000px!important;margin:0 auto!important;z-index:6000!important;background:var(--panel)!important;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.55)!important;padding:20px!important;display:flex;flex-direction:column;gap:10px}
+.sgroup[data-sg="actions"].fullscreen #activity-content{flex:1;display:flex;flex-direction:column;min-height:0;width:100%}
+.sgroup[data-sg="actions"].fullscreen #s_activity{max-height:none !important;flex:1;overflow-y:auto;width:100%}
+.sgroup[data-sg="actions"].fullscreen .comment-card,
+.sgroup[data-sg="actions"].fullscreen .history-item{width:100%}
+.sgroup[data-sg="actions"].fullscreen #comment_editor_container,
+.sgroup[data-sg="actions"].fullscreen #child_form{width:100%}
+.sgroup[data-sg="actions"].fullscreen #activity-resizer{display:none}
+.activity-header button.on,
+#s_childbtn.on,
+#s_comment.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.toggle-arrow.spinning{display:inline-block;animation:spin 0.8s linear infinite}
+#side.fullscreen .sgroup[data-sg="actions"]{bottom:-18px;padding-bottom:10px}
 #s_ctx{font-size:12px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap}
 #s_ctx a{color:var(--accent);cursor:pointer;text-decoration:none}
 #s_ctx a:hover{text-decoration:underline}
@@ -277,7 +393,7 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 .kidstate{font-size:10px;border-radius:10px;padding:1px 7px;color:#fff;flex:none}
 .kidmsg{padding:7px 9px;font-size:12px;color:var(--muted)}
 .save:disabled{opacity:.55;cursor:default;background:var(--panel2);border-color:var(--line);color:var(--muted)}
-#comment_form{display:none;flex-direction:column;gap:6px}
+
 .stime{font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
 .stime b{color:var(--txt);font-weight:600}
 .mdlink{color:var(--accent);cursor:pointer;font-size:10px;margin-left:6px;text-transform:none;letter-spacing:0}
@@ -296,7 +412,25 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 /* In-flow format toolbar (📎 + 👁 + ⛶ live in the always-sticky shead, so the
    format cluster doesn't need to stick — and not sticking avoids overlapping
    sibling sgroups like Activity below). */
-.desc-tools{display:flex;align-items:center;gap:4px;margin:2px 0 3px;flex-wrap:wrap;padding:0;background:transparent}
+.desc-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 0 4px;
+  flex-wrap: wrap;
+  background: var(--panel);
+  position: -webkit-sticky;
+  position: sticky;
+  top: 20px;
+  z-index: 10;
+}
+#side.fullscreen .desc-tools {
+  top: 14px;
+}
+.md-editor.preview-mode .dfmt {
+  display: none;
+}
 .desc-tools .dlabel{flex:none;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:0 2px 0 0}
 .desc-tools .dtspacer{flex:1;min-width:6px}
 .desc-tools .dfmt{display:inline-flex;gap:2px;align-items:center;flex-wrap:wrap}
@@ -310,6 +444,64 @@ textarea{resize:vertical;min-height:56px;font-family:ui-monospace,Consolas,monos
 .desc-tools .dbtn-i-only b{font-weight:800}
 .desc-tools .dbtn-i-only i{font-style:italic}
 .desc-tools .dbtn-i-only s{text-decoration:line-through}
+/* full-screen editor styles for individual MarkdownEditor components */
+.md-editor.fullscreen {
+  position: fixed;
+  inset: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+  z-index: 6000;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sgroup:has(.md-editor.fullscreen) {
+  z-index: 7000 !important;
+}
+/* modal backdrop styles for fullscreen elements */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 11, 15, 0.78);
+  cursor: default;
+}
+.modal-backdrop.sidebar-backdrop {
+  z-index: 4999;
+}
+.modal-backdrop.editor-backdrop {
+  z-index: 5999;
+}
+.md-editor.fullscreen .desc-tools {
+  margin: 0;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  position: static;
+}
+.md-editor.fullscreen .desc-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+}
+.md-editor.fullscreen textarea,
+.md-editor.fullscreen .mdview {
+  flex: 1;
+  height: 100% !important;
+  min-height: 0 !important;
+  font-size: 14px;
+  overflow-y: auto;
+}
+.md-editor.fullscreen textarea {
+  resize: none;
+}
+
 /* description editor wrap = relative anchor for the drop overlay */
 .desc-wrap{position:relative}
 .desc-dropzone{position:absolute;inset:0;display:none;align-items:center;justify-content:center;border:2px dashed var(--accent);border-radius:8px;background:rgba(47,111,237,.18);backdrop-filter:blur(2px);pointer-events:none;z-index:5}

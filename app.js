@@ -40,6 +40,7 @@ let typeList=[];                          // [{name,color}] of the project's rea
 const typeNames=()=>typeList.length?typeList.map(t=>t.name):TYPES;
 const $=id=>document.getElementById(id);
 let cy=null, mode='tree', edgeMode='hierarchy', rankDir='LR', cur=null, orig={}, selRow=null;
+let descEditor = null, acEditor = null, commentEditor = null, activeEditor = null;
 let depCache={}, renderToken=0, boardToken=0, tlToken=0;   // tokens drop superseded async renders
 let tlZoom='week', tlGroup='none';               // timeline view: zoom (day|week|month) + row grouping
 let openToken=0;                                // drops superseded openItem() calls
@@ -1254,10 +1255,13 @@ async function loadChildCounts(ids){      // top-level refresh path: guarded so 
 /* ---------- editor ---------- */
 function closePanel(force){
   if(!force&&dirty()&&!confirm('Discard unsaved changes?'))return;
+  document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
   parentEditor.close();depBlockedByPicker.close();depBlocksPicker.close();closeMention();
   if($('side').classList.contains('fullscreen'))toggleFullscreen(false);   // restore inline width before hiding
   $('side').classList.add('hidden');
   $('resizer').style.display='none';cur=null;orig={};
+  const cbtn = $('s_comment'); if (cbtn) cbtn.classList.remove('on');
+  const chbtn = $('s_childbtn'); if (chbtn) chbtn.classList.remove('on');
   atchState.list=[];atchState.wid=null;atchState.uploading=0;renderAttachments();clearAttBlobs();
   depsState.blockedBy=[];depsState.blocks=[];renderDeps();
   if(selRow){selRow.classList.remove('sel');selRow=null;}
@@ -1277,8 +1281,8 @@ function descRenderOpts(){return {workItemBase:descBase};}
 const attBlobs=new Map();
 function isAdoAttachmentUrl(u){return /^https:\/\/[^/]+\/.+\/_apis\/wit\/attachments\/[^/?#]+/.test(u||'');}
 function clearAttBlobs(){for(const u of attBlobs.values())try{URL.revokeObjectURL(u);}catch(e){}attBlobs.clear();}
-async function hydratePreviewImages(){
-  const pv=$('s_desc_prev');if(!pv)return;
+async function hydratePreviewImages(container){
+  const pv=container||$('s_desc_prev');if(!pv)return;
   const imgs=Array.from(pv.querySelectorAll('img[src]'));
   for(const img of imgs){
     const src=img.getAttribute('src');
@@ -1296,19 +1300,6 @@ async function hydratePreviewImages(){
       img.alt=(img.alt||'')+' [failed to load: '+e.message+']';
       img.style.opacity='.4';
     }
-  }
-}
-function showDescPreview(on){
-  const ta=$('s_desc'),pv=$('s_desc_prev'),tg=$('s_desc_toggle');
-  if(on){
-    closeMention();
-    pv.innerHTML=mdToHtml(ta.value,descRenderOpts());
-    ta.style.display='none';pv.style.display='block';
-    tg.textContent='✎';tg.title='switch to edit mode';tg.classList.add('on');
-    hydratePreviewImages();
-  } else {
-    pv.style.display='none';ta.style.display='block';
-    tg.textContent='👁';tg.title='toggle description preview / edit';tg.classList.remove('on');
   }
 }
 
@@ -1342,54 +1333,9 @@ function renderAttachments(){
   box.innerHTML=head+rows;
   box.querySelectorAll('.atchrow').forEach(row=>{
     const i=+row.dataset.i,a=arr[i];
-    row.querySelector('.ains').onclick=e=>{e.preventDefault();insertAtCursor($('s_desc'),(isImageName(a.name)?'!':'')+`[${a.name}](${a.url})`);refreshDirty();};
+    row.querySelector('.ains').onclick=e=>{e.preventDefault();descEditor.insertAtCursor((isImageName(a.name)?'!':'')+`[${a.name}](${a.url})`);refreshDirty();};
     row.querySelector('.axdel').onclick=e=>{e.preventDefault();removeAttachment(a);};
   });
-}
-function insertAtCursor(ta,text){
-  if(!ta)return;
-  // If the textarea is hidden (user is in preview mode) the caret position is
-  // meaningless — append at the END instead of falling back to position 0.
-  const hidden=ta.offsetParent===null;
-  const s=hidden?ta.value.length:ta.selectionStart;
-  const e=hidden?ta.value.length:ta.selectionEnd;
-  const v=ta.value;
-  const before=v.slice(0,s),after=v.slice(e);
-  // Newline-pad block-ish inserts (images/files) so they don't collide with
-  // surrounding text. Inline @-mentions skip the padding.
-  const pad=text.startsWith('!')||text.startsWith('[')?(before.length&&!before.endsWith('\n')?'\n':''):'';
-  const tail=text.startsWith('!')?'\n':'';
-  const ins=pad+text+tail;
-  ta.value=before+ins+after;
-  const at=before.length+ins.length;
-  ta.selectionStart=ta.selectionEnd=at;
-  ta.focus();
-  ta.dispatchEvent(new Event('input',{bubbles:true}));
-  // If the user is currently looking at the preview (the textarea is hidden),
-  // re-render it so a paste / drop / "↩ insert" reflects immediately instead of
-  // waiting until they switch back to edit mode.
-  if(ta.id==='s_desc'&&$('s_desc_prev').style.display!=='none')showDescPreview(true);
-}
-async function uploadAndLink(files){
-  if(!files||!files.length||cur==null)return;
-  const wid=cur;
-  for(const f of files){
-    atchState.uploading++;renderAttachments();
-    let up;
-    try{up=await api.uploadAttachment(f);}
-    catch(e){atchState.uploading--;renderAttachments();setStatus('upload failed: '+e.message,true);continue;}
-    let res;
-    try{res=await api.addAttachmentLink(wid,up.url,up.name,'');}
-    catch(e){atchState.uploading--;renderAttachments();setStatus('attach failed: '+e.message,true);continue;}
-    atchState.uploading--;
-    if(cur!==wid){renderAttachments();continue;}
-    atchState.list=res.attachments||[];
-    // Insert at caret: image goes as ![]; other files as [name](url)
-    const md=(isImageMime(f.type)||isImageName(f.name)?'!':'')+`[${up.name}](${up.url})`;
-    insertAtCursor($('s_desc'),md);
-    renderAttachments();
-    setStatus('#'+wid+' attached '+up.name);
-  }
 }
 async function removeAttachment(a){
   if(cur==null)return;
@@ -1443,7 +1389,8 @@ function drawMention(){
   });
 }
 function positionMention(){
-  const ta=$('s_desc'),p=$('s_mention'),side=$('side');if(!ta||!p||!side)return;
+  if(!activeEditor)return;
+  const ta=activeEditor.textarea,p=$('s_mention'),side=$('side');if(!ta||!p||!side)return;
   // Pin the popup below the textarea (cheap + reliable; the caret-precise
   // position would need a hidden mirror div). Coords are relative to #side,
   // including its scroll offsets so the popup tracks the textarea after scroll.
@@ -1453,7 +1400,8 @@ function positionMention(){
   p.style.maxWidth=r.width+'px';
 }
 async function openOrUpdateMention(){
-  const ta=$('s_desc');if(!ta)return;
+  if(!activeEditor)return;
+  const ta=activeEditor.textarea;if(!ta)return;
   const trig=findMentionTrigger(ta);
   if(!trig){closeMention();return;}
   mentionState.start=trig.at;mentionState.query=trig.query;mentionState.open=true;
@@ -1466,126 +1414,50 @@ async function openOrUpdateMention(){
   mentionState.rows=rows;mentionState.idx=0;drawMention();
 }
 function pickMention(){
+  if(!activeEditor)return;
   const r=mentionState.rows[mentionState.idx];if(!r)return;
-  const ta=$('s_desc'),pos=ta.selectionStart,v=ta.value;
+  const ta=activeEditor.textarea,pos=ta.selectionStart,v=ta.value;
   const md=r.descriptor?`@[${r.displayName}](${r.descriptor})`:`@${r.displayName}`;
   ta.value=v.slice(0,mentionState.start)+md+v.slice(pos);
   const at=mentionState.start+md.length;
   ta.selectionStart=ta.selectionEnd=at;
   closeMention();
-  ta.dispatchEvent(new Event('input',{bubbles:true}));
+  activeEditor.fireChange();
 }
 function moveMention(d){if(!mentionState.rows.length)return;
   mentionState.idx=(mentionState.idx+d+mentionState.rows.length)%mentionState.rows.length;
   drawMention();
 }
 
-/* ---------- markdown format buttons (B / I / S / code / H / lists / quote / link) ----------
-   Each action mutates the textarea selection. Bold/italic/strike/code wrap the
-   selection. Heading toggles a cycling # prefix. Lists, quote prefix every line
-   in the selection (toggleable). Link prompts for the URL. */
-function descFormatTarget(){return $('s_desc');}
-function fireDescChange(ta){
-  ta.dispatchEvent(new Event('input',{bubbles:true}));
-  if($('s_desc_prev').style.display!=='none')showDescPreview(true);
-}
-function wrapSel(ta,before,after){
-  // If the textarea is currently hidden (preview mode), there's no meaningful
-  // selection — switch to edit first so the user sees the result of the action.
-  if(ta.offsetParent===null)showDescPreview(false);
-  const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;
-  const sel=v.slice(s,e)||'text';
-  // Toggle: if already wrapped, unwrap.
-  const around=v.slice(Math.max(0,s-before.length),s)===before&&v.slice(e,e+after.length)===after;
-  if(around){
-    ta.value=v.slice(0,s-before.length)+sel+v.slice(e+after.length);
-    ta.selectionStart=s-before.length;ta.selectionEnd=e-before.length;
-  } else {
-    const ins=before+sel+after;
-    ta.value=v.slice(0,s)+ins+v.slice(e);
-    ta.selectionStart=s+before.length;ta.selectionEnd=s+before.length+sel.length;
-  }
-  ta.focus();fireDescChange(ta);
-}
-function prefixLines(ta,getPrefix,toggleable){
-  if(ta.offsetParent===null)showDescPreview(false);
-  const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;
-  const lsRaw=v.lastIndexOf('\n',s-1)+1;
-  const leRaw=v.indexOf('\n',Math.max(e-1,lsRaw));
-  const lEnd=leRaw<0?v.length:leRaw;
-  const block=v.slice(lsRaw,lEnd);
-  const lines=block.split('\n');
-  let newLines;
-  if(toggleable){
-    const p0=getPrefix(0);
-    const all=lines.every(l=>!l.length||l.startsWith(p0));
-    if(all){newLines=lines.map(l=>l.startsWith(p0)?l.slice(p0.length):l);}
-    else{newLines=lines.map((l,i)=>l.length?getPrefix(i)+l:l);}
-  } else {
-    newLines=lines.map((l,i)=>l.length?getPrefix(i)+l:l);
-  }
-  const text=newLines.join('\n');
-  ta.value=v.slice(0,lsRaw)+text+v.slice(lEnd);
-  ta.selectionStart=lsRaw;ta.selectionEnd=lsRaw+text.length;
-  ta.focus();fireDescChange(ta);
-}
-function cycleHeading(ta){
-  if(ta.offsetParent===null)showDescPreview(false);
-  const s=ta.selectionStart,v=ta.value;
-  const ls=v.lastIndexOf('\n',s-1)+1;
-  const le=v.indexOf('\n',s);const lEnd=le<0?v.length:le;
-  const line=v.slice(ls,lEnd);
-  const m=line.match(/^(#{1,3})\s+(.*)$/);
-  let next;
-  if(!m)next='# '+line;
-  else if(m[1].length===1)next='## '+m[2];
-  else if(m[1].length===2)next='### '+m[2];
-  else next=m[2];        // ### → plain text (cycle reset)
-  ta.value=v.slice(0,ls)+next+v.slice(lEnd);
-  const caret=ls+next.length;
-  ta.selectionStart=ta.selectionEnd=caret;
-  ta.focus();fireDescChange(ta);
-}
-function insertLink(ta){
-  if(ta.offsetParent===null)showDescPreview(false);
-  const url=prompt('Link URL (https://…)','https://');
-  if(!url||!/^https?:\/\//i.test(url))return;
-  const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;
-  const sel=v.slice(s,e)||'link text';
-  const ins=`[${sel}](${url})`;
-  ta.value=v.slice(0,s)+ins+v.slice(e);
-  ta.selectionStart=s+1;ta.selectionEnd=s+1+sel.length;     // select the visible label
-  ta.focus();fireDescChange(ta);
-}
-function applyFormat(kind){
-  const ta=descFormatTarget();if(!ta)return;
-  switch(kind){
-    case 'bold':   return wrapSel(ta,'**','**');
-    case 'italic': return wrapSel(ta,'*','*');
-    case 'strike': return wrapSel(ta,'~~','~~');
-    case 'code':   return wrapSel(ta,'`','`');
-    case 'h':      return cycleHeading(ta);
-    case 'ul':     return prefixLines(ta,()=>'- ',true);
-    case 'ol':     return prefixLines(ta,i=>(i+1)+'. ',true);
-    case 'quote':  return prefixLines(ta,()=>'> ',true);
-    case 'link':   return insertLink(ta);
-  }
-}
+
 
 /* ---------- full-screen editor toggle ---------- */
 let _sideWidthBeforeFs='';
 function toggleFullscreen(force){
   const side=$('side');
   const on=force===true||force===false?force:!side.classList.contains('fullscreen');
+  let backdrop = document.getElementById('s_side_backdrop');
   if(on){
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 's_side_backdrop';
+      backdrop.className = 'modal-backdrop sidebar-backdrop';
+      backdrop.onclick = () => toggleFullscreen(false);
+      document.body.appendChild(backdrop);
+    }
     // The user's inline width (from dragging #resizer) overrides the .fullscreen
     // class's `width: auto`. Stash it and clear so the panel fills the viewport,
     // then restore on exit.
     _sideWidthBeforeFs=side.style.width||'';
     side.style.width='';
-  } else if(_sideWidthBeforeFs){
-    side.style.width=_sideWidthBeforeFs;
-    _sideWidthBeforeFs='';
+  } else {
+    if (backdrop) {
+      backdrop.remove();
+    }
+    if(_sideWidthBeforeFs){
+      side.style.width=_sideWidthBeforeFs;
+      _sideWidthBeforeFs='';
+    }
   }
   side.classList.toggle('fullscreen',on);
   if(cy)try{cy.resize();}catch(e){}
@@ -1637,19 +1509,27 @@ async function openItem(id){
   let d;try{d=await api.item(id);}catch(e){setStatus('ERROR: '+e.message,true);loadEnd();return;}
   loadEnd();
   if(myToken!==openToken)return;                  // a newer openItem() superseded this one
-  cur=id;$('side').classList.remove('hidden');$('resizer').style.display='block';$('child_form').style.display='none';$('comment_form').style.display='none';
-  $('s_activity').classList.remove('show');$('s_activity').innerHTML='';   // collapse activity for the new item
+  cur=id;$('side').classList.remove('hidden');$('resizer').style.display='block';$('child_form').style.display='none';closeCommentForm();const chbtn=$('s_childbtn');if(chbtn)chbtn.classList.remove('on');
+  toggleActivityExpand(false);
+  api.comments(id).then(cs => {
+    if (cur !== id) return;
+    const badge = $('s_activity_count');
+    if (badge) {
+      badge.textContent = cs.length;
+      badge.style.display = cs.length > 0 ? 'inline-block' : 'none';
+    }
+  });
   $('s_hdr').innerHTML=`<i class="dot" style="background:${tyColor(d.type)}"></i>#${d.id} ${esc(d.type)}`+
     ` <span class="sbadge" style="background:${stateColor(d.state)}">${esc(d.state)}</span>`+
     ` <span style="color:var(--muted);font-weight:400;font-size:11px">rev${d.rev}</span>`;
   renderItemContext(d);
-  $('s_link').href=d.url;$('s_title').value=d.title;assignedEditor.set(d.assigned||'',/*silent*/true);$('s_desc').value=d.desc;
+  $('s_link').href=d.url;$('s_title').value=d.title;assignedEditor.set(d.assigned||'',/*silent*/true);descEditor.value=d.desc;
   descBase=(d.url||'').replace(/\/\d+$/,'');     // e.g. ".../_workitems/edit" for #N autolinks in the preview
   atchState.wid=d.id;atchState.list=Array.isArray(d.attachments)?d.attachments.slice():[];atchState.uploading=0;
   clearAttBlobs();renderAttachments();closeMention();
-  showDescPreview(true);                          // open in preview; click "edit" to modify
+  descEditor.togglePreview(true);
   $('s_prio').value=d.priority?String(d.priority):'';
-  $('ac_wrap').style.display=d.has_ac?'block':'none';$('s_ac').value=d.ac;
+  $('editor_ac_container').style.display=d.has_ac?'block':'none';acEditor.value=d.ac;acEditor.togglePreview(true);
   const sel=$('s_state');sel.innerHTML='';
   let states;try{states=await api.states(d.type);}catch(e){states=['New','Active','Resolved','Closed','Removed'];}
   if(myToken!==openToken)return;                  // a newer openItem() superseded this one
@@ -1694,312 +1574,62 @@ function textDirty(){
 }
 let _saveChipTimer=null;
 function setSaveChip(state,msg){
-  const chip=$('s_status_chip');if(!chip)return;
-  clearTimeout(_saveChipTimer);chip.title=msg||'';
-  if(state==='idle'){chip.className='schip';chip.innerHTML='';}
-  else if(state==='dirty'){chip.className='schip dirty';chip.innerHTML='● Unsaved';}
-  else if(state==='saving'){chip.className='schip saving';chip.innerHTML='<span class="spin"></span> Saving…';}
-  else if(state==='saved'){chip.className='schip saved';chip.innerHTML='✓ Saved';_saveChipTimer=setTimeout(()=>{
-    const c=$('s_status_chip');if(c)c.className='schip';        // clear 'saved' so refreshDirty can re-evaluate
-    refreshDirty();
-  },2500);}
-  else if(state==='error'){chip.className='schip error';chip.innerHTML='⚠ Save failed';}
+  const chip=$('s_status_chip');
+  if(!chip)return;
+  if(_saveChipTimer){clearTimeout(_saveChipTimer);_saveChipTimer=null;}
+  chip.title=msg||'';
+  const btns=$('s_unsaved_btns');
+  if(state==='idle'){
+    chip.className='schip';
+    chip.innerHTML='';
+    if(btns)btns.classList.add('hidden');
+  }
+  else if(state==='dirty'){
+    chip.className='schip hidden';
+    if(btns)btns.classList.remove('hidden');
+  }
+  else if(state==='saving'){
+    if(btns)btns.classList.add('hidden');
+    chip.className='schip saving';
+    chip.innerHTML='<span class="spin"></span> Saving…';
+  }
+  else if(state==='saved'){
+    if(btns)btns.classList.add('hidden');
+    chip.className='schip saved';
+    chip.innerHTML='✓ Saved';_saveChipTimer=setTimeout(()=>{
+      const c=$('s_status_chip');if(c)c.className='schip';
+      refreshDirty();
+    },2500);
+  }
+  else if(state==='error'){
+    if(btns)btns.classList.add('hidden');
+    chip.className='schip error';
+    chip.innerHTML='⚠ Save failed';
+  }
 }
 function refreshDirty(){
-  const d=textDirty();const b=$('s_save');b.disabled=!d;b.textContent=d?'● Save':'Saved';
-  // The chip only reflects text-field state — 'saving'/'saved' are owned by
-  // quickSave/save and shouldn't be clobbered while in flight.
+  const d=textDirty();const b=$('s_save');
+  if(b){
+    b.disabled=!d;
+    b.textContent='Save';
+  }
   const chip=$('s_status_chip');
   if(chip&&!chip.classList.contains('saving')&&!chip.classList.contains('saved')&&!chip.classList.contains('error')){
     setSaveChip(d?'dirty':'idle');
   }
 }
-function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:$('s_desc').value,ac:$('s_ac').value,prio:$('s_prio').value,
+function discardChanges(){
+  if(cur==null||!orig)return;
+  $('s_title').value=orig.title;
+  descEditor.value=orig.desc;
+  if(orig.has_ac){
+    acEditor.value=orig.ac;
+  }
+  refreshDirty();
+}
+function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:descEditor.value,ac:acEditor.value,prio:$('s_prio').value,
   iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value()};}
-// editor tags: chips with × remove + a "＋" bubble that reveals an inline input;
-// the input commits on Enter/comma/blur and hides again. value() is ADO's "a; b".
-const tagsEditor=(function(){let cur=[],adding=false,committing=false;
-  const norm=s=>String(s||'').split(/[;,]/).map(t=>t.trim()).filter(Boolean);
-  const uniq=a=>{const seen=new Set(),o=[];a.forEach(t=>{const k=t.toLowerCase();if(!seen.has(k)){seen.add(k);o.push(t);}});return o;};
-  // User-initiated tag mutations auto-save via quickSave('tags'); set() skips
-  // it (item load shouldn't fire a PATCH).
-  function touched(){refreshDirty();quickSave('tags');}
-  function commit(v){const a=norm(v);if(a.length){cur=uniq(cur.concat(a));touched();}}
-  function render(){const box=$('s_tags');
-    let html=cur.map((t,i)=>`<span class="tagchip" style="background:${personColor(t)}">${esc(t)}<b data-i="${i}" title="remove">×</b></span>`).join('');
-    if(!cur.length&&!adding)html='<span class="pcnone">no tags</span>';
-    html+=adding
-      ? `<input id="s_taginp" class="taginp" list="tagsdl" placeholder="tag…" autocomplete="off"><button type="button" id="s_tagok" class="tagok" title="add tag">✓</button>`
-      : `<button type="button" class="tagadd" id="s_tagplus" title="add a tag">＋</button>`;
-    box.innerHTML=html;
-    box.querySelectorAll('b[data-i]').forEach(x=>{
-      x.onmousedown=e=>e.preventDefault();
-      x.onclick=()=>{committing=true;cur.splice(+x.dataset.i,1);render();committing=false;touched();};
-    });
-    if(adding){const inp=$('s_taginp'),ok=$('s_tagok');inp.focus();
-      function doCommit(){committing=true;commit(inp.value);inp.value='';render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();committing=false;}
-      ok.onmousedown=e=>e.preventDefault();
-      ok.onclick=doCommit;
-      inp.addEventListener('keydown',e=>{
-        if(e.key==='Enter'||e.key===','){e.preventDefault();doCommit();}
-        else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();adding=false;render();}
-        else if(e.key==='Backspace'&&!inp.value&&cur.length){committing=true;cur.pop();render();adding=true;const ni=$('s_taginp');if(ni)ni.focus();committing=false;touched();}});
-      inp.addEventListener('change',()=>{if(inp.value.trim())doCommit();});
-      inp.addEventListener('blur',()=>{if(!committing){commit(inp.value);adding=false;render();}});
-    }else{const p=$('s_tagplus');if(p)p.onclick=()=>{adding=true;render();};}
-  }
-  return {render,
-    add(s){commit(s);render();},
-    set(s,silent){cur=uniq(norm(s));adding=false;render();if(!silent)refreshDirty();},
-    value(){return cur.join('; ');}};
-})();
 
-/* ===================== CardPicker =====================
-   Reusable form control: a card showing the chosen value + a searchable
-   dropdown to change it. One instance per spot; the three spots so far are
-   parent item, assignee and sprint (provider plugs in the data + rendering).
-   Elements are looked up by id from `base`: <base> (hidden value), <base>_card,
-   <base>_pick, <base>_search, <base>_results, and optional <base>_open. */
-function parentCardHtml(n){
-  return `<i class="dot" style="background:${tyColor(n.type)}"></i>`+
-    `<span class="pcid">#${n.id}</span><span class="pctitle">${esc(n.title||'')}</span>`+
-    (n.state?`<span class="pcstate" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'');
-}
-function createCardPicker(base,opts){
-  opts=opts||{};
-  const onChange=opts.onChange||(()=>{});
-  const prov=opts.provider;
-  const V=()=>$(base),Card=()=>$(base+'_card'),Pick=()=>$(base+'_pick'),
-        Search=()=>$(base+'_search'),Results=()=>$(base+'_results'),Open=()=>$(base+'_open');
-  let idx=0,rows=[],searchTimer=null,searchTok=0,searching=false;
-  function render(){
-    const v=V().value.trim(),card=Card(),openBtn=Open();
-    card.dataset.val=v;                              // lets the provider drop stale async card renders
-    if(openBtn)openBtn.style.visibility=(v&&prov.openValue)?'visible':'hidden';
-    prov.renderCard(v,card);
-  }
-  function set(v,silent){V().value=(v==null?'':String(v));render();close();if(!silent)onChange();}
-  function get(){return V().value.trim();}
-  function open(){const p=Pick();if(p.style.display!=='none'){close();return;}   // toggle
-    p.style.display='block';const i=Search();i.value='';results('');i.focus();}
-  function close(){const p=Pick();if(p)p.style.display='none';}
-  function isOpen(){const p=Pick();return !!p&&p.style.display!=='none';}
-  function results(q){
-    rows=prov.localRows(q);idx=0;
-    clearTimeout(searchTimer);const tok=++searchTok;searching=false;
-    const run=prov.apiExpand?prov.apiExpand(q,rows):null;   // null → no server lookup for this query
-    if(run){
-      searching=true;
-      searchTimer=setTimeout(async()=>{
-        const next=await run();
-        if(tok!==searchTok)return;                   // a newer query superseded this one
-        rows=next;idx=Math.max(0,Math.min(idx,rows.length-1));searching=false;draw();
-      },300);
-    }
-    draw();
-  }
-  function draw(){
-    const list=Results();
-    list.innerHTML=rows.map((r,i)=>`<div class="prow${i===idx?' on':''}" data-i="${i}">${r.html}</div>`).join('')
-      +(searching?'<div class="prow"><span class="pkind"></span><span class="ptitle pcnone">searching…</span></div>':'');
-    list.querySelectorAll('.prow[data-i]').forEach(r=>{
-      r.onmousedown=e=>{e.preventDefault();idx=+r.dataset.i;pick();};
-      r.onmousemove=()=>{if(idx!==+r.dataset.i){idx=+r.dataset.i;highlight();}};
-    });
-    const first=list.querySelector('.prow[data-i]');     // cap the visible window at ~5 rows, rest scrolls
-    if(first)list.style.maxHeight=(first.offsetHeight*5)+'px';
-  }
-  function highlight(){Results().querySelectorAll('.prow[data-i]').forEach(r=>r.classList.toggle('on',+r.dataset.i===idx));}
-  function move(d){if(!rows.length)return;idx=(idx+d+rows.length)%rows.length;highlight();
-    const el=Results().querySelector('.prow.on');if(el)el.scrollIntoView({block:'nearest'});}
-  function pick(){const r=rows[idx];if(!r)return;set(r.value);}
-  function wire(){
-    Card().onclick=open;
-    Search().addEventListener('input',e=>results(e.target.value));
-    Search().addEventListener('keydown',e=>{
-      if(e.key==='ArrowDown'){e.preventDefault();move(1);}
-      else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}
-      else if(e.key==='Enter'){e.preventDefault();pick();}
-      else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();Card().focus();}
-    });
-    const ob=Open();if(ob)ob.onclick=()=>{const v=get();if(prov.openValue)prov.openValue(v);};
-    document.addEventListener('mousedown',e=>{if(isOpen()&&!Pick().contains(e.target)&&!Card().contains(e.target))close();});
-  }
-  return {set,get,render,open,close,isOpen,wire};
-}
-
-/* --- provider: parent / any work-item (id+title, with server-side search) --- */
-function itemRow(n){const badge=n.state?`<span class="pbadge" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'';
-  return {value:String(n.id),html:`<span class="pkind">${esc(n.type||'item')}</span><span class="ptitle">#${n.id} ${esc(n.title||'')}</span>${badge}`};}
-async function itemApiSearch(term){            // look up items the local tree hasn't loaded
-  const m=term.match(/^#?(\d+)$/);
-  if(m){try{const it=await api.item(parseInt(m[1],10));return it?[it]:[];}catch(e){return [];}}
-  try{return (await api.search({text:term}))||[];}catch(e){return [];}
-}
-function itemPickerProvider(getExclude){
-  getExclude=getExclude||(()=>null);
-  return {
-    openValue(v){if(/^\d+$/.test(v))openItem(parseInt(v,10));},
-    renderCard(v,card){
-      if(!v){card.innerHTML='<span class="pcnone">(no parent)</span>';return;}
-      const n=store.nodes[v];
-      if(n){card.innerHTML=parentCardHtml(n);return;}
-      card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span><span class="pctitle pcnone">loading…</span>`;
-      const want=v;                               // resolve the title for an item that isn't in the loaded tree
-      api.item(v).then(it=>{if(card.dataset.val!==want)return;store.nodes[it.id]=store.nodes[it.id]||it;card.innerHTML=parentCardHtml(it);})
-        .catch(()=>{if(card.dataset.val===want)card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>`;});
-    },
-    localRows(q){
-      q=(q||'').trim().toLowerCase();const toks=q.split(/\s+/).filter(Boolean),ex=getExclude();
-      const out=[{value:'',html:`<span class="pkind">—</span><span class="ptitle pcnone">(no parent)</span>`}];
-      if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);if(id!==ex&&!store.nodes[id])out.push({value:String(id),raw:true,html:`<span class="pkind">id</span><span class="ptitle">Use #${id}</span>`});}
-      let n=0;
-      for(const node of Object.values(store.nodes)){
-        if(ex!=null&&node.id===ex)continue;         // an item can't be its own parent
-        const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
-        if(!toks.length||toks.every(t=>hay.includes(t))){out.push(itemRow(node));if(++n>=40)break;}
-      }
-      return out;
-    },
-    apiExpand(q,rows){
-      const term=(q||'').trim();
-      if(!(term.length>=2||/^#?\d+$/.test(term)))return null;   // too short → local matches only
-      const ex=getExclude();
-      return async()=>{
-        const found=await itemApiSearch(term);
-        const have=new Set(rows.filter(r=>r.value&&!r.raw).map(r=>r.value)),extra=[];
-        found.slice(0,30).forEach(it=>{if(!it||!it.id||it.id===ex)return;
-          store.nodes[it.id]=store.nodes[it.id]||it;
-          const k=String(it.id);if(!have.has(k)){extra.push(itemRow(it));have.add(k);}});
-        return rows.filter(r=>!(r.raw&&have.has(r.value))).concat(extra);   // drop "Use #id" once it resolved
-      };
-    },
-  };
-}
-
-/* --- provider: assignee / person (team roster is fully loaded in `assignees`) --- */
-function personColor(name){let h=0;name=String(name);for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;return `hsl(${h%360} 52% 45%)`;}
-function personInitials(name){const p=String(name).trim().split(/\s+/).filter(Boolean);return (((p[0]||'')[0]||'')+(p.length>1?(p[p.length-1][0]||''):'')).toUpperCase()||'?';}
-function personChip(name){return `<i class="pav" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}
-function personChipT(name){return `<i class="pav pavsm" title="${esc(name)}" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}   // small, tooltipped — board cards
-const BLANK_IMG="data:image/svg+xml;utf8,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'></svg>");   // transparent slot for an absent multi-background layer
-// All node badges are SVG drawn into a viewBox while width/height attrs are 3×
-// the logical size — the browser rasterises at 3× then cytoscape scales down:
-// crisp on HiDPI, no blur. Style is light & modern: thin strokes, soft fills.
-const SVGSC=3;
-const BADGE_FONT="-apple-system,Segoe UI,Roboto,sans-serif";
-function svgTag(w,h,body){return 'data:image/svg+xml;utf8,'+encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' width='${w*SVGSC}' height='${h*SVGSC}' viewBox='0 0 ${w} ${h}'>${body}</svg>`);}
-function hexToRgba(hex,a){const[r,g,b]=hexToRgb(hex);return `rgba(${r},${g},${b},${a})`;}
-// readable text colour for a coloured chip (dark on light fills, white on dark)
-function idealText(hex){const[r,g,b]=hexToRgb(hex);return (0.299*r+0.587*g+0.114*b)>150?'#1b2330':'#ffffff';}
-// flat "bookmark" ribbon (tag with a soft V-notch) carrying a short label
-function bookmarkUri(color,text,dir){
-  text=String(text);const fs=text.length>1?9:12,W=18,H=24;
-  const path=dir==='up'
-    ? `M2 ${H-1} L2 6 Q2 4 4 4 L${W-4} 4 Q${W-2} 4 ${W-2} 6 L${W-2} ${H-1} L${W/2} ${H-6} Z`
-    : `M2 3 Q2 1 4 1 L${W-4} 1 Q${W-2} 1 ${W-2} 3 L${W-2} ${H-4} L${W/2} ${H-9} L2 ${H-4} Z`;
-  const ty=dir==='up'?17:13;
-  return svgTag(W,H,`<path d='${path}' fill='${color}'/>`+
-    `<text x='${W/2}' y='${ty}' font-size='${fs}' font-family='${BADGE_FONT}' font-weight='600' fill='#ffffff' text-anchor='middle'>${esc(text)}</text>`);
-}
-// rounded "pill": soft tinted fill + thin same-colour border + coloured text (Excalidraw-ish)
-function pillW(text,max){return Math.round(Math.min(max||150,Math.max(26,10+String(text).length*6.4)));}
-function pillUri(text,color,max){const w=pillW(text,max),h=18,light=document.body.classList.contains('light');
-  const fill=light?hexToRgba(color,0.16):hexToRgba(color,0.28),txt=light?color:'#ffffff';
-  return svgTag(w,h,`<rect x='0.75' y='0.75' rx='${h/2}' ry='${h/2}' width='${w-1.5}' height='${h-1.5}' fill='${fill}' stroke='${color}' stroke-width='1.2'/>`+
-    `<text x='${w/2}' y='${h/2+3.6}' font-size='10.5' font-family='${BADGE_FONT}' font-weight='600' fill='${txt}' text-anchor='middle'>${esc(text)}</text>`);}
-const statePillW=t=>pillW(t),statePillUri=(t,c)=>pillUri(t,c);
-// assignee badge: same flat bookmark in the person's colour with their initials
-function avatarBadgeUri(name){return bookmarkUri(personColor(name),personInitials(name),'down');}
-// "corner tag": a coloured panel flush into a node corner (two edges square, the
-// node corner rounded, the inner corner rounded) — reads as part of the node,
-// not a floating pill. corner: 'bl' (bottom-left) | 'tr' (top-right).
-function cornerW(text,max){return Math.round(Math.min(max||120,Math.max(22,9+String(text).length*6.1)));}
-// rounded-rect path with a per-corner radius [tl,tr,br,bl]
-function roundRectPath(w,h,r){const[tl,tr,br,bl]=r;
-  return `M${tl} 0 L${w-tr} 0 Q${w} 0 ${w} ${tr} L${w} ${h-br} Q${w} ${h} ${w-br} ${h} `+
-    `L${bl} ${h} Q0 ${h} 0 ${h-bl} L0 ${tl} Q0 0 ${tl} 0 Z`;}
-// "corner tag": a coloured panel flush into a node corner — the matching node
-// corner is rounded and the diagonally-opposite inner corner is rounded too;
-// the two edges along the node sides are square. Reads as part of the node,
-// not a floating pill. corner: 'tl' | 'tr' | 'bl' | 'br'.
-function cornerTagUri(text,color,corner,max){const w=cornerW(text,max),h=16,ro=8,ri=7;
-  // radii [tl,tr,br,bl]: round the node corner + its diagonal (inner) corner
-  const R={tl:[ro,0,ri,0],tr:[0,ro,0,ri],br:[ri,0,ro,0],bl:[0,ri,0,ro]}[corner]||[0,0,0,0];
-  return {w,h,uri:svgTag(w,h,`<path d='${roundRectPath(w,h,R)}' fill='${color}'/>`+
-    `<text x='${w/2}' y='${h/2+3.4}' font-size='10' font-family='${BADGE_FONT}' font-weight='600' fill='${idealText(color)}' text-anchor='middle'>${esc(text)}</text>`)};}
-// node tags: parse the ";"-list, take the short name of an iteration path
-function tagList_(s){return String(s||'').split(/;\s*/).map(t=>t.trim()).filter(Boolean);}
-function sprintShort(path){if(!path)return '';return sprintNames[path]||String(path).split('\\').pop();}
-function isOverdue(n){const d=(n.target||n.due||'').slice(0,10);return !!d&&d<new Date().toISOString().slice(0,10)&&!DONE_STATES.includes(n.state);}
-// a row of small, unobtrusive tag dots (max 6, "+N" overflow) as one image
-function tagDotsUri(tagsStr){const ts=tagList_(tagsStr);if(!ts.length)return null;
-  const show=ts.slice(0,6),extra=ts.length-show.length,gap=8,pad=2,r=3;
-  const w=pad*2+show.length*gap+(extra>0?16:0),h=10;
-  let x=pad+r,dots='';
-  for(const t of show){dots+=`<circle cx='${x}' cy='${h/2}' r='${r}' fill='${personColor(t)}'/>`;x+=gap;}
-  if(extra>0)dots+=`<text x='${x-r+1}' y='${h/2+3}' font-size='8' font-family='${BADGE_FONT}' font-weight='600' fill='#9aa7b4' text-anchor='start'>+${extra}</text>`;
-  return {uri:svgTag(w,h,dots),w};}
-function assigneePeople(){const seen=new Set(),out=[];   // current user first, then the deduped roster
-  [currentUser,...assignees].forEach(a=>{if(a&&!seen.has(a)){seen.add(a);out.push(a);}});return out;}
-function assigneePickerProvider(){
-  return {
-    renderCard(v,card){
-      if(!v){card.innerHTML='<span class="pcnone">(unassigned)</span>';return;}
-      card.innerHTML=`${personChip(v)}<span class="pctitle">${esc(v)}</span>`;
-    },
-    localRows(q){
-      q=(q||'').trim().toLowerCase();
-      const out=[{value:'',html:`<i class="pav pav0"></i><span class="ptitle pcnone">(unassigned)</span>`}];
-      if(currentUser&&(!q||currentUser.toLowerCase().includes(q)))
-        out.push({value:currentUser,html:`${personChip(currentUser)}<span class="ptitle">${esc(currentUser)} <span class="pcnone">· me</span></span>`});
-      let n=0;
-      for(const a of assigneePeople()){
-        if(a===currentUser)continue;
-        if(q&&!a.toLowerCase().includes(q))continue;
-        out.push({value:a,html:`${personChip(a)}<span class="ptitle">${esc(a)}</span>`});
-        if(++n>=40)break;
-      }
-      return out;
-    },
-    // no apiExpand — the project roster is already loaded into `assignees`
-  };
-}
-
-/* --- provider: sprint / iteration (the project's dated iterations, fully cached) --- */
-function sprintRoot(){return (iterCache&&iterCache[0])?iterCache[0].path.split('\\')[0]:projectName;}   // project segment = "no sprint"
-function sprintRangeText(it){const s=it.start?it.start.slice(0,10):'',f=it.finish?it.finish.slice(0,10):'';return (s||f)?(s+'→'+f):'';}
-function sprintPickerProvider(getNone){
-  getNone=getNone||(()=>'');
-  function isNone(v){return !v||v===getNone();}
-  return {
-    renderCard(v,card){
-      if(isNone(v)){card.innerHTML='<span class="pcnone">(no sprint)</span>';return;}
-      const it=_sprint(v);
-      if(!it){card.innerHTML=`<span class="pctitle">${esc(v.split('\\').slice(1).join('\\')||v)}</span>`;return;}
-      const rt=sprintRangeText(it);
-      card.innerHTML=(isCurrentSprint(it)?'<span class="curdot" title="current sprint"></span>':'')+
-        `<span class="pctitle">${esc(it.name)}</span>`+(rt?`<span class="pcnone" style="flex:none">${esc(rt)}</span>`:'');
-    },
-    localRows(q){
-      q=(q||'').trim().toLowerCase();
-      const out=[{value:getNone(),html:`<span class="pkind">—</span><span class="ptitle pcnone">(no sprint)</span>`}];
-      for(const it of (iterCache||[])){
-        if(q&&!it.name.toLowerCase().includes(q))continue;
-        const rt=sprintRangeText(it);
-        out.push({value:it.path,html:(isCurrentSprint(it)?'<span class="curdot"></span>':'<span class="pkind"></span>')+
-          `<span class="ptitle">${esc(it.name)}</span>`+(rt?`<span class="pcnone">${esc(rt)}</span>`:'')});
-      }
-      return out;
-    },
-    // no apiExpand — iterations are already cached in iterCache
-  };
-}
-
-function createParentField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:itemPickerProvider(opts.getExcludeId)});}
-function createAssigneeField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:assigneePickerProvider()});}
-function createSprintField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:sprintPickerProvider(opts.getNone)});}
 // Picker onChange: auto-save the field, then refresh dirty (which now only
 // tracks the manual text fields). quickSave reads orig vs editor so a no-op
 // commit (same value) is a cheap early-return.
@@ -2020,32 +1650,7 @@ const depsState={blockedBy:[],blocks:[]};
 // Pick the per-direction array on the open item's deps state.
 function depsArr(dir){return dir==='blocks'?depsState.blocks:depsState.blockedBy;}
 function setDepsArr(dir,arr){if(dir==='blocks')depsState.blocks=arr;else depsState.blockedBy=arr;}
-// Adapter on top of itemPickerProvider: hides the items already linked in the
-// chosen direction and always renders the card as a "+ add" affordance (the
-// picker never holds a sticky value — every pick triggers an add and resets).
-function depAdderProvider(dir){
-  const base=itemPickerProvider(()=>cur);
-  const blocked=()=>new Set(depsArr(dir).map(Number));
-  return {
-    renderCard(v,card){const t=dir==='blocks'?'add a blocked link':'add a blocked-by link';
-      card.innerHTML=`<span class="pcnone">＋ ${t}</span>`;},
-    localRows(q){const ex=blocked();return base.localRows(q).filter(r=>!r.value||!ex.has(+r.value));},
-    apiExpand(q,rows){const inner=base.apiExpand(q,rows);if(!inner)return null;
-      const ex=blocked();return async()=>(await inner()).filter(r=>!r.value||!ex.has(+r.value));},
-  };
-}
-// The hidden <input> keeps the last-picked id, but renderCard always shows the
-// "+ add" affordance (independent of value), so we just reset the value to ''
-// after each pick — no re-render needed.
-function depPickerOnChange(dir){
-  return ()=>{
-    const baseId='s_deps_'+(dir==='blocks'?'blocks':'blockedby');
-    const v=$(baseId).value.trim();
-    $(baseId).value='';
-    if(!/^\d+$/.test(v)||cur==null)return;
-    addDepLink(cur,parseInt(v,10),dir);
-  };
-}
+
 const depBlockedByPicker=createCardPicker('s_deps_blockedby',{provider:depAdderProvider('blockedBy'),onChange:depPickerOnChange('blockedBy')});
 const depBlocksPicker=createCardPicker('s_deps_blocks',{provider:depAdderProvider('blocks'),onChange:depPickerOnChange('blocks')});
 
@@ -2303,42 +1908,426 @@ async function save(){
   refreshDirty();setSaveChip('saved');setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
   postSaveRefresh(body,false);
 }
-function toggleComment(){const f=$('comment_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';if(show)$('cm_text').focus();}
+function closeCommentForm(){
+  const f=$('comment_editor_container');
+  if(f){
+    f.style.display='none';
+    if(commentEditor){
+      commentEditor.toggleFullscreen(false);
+      commentEditor.value='';
+    }
+  }
+  const btn=$('s_comment');
+  if(btn) btn.classList.remove('on');
+}
+function toggleComment(){
+  const f=$('comment_editor_container');
+  const show=f.style.display!=='flex';
+  f.style.display=show?'flex':'none';
+  const btn=$('s_comment');
+  if(btn) btn.classList.toggle('on', show);
+  if(show) commentEditor.textarea.focus();
+}
 async function postComment(){
-  const t=$('cm_text').value.trim();if(!t||cur==null)return;
+  const t=commentEditor.value.trim();if(!t||cur==null)return;
   try{await api.comment(cur,t);}catch(e){setStatus('ERROR: '+e.message,true);return;}
-  $('cm_text').value='';$('comment_form').style.display='none';setStatus('#'+cur+' comment added');
-  if($('s_activity').classList.contains('show'))loadActivity();   // reflect the new comment if the panel is open
+  closeCommentForm();
+  setStatus('#'+cur+' comment added');
+  loadActivity();
+}
+
+/* ---------- activity reactions, expansion, inline edits ---------- */
+const reactionsStorageKey = 'ado.comment_reactions';
+function getReactions(wid, commentId) {
+  try {
+    const data = JSON.parse(localStorage.getItem(reactionsStorageKey) || '{}');
+    return data[wid + '-' + commentId] || {};
+  } catch (e) {
+    return {};
+  }
+}
+function saveReactions(wid, commentId, reactions) {
+  try {
+    const data = JSON.parse(localStorage.getItem(reactionsStorageKey) || '{}');
+    data[wid + '-' + commentId] = reactions;
+    localStorage.setItem(reactionsStorageKey, JSON.stringify(data));
+  } catch (e) {}
+}
+
+function toggleActivityExpand(forceState) {
+  const actionsGroup = document.querySelector('.sgroup[data-sg="actions"]');
+  const arrow = document.querySelector('#activity_toggle_btn .toggle-arrow');
+  const content = $('activity-content');
+  if (!actionsGroup || !content) return;
+  
+  const isFullscreen = actionsGroup.classList.contains('fullscreen');
+  const isExpanded = forceState !== undefined ? forceState : content.classList.contains('hidden');
+  if (isExpanded) {
+    const alreadyExpanded = !content.classList.contains('hidden');
+    content.classList.remove('hidden');
+    if (arrow) {
+      arrow.textContent = isFullscreen ? '↻' : '▼';
+      if (isFullscreen) arrow.title = 'Reload activity content';
+      else arrow.title = '';
+    }
+    actionsGroup.classList.add('expanded');
+    if (!alreadyExpanded) {
+      loadActivity();
+    }
+  } else {
+    content.classList.add('hidden');
+    if (arrow) {
+      arrow.textContent = isFullscreen ? '↻' : '▶';
+      if (isFullscreen) arrow.title = 'Reload activity content';
+      else arrow.title = '';
+    }
+    actionsGroup.classList.remove('expanded');
+  }
+}
+
+function toggleActivityFullscreen(forceOn) {
+  const actionsGroup = document.querySelector('.sgroup[data-sg="actions"]');
+  const btn = $('s_act_full');
+  if (!actionsGroup) return;
+  
+  const on = forceOn !== undefined ? forceOn : !actionsGroup.classList.contains('fullscreen');
+  const arrow = document.querySelector('#activity_toggle_btn .toggle-arrow');
+  const atb = $('activity_toggle_btn');
+  
+  if (on) {
+    actionsGroup.classList.add('fullscreen');
+    toggleActivityExpand(true);
+    if (btn) btn.classList.add('on');
+    if (arrow) {
+      arrow.textContent = '↻';
+      arrow.title = 'Reload activity content';
+    }
+    if (atb) {
+      atb.title = 'Reload activity content';
+    }
+    let bd = $('act-backdrop');
+    if (!bd) {
+      bd = document.createElement('div');
+      bd.id = 'act-backdrop';
+      bd.className = 'modal-backdrop editor-backdrop';
+      bd.onclick = () => toggleActivityFullscreen(false);
+      const sideEl = $('side');
+      if (sideEl) {
+        sideEl.appendChild(bd);
+      } else {
+        document.body.appendChild(bd);
+      }
+    }
+  } else {
+    actionsGroup.classList.remove('fullscreen');
+    if (btn) btn.classList.remove('on');
+    if (arrow) {
+      arrow.textContent = '▼'; // Since it's still expanded
+      arrow.title = '';
+    }
+    if (atb) {
+      atb.title = 'Click to collapse/expand activity';
+    }
+    const bd = $('act-backdrop');
+    if (bd) bd.remove();
+  }
+}
+
+function initActivityResizer() {
+  const rz = $('activity-resizer');
+  const act = $('s_activity');
+  if (!rz || !act) return;
+  let drag = false;
+  let startY, startH;
+  
+  rz.onmousedown = e => {
+    const content = $('activity-content');
+    if (content && content.classList.contains('hidden')) {
+      toggleActivityExpand(true);
+      startH = 200;
+    } else {
+      startH = act.offsetHeight;
+    }
+    drag = true;
+    startY = e.clientY;
+    rz.classList.add('active');
+    document.body.style.cursor = 'ns-resize';
+    e.preventDefault();
+  };
+  
+  document.addEventListener('mousemove', e => {
+    if (!drag) return;
+    const dy = startY - e.clientY;
+    const h = Math.max(100, Math.min(600, startH + dy));
+    act.style.maxHeight = h + 'px';
+  });
+  
+  document.addEventListener('mouseup', () => {
+    if (drag) {
+      drag = false;
+      rz.classList.remove('active');
+      document.body.style.cursor = '';
+      try {
+        localStorage.setItem('ado.activityHeight', act.style.maxHeight);
+      } catch (err) {}
+    }
+  });
+  
+  try {
+    const savedH = localStorage.getItem('ado.activityHeight');
+    if (savedH) act.style.maxHeight = savedH;
+  } catch (err) {}
+}
+
+let activeEmojiPicker = null;
+function showEmojiPicker(e, commentId) {
+  e.stopPropagation();
+  closeEmojiPicker();
+  
+  const btn = e.currentTarget;
+  const pop = document.createElement('div');
+  pop.className = 'reactions-popover';
+  const emojiMap = { like: '👍', heart: '❤️', smile: '😄', party: '🎉', rocket: '🚀', eyes: '👀' };
+  
+  Object.entries(emojiMap).forEach(([type, emoji]) => {
+    const emojiBtn = document.createElement('button');
+    emojiBtn.className = 'reaction-emoji-btn';
+    emojiBtn.type = 'button';
+    emojiBtn.textContent = emoji;
+    emojiBtn.title = type;
+    emojiBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      toggleReaction(commentId, type);
+      closeEmojiPicker();
+    };
+    pop.appendChild(emojiBtn);
+  });
+  
+  btn.parentElement.appendChild(pop);
+  activeEmojiPicker = pop;
+  
+  document.addEventListener('click', closeEmojiPickerOutside);
+}
+function closeEmojiPicker() {
+  if (activeEmojiPicker) {
+    activeEmojiPicker.remove();
+    activeEmojiPicker = null;
+  }
+  document.removeEventListener('click', closeEmojiPickerOutside);
+}
+function closeEmojiPickerOutside(e) {
+  if (activeEmojiPicker && !activeEmojiPicker.contains(e.target)) {
+    closeEmojiPicker();
+  }
+}
+
+function toggleReaction(commentId, type) {
+  if (cur == null) return;
+  const reacts = getReactions(cur, commentId);
+  if (!reacts[type]) reacts[type] = [];
+  const user = currentUser || 'me';
+  const idx = reacts[type].indexOf(user);
+  if (idx >= 0) {
+    reacts[type].splice(idx, 1);
+  } else {
+    reacts[type].push(user);
+  }
+  saveReactions(cur, commentId, reacts);
+  loadActivity();
+}
+
+function editCommentInline(commentId) {
+  const card = document.querySelector(`.comment-card[data-cid="${commentId}"]`);
+  if (!card) return;
+  const bodyEl = card.querySelector('.atext');
+  if (!bodyEl) return;
+  
+  if (card.classList.contains('editing-comment')) return;
+  card.classList.add('editing-comment');
+  
+  const rawText = card.dataset.rawMarkdown || '';
+  
+  bodyEl.innerHTML = `
+    <textarea class="inline-comment-edit-textarea">${esc(rawText)}</textarea>
+    <div class="inline-comment-edit-actions">
+      <button type="button" class="btn btn-sm" onclick="cancelEditComment(event, ${commentId})">Cancel</button>
+      <button type="button" class="btn btn-sm save" onclick="saveEditComment(event, ${commentId})">Save</button>
+    </div>
+  `;
+}
+function cancelEditComment(e, commentId) {
+  e.stopPropagation();
+  loadActivity();
+}
+async function saveEditComment(e, commentId) {
+  e.stopPropagation();
+  const card = document.querySelector(`.comment-card[data-cid="${commentId}"]`);
+  if (!card) return;
+  const ta = card.querySelector('.inline-comment-edit-textarea');
+  if (!ta) return;
+  const text = ta.value.trim();
+  if (!text) return;
+  
+  loadStart('saving…');
+  try {
+    await api.updateComment(cur, commentId, text);
+    setStatus('Comment updated');
+  } catch (err) {
+    setStatus('ERROR: ' + err.message, true);
+  }
+  loadEnd();
+  loadActivity();
+}
+
+async function deleteCommentAction(commentId) {
+  if (!confirm("Delete this comment?")) return;
+  loadStart('deleting…');
+  try {
+    await api.deleteComment(cur, commentId);
+    setStatus('Comment deleted');
+  } catch (err) {
+    setStatus('ERROR: ' + err.message, true);
+  }
+  loadEnd();
+  loadActivity();
 }
 
 /* ---------- activity: existing comments + field-change history ---------- */
 let _actId=null;
-function toggleActivity(){
-  const box=$('s_activity');
-  if(box.classList.contains('show')){box.classList.remove('show');return;}
-  box.classList.add('show');loadActivity();
-}
 async function loadActivity(){
   if(cur==null)return;
   const box=$('s_activity'),id=cur;_actId=id;
+  const arrow = document.querySelector('#activity_toggle_btn .toggle-arrow');
+  if (arrow && arrow.textContent === '↻') {
+    arrow.classList.add('spinning');
+  }
   box.innerHTML='<div class="asec">loading…</div>';
   let cs=[],hs=[];
   try{[cs,hs]=await Promise.all([api.comments(id),api.history(id)]);}catch(e){/* render whatever we got */}
+  if (arrow) {
+    arrow.classList.remove('spinning');
+  }
   if(_actId!==id||cur!==id)return;                 // user switched items mid-load
   renderActivity(cs,hs);
 }
 function renderActivity(cs,hs){
   const fd=s=>s?String(s).slice(0,16).replace('T',' '):'';
-  let h='<div class="asec">Comments ('+cs.length+')</div>';
+  
+  const countBadge = $('s_activity_count');
+  if (countBadge) {
+    countBadge.textContent = cs.length;
+    countBadge.style.display = cs.length > 0 ? 'inline-block' : 'none';
+  }
+  
+  const commentsCollapsed = localStorage.getItem('ado.activityCommentsCollapsed') === 'true';
+  const historyCollapsed = localStorage.getItem('ado.activityHistoryCollapsed') === 'true';
+  
+  let h = `
+    <div class="asec" id="activity_comments_header" style="cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center;">
+      <span>Comments (${cs.length})</span>
+      <span class="toggle-arrow" style="font-size:10px; color:var(--muted); transition:transform 0.1s ease">${commentsCollapsed ? '▶' : '▼'}</span>
+    </div>
+    <div id="activity_comments_list" class="${commentsCollapsed ? 'hidden' : ''}" style="display:${commentsCollapsed ? 'none' : 'flex'}; flex-direction:column; gap:8px;">
+  `;
   if(!cs.length)h+='<div class="achg">no comments</div>';
-  cs.forEach(c=>{h+=`<div class="acard"><div class="ah"><span>${esc(c.by)}</span><span>${fd(c.date)}</span></div><div class="atext">${esc(c.text)}</div></div>`;});
-  h+='<div class="asec">History ('+hs.length+')</div>';
-  if(!hs.length)h+='<div class="achg">no recorded changes</div>';
-  hs.forEach(u=>{
-    const chg=u.changes.map(c=>`<div class="achg">${esc(c.field)}: ${esc(String(c.from)||'∅')} → <b>${esc(String(c.to)||'∅')}</b></div>`).join('');
-    h+=`<div class="acard"><div class="ah"><span>${esc(u.by)}</span><span>${fd(u.date)}</span></div>${chg}</div>`;
+  
+  const emojiMap = { like: '👍', heart: '❤️', smile: '😄', party: '🎉', rocket: '🚀', eyes: '👀' };
+  
+  cs.forEach(c => {
+    const initials = personInitials(c.by);
+    const avColor = personColor(c.by);
+    const reacts = getReactions(cur, c.id);
+    let reactHtml = '';
+    Object.entries(emojiMap).forEach(([type, emoji]) => {
+      const users = reacts[type] || [];
+      if (users.length > 0) {
+        const active = users.includes(currentUser || 'me') ? 'active' : '';
+        reactHtml += `<span class="reaction-chip ${active}" onclick="event.stopPropagation(); toggleReaction(${c.id}, '${type}')" title="${esc(users.join(', '))}">${emoji} <span class="rc-count">${users.length}</span></span>`;
+      }
+    });
+    
+    h += `
+      <div class="comment-card" data-cid="${c.id}" data-raw-markdown="${esc(c.text)}">
+        <div class="comment-avatar" style="background:${avColor}">${esc(initials)}</div>
+        <div class="comment-main">
+          <div class="comment-header">
+            <span class="comment-author">${esc(c.by)}</span>
+            <span class="comment-time">${fd(c.date)}</span>
+            <div class="comment-actions">
+              <button type="button" class="c-action-btn react-btn" title="Add reaction" onclick="showEmojiPicker(event, ${c.id})">☺</button>
+              <button type="button" class="c-action-btn edit-btn" title="Edit comment" onclick="editCommentInline(${c.id})">✎</button>
+              <button type="button" class="c-action-btn delete-btn" title="Delete comment" onclick="deleteCommentAction(${c.id})">🗑</button>
+            </div>
+          </div>
+          <div class="atext">${mdToHtml(c.text, descRenderOpts())}</div>
+          <div class="comment-reactions">${reactHtml}</div>
+        </div>
+      </div>
+    `;
   });
+  h += '</div>';
+  
+  h += `
+    <div class="asec" id="activity_history_header" style="cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+      <span>History (${hs.length})</span>
+      <span class="toggle-arrow" style="font-size:10px; color:var(--muted); transition:transform 0.1s ease">${historyCollapsed ? '▶' : '▼'}</span>
+    </div>
+    <div id="activity_history_list" class="${historyCollapsed ? 'hidden' : ''}" style="display:${historyCollapsed ? 'none' : 'flex'}; flex-direction:column; gap:6px;">
+  `;
+  if(!hs.length)h+='<div class="achg">no recorded changes</div>';
+  
+  hs.forEach(u => {
+    const chg = u.changes.map(c => `
+      <div class="achg-row">
+        <span class="achg-field">${esc(c.field)}:</span>
+        <span class="achg-from">${esc(String(c.from)||'∅')}</span>
+        <span class="achg-arrow">→</span>
+        <span class="achg-to">${esc(String(c.to)||'∅')}</span>
+      </div>
+    `).join('');
+    
+    h += `
+      <div class="history-item">
+        <div class="history-avatar">🔧</div>
+        <div class="history-main">
+          <div class="history-header">
+            <span class="history-author">${esc(u.by)}</span>
+            <span class="history-time">${fd(u.date)}</span>
+          </div>
+          <div class="history-changes">${chg}</div>
+        </div>
+      </div>
+    `;
+  });
+  h += '</div>';
+  
   $('s_activity').innerHTML=h;
+  hydratePreviewImages($('s_activity'));
+  
+  const ach = $('activity_comments_header');
+  if (ach) {
+    ach.onclick = () => {
+      const list = $('activity_comments_list');
+      const arrow = ach.querySelector('.toggle-arrow');
+      const collapsed = !list.classList.contains('hidden');
+      list.classList.toggle('hidden', collapsed);
+      list.style.display = collapsed ? 'none' : 'flex';
+      arrow.textContent = collapsed ? '▶' : '▼';
+      localStorage.setItem('ado.activityCommentsCollapsed', collapsed);
+    };
+  }
+  const ahh = $('activity_history_header');
+  if (ahh) {
+    ahh.onclick = () => {
+      const list = $('activity_history_list');
+      const arrow = ahh.querySelector('.toggle-arrow');
+      const collapsed = !list.classList.contains('hidden');
+      list.classList.toggle('hidden', collapsed);
+      list.style.display = collapsed ? 'none' : 'flex';
+      arrow.textContent = collapsed ? '▶' : '▼';
+      localStorage.setItem('ado.activityHistoryCollapsed', collapsed);
+    };
+  }
 }
 async function createChild(){
   const type=$('c_type').value,title=$('c_title').value.trim();if(!title||cur==null)return;
@@ -3074,7 +3063,8 @@ async function initialBoot(postSetup){
       const w=Math.min(Math.max(window.innerWidth-e.clientX,300),Math.round(window.innerWidth*0.7));side.style.width=w+'px';});
     document.addEventListener('mouseup',()=>{if(drag){drag=false;rz.classList.remove('active');document.body.style.cursor='';if(cy)cy.resize();try{localStorage.setItem('ado.sideWidth',side.style.width);}catch(e){}}});
   })();
-  $('s_save').onclick=save;$('s_comment').onclick=toggleComment;
+  $('s_save').onclick=save;
+  $('s_comment').onclick=()=>{toggleActivityExpand(true);toggleComment();};
   // Wrap so the click Event isn't passed as `force` (which would skip the
   // discard-confirm check inside closePanel).
   $('s_close').onclick=()=>closePanel();
@@ -3085,78 +3075,42 @@ async function initialBoot(postSetup){
     if(dirty()){e.preventDefault();e.returnValue='';return '';}
   });
   $('s_customize').onclick=()=>{setCustomizeTab('side');showCustomize();};   // gear in the panel header → open Customize on the sidebar tab
-  $('s_desc_toggle').onclick=()=>showDescPreview($('s_desc').style.display!=='none');
-  $('s_desc_full').onclick=()=>toggleFullscreen();
-  // Format buttons in the description toolbar — wired via event delegation so
-  // adding a new format type later only needs an entry in applyFormat().
-  $('s_desc_fmt').addEventListener('click',e=>{
-    const b=e.target.closest('.dbtn[data-fmt]');if(!b)return;
-    e.preventDefault();applyFormat(b.dataset.fmt);
+  // Initialize unified markdown editors
+  descEditor = new MarkdownEditor('editor_desc_container', {
+    label: 'Description',
+    placeholder: 'add a description…',
+    allowAttachments: true,
+    allowMentions: true,
+    onInput: refreshDirty
   });
-  // Description: paste / drop files → upload + insert markdown. The "📎 attach"
-  // link opens a hidden <input type=file> as the explicit affordance for users
-  // who'd rather pick than drag.
-  $('s_desc_attach').onclick=e=>{e.preventDefault();if(cur!=null)$('s_desc_file').click();};
-  $('s_desc_file').onchange=e=>{const f=Array.from(e.target.files||[]);e.target.value='';if(f.length)uploadAndLink(f);};
-  (function(){
-    const ta=$('s_desc'),wrap=$('s_desc_wrap');
-    // Paste from clipboard — only fires on the focused textarea. Files in the
-    // clipboard get intercepted and uploaded; everything else (plain text)
-    // falls through to the default paste behavior.
-    ta.addEventListener('paste',e=>{
-      if(cur==null)return;
-      const items=(e.clipboardData&&e.clipboardData.items)||[],files=[];
-      for(const it of items){if(it.kind==='file'){const f=it.getAsFile();if(f)files.push(f);}}
-      if(files.length){e.preventDefault();uploadAndLink(files);}
-    });
-    // Drag-and-drop on the whole description editor (textarea AND preview).
-    // dragenter/leave fire for every child element transition, so a depth
-    // counter keeps the overlay stable instead of flickering.
-    const hasFiles=e=>!!(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files'));
-    let dragDepth=0;
-    wrap.addEventListener('dragenter',e=>{
-      if(!hasFiles(e)||cur==null)return;
-      e.preventDefault();dragDepth++;wrap.classList.add('dragover');
-    });
-    wrap.addEventListener('dragleave',e=>{
-      if(!hasFiles(e))return;
-      dragDepth--;if(dragDepth<=0){dragDepth=0;wrap.classList.remove('dragover');}
-    });
-    wrap.addEventListener('dragover',e=>{if(hasFiles(e))e.preventDefault();});
-    wrap.addEventListener('drop',e=>{
-      dragDepth=0;wrap.classList.remove('dragover');
-      if(cur==null||!hasFiles(e))return;
-      e.preventDefault();
-      const fs=Array.from((e.dataTransfer&&e.dataTransfer.files)||[]);
-      if(fs.length)uploadAndLink(fs);
-    });
-    // @mention typeahead: react to typing in the textarea. The keydown handler
-    // owns ↑/↓/Enter/Esc while the popup is open.
-    ta.addEventListener('input',()=>openOrUpdateMention());
-    ta.addEventListener('click',()=>openOrUpdateMention());
-    ta.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'||e.key==='End')openOrUpdateMention();});
-    ta.addEventListener('keydown',e=>{
-      // Mention popup keys (only when open)
-      if(mentionState.open){
-        if(e.key==='ArrowDown'){e.preventDefault();moveMention(1);return;}
-        if(e.key==='ArrowUp'){e.preventDefault();moveMention(-1);return;}
-        if(e.key==='Enter'){if(mentionState.rows.length){e.preventDefault();pickMention();return;}}
-        if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMention();return;}
-      }
-      // Format shortcuts: Ctrl/Cmd + B / I / K / ` (toggle inline code)
-      if(e.ctrlKey||e.metaKey){
-        const k=e.key.toLowerCase();
-        if(k==='b'){e.preventDefault();applyFormat('bold');}
-        else if(k==='i'){e.preventDefault();applyFormat('italic');}
-        else if(k==='k'){e.preventDefault();applyFormat('link');}
-        else if(e.key==='`'){e.preventDefault();applyFormat('code');}
-      }
-    });
-    ta.addEventListener('blur',()=>setTimeout(closeMention,150));   // give a click on the popup time to fire
-  })();
-  $('cm_post').onclick=postComment;$('cm_cancel').onclick=()=>{$('comment_form').style.display='none';};
-  $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
-  $('s_actbtn').onclick=toggleActivity;
+  acEditor = new MarkdownEditor('editor_ac_container', {
+    label: 'Acceptance Criteria',
+    placeholder: 'add acceptance criteria…',
+    allowAttachments: false,
+    allowMentions: true,
+    onInput: refreshDirty
+  });
+  commentEditor = new MarkdownEditor('comment_editor_container', {
+    placeholder: 'add a comment…',
+    allowAttachments: false,
+    allowMentions: true
+  });
+  
+  // comment_editor_container actions buttons (Post and Cancel)
+  const commentActionsDiv = document.createElement('div');
+  commentActionsDiv.className = 'actions';
+  commentActionsDiv.innerHTML = `<button class="btn save" id="cm_post">Post</button><button class="btn" id="cm_cancel">Cancel</button>`;
+  $('comment_editor_container').appendChild(commentActionsDiv);
+  
+  // Wire comment actions
+  $('cm_post').onclick=postComment;
+  $('cm_cancel').onclick=closeCommentForm;
+
+  // Wire s_desc_toggle and s_desc_attach from header
+  $('s_desc_toggle').onclick=()=>descEditor.togglePreview();
+  $('s_desc_full').onclick=()=>toggleFullscreen();
+  $('s_desc_attach').onclick=e=>{e.preventDefault();if(cur!=null)descEditor.triggerAttachmentUpload();};  $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
+  $('s_discard').onclick=discardChanges;
   parentEditor.wire();parentNew.wire();   // parent card + searchable picker (editor + New-item modal)
   assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker
   sprintEditor.wire();sprintNew.wire();                           // sprint card + iteration picker
@@ -3165,7 +3119,7 @@ async function initialBoot(postSetup){
   depBlockedByPicker.render();depBlocksPicker.render();renderDeps();   // dep card stubs + empty chip rows
   // refreshDirty on every keystroke for ALL editable fields, so the chip flips
   // to "● Unsaved" the moment anything diverges from orig.
-  ['s_title','s_state','s_prio','s_desc','s_ac','s_start','s_target','s_due','s_est'].forEach(id=>{
+  ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est'].forEach(id=>{
     $(id).addEventListener('input',refreshDirty);$(id).addEventListener('change',refreshDirty);});
   // Native-input auto-save: state / priority / dates / estimate fire quickSave
   // on `change` (which means blur or commit for inputs, value-pick for selects).
@@ -3178,20 +3132,46 @@ async function initialBoot(postSetup){
     const open=!$('side').classList.contains('hidden');
     if((e.ctrlKey||e.metaKey)&&e.code==='KeyS'&&!e.altKey){if(open){e.preventDefault();save();}}
     else if(e.key==='Escape'&&open){
-      if(parentEditor.isOpen())parentEditor.close();
+      const fsAct = document.querySelector('.sgroup[data-sg="actions"].fullscreen');
+      const fsEditor = document.querySelector('.md-editor.fullscreen');
+      if(fsAct){
+        toggleActivityFullscreen(false);
+      }
+      else if(fsEditor){
+        const btn = fsEditor.querySelector('.dbtn-full');
+        if(btn)btn.click();
+      }
+      else if(parentEditor.isOpen())parentEditor.close();
       else if(assignedEditor.isOpen())assignedEditor.close();
       else if(assignedChild.isOpen())assignedChild.close();
       else if(sprintEditor.isOpen())sprintEditor.close();
       else if(depBlockedByPicker.isOpen())depBlockedByPicker.close();
       else if(depBlocksPicker.isOpen())depBlocksPicker.close();
-      else if($('comment_form').style.display==='flex')$('comment_form').style.display='none';
-      else if($('child_form').style.display==='flex')$('child_form').style.display='none';
+      else if($('comment_editor_container').style.display==='flex'){closeCommentForm();}
+      else if($('child_form').style.display==='flex'){$('child_form').style.display='none';const cb=$('s_childbtn');if(cb)cb.classList.remove('on');}
       else if($('side').classList.contains('fullscreen'))toggleFullscreen(false);
       else closePanel();
     }
   });
-  $('s_childbtn').onclick=()=>{const f=$('child_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';f.style.flexDirection='column';if(show)$('c_title').focus();};
-  $('c_create').onclick=createChild;$('c_cancel').onclick=()=>$('child_form').style.display='none';
+  $('s_childbtn').onclick=()=>{toggleActivityExpand(true);const f=$('child_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';f.style.flexDirection='column';$('s_childbtn').classList.toggle('on', show);if(show){$('c_prio').value = $('s_prio').value || '';$('c_title').focus();}};
+  const atb = $('activity_toggle_btn');
+  if (atb) {
+    atb.onclick = () => {
+      const actionsGroup = document.querySelector('.sgroup[data-sg="actions"]');
+      if (actionsGroup && actionsGroup.classList.contains('fullscreen')) {
+        loadActivity();
+        return;
+      }
+      const hidden = $('activity-content').classList.contains('hidden');
+      toggleActivityExpand(hidden);
+    };
+  }
+  const saf = $('s_act_full');
+  if (saf) {
+    saf.onclick = () => toggleActivityFullscreen();
+  }
+  initActivityResizer();
+  $('c_create').onclick=createChild;$('c_cancel').onclick=()=>{$('child_form').style.display='none';$('s_childbtn').classList.remove('on');};
   $('c_me').onclick=()=>assignedChild.set(currentUser||'me');
   $('c_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createChild();}});
   // new-item modal (create from scratch)
