@@ -2655,11 +2655,27 @@ async function createSprintSubmit(){
 /* ---------- work-item types (sourced from ADO — no hard-coded list) ---------- */
 async function loadTypes(){
   let types=[];
+  try{
+    const cached=localStorage.getItem('ado.types:'+projectName);
+    if(cached){
+      types=JSON.parse(cached);
+      if(Array.isArray(types)&&types.length){
+        typeList=types;
+        types.forEach(t=>{if(t.color){TYPE_COLOR[t.name]=t.color;
+          document.documentElement.style.setProperty(tyVar(t.name),t.color);}});
+        fillTypeSelect('c_type','Task');fillTypeSelect('n_type','Task');
+        buildLegend();
+        repaintTypes();
+      }
+    }
+  }catch(e){}
+
   try{types=await api.workItemTypes();}catch(e){types=[];}
   if(types.length){
     typeList=types;
     types.forEach(t=>{if(t.color){TYPE_COLOR[t.name]=t.color;   // canvas graph reads the hex map…
       document.documentElement.style.setProperty(tyVar(t.name),t.color);}});   // …DOM views read the CSS var (live update)
+    try{localStorage.setItem('ado.types:'+projectName,JSON.stringify(types));}catch(e){}
   }else if(!typeList.length){
     typeList=TYPES.map(n=>({name:n,color:TYPE_COLOR[n]||''}));     // offline fallback to the static defaults
   }
@@ -3138,6 +3154,7 @@ function renderCustomizeList(){
 /* ---------- main init (runs after PAT is verified) ---------- */
 let _booted=false;
 async function initialBoot(postSetup){
+  try{applyTheme(localStorage.getItem('ado.theme')||'dark');}catch(e){}
   updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
     iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canEditSprint=true;canCreateItem=true;newSprints.clear();
@@ -3426,7 +3443,6 @@ async function initialBoot(postSetup){
   buildLegend();renderFilters();updateFilterCount();updatePatBadge();updateUndoButtons();updateCreateButtons();
   await loadIdentity();
   try{
-    applyTheme(localStorage.getItem('ado.theme')||'dark');
     const savedWidth=localStorage.getItem('ado.sideWidth');
     if(savedWidth)$('side').style.width=savedWidth;
     const savedMode=localStorage.getItem('ado.mode');
