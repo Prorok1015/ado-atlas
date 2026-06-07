@@ -41,10 +41,13 @@ const DEFAULT_FIELDS = [
   "System.IterationPath",
   "Microsoft.VSTS.Scheduling.StartDate",
   "Microsoft.VSTS.Scheduling.TargetDate",
+  "Microsoft.VSTS.Scheduling.FinishDate",
   "Microsoft.VSTS.Scheduling.DueDate",
   "Microsoft.VSTS.Scheduling.OriginalEstimate",
   "System.Tags",
 ];
+
+let detectedTargetField = null;
 
 const AC_TYPES = new Set(["User Story", "Feature", "Epic", "Issue", "Product Backlog Item"]);
 
@@ -103,7 +106,12 @@ async function clearConfig() {
 }
 
 // ---------- HTTP ----------
-function resolveField(k) { return FIELD_ALIASES[k.toLowerCase()] || k; }
+function resolveField(k) {
+  if (k.toLowerCase() === "target") {
+    return detectedTargetField || "Microsoft.VSTS.Scheduling.TargetDate";
+  }
+  return FIELD_ALIASES[k.toLowerCase()] || k;
+}
 
 // ---------- OAuth (Microsoft Entra ID, auth-code + PKCE) ----------
 function oauthRedirectUri() { return chrome.identity.getRedirectURL(); }   // https://<extid>.chromiumapp.org/
@@ -254,6 +262,11 @@ function personName(v) {
 // Project-side _node() helper (mirrors the Flask version).
 function nodeOf(w) {
   const f = w.fields || {};
+  if ("Microsoft.VSTS.Scheduling.FinishDate" in f) {
+    detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
+  } else if ("Microsoft.VSTS.Scheduling.TargetDate" in f) {
+    detectedTargetField = "Microsoft.VSTS.Scheduling.TargetDate";
+  }
   return {
     id: w.id,
     type: f["System.WorkItemType"],
@@ -265,7 +278,7 @@ function nodeOf(w) {
     iteration: f["System.IterationPath"],
     start: f["Microsoft.VSTS.Scheduling.StartDate"],
     est: f["Microsoft.VSTS.Scheduling.OriginalEstimate"],
-    target: f["Microsoft.VSTS.Scheduling.TargetDate"] || f["Microsoft.VSTS.Scheduling.DueDate"],
+    target: f["Microsoft.VSTS.Scheduling.TargetDate"] || f["Microsoft.VSTS.Scheduling.FinishDate"] || f["Microsoft.VSTS.Scheduling.DueDate"],
     tags: f["System.Tags"] || "",
   };
 }
@@ -666,6 +679,11 @@ async function item(wid, options) {
   const proj = await projUrl();
   const d = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}&$expand=relations`, undefined, undefined, options);
   const f = d.fields || {};
+  if ("Microsoft.VSTS.Scheduling.FinishDate" in f) {
+    detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
+  } else if ("Microsoft.VSTS.Scheduling.TargetDate" in f) {
+    detectedTargetField = "Microsoft.VSTS.Scheduling.TargetDate";
+  }
   const wtype = f["System.WorkItemType"];
   const a = f["System.AssignedTo"];
   return {
@@ -681,7 +699,7 @@ async function item(wid, options) {
     iteration: f["System.IterationPath"],
     start: f["Microsoft.VSTS.Scheduling.StartDate"],
     est: f["Microsoft.VSTS.Scheduling.OriginalEstimate"],
-    target: f["Microsoft.VSTS.Scheduling.TargetDate"],
+    target: f["Microsoft.VSTS.Scheduling.TargetDate"] || f["Microsoft.VSTS.Scheduling.FinishDate"],
     due: f["Microsoft.VSTS.Scheduling.DueDate"],
     tags: f["System.Tags"] || "",
     deps: depsFromRelations(d.relations),
@@ -836,6 +854,23 @@ async function removeAttachmentLink(wid, attUrl) {
 // Body shape mirrors the old /api/item PATCH endpoint: friendly aliases
 // (title/state/assigned/iteration/desc/ac/priority/estimate/start/target/due).
 async function updateItem(wid, body) {
+  if ("target" in body && !detectedTargetField) {
+    try {
+      const proj = await projUrl();
+      const w = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`);
+      const f = w.fields || {};
+      if ("Microsoft.VSTS.Scheduling.FinishDate" in f) {
+        detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
+      } else if ("Microsoft.VSTS.Scheduling.TargetDate" in f) {
+        detectedTargetField = "Microsoft.VSTS.Scheduling.TargetDate";
+      } else {
+        const wtype = f["System.WorkItemType"];
+        if (wtype === "Product Backlog Item") {
+          detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
+        }
+      }
+    } catch (_) {}
+  }
   const fields = {};
   for (const k of ["title","state","assigned","iteration","start","target","due","tags"]) {
     if (k in body) fields[k] = body[k];
