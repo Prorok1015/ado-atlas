@@ -1348,8 +1348,8 @@ function renderAttachments(){
     return;
   }
   if(group)group.style.display='block';
-  const head=`<div class="atchhead">Attachments <span class="acount">${arr.length}</span>`+
-    (atchState.uploading?` <span class="spin"></span> uploading ${atchState.uploading}…`:'')+`</div>`;
+  const head=`<div class="atchhead"><span class="acount">${arr.length}</span> file(s)`+
+    (atchState.uploading?` · <span class="spin"></span> uploading ${atchState.uploading}…`:'')+`</div>`;
   const rows=arr.map((a,i)=>{
     const icon=isImageName(a.name)?'🖼':'📄';
     const size=a.size!=null?fmtBytes(a.size):'';
