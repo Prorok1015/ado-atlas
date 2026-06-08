@@ -740,6 +740,32 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 #bulkbar .tagchip{min-height:28px !important;height:28px !important;line-height:22px !important;box-sizing:border-box !important;font-size:12px;border-radius:14px !important;padding:3px 6px 3px 10px !important}
 #bulkbar .tagchip.add { border: 1.5px solid #2ea44f !important; }
 #bulkbar .tagchip.remove { border: 1.5px solid #cb2431 !important; }
+#bulkbar .tagadd {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 16px !important;
+  margin: 0 !important;
+  align-self: center !important;
+}
+#bulkbar .tagok {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  align-self: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#bulkbar .tagadd-wrap {
+  align-self: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+#bulkbar .tagedit {
+  margin: 0 !important;
+}
 /* native checkbox size — opt out of the generic full-width `input` rule above */
 /* checkbox is revealed only on row hover or when the row is selected (slot is reserved → no layout shift) */
 .tcheck{flex:none;cursor:pointer;width:14px;height:14px;margin:0 4px 0 0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox;opacity:0;transition:opacity .12s}
@@ -979,6 +1005,10 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
   right: 14px;
   border: 5px solid transparent;
   border-top-color: #e0524d;
+}
+.setup-org-error::after {
+  right: auto;
+  left: 14px;
 }
 @keyframes confirmPop {
   from { opacity: 0; transform: scale(0.96); }

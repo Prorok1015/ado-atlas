@@ -4867,7 +4867,49 @@ async function loadSetupProjects(){
     const list=await api.projects(org);
     fillDatalist('setup-projlist',list);
     if(list.length&&!$('setup-project').value.trim())$('setup-project').value=list[0];   // prefill the first project if none chosen yet
-  }catch(e){/* project dropdown is optional — manual entry still works */}
+  }catch(e){
+    showSetupOrgError('Organization not found or PAT has no permissions.');
+  }
+}
+function showSetupOrgError(message) {
+  const inputEl = $('setup-org');
+  if (!inputEl) return;
+  const overlay = $('setup-overlay');
+  if (!overlay) return;
+  
+  const existing = document.querySelector('.setup-org-error');
+  if (existing) {
+    if (window.LayerManager) window.LayerManager.close(existing);
+    existing.remove();
+  }
+  
+  const err = document.createElement('div');
+  err.className = 'setup-org-error emoji-row-error';
+  err.textContent = message;
+  
+  overlay.appendChild(err);
+  
+  const rRect = inputEl.getBoundingClientRect();
+  const oRect = overlay.getBoundingClientRect();
+  
+  const top = rRect.top - oRect.top - 32;
+  const left = rRect.left - oRect.left + 10;
+  
+  err.style.top = `${top}px`;
+  err.style.left = `${left}px`;
+  err.style.right = 'auto';
+  
+  if (window.LayerManager) {
+    window.LayerManager.open(err, null, { isPopover: true });
+  }
+  
+  setTimeout(() => {
+    err.style.opacity = '0';
+    setTimeout(() => {
+      if (window.LayerManager) window.LayerManager.close(err);
+      err.remove();
+    }, 200);
+  }, 4000);
 }
 
 /* ---------- PAT validity countdown ----------

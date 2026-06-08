@@ -166,8 +166,8 @@ test("mdToHtml: ![](http://) (non-https) is NOT an image", () => {
   assert.ok(!out.includes("<img"));
 });
 test("mdToHtml: @[Name](descriptor) -> mention anchor with data-vss-mention", () => {
-  const out = lib.mdToHtml("@[Jane Doe](abc.DEF-123_xyz=)");
-  assert.ok(out.includes('data-vss-mention="version:2.0,abc.DEF-123_xyz="'));
+  const out = lib.mdToHtml("@[Jane Doe](e401e150-a645-7c8e-b903-3994dbead567)");
+  assert.ok(out.includes('data-vss-mention="version:2.0,e401e150-a645-7c8e-b903-3994dbead567"'));
   assert.ok(out.includes(">@Jane Doe</a>"));
 });
 test("mdToHtml: mention descriptor with bad chars is NOT a mention", () => {
@@ -193,19 +193,19 @@ test("htmlToMarkdown: <img> -> ![alt](src)", () => {
   assert.strictEqual(lib.htmlToMarkdown('<img src="https://x/a.png" alt="pic">'), "![pic](https://x/a.png)");
 });
 test("htmlToMarkdown: mention anchor -> @[Name](descriptor)", () => {
-  const md = lib.htmlToMarkdown('<a href="#" data-vss-mention="version:2.0,abc.DEF-1_=">@Jane Doe</a>');
-  assert.strictEqual(md, "@[Jane Doe](abc.DEF-1_=)");
+  const md = lib.htmlToMarkdown('<a href="#" data-vss-mention="version:2.0,e401e150-a645-7c8e-b903-3994dbead567">@Jane Doe</a>');
+  assert.strictEqual(md, "@[Jane Doe](e401e150-a645-7c8e-b903-3994dbead567)");
 });
 test("htmlToMarkdown: work-item edit URL -> #N shorthand", () => {
   const md = lib.htmlToMarkdown('<a href="https://dev.azure.com/o/p/_workitems/edit/42">#42</a>');
   assert.strictEqual(md, "#42");
 });
 test("round-trip: image + mention + #ref survive md -> html -> md", () => {
-  const src = "see #42, ![pic](https://x/a.png), cc @[Jane](abc.x_=)";
+  const src = "see #42, ![pic](https://x/a.png), cc @[Jane](e401e150-a645-7c8e-b903-3994dbead567)";
   const back = lib.htmlToMarkdown(lib.mdToHtml(src, { workItemBase: "https://dev.azure.com/o/p/_workitems/edit" }));
   assert.ok(back.includes("#42"));
   assert.ok(back.includes("![pic](https://x/a.png)"));
-  assert.ok(back.includes("@[Jane](abc.x_=)"));
+  assert.ok(back.includes("@[Jane](e401e150-a645-7c8e-b903-3994dbead567)"));
 });
 
 // ---- OAuth helpers ----
