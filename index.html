@@ -572,7 +572,14 @@
       <input id="setup-pat" type="password" placeholder="Paste your PAT here" style="width:100%">
       <p class="hint" id="setup-load-hint">Paste a PAT, then fill in your Organization and Project (both are in your <code>dev.azure.com/&lt;org&gt;/&lt;project&gt;</code> URL). The project list fills in automatically once the org is set.</p>
       <label>PAT expiry <span style="color:var(--muted);font-weight:400">(optional — copy from the token page for a validity countdown)</span></label>
-      <input id="setup-expiry" type="date" style="width:100%;margin:0">
+      <div class="drp-wrapper" style="position:relative; margin-bottom:4px;">
+        <div style="position:relative; display:flex; align-items:center; width:100%;">
+          <input type="text" class="btn pcard" id="setup-expiry-trigger" placeholder="Select date..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+          <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+        </div>
+        <div id="setup-expiry-picker" class="drp-popover"></div>
+      </div>
+      <input id="setup-expiry" type="hidden">
       <div id="setup-expiry-info" style="color:var(--muted);font-size:12px;margin-top:3px"></div>
     </div>
 

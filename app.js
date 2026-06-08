@@ -4308,6 +4308,62 @@ function syncBulkDatePicker(start, target) {
   }
 }
 
+let setupExpiryPicker = null;
+function syncSetupExpiryPicker(expiry) {
+  const trigger = $('setup-expiry-trigger');
+  const popover = $('setup-expiry-picker');
+  if (!trigger || !popover) return;
+  
+  if (!trigger.dataset.init) {
+    trigger.dataset.init = '1';
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const show = !popover.classList.contains('show');
+      popover.classList.toggle('show', show);
+      if (window.LayerManager) {
+        if (show) window.LayerManager.open(popover, null, { isPopover: true });
+        else window.LayerManager.close(popover);
+      }
+    });
+    window.addEventListener('mousedown', (e) => {
+      if (popover.classList.contains('show')) {
+        if (!popover.contains(e.target) && !trigger.contains(e.target)) {
+          popover.classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close(popover);
+        }
+      }
+    });
+    wireManualDateInput('setup-expiry-trigger', 'setup-expiry', null, syncSetupExpiryPicker, true);
+  }
+  
+  if (expiry) {
+    trigger.value = formatDisplayDate(expiry);
+  } else {
+    trigger.value = '';
+  }
+  
+  if (!setupExpiryPicker) {
+    setupExpiryPicker = new DateRangePicker('setup-expiry-picker', {
+      start: expiry,
+      single: true,
+      onChange: ({start: d}) => {
+        $('setup-expiry').value = d;
+        
+        $('setup-expiry').dispatchEvent(new Event('input'));
+        $('setup-expiry').dispatchEvent(new Event('change'));
+        
+        syncSetupExpiryPicker(d);
+        if (d) {
+          popover.classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close(popover);
+        }
+      }
+    });
+  } else {
+    setupExpiryPicker.setRange(expiry, expiry);
+  }
+}
+
 let sideDuePicker = null;
 function syncSideDuePicker(due) {
   const trigger = $('side-due-trigger');
@@ -4725,7 +4781,10 @@ function showSetup(cancellable){
   const cfg=api.getConfig();   // promise — fill async
   cfg.then(c=>{
     $('setup-pat').value=c.pat||'';$('setup-org').value=c.org||'';$('setup-project').value=c.project||'';
-    $('setup-expiry').value=c.patExpiry||'';updateSetupExpiryInfo();
+    const expiry = c.patExpiry||'';
+    $('setup-expiry').value=expiry;
+    syncSetupExpiryPicker(expiry);
+    updateSetupExpiryInfo();
     $('oauth-client').value=c.oauthClientId||'';
     const t=c.oauthTenant||'organizations';
     if(t==='organizations'){$('oauth-tenant-mode').value='organizations';$('oauth-tenant-id').value='';}
