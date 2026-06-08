@@ -246,7 +246,7 @@ function setStatus(t,err){const s=$('status');if(!s)return;s.textContent=t;s.sty
 function customConfirm(message, title = 'Confirm Action') {
   return new Promise((resolve) => {
     $('confirm-title').textContent = title;
-    $('confirm-message').textContent = message;
+    $('confirm-message').innerHTML = message;
     const overlay = $('confirm-overlay');
     overlay.style.display = 'flex';
     overlay.classList.add('show');
@@ -653,8 +653,77 @@ function bulkRange(toId){                    // apply the anchor's action (selec
   let a=bulkAnchor!=null?ids.indexOf(bulkAnchor):-1;if(a<0){a=b;bulkAnchor=toId;}
   bulkSet(ids.slice(Math.min(a,b),Math.max(a,b)+1),bulkAnchorOn);
 }
-function clearBulk(){bulkSel.clear();bulkAnchor=null;updateBulkBar();syncBulkRows();syncGraphBulk();}
-function updateBulkBar(){const n=bulkSel.size;$('bulkbar').style.display=n?'flex':'none';$('bulk_count').textContent=n+' selected';}
+function clearBulk(){
+  bulkSel.clear();
+  bulkAnchor=null;
+  if(window.bulkTagsEditor) bulkTagsEditor.set('', true);
+  if($('bulk_start')) $('bulk_start').value='';
+  if($('bulk_target')) $('bulk_target').value='';
+  syncBulkDatePicker(null, null);
+  updateBulkBar();
+  syncBulkRows();
+  syncGraphBulk();
+}
+function syncBulkBarValues() {
+  const ids = [...bulkSel];
+  if (!ids.length) return;
+
+  const firstNode = store.nodes[ids[0]];
+  if (!firstNode) return;
+
+  let commonState = firstNode.state;
+  let commonPriority = firstNode.priority;
+  let commonAssigned = firstNode.assigned;
+  let commonIteration = firstNode.iteration;
+  let commonParent = firstNode.parent;
+  let commonStart = firstNode.start;
+  let commonTarget = firstNode.target;
+
+  for (let i = 1; i < ids.length; i++) {
+    const n = store.nodes[ids[i]];
+    if (!n) continue;
+    if (n.state !== commonState) commonState = null;
+    if (n.priority !== commonPriority) commonPriority = null;
+    if (n.assigned !== commonAssigned) commonAssigned = null;
+    if (n.iteration !== commonIteration) commonIteration = null;
+    if (n.parent !== commonParent) commonParent = null;
+    if (n.start !== commonStart) commonStart = null;
+    if (n.target !== commonTarget) commonTarget = null;
+  }
+
+  const elState = $('bulk_state');
+  if (elState) elState.value = commonState || '';
+
+  const elPrio = $('bulk_prio');
+  if (elPrio) elPrio.value = commonPriority ? String(commonPriority) : '';
+
+  if (typeof bulkAssignedPicker !== 'undefined') {
+    bulkAssignedPicker.set(commonAssigned || '', true);
+  }
+  if (typeof bulkSprintPicker !== 'undefined') {
+    bulkSprintPicker.set(commonIteration || '', true);
+  }
+  if (typeof bulkParentPicker !== 'undefined') {
+    bulkParentPicker.set(commonParent != null ? String(commonParent) : '', true);
+  }
+
+  const startVal = commonStart ? commonStart.slice(0, 10) : '';
+  const targetVal = commonTarget ? commonTarget.slice(0, 10) : '';
+  const bulkStart = $('bulk_start');
+  const bulkTarget = $('bulk_target');
+  if (bulkStart) bulkStart.value = startVal;
+  if (bulkTarget) bulkTarget.value = targetVal;
+  syncBulkDatePicker(startVal || null, targetVal || null);
+}
+
+function updateBulkBar(){
+  const n=bulkSel.size;
+  $('bulkbar').style.display=n?'flex':'none';
+  $('bulk_count').textContent=n+' selected';
+  if (n) {
+    syncBulkBarValues();
+  }
+}
 
 /* ---------- tree drag-to-re-parent (single or bulk) ---------- */
 function descendantsOf(ids){                 // loaded descendants of ids (to block cycles)
@@ -720,22 +789,380 @@ function buildBulkControls(){            // (re)fill the bar's dropdowns from lo
   const it=$('bulk_iter');if(it){it.innerHTML='<option value="">Sprint…</option>'+
     sprintPaths.map(p=>`<option value="${esc(p)}">${esc(sprintNames[p]||p)}</option>`).join('');}
 }
-async function bulkApply(field,val){     // field: state | iteration | assigned | priority
+function syncSidebarField(field, ids) {
+  if (cur == null || !ids.includes(cur)) return;
+  const d = store.nodes[cur];
+  if (!d) return;
+
+  if (field === 'state') {
+    const el = $('s_state');
+    if (el) el.value = d.state || '';
+    if (orig) orig.state = d.state || '';
+  }
+  else if (field === 'priority') {
+    const el = $('s_prio');
+    if (el) el.value = d.priority ? String(d.priority) : '';
+    if (orig) orig.priority = d.priority || '';
+  }
+  else if (field === 'assigned') {
+    if (typeof assignedEditor !== 'undefined') assignedEditor.set(d.assigned || '', true);
+    if (orig) orig.assigned = d.assigned || '';
+  }
+  else if (field === 'iteration') {
+    if (typeof sprintEditor !== 'undefined') sprintEditor.set(d.iteration || '', true);
+    if (orig) orig.iter = d.iteration || '';
+  }
+  else if (field === 'parent') {
+    if (typeof parentEditor !== 'undefined') parentEditor.set(d.parent != null ? String(d.parent) : '', true);
+    if (orig) orig.parent = d.parent != null ? String(d.parent) : '';
+  }
+  else if (field.startsWith('tags_')) {
+    if (typeof tagsEditor !== 'undefined') tagsEditor.set(d.tags || '', true);
+    if (orig) orig.tags = d.tags || '';
+  }
+  else if (field === 'dates') {
+    const startVal = (d.start || '').slice(0, 10);
+    const targetVal = (d.target || '').slice(0, 10);
+    const s_start = $('s_start');
+    const s_target = $('s_target');
+    if (s_start) s_start.value = startVal;
+    if (s_target) s_target.value = targetVal;
+    syncSideDatePicker(startVal, targetVal);
+    if (orig) {
+      orig.start = startVal;
+      orig.target = targetVal;
+    }
+  }
+  refreshDirty();
+}
+
+async function bulkApply(field,val){
   const ids=[...bulkSel];if(!ids.length)return;
-  if(!await customConfirm('Apply '+field+' = "'+val+'" to '+ids.length+' item(s)?', 'Bulk Apply'))return;
   if(field==='assigned'&&val==='me')val=currentUser||'me';
-  const olds=ids.map(wid=>({id:wid,old:(store.nodes[wid]?store.nodes[wid][field]:undefined)}));   // snapshot for undo
+  
+  let labelVal = val;
+  if (field === 'tags_add') labelVal = `Add tag "${val}"`;
+  else if (field === 'tags_remove') labelVal = `Remove tag "${val}"`;
+  else if (field === 'dates') labelVal = `dates [start: ${val.start || '(clear)'}, target: ${val.target || '(clear)'}]`;
+  else if (val === '') labelVal = '(clear)';
+  
+  const fieldNamesMap = {
+    state: 'State',
+    priority: 'Priority',
+    assigned: 'Assignee',
+    iteration: 'Sprint',
+    parent: 'Parent',
+    tags_add: 'Tags (Add)',
+    tags_remove: 'Tags (Remove)',
+    dates: 'Dates'
+  };
+  const displayName = fieldNamesMap[field] || field;
+
+  let htmlVal = `<span class="tagchip" style="background:var(--accent); margin:0 4px; display:inline-flex; vertical-align:middle; font-weight:600; border-radius:14px; padding:3px 10px; color:#fff;">${esc(labelVal)}</span>`;
+  let itemsListHtml = '<div style="margin-top:10px; max-height:150px; overflow-y:auto; border:1px solid var(--line); border-radius:6px; padding:8px; background:var(--panel2); text-align:left;">';
+  ids.forEach(id => {
+    const node = store.nodes[id];
+    const title = node ? node.title : '';
+    const type = node ? node.type : '';
+    itemsListHtml += `<div style="margin-bottom:6px; font-size:12px; display:flex; align-items:center; gap:6px;">` +
+      `<i class="dot" style="background:${tyColor(type)}"></i>` +
+      `<span style="color:var(--muted); font-weight:600; flex:none;">#${id}</span>` +
+      `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--txt);">${esc(title)}</span>` +
+      `</div>`;
+  });
+  itemsListHtml += '</div>';
+
+  const msg = `Apply <strong style="color:var(--txt); font-weight:700;">${esc(displayName)}</strong> = ${htmlVal} to ${ids.length} item(s):` + itemsListHtml;
+  if(!await customConfirm(msg, 'Bulk Apply')) {
+    syncBulkBarValues();
+    return;
+  }
+  
   loadStart(`updating ${ids.length} item(s)…`);
-  const results=await api.pool(ids.map(wid=>async()=>{try{const body={};body[field]=(field==='priority'?Number(val):val);await api.updateItem(wid,body);return true;}catch(e){return false;}}),6);
-  const ok=results.filter(Boolean).length,fail=results.length-ok;
-  loadEnd();
-  if(ok)pushAction(`bulk ${field} on ${ids.length} item(s)`,
-    async()=>{await api.pool(olds.map(o=>async()=>{try{const b={};b[field]=(o.old==null?'':o.old);await api.updateItem(o.id,b);}catch(e){}}),6);await afterUndo(null);},
-    async()=>{await api.pool(ids.map(wid=>async()=>{try{const b={};b[field]=(field==='priority'?Number(val):val);await api.updateItem(wid,b);}catch(e){}}),6);await afterUndo(null);});
-  setStatus(`bulk ${field}: ${ok} updated`+(fail?`, ${fail} failed`:''),!!fail);
-  if(field==='assigned') registerNewAssignee(val);
-  await refresh();                       // rebuild from server (prunes selection to what still matches)
-  if(fail)setStatus('bulk '+field+': '+ok+' updated, '+fail+' failed',true);
+  
+  try {
+    const projConfig = await api.getConfig();
+    const orgName = projConfig.org.replace(/\/$/, "");
+    const projUrl = `https://dev.azure.com/${encodeURIComponent(orgName)}/${encodeURIComponent(projConfig.project)}`;
+    
+    let relationsMap = {};
+    if (field === 'parent') {
+      const rawItems = (await api.req("GET", `${projUrl}/_apis/wit/workitems?ids=${ids.join(",")}&$expand=relations&api-version=7.1`)).value || [];
+      for (const item of rawItems) {
+        relationsMap[item.id] = item.relations || [];
+      }
+    }
+    
+    const itemsOps = [];
+    const undoOps = [];
+    const oldsList = [];
+    
+    for (const id of ids) {
+      const node = store.nodes[id];
+      const itemOpsList = [];
+      const itemUndoOpsList = [];
+      
+      if (field === 'state' || field === 'iteration' || field === 'assigned' || field === 'priority') {
+        const fName = resolveBulkField(field);
+        const path = `/fields/${fName}`;
+        const curVal = node ? node[field] : undefined;
+        
+        let valStr = val;
+        if (field === 'priority') valStr = val ? Number(val) : null;
+        if (valStr === '' || valStr == null) {
+          itemOpsList.push({ op: 'remove', path });
+        } else {
+          itemOpsList.push({ op: 'add', path, value: valStr });
+        }
+        
+        if (curVal === '' || curVal == null) {
+          itemUndoOpsList.push({ op: 'remove', path });
+        } else {
+          itemUndoOpsList.push({ op: 'add', path, value: (field === 'priority' ? Number(curVal) : curVal) });
+        }
+      }
+      else if (field === 'tags_add' || field === 'tags_remove') {
+        const path = '/fields/System.Tags';
+        const curTagsStr = node ? node.tags : '';
+        const curTags = tagList_(curTagsStr);
+        const inputTags = tagList_(val);
+        
+        let newTags;
+        if (field === 'tags_add') {
+          const toAdd = inputTags.filter(it => !curTags.some(ct => ct.toLowerCase() === it.toLowerCase()));
+          newTags = curTags.concat(toAdd);
+        } else {
+          newTags = curTags.filter(ct => !inputTags.some(it => it.toLowerCase() === ct.toLowerCase()));
+        }
+        
+        const newTagsVal = newTags.join('; ');
+        if (newTagsVal === '') {
+          itemOpsList.push({ op: 'remove', path });
+        } else {
+          itemOpsList.push({ op: 'replace', path, value: newTagsVal });
+        }
+        
+        if (curTagsStr === '') {
+          itemUndoOpsList.push({ op: 'remove', path });
+        } else {
+          itemUndoOpsList.push({ op: 'replace', path, value: curTagsStr });
+        }
+      }
+      else if (field === 'dates') {
+        const startFieldName = 'Microsoft.VSTS.Scheduling.StartDate';
+        const targetFieldName = detectedTargetField || 'Microsoft.VSTS.Scheduling.TargetDate';
+        
+        if ('start' in val) {
+          const path = `/fields/${startFieldName}`;
+          if (val.start === '' || val.start == null) {
+            itemOpsList.push({ op: 'remove', path });
+          } else {
+            itemOpsList.push({ op: 'add', path, value: val.start });
+          }
+          const curStart = node ? node.start : undefined;
+          if (curStart === '' || curStart == null) {
+            itemUndoOpsList.push({ op: 'remove', path });
+          } else {
+            itemUndoOpsList.push({ op: 'add', path, value: curStart.slice(0, 10) });
+          }
+        }
+        if ('target' in val) {
+          const path = `/fields/${targetFieldName}`;
+          if (val.target === '' || val.target == null) {
+            itemOpsList.push({ op: 'remove', path });
+          } else {
+            itemOpsList.push({ op: 'add', path, value: val.target });
+          }
+          const curTarget = node ? node.target : undefined;
+          if (curTarget === '' || curTarget == null) {
+            itemUndoOpsList.push({ op: 'remove', path });
+          } else {
+            itemUndoOpsList.push({ op: 'add', path, value: curTarget.slice(0, 10) });
+          }
+        }
+      }
+      else if (field === 'parent') {
+        const curParent = node ? node.parent : undefined;
+        if (String(curParent) === String(val)) continue;
+        
+        oldsList.push({ id, oldParent: curParent });
+        const rels = relationsMap[id] || [];
+        const idx = rels.findIndex(r => r.rel === "System.LinkTypes.Hierarchy-Reverse");
+        
+        if (idx >= 0) {
+          itemOpsList.push({ op: "remove", path: `/relations/${idx}` });
+        }
+        if (val !== '' && val != null) {
+          itemOpsList.push({
+            op: "add",
+            path: "/relations/-",
+            value: { rel: "System.LinkTypes.Hierarchy-Reverse", url: `${projUrl}/_apis/wit/workitems/${val | 0}` }
+          });
+        }
+      }
+      
+      if (itemOpsList.length) {
+        itemsOps.push({
+          method: 'PATCH',
+          uri: `/_apis/wit/workitems/${id}?api-version=7.1`,
+          headers: { 'Content-Type': 'application/json-patch+json' },
+          body: itemOpsList,
+          id: id
+        });
+      }
+      if (itemUndoOpsList.length) {
+        undoOps.push({
+          method: 'PATCH',
+          uri: `/_apis/wit/workitems/${id}?api-version=7.1`,
+          headers: { 'Content-Type': 'application/json-patch+json' },
+          body: itemUndoOpsList
+        });
+      }
+    }
+    
+    if (!itemsOps.length && field === 'parent') {
+      loadEnd();
+      bulkParentPicker.set('', true);
+      return;
+    }
+    
+    let ok = 0, fail = 0;
+    for (let i = 0; i < itemsOps.length; i += 200) {
+      const batch = itemsOps.slice(i, i + 200);
+      const res = await api.batchUpdate(batch);
+      const valueArray = res && res.value && Array.isArray(res.value) ? res.value : (Array.isArray(res) ? res : null);
+      if (valueArray) {
+        valueArray.forEach(itemRes => {
+          if (itemRes.code === 200) ok++;
+          else fail++;
+        });
+      } else {
+        fail += batch.length;
+      }
+    }
+    
+    loadEnd();
+    
+    if (ok) {
+      if (field === 'parent') {
+        pushAction(`bulk parent on ${ids.length} item(s)`,
+          async () => {
+            await undoParentBatch(oldsList);
+            syncSidebarField('parent', ids);
+          },
+          async () => {
+            loadStart(`redoing bulk parent…`);
+            try {
+              for (let i = 0; i < itemsOps.length; i += 200) {
+                await api.batchUpdate(itemsOps.slice(i, i + 200));
+              }
+            } finally {
+              loadEnd();
+              await afterUndo(null);
+              syncSidebarField('parent', ids);
+            }
+          }
+        );
+      } else {
+        pushAction(`bulk ${field} on ${ids.length} item(s)`,
+          async () => {
+            loadStart(`undoing bulk ${field}…`);
+            try {
+              for (let i = 0; i < undoOps.length; i += 200) {
+                await api.batchUpdate(undoOps.slice(i, i + 200));
+              }
+            } finally {
+              loadEnd();
+              await afterUndo(null);
+              syncSidebarField(field, ids);
+            }
+          },
+          async () => {
+            loadStart(`redoing bulk ${field}…`);
+            try {
+              for (let i = 0; i < itemsOps.length; i += 200) {
+                await api.batchUpdate(itemsOps.slice(i, i + 200));
+              }
+            } finally {
+              loadEnd();
+              await afterUndo(null);
+              syncSidebarField(field, ids);
+            }
+          }
+        );
+      }
+    }
+    
+    setStatus(`bulk ${field}: ${ok} updated` + (fail ? `, ${fail} failed` : ''), !!fail);
+    if (field === 'assigned' && val) registerNewAssignee(val);
+    await refresh();
+    syncSidebarField(field, ids);
+    if (fail) setStatus('bulk ' + field + ': ' + ok + ' updated, ' + fail + ' failed', true);
+    
+  } catch (err) {
+    loadEnd();
+    setStatus('Error executing bulk update: ' + err.message, true);
+    if (field === 'assigned') bulkAssignedPicker.set('', true);
+    if (field === 'iteration') bulkSprintPicker.set('', true);
+    if (field === 'parent') bulkParentPicker.set('', true);
+  } finally {
+  }
+}
+
+function resolveBulkField(field) {
+  if (field === 'state') return 'System.State';
+  if (field === 'iteration') return 'System.IterationPath';
+  if (field === 'assigned') return 'System.AssignedTo';
+  if (field === 'priority') return 'Microsoft.VSTS.Common.Priority';
+  if (field === 'start') return 'Microsoft.VSTS.Scheduling.StartDate';
+  if (field === 'target') return detectedTargetField || 'Microsoft.VSTS.Scheduling.TargetDate';
+  if (field === 'tags') return 'System.Tags';
+  return field;
+}
+
+async function undoParentBatch(oldsList) {
+  loadStart(`undoing parent bulk update…`);
+  try {
+    const ids = oldsList.map(o => o.id);
+    const projConfig = await api.getConfig();
+    const orgName = projConfig.org.replace(/\/$/, "");
+    const projUrl = `https://dev.azure.com/${encodeURIComponent(orgName)}/${encodeURIComponent(projConfig.project)}`;
+    const rawItems = (await api.req("GET", `${projUrl}/_apis/wit/workitems?ids=${ids.join(",")}&$expand=relations&api-version=7.1`)).value || [];
+    const relsMap = {};
+    for (const item of rawItems) {
+      relsMap[item.id] = item.relations || [];
+    }
+    
+    const batchOps = [];
+    for (const o of oldsList) {
+      const rels = relsMap[o.id] || [];
+      const idx = rels.findIndex(r => r.rel === "System.LinkTypes.Hierarchy-Reverse");
+      const list = [];
+      if (idx >= 0) list.push({ op: "remove", path: `/relations/${idx}` });
+      if (o.oldParent !== '' && o.oldParent != null) {
+        list.push({ op: "add", path: "/relations/-", value: { rel: "System.LinkTypes.Hierarchy-Reverse", url: `${projUrl}/_apis/wit/workitems/${o.oldParent | 0}` } });
+      }
+      if (list.length) {
+        batchOps.push({
+          method: 'PATCH',
+          uri: `/_apis/wit/workitems/${o.id}?api-version=7.1`,
+          headers: { 'Content-Type': 'application/json-patch+json' },
+          body: list
+        });
+      }
+    }
+    if (batchOps.length) {
+      for (let i = 0; i < batchOps.length; i += 200) {
+        await api.batchUpdate(batchOps.slice(i, i + 200));
+      }
+    }
+  } catch(e) {
+    console.error(e);
+  } finally {
+    loadEnd();
+    await afterUndo(null);
+    syncSidebarField('parent', ids);
+  }
 }
 
 /* ---------- graph ---------- */
@@ -2392,6 +2819,10 @@ const assignedNew=createAssigneeField('n_assigned',{});
 const sprintEditor=createSprintField('s_iter',{onChange:onPick('iteration'),getNone:sprintRoot});   // editor: "no sprint" = project root path
 const sprintNew=createSprintField('n_iter',{getNone:()=>''});                                // new-item modal: "no sprint" = empty
 
+const bulkAssignedPicker=createAssigneeField('bulk_assigned',{onChange:()=>{const v=$('bulk_assigned').value.trim();if(v!==undefined)bulkApply('assigned',v);}});
+const bulkSprintPicker=createSprintField('bulk_iter',{getNone:sprintRoot,onChange:()=>{const v=$('bulk_iter').value.trim();if(v!==undefined)bulkApply('iteration',v);}});
+const bulkParentPicker=createParentField('bulk_parent',{getExcludeId:()=>null,onChange:()=>{const v=$('bulk_parent').value.trim();if(v!==undefined)bulkApply('parent',v);}});
+
 /* ---------- dependency links (sidebar Blocked-by / Blocks + the graph) ----------
    The editor shows two chip rows + an item picker for adding. Mutations also fire
    from the graph (drag a stub between nodes, or click an edge to delete). Both
@@ -3581,6 +4012,61 @@ function syncSideDatePicker(start, target) {
   }
 }
 
+let bulkRangePicker = null;
+function syncBulkDatePicker(start, target) {
+  const trigger = $('bulk-range-trigger');
+  const popover = $('bulk-range-picker');
+  if (!trigger || !popover) return;
+  
+  if (!trigger.dataset.init) {
+    trigger.dataset.init = '1';
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const show = !popover.classList.contains('show');
+      popover.classList.toggle('show', show);
+      if (window.LayerManager) {
+        if (show) window.LayerManager.open(popover, null, { isPopover: true });
+        else window.LayerManager.close(popover);
+      }
+    });
+    window.addEventListener('mousedown', (e) => {
+      if (popover.classList.contains('show')) {
+        if (!popover.contains(e.target) && !trigger.contains(e.target)) {
+          popover.classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close(popover);
+        }
+      }
+    });
+    wireManualDateInput('bulk-range-trigger', 'bulk_start', 'bulk_target', syncBulkDatePicker, false);
+  }
+  
+  if (start || target) {
+    const sPart = start ? formatDisplayDate(start) : '?';
+    const tPart = target ? formatDisplayDate(target) : '?';
+    trigger.value = `${sPart} — ${tPart}`;
+  } else {
+    trigger.value = '';
+  }
+  
+  if (!bulkRangePicker) {
+    bulkRangePicker = new DateRangePicker('bulk-range-picker', {
+      start,
+      finish: target,
+      onChange: ({start: s, finish: t}) => {
+        $('bulk_start').value = s;
+        $('bulk_target').value = t;
+        syncBulkDatePicker(s, t);
+        if (s && t) {
+          popover.classList.remove('show');
+          if (window.LayerManager) window.LayerManager.close(popover);
+        }
+      }
+    });
+  } else {
+    bulkRangePicker.setRange(start, target);
+  }
+}
+
 let sideDuePicker = null;
 function syncSideDuePicker(due) {
   const trigger = $('side-due-trigger');
@@ -4265,10 +4751,54 @@ function applySideLayout(){
   // Shead buttons that act on a specific sgroup are only meaningful while that
   // sgroup is visible — hide them when the user hides their target via Customize.
   const descHidden=sideHidden.has('desc');
-  ['s_desc_attach','s_desc_toggle','s_desc_full'].forEach(id=>{
+  ['s_desc_attach','s_desc_full'].forEach(id=>{
     const el=$(id);if(el)el.style.display=descHidden?'none':'';
   });
 }
+const BULK_ITEMS=[
+  {id:'state',label:'State'},
+  {id:'priority',label:'Priority'},
+  {id:'assigned',label:'Assignee'},
+  {id:'iteration',label:'Sprint'},
+  {id:'parent',label:'Parent'},
+  {id:'tags',label:'Tags (Add/Remove)'},
+  {id:'dates',label:'Dates (Start/Target)'},
+];
+const BULK_LOCKED=new Set();
+let bulkOrder=BULK_ITEMS.map(i=>i.id), bulkHidden=new Set(['parent', 'dates']);
+function loadBulkLayout(){
+  try{const o=JSON.parse(localStorage.getItem('ado.bulkOrder')||'null');if(Array.isArray(o))bulkOrder=o;}catch(e){}
+  try{const h=JSON.parse(localStorage.getItem('ado.bulkHidden')||'null');if(Array.isArray(h))bulkHidden=new Set(h);}catch(e){}
+}
+function saveBulkLayout(){try{localStorage.setItem('ado.bulkOrder',JSON.stringify(bulkOrderedIds()));localStorage.setItem('ado.bulkHidden',JSON.stringify([...bulkHidden]));}catch(e){}}
+function bulkOrderedIds(){
+  const def=BULK_ITEMS.map(i=>i.id),defSet=new Set(def);
+  const result=bulkOrder.filter((id,i)=>defSet.has(id)&&bulkOrder.indexOf(id)===i);
+  def.forEach((id,i)=>{
+    if(result.includes(id))return;
+    let at=result.length;
+    for(let j=i-1;j>=0;j--){const k=result.indexOf(def[j]);if(k>=0){at=k+1;break;}}
+    result.splice(at,0,id);
+  });
+  return result;
+}
+function applyBulkLayout(){
+  const bar=$('bulkbar');if(!bar)return;
+  const ids=bulkOrderedIds();
+  ids.forEach(id=>{
+    const el=$('bulk_g_'+id);
+    if(el)bar.appendChild(el);
+  });
+  const clearBtn=$('bulk_clear');
+  if(clearBtn)bar.appendChild(clearBtn);
+  const custBtn=$('bulk_cust_btn');
+  if(custBtn)bar.appendChild(custBtn);
+  BULK_ITEMS.forEach(i=>{
+    const el=$('bulk_g_'+i.id);
+    if(el)el.style.display=bulkHidden.has(i.id)?'none':'inline-flex';
+  });
+}
+
 function loadBarLayout(){
   try{const o=JSON.parse(localStorage.getItem('ado.barOrder')||'null');if(Array.isArray(o))barOrder=o;}catch(e){}
   try{const h=JSON.parse(localStorage.getItem('ado.barHidden')||'null');if(Array.isArray(h))barHidden=new Set(h.filter(id=>!BAR_LOCKED.has(id)));}catch(e){}
@@ -4301,19 +4831,22 @@ function closeCustomize(){$('customize-overlay').classList.remove('show');
   if (window.LayerManager) window.LayerManager.close($('customize-overlay'));}
 function resetCustomize(){       // reset only the currently-active tab to defaults
   if(czTab==='side'){sideOrder=SIDE_GROUPS.map(g=>g.id);sideHidden=new Set(['area', 'activity']);saveSideLayout();applySideLayout();}
+  else if(czTab==='bulk'){bulkOrder=BULK_ITEMS.map(i=>i.id);bulkHidden=new Set(['parent', 'dates']);saveBulkLayout();applyBulkLayout();}
   else{barOrder=BAR_ITEMS.map(i=>i.id);barHidden=new Set();saveBarLayout();applyBarLayout();}
   renderCustomizeList();
 }
 function setCustomizeTab(t){czTab=t;
   $('cz_tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.cz===t));
-  $('cz_title').textContent=t==='side'?'Customize work item panel':'Customize toolbar';
+  $('cz_title').textContent=t==='side'?'Customize work item panel':(t==='bulk'?'Customize bulk edit bar':'Customize toolbar');
   renderCustomizeList();
 }
 function renderCustomizeList(){
   const list=$('customize-list');
   const cfg=czTab==='side'
     ? {items:SIDE_GROUPS,locked:SIDE_LOCKED,orderedIds:sideOrderedIds,save:saveSideLayout,apply:applySideLayout,setOrder:o=>{sideOrder=o;},isHidden:id=>sideHidden.has(id),hide:id=>sideHidden.add(id),show:id=>sideHidden.delete(id)}
-    : {items:BAR_ITEMS,  locked:BAR_LOCKED, orderedIds:barOrderedIds, save:saveBarLayout, apply:applyBarLayout, setOrder:o=>{barOrder=o;}, isHidden:id=>barHidden.has(id), hide:id=>barHidden.add(id), show:id=>barHidden.delete(id)};
+    : (czTab==='bulk'
+      ? {items:BULK_ITEMS,locked:BULK_LOCKED,orderedIds:bulkOrderedIds,save:saveBulkLayout,apply:applyBulkLayout,setOrder:o=>{bulkOrder=o;},isHidden:id=>bulkHidden.has(id),hide:id=>bulkHidden.add(id),show:id=>bulkHidden.delete(id)}
+      : {items:BAR_ITEMS,  locked:BAR_LOCKED, orderedIds:barOrderedIds, save:saveBarLayout, apply:applyBarLayout, setOrder:o=>{barOrder=o;}, isHidden:id=>barHidden.has(id), hide:id=>barHidden.add(id), show:id=>barHidden.delete(id)});
   const byId=Object.fromEntries(cfg.items.map(i=>[i.id,i.label]));
   list.innerHTML=cfg.orderedIds().map(id=>{
     const locked=cfg.locked.has(id),checked=!cfg.isHidden(id);
@@ -4436,11 +4969,33 @@ async function initialBoot(postSetup){
   $('export').querySelectorAll('button').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
   $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}setAutoRefresh(s);};
   // bulk action bar (tree multi-select)
-  $('bulk_state').onchange=e=>{const v=e.target.value;e.target.value='';if(v)bulkApply('state',v);};
-  $('bulk_iter').onchange=e=>{const v=e.target.value;e.target.value='';if(v)bulkApply('iteration',v);};
-  $('bulk_prio').onchange=e=>{const v=e.target.value;e.target.value='';if(v)bulkApply('priority',v);};
-  $('bulk_assign_btn').onclick=()=>{const v=$('bulk_assigned').value.trim();if(v){bulkApply('assigned',v);$('bulk_assigned').value='';}};
+  $('bulk_state').onchange=e=>{const v=e.target.value;if(v)bulkApply('state',v);};
+  $('bulk_prio').onchange=e=>{const v=e.target.value;if(v)bulkApply('priority',v);};
+  $('bulk_tag_op_seg').querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      $('bulk_tag_op_seg').querySelectorAll('button').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      if (window.bulkTagsEditor) window.bulkTagsEditor.render();
+    };
+  });
+  $('bulk_tag_btn').onclick=async()=>{
+    if(window.bulkTagsEditor && bulkTagsEditor.value()){
+      const activeOpBtn=$('bulk_tag_op_seg').querySelector('button.on');
+      const op=activeOpBtn?activeOpBtn.dataset.op:'add';
+      await bulkApply('tags_'+op, bulkTagsEditor.value());
+      bulkTagsEditor.set('', true);
+    }
+  };
+  $('bulk_dates_btn').onclick=()=>{
+    const start=$('bulk_start').value;
+    const target=$('bulk_target').value;
+    if(start||target){
+      bulkApply('dates',{start:start||null,target:target||null});
+    }
+  };
   $('bulk_clear').onclick=clearBulk;
+  $('bulk_cust_btn').onclick=()=>{ showCustomize(); setCustomizeTab('bulk'); };
+  syncBulkDatePicker(null, null);
   // command palette (Ctrl/Cmd+K)
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.code==='KeyK'&&!e.altKey){e.preventDefault();
     $('palette').classList.contains('show')?closePalette():openPalette();}});
@@ -4451,7 +5006,9 @@ async function initialBoot(postSetup){
     const isZ=e.code==='KeyZ',isY=e.code==='KeyY';
     if(!isZ&&!isY)return;
     const t=e.target,tag=t&&t.tagName;
-    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(t&&t.isContentEditable))return;
+    if(t&&t.closest&&t.closest('#bulkbar')) {
+      // Allow undo/redo inside bulk edit bar inputs/selects
+    } else if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(t&&t.isContentEditable))return;
     if($('setup-overlay').classList.contains('show')||$('newitem-overlay').classList.contains('show')||$('sprint-overlay').classList.contains('show')||$('palette').classList.contains('show'))return;
     e.preventDefault();
     if(isY||(isZ&&e.shiftKey))runRedo();else runUndo();});
@@ -4551,8 +5108,7 @@ async function initialBoot(postSetup){
   $('cm_post').onclick=postComment;
   $('cm_cancel').onclick=closeCommentForm;
 
-  // Wire s_desc_toggle and s_desc_attach from header
-  $('s_desc_toggle').onclick=()=>descEditor.togglePreview();
+  // Wire s_desc_attach and fullscreen from header
   $('s_desc_full').onclick=()=>toggleFullscreen();
   $('s_desc_attach').onclick=e=>{e.preventDefault();if(cur!=null)descEditor.triggerAttachmentUpload();};  $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
   $('s_discard').onclick=discardChanges;
@@ -4560,8 +5116,12 @@ async function initialBoot(postSetup){
   assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker
   sprintEditor.wire();sprintNew.wire();                           // sprint card + iteration picker
   depBlockedByPicker.wire();depBlocksPicker.wire();               // dependency adders (Blocked-by / Blocks)
+  bulkAssignedPicker.wire();bulkSprintPicker.wire();bulkParentPicker.wire();
   assignedEditor.render();assignedChild.render();assignedNew.render();sprintEditor.render();sprintNew.render();tagsEditor.render();   // placeholder cards before first use
   depBlockedByPicker.render();depBlocksPicker.render();renderDeps();   // dep card stubs + empty chip rows
+  bulkAssignedPicker.render();bulkSprintPicker.render();bulkParentPicker.render();
+  window.bulkTagsEditor = new TagsEditor('bulk_tag_container');
+  bulkTagsEditor.render();
   // refreshDirty on every keystroke for ALL editable fields, so the chip flips
   // to "● Unsaved" the moment anything diverges from orig.
   ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est','s_area','s_storypoints','s_remaining','s_completed','s_activity_field','s_risk','s_valuearea'].forEach(id=>{
@@ -4705,6 +5265,7 @@ async function initialBoot(postSetup){
   $('customize-overlay').addEventListener('mousedown',e=>{if(e.target===$('customize-overlay'))closeCustomize();});
   $('customize-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeCustomize();}});
   loadBarLayout();applyBarLayout();              // apply the saved toolbar order / hidden set
+  loadBulkLayout();applyBulkLayout();            // apply the saved bulk edit bar order / hidden set
   wireTreeDnD();                                  // drag tree rows to re-parent
   try{const sf=localStorage.getItem('ado.filters');if(sf)Object.assign(fstate,JSON.parse(sf));
     const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;

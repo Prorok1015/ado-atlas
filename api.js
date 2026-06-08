@@ -1192,8 +1192,16 @@ async function timeline(wid, offset) {
   };
 }
 
+async function batchUpdate(operations) {
+  if (!operations || !operations.length) return [];
+  const org = await orgUrl();
+  const url = `${org}/_apis/wit/$batch?${API_VERSION}`;
+  return await req("POST", url, operations, "application/json");
+}
+
 // ---------- exported facade (everything app.js needs) ----------
 window.api = {
+  batchUpdate,
   // config
   getConfig, setConfig, clearConfig,
   // auth (Microsoft Entra ID OAuth)
@@ -1220,5 +1228,5 @@ window.api = {
   // time
   times, timeline,
   // utils
-  pool, chunk200,
+  pool, chunk200, req,
 };

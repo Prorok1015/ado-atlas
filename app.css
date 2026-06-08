@@ -349,9 +349,9 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
   display: none !important;
 }
 .unsaved-header-btns .btn {
-  padding: 2px 7px;
+  padding: 1px 7px;
   font-size: 11px;
-  min-height: 20px;
+  min-height: 18px;
   line-height: 1.2;
 }
 .unsaved-header-btns .btn.save {
@@ -671,8 +671,14 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 /* ---- bulk action bar (tree multi-select) ---- */
 #bulkbar{background:var(--panel);border-bottom:1px solid var(--line);padding:7px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #bulkbar #bulk_count{font-weight:700;color:var(--accent)}
-#bulkbar .bulk_hint{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
-#bulkbar select,#bulkbar input{font-size:12px}
+#bulkbar .bulk-label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin-right:2px;user-select:none}
+#bulkbar select,#bulkbar input,#bulkbar .btn,#bulkbar .pcard,#bulkbar .seg button{font-size:12px;width:auto;min-height:28px !important;height:28px !important;padding-top:3px !important;padding-bottom:3px !important;line-height:20px !important;box-sizing:border-box !important}
+#bulkbar #bulk_tag_op_seg button{padding:0 6px !important;font-size:11px !important}
+#bulkbar .ppick{margin-top:4px;margin-bottom:0;box-shadow:0 4px 18px rgba(0,0,0,0.25)}
+.bulk-group{display:inline-flex;align-items:center;gap:4px;margin-right:4px}
+#bulkbar .tagchip{min-height:28px !important;height:28px !important;line-height:22px !important;box-sizing:border-box !important;font-size:12px;border-radius:14px !important;padding:3px 6px 3px 10px !important}
+#bulkbar .tagchip.add { border: 1.5px solid #2ea44f !important; }
+#bulkbar .tagchip.remove { border: 1.5px solid #cb2431 !important; }
 /* native checkbox size — opt out of the generic full-width `input` rule above */
 /* checkbox is revealed only on row hover or when the row is selected (slot is reserved → no layout shift) */
 .tcheck{flex:none;cursor:pointer;width:14px;height:14px;margin:0 4px 0 0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox;opacity:0;transition:opacity .12s}
@@ -691,7 +697,7 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 .prow{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;font-size:13px}
 .prow.on{background:rgba(47,111,237,0.18)}
 .prow .pkind{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);flex:none;width:46px}
-.prow .ptitle{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .ptitle{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .prow .pbadge{font-size:10px;border-radius:10px;padding:1px 7px;color:#fff;flex:none}
 #palette-foot{border-top:1px solid var(--line);padding:6px 16px;color:var(--muted);font-size:11px}
 
@@ -1065,6 +1071,10 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
   font-weight: 500;
   user-select: none;
   line-height: 1.2;
+}
+
+#confirm-box {
+  width: 440px !important;
 }
 
 

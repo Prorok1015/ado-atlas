@@ -1,4 +1,4 @@
-function parentCardHtml(n){
+function parentCardHtml(n, isBulk){
   return `<i class="dot" style="background:${tyColor(n.type)}"></i>`+
     `<span class="pcid">#${n.id}</span><span class="pctitle">${esc(n.title||'')}</span>`+
     (n.state?`<span class="pcstate" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'');
@@ -72,7 +72,7 @@ function createCardPicker(base,opts){
 
 /* --- provider: parent / any work-item (id+title, with server-side search) --- */
 function itemRow(n){const badge=n.state?`<span class="pbadge" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'';
-  return {value:String(n.id),html:`<span class="pkind">${esc(n.type||'item')}</span><span class="ptitle">#${n.id} ${esc(n.title||'')}</span>${badge}`};}
+  return {value:String(n.id),html:`<i class="dot" style="background:${tyColor(n.type)}"></i><span class="ptitle">#${n.id} ${esc(n.title||'')}</span>${badge}`};}
 
 async function itemApiSearch(term){            // look up items the local tree hasn't loaded
   const m=term.match(/^#?(\d+)$/);
@@ -85,13 +85,29 @@ function itemPickerProvider(getExclude){
   return {
     openValue(v){if(/^\d+$/.test(v))openItem(parseInt(v,10));},
     renderCard(v,card){
-      if(!v){card.innerHTML='<span class="pcnone">(no parent)</span>';return;}
+      const isBulk = card.id === 'bulk_parent_card';
+      if(!v){
+        if (isBulk) {
+          card.innerHTML = '<span class="pcnone">Parent…</span>';
+        } else {
+          card.innerHTML = '<span class="pcnone">(no parent)</span>';
+        }
+        return;
+      }
       const n=store.nodes[v];
-      if(n){card.innerHTML=parentCardHtml(n);return;}
-      card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span><span class="pctitle pcnone">loading…</span>`;
+      if(n && n.title){card.innerHTML=parentCardHtml(n, isBulk);return;}
+      card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>` + (!isBulk ? `<span class="pctitle pcnone">loading…</span>` : '');
       const want=v;                               // resolve the title for an item that isn't in the loaded tree
-      api.item(v).then(it=>{if(card.dataset.val!==want)return;store.nodes[it.id]=store.nodes[it.id]||it;card.innerHTML=parentCardHtml(it);})
-        .catch(()=>{if(card.dataset.val===want)card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>`;});
+      api.item(v).then(it=>{
+        if(card.dataset.val!==want)return;
+        if (it) { store.nodes[it.id] = Object.assign(store.nodes[it.id] || {}, it); }
+        card.innerHTML=parentCardHtml(it, isBulk);
+      })
+      .catch(()=>{
+        if(card.dataset.val===want) {
+          card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>`;
+        }
+      });
     },
     localRows(q){
       q=(q||'').trim().toLowerCase();const toks=q.split(/\s+/).filter(Boolean),ex=getExclude();
@@ -235,7 +251,7 @@ function sprintPickerProvider(getNone){
         if(q&&!it.name.toLowerCase().includes(q))continue;
         const rt=sprintRangeText(it);
         out.push({value:it.path,html:(isCurrentSprint(it)?'<span class="curdot"></span>':'<span class="pkind"></span>')+
-          `<span class="ptitle">${esc(it.name)}</span>`+(rt?`<span class="pcnone">${esc(rt)}</span>`:'')});
+          `<span class="ptitle">${esc(it.name)}</span>`+(rt?`<span class="pcnone" style="flex:none; margin-left:auto;">${esc(rt)}</span>`:'')});
       }
       return out;
     },

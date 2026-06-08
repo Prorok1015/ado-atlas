@@ -64,12 +64,78 @@
 </div>
 <div id="bulkbar" style="display:none">
   <span id="bulk_count">0 selected</span>
-  <span class="bulk_hint">bulk set:</span>
-  <select id="bulk_state" title="set state on selected"><option value="">State…</option></select>
-  <select id="bulk_iter" title="set sprint on selected"><option value="">Sprint…</option></select>
-  <select id="bulk_prio" title="set priority on selected"><option value="">Priority…</option><option value="1">P1</option><option value="2">P2</option><option value="3">P3</option><option value="4">P4</option></select>
-  <span style="display:flex;gap:4px"><input id="bulk_assigned" list="assignees" placeholder="assignee…" style="width:140px"><button class="btn" id="bulk_assign_btn">set</button></span>
+
+  <div class="bulk-group" id="bulk_g_state">
+    <span class="bulk-label">State</span>
+    <select id="bulk_state" title="set state on selected"><option value="">State…</option></select>
+  </div>
+
+  <div class="bulk-group" id="bulk_g_priority">
+    <span class="bulk-label">Priority</span>
+    <select id="bulk_prio" title="set priority on selected"><option value="">Priority…</option><option value="1">P1</option><option value="2">P2</option><option value="3">P3</option><option value="4">P4</option></select>
+  </div>
+
+  <!-- Assignee Card Picker -->
+  <div class="bulk-group" id="bulk_g_assigned" style="display:inline-flex;position:relative">
+    <span class="bulk-label">Assignee</span>
+    <input type="hidden" id="bulk_assigned">
+    <button type="button" class="btn pcard" id="bulk_assigned_card" title="click to change assignee" style="min-width:130px">Assignee…</button>
+    <div id="bulk_assigned_pick" class="ppick" style="display:none;position:absolute;top:100%;left:0;z-index:9000;min-width:220px">
+      <input id="bulk_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+      <div id="bulk_assigned_results" class="presults"></div>
+    </div>
+  </div>
+
+  <!-- Sprint Card Picker -->
+  <div class="bulk-group" id="bulk_g_iteration" style="display:inline-flex;position:relative">
+    <span class="bulk-label">Sprint</span>
+    <input type="hidden" id="bulk_iter">
+    <button type="button" class="btn pcard" id="bulk_iter_card" title="click to change sprint" style="min-width:150px">Sprint…</button>
+    <div id="bulk_iter_pick" class="ppick" style="display:none;position:absolute;top:100%;left:0;z-index:9000;min-width:300px">
+      <input id="bulk_iter_search" class="psearch" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
+      <div id="bulk_iter_results" class="presults"></div>
+    </div>
+  </div>
+
+  <!-- Parent Card Picker -->
+  <div class="bulk-group" id="bulk_g_parent" style="display:inline-flex;position:relative">
+    <span class="bulk-label">Parent</span>
+    <input type="hidden" id="bulk_parent">
+    <button type="button" class="btn pcard" id="bulk_parent_card" title="click to change parent" style="min-width:130px">Parent…</button>
+    <div id="bulk_parent_pick" class="ppick" style="display:none;position:absolute;top:100%;left:0;z-index:9000;min-width:280px">
+      <input id="bulk_parent_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+      <div id="bulk_parent_results" class="presults"></div>
+    </div>
+  </div>
+
+  <!-- Tags Actions -->
+  <div class="bulk-group" id="bulk_g_tags" style="display:inline-flex;gap:4px;align-items:center;">
+    <span class="bulk-label">Tags</span>
+    <div class="seg" id="bulk_tag_op_seg" style="display:inline-flex;margin:0;">
+      <button type="button" class="on" data-op="add">Add</button>
+      <button type="button" data-op="remove">Remove</button>
+    </div>
+    <div id="bulk_tag_container" class="tagedit" style="display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap;"></div>
+    <button class="btn" id="bulk_tag_btn">Apply Tags</button>
+  </div>
+
+  <!-- Dates Actions -->
+  <div class="bulk-group" id="bulk_g_dates" style="display:inline-flex;gap:4px;align-items:center;">
+    <span class="bulk-label">Dates</span>
+    <div class="drp-wrapper" style="position:relative; display:inline-flex;">
+      <div style="position:relative; display:flex; align-items:center;">
+        <input type="text" class="btn pcard" id="bulk-range-trigger" placeholder="Select dates..." style="width:200px; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+        <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+      </div>
+      <div id="bulk-range-picker" class="drp-popover"></div>
+    </div>
+    <input id="bulk_start" type="hidden">
+    <input id="bulk_target" type="hidden">
+    <button class="btn" id="bulk_dates_btn">set dates</button>
+  </div>
+
   <button class="btn" id="bulk_clear" title="clear selection">✕ clear</button>
+  <button class="btn" id="bulk_cust_btn" title="customize bulk bar" style="padding: 2px 8px;">⋮</button>
 </div>
 <datalist id="assignees"></datalist>
 <div id="main">
@@ -92,7 +158,6 @@
         <button type="button" class="btn discard" id="s_discard" title="Discard changes">Discard</button>
       </div>
       <button class="btn icon" id="s_desc_attach" title="attach a file (or paste / drop into the description)">📎</button>
-      <button class="btn icon" id="s_desc_toggle" title="toggle description preview / edit">👁</button>
       <button class="btn icon" id="s_customize" title="customize this panel (reorder / show-hide fields)">⚙</button>
       <a class="btn icon" id="s_link" target="_blank" title="open in Azure DevOps">↗</a>
       <button class="btn icon" id="s_desc_full" title="toggle full-screen editor (Esc to exit)">⛶</button>
@@ -406,6 +471,7 @@
     <div id="cz_tabs">
       <button data-cz="bar" class="on">Toolbar</button>
       <button data-cz="side">Work item panel</button>
+      <button data-cz="bulk">Bulk Edit</button>
     </div>
     <p class="hint">Drag rows to reorder, uncheck to hide. Changes apply live and are remembered.</p>
     <div id="customize-list"></div>
