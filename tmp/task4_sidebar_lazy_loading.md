@@ -48,6 +48,7 @@
    - Открыть задачу, мгновенно изменить статус или назначение (пока описание еще грузится). Проверить, что это изменение успешно сохранилось и не было перетерто после прихода ответа от фонового запроса `itemFull`.
 
 # Промежуточные баги
+## Решены
 1. При быстрому переключению между итемами видимо новые поля не успевают отменять свои запросы и иногда срабатывает диалог дискарда данных хотя я в карточках ничего не изменял.
 2. При включении отображения новых полей в лайауте они делают какой то кривой запрос и выбают ошибку
    api.js:244 
@@ -66,6 +67,7 @@
    index.html#:1 Executing inline event handler violates the following Content Security Policy directive 'script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' http://localhost:* http://127.0.0.1:*'. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
    index.html#:1 Executing inline event handler violates the following Content Security Policy directive 'script-src 'self''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
    index.html#:1 Executing inline event handler violates the following Content Security Policy directive 'script-src 'self' 'wasm-unsafe-eval' 'inline-speculation-rules' http://localhost:* http://127.0.0.1:*'. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
+## Остались
 4. Хорошо было бы ввести понятие групп в лайаут и дать возможность это настраивать. Например можно было бы линию Start-Target, Due, Est H Сделать группой и тогда можно было бы её разобрать или заменить в ней поля как хочешь. А то сейчас новые поля каждый на новой строчке и это выглядит не красиво.
 5. Так же было бы здорово разработать компонент для ввода рабочего времени, который бы поддерживал математические операции со временем(например 1h + 3d + 1w - 4h) Надо продумать такой компонент и использовать везде где надо задавать рабочее время.
 6. Поправить что ничего не отображается у поля парента если парент не задан в сайдбаре. Там стрелка перехода на родителя если родитель есть, но если его нет, то там просто пустое место. Надо либо рисовать кнопку задизейбленной, либо растягивать поле ввода до конца вправо.

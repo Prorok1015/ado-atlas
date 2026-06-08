@@ -4726,13 +4726,15 @@ function loadSideLayout(){
 function saveSideLayout(){try{localStorage.setItem('ado.sideOrder',JSON.stringify(sideOrderedIds()));localStorage.setItem('ado.sideHidden',JSON.stringify([...sideHidden]));}catch(e){}}
 function sideOrderedIds(){     // same recovery as barOrderedIds — re-insert missing ids near their defaults
   const def=SIDE_GROUPS.map(g=>g.id),defSet=new Set(def);
-  const result=sideOrder.filter((id,i)=>defSet.has(id)&&sideOrder.indexOf(id)===i);
+  const result=sideOrder.filter((id,i)=>id!=='actions'&&defSet.has(id)&&sideOrder.indexOf(id)===i);
   def.forEach((id,i)=>{
+    if(id==='actions')return;
     if(result.includes(id))return;
     let at=result.length;
     for(let j=i-1;j>=0;j--){const k=result.indexOf(def[j]);if(k>=0){at=k+1;break;}}
     result.splice(at,0,id);
   });
+  result.push('actions');
   return result;
 }
 function applySideLayout(){
@@ -4848,7 +4850,7 @@ function renderCustomizeList(){
       ? {items:BULK_ITEMS,locked:BULK_LOCKED,orderedIds:bulkOrderedIds,save:saveBulkLayout,apply:applyBulkLayout,setOrder:o=>{bulkOrder=o;},isHidden:id=>bulkHidden.has(id),hide:id=>bulkHidden.add(id),show:id=>bulkHidden.delete(id)}
       : {items:BAR_ITEMS,  locked:BAR_LOCKED, orderedIds:barOrderedIds, save:saveBarLayout, apply:applyBarLayout, setOrder:o=>{barOrder=o;}, isHidden:id=>barHidden.has(id), hide:id=>barHidden.add(id), show:id=>barHidden.delete(id)});
   const byId=Object.fromEntries(cfg.items.map(i=>[i.id,i.label]));
-  list.innerHTML=cfg.orderedIds().map(id=>{
+  list.innerHTML=cfg.orderedIds().filter(id=>id!=='actions').map(id=>{
     const locked=cfg.locked.has(id),checked=!cfg.isHidden(id);
     const grip=locked?'<span class="czgrip disabled" title="locked field">🔒</span>':'<span class="czgrip" title="drag to reorder">⠿</span>';
     return `<div class="czrow${locked?' locked':''}" draggable="${!locked}" data-id="${id}">${grip}`+
