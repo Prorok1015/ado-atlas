@@ -403,6 +403,67 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .reaction-emoji-btn{font-size:15px;background:transparent;border:0;cursor:pointer;padding:1px 3px;border-radius:50%;transition:transform 0.1s ease,background 0.1s ease}
 .reaction-emoji-btn:hover{transform:scale(1.25);background:var(--line)}
 
+/* Animated reaction chips & emojis */
+@keyframes heartBeat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.25); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.25); }
+  70% { transform: scale(1); }
+}
+@keyframes thumbWiggle {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-12deg) scale(1.1); }
+  75% { transform: rotate(12deg) scale(1.1); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes hoorayShake {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(1px, -1px) rotate(8deg) scale(1.1); }
+  50% { transform: translate(-1px, 1px) rotate(-8deg) scale(1.1); }
+  75% { transform: translate(1px, -1px) rotate(4deg) scale(1.1); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes smileBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px) scale(1.1); }
+}
+@keyframes confusedWobble {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
+}
+
+.emoji-symbol {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.reaction-chip[data-type="heart"]:hover .emoji-symbol,
+.reaction-emoji-btn[title="heart"]:hover {
+  animation: heartBeat 0.8s infinite ease-in-out;
+}
+.reaction-chip[data-type="like"]:hover .emoji-symbol,
+.reaction-emoji-btn[title="like"]:hover {
+  animation: thumbWiggle 0.5s infinite ease-in-out;
+}
+.reaction-chip[data-type="dislike"]:hover .emoji-symbol,
+.reaction-emoji-btn[title="dislike"]:hover {
+  animation: thumbWiggle 0.5s infinite ease-in-out;
+}
+.reaction-chip[data-type="hooray"]:hover .emoji-symbol,
+.reaction-emoji-btn[title="hooray"]:hover {
+  animation: hoorayShake 0.6s infinite ease-in-out;
+}
+.reaction-chip[data-type="smile"]:hover .emoji-symbol,
+.reaction-emoji-btn[title="smile"]:hover {
+  animation: smileBounce 0.5s infinite ease-in-out;
+}
+.reaction-chip[data-type="confused"]:hover .emoji-symbol,
+.reaction-emoji-btn[title="confused"]:hover {
+  animation: confusedWobble 0.6s infinite ease-in-out;
+}
+
 /* Inline Comment Editor */
 .inline-comment-edit-textarea{width:100%;min-height:56px;font-family:inherit;font-size:12px;background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 7px;resize:vertical;margin-bottom:6px}
 .inline-comment-edit-actions{display:flex;gap:6px;justify-content:flex-end}
@@ -798,6 +859,84 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
 #customize-actions{display:flex;gap:8px;margin-top:14px}
 #customize-actions .btn{flex:1;padding:7px 12px;font-size:13px}
 
+/* Customize Emojis overlay */
+#emojis-overlay{position:fixed;inset:0;background:rgba(8,11,15,0.85);z-index:10000;display:none;align-items:center;justify-content:center}
+#emojis-overlay.show{display:flex}
+#emojis-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px;width:440px;max-width:92vw;color:var(--txt)}
+#emojis-box h1{font-size:16px;margin:0 0 6px}
+#emojis-box .hint{color:var(--muted);font-size:12px;margin:0 0 10px}
+#emojis-inputs-list{max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:14px;padding-right:4px}
+.emoji-config-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.emoji-preview-col {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.emoji-preview-col img, .emoji-preview-col .emoji-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.emoji-config-row .ml.emoji-label {
+  width: 60px;
+  color: var(--txt);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.emoji-config-row input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 2px 8px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--field);
+  color: var(--txt);
+}
+.file-upload-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+#emojis-actions{display:flex;gap:8px;margin-top:14px}
+#emojis-actions .btn{flex:1;padding:7px 12px;font-size:13px}
+
+.emoji-img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+.reaction-emoji-img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
 /* ---- custom confirmation / link modals ---- */
 #confirm-overlay, #link-overlay {
   z-index: 20000; /* above everything else, including settings / customize overlays */
@@ -819,6 +958,27 @@ a.adolink{color:var(--accent);font-size:12px;text-decoration:none}
   flex-direction: column;
   gap: 12px;
   animation: confirmPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+}
+
+.emoji-row-error {
+  position: absolute;
+  background: #e0524d;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  animation: slideUpFade 0.2s ease;
+  transition: opacity 0.2s ease;
+}
+.emoji-row-error::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 14px;
+  border: 5px solid transparent;
+  border-top-color: #e0524d;
 }
 @keyframes confirmPop {
   from { opacity: 0; transform: scale(0.96); }

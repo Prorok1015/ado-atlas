@@ -41,7 +41,10 @@
         <select id="f_tz" title="timezone for work-hours / active-time"></select></div>
       <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours</span>
         <span class="whrs"><input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span></div>
-      <div class="mrow mrow-full"><button class="btn" id="cz_open" title="reorder / show-hide toolbar buttons and work-item panel fields">⠿ Customize layout…</button></div>
+      <div class="mrow mrow-full" style="display:flex;gap:6px;align-items:stretch">
+        <button class="btn" id="cz_open" style="flex:1" title="reorder / show-hide toolbar buttons and work-item panel fields">⠿ Customize layout…</button>
+        <button class="btn" id="emojis_open" style="width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Customize reactions emojis or images">☺</button>
+      </div>
       <div class="mrow mrow-full"><button class="btn" id="settingsbtn" title="Azure DevOps connection (PAT / org / project)">⚙ Connection (PAT / org / project)…</button></div>
     </div>
   </span>
@@ -478,6 +481,74 @@
     <div id="customize-actions">
       <button class="btn" id="cz_reset">Reset to default</button>
       <button class="btn save" id="cz_done">Done</button>
+    </div>
+  </div>
+</div>
+<!-- Customize emojis modal -->
+<div id="emojis-overlay">
+  <div id="emojis-box">
+    <h1>Customize Reactions</h1>
+    <p class="hint">Override standard reactions with custom emojis or image URLs (https://...). Leave blank to restore defaults.</p>
+    <div id="emojis-inputs-list">
+      <div class="emoji-config-row">
+        <div class="emoji-preview-col" id="emoji_preview_like"></div>
+        <span class="ml emoji-label">Like</span>
+        <input id="emoji_override_like" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" title="Upload custom image file">
+          📁
+          <input type="file" accept="image/*" class="emoji-file-input" data-type="like" style="display:none">
+        </label>
+      </div>
+      <div class="emoji-config-row">
+        <div class="emoji-preview-col" id="emoji_preview_dislike"></div>
+        <span class="ml emoji-label">Dislike</span>
+        <input id="emoji_override_dislike" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" title="Upload custom image file">
+          📁
+          <input type="file" accept="image/*" class="emoji-file-input" data-type="dislike" style="display:none">
+        </label>
+      </div>
+      <div class="emoji-config-row">
+        <div class="emoji-preview-col" id="emoji_preview_heart"></div>
+        <span class="ml emoji-label">Heart</span>
+        <input id="emoji_override_heart" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" title="Upload custom image file">
+          📁
+          <input type="file" accept="image/*" class="emoji-file-input" data-type="heart" style="display:none">
+        </label>
+      </div>
+      <div class="emoji-config-row">
+        <div class="emoji-preview-col" id="emoji_preview_hooray"></div>
+        <span class="ml emoji-label">Hooray</span>
+        <input id="emoji_override_hooray" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" title="Upload custom image file">
+          📁
+          <input type="file" accept="image/*" class="emoji-file-input" data-type="hooray" style="display:none">
+        </label>
+      </div>
+      <div class="emoji-config-row">
+        <div class="emoji-preview-col" id="emoji_preview_smile"></div>
+        <span class="ml emoji-label">Smile</span>
+        <input id="emoji_override_smile" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" title="Upload custom image file">
+          📁
+          <input type="file" accept="image/*" class="emoji-file-input" data-type="smile" style="display:none">
+        </label>
+      </div>
+      <div class="emoji-config-row">
+        <div class="emoji-preview-col" id="emoji_preview_confused"></div>
+        <span class="ml emoji-label">Confused</span>
+        <input id="emoji_override_confused" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" title="Upload custom image file">
+          📁
+          <input type="file" accept="image/*" class="emoji-file-input" data-type="confused" style="display:none">
+        </label>
+      </div>
+    </div>
+    <div id="emojis-actions">
+      <button class="btn" id="emojis_reset">Reset to default</button>
+      <button class="btn save" id="emojis_save">Save</button>
+      <button class="btn" id="emojis_cancel">Cancel</button>
     </div>
   </div>
 </div>

@@ -206,6 +206,8 @@ let pendingSprintItems=null;                     // cards dropped on "＋ New sp
 let tzOffset=Math.round(-new Date().getTimezoneOffset()/60);   // UTC offset for work-hours (default: browser TZ)
 let sprintGroup='none';                         // expanded-sprint grouping: 'none' | 'assignee'
 let currentUser='';                      // display name of the PAT owner (for the "me" shortcuts)
+let currentComments=[], currentHistory=[];      // tracked comments and history for activity feed
+const activeCommentEditors = new Map();         // active inline MarkdownEditor instances
 let projectName='';                      // configured ADO project (root path = "no sprint" fallback)
 let assignees=[];                        // participant names (for the Assigned filter chips + datalist)
 let projectStates=[];                    // real states fetched from the project (State filter chips)
@@ -3330,21 +3332,167 @@ async function postComment(){
 }
 
 /* ---------- activity reactions, expansion, inline edits ---------- */
-const reactionsStorageKey = 'ado.comment_reactions';
-function getReactions(wid, commentId) {
+function getEmojiMap() {
+  const defaults = {
+    like: 'icons/reactions/like.png',
+    dislike: 'icons/reactions/dislike.png',
+    heart: 'icons/reactions/heart.png',
+    hooray: 'icons/reactions/hooray.png',
+    smile: 'icons/reactions/smile.png',
+    confused: 'icons/reactions/confused.png'
+  };
   try {
-    const data = JSON.parse(localStorage.getItem(reactionsStorageKey) || '{}');
-    return data[wid + '-' + commentId] || {};
+    const custom = JSON.parse(localStorage.getItem('ado.custom_emojis') || '{}');
+    return { ...defaults, ...custom };
   } catch (e) {
-    return {};
+    return defaults;
   }
 }
-function saveReactions(wid, commentId, reactions) {
-  try {
-    const data = JSON.parse(localStorage.getItem(reactionsStorageKey) || '{}');
-    data[wid + '-' + commentId] = reactions;
-    localStorage.setItem(reactionsStorageKey, JSON.stringify(data));
-  } catch (e) {}
+
+function renderEmojiMarkup(type, emojiVal) {
+  const isUrl = /^(https?:\/\/|chrome-extension:\/\/|icons\/|data:image\/)/.test(emojiVal);
+  if (isUrl) {
+    return `<img class="emoji-img" src="${emojiVal}" alt="${type}">`;
+  }
+  return emojiVal;
+}
+
+function showEmojisModal() {
+  const m = $('morepanel');
+  if (m) {
+    m.style.display = 'none';
+    $('morebtn').classList.remove('on');
+  }
+  const current = getEmojiMap();
+  const defaults = {
+    like: 'icons/reactions/like.png',
+    dislike: 'icons/reactions/dislike.png',
+    heart: 'icons/reactions/heart.png',
+    hooray: 'icons/reactions/hooray.png',
+    smile: 'icons/reactions/smile.png',
+    confused: 'icons/reactions/confused.png'
+  };
+  for (const [type, val] of Object.entries(current)) {
+    const input = $(`emoji_override_${type}`);
+    if (input) {
+      if (val === defaults[type]) {
+        input.value = '';
+      } else {
+        input.value = val;
+      }
+      updateEmojiInputPreview(type);
+    }
+  }
+  const overlay = $('emojis-overlay');
+  overlay.classList.add('show');
+  if (window.LayerManager) {
+    window.LayerManager.open(overlay);
+  }
+}
+
+function updateEmojiInputPreview(type) {
+  const input = $(`emoji_override_${type}`);
+  const previewDiv = $(`emoji_preview_${type}`);
+  if (!input || !previewDiv) return;
+  const val = input.value.trim();
+  const defaults = {
+    like: 'icons/reactions/like.png',
+    dislike: 'icons/reactions/dislike.png',
+    heart: 'icons/reactions/heart.png',
+    hooray: 'icons/reactions/hooray.png',
+    smile: 'icons/reactions/smile.png',
+    confused: 'icons/reactions/confused.png'
+  };
+  const displayVal = val || defaults[type];
+  previewDiv.innerHTML = renderEmojiMarkup(type, displayVal);
+}
+
+function showEmojiRowError(type, message) {
+  const inputEl = $(`emoji_override_${type}`);
+  if (!inputEl) return;
+  const row = inputEl.closest('.emoji-config-row');
+  if (!row) return;
+  
+  const existing = document.querySelector(`.emoji-row-error[data-row-type="${type}"]`);
+  if (existing) {
+    if (window.LayerManager) window.LayerManager.close(existing);
+    existing.remove();
+  }
+  
+  const err = document.createElement('div');
+  err.className = 'emoji-row-error';
+  err.dataset.rowType = type;
+  err.textContent = message;
+  
+  const overlay = $('emojis-overlay');
+  overlay.appendChild(err);
+  
+  const rRect = row.getBoundingClientRect();
+  const oRect = overlay.getBoundingClientRect();
+  
+  const top = rRect.top - oRect.top - 32;
+  const right = oRect.right - rRect.right + 10;
+  
+  err.style.top = `${top}px`;
+  err.style.right = `${right}px`;
+  
+  if (window.LayerManager) {
+    window.LayerManager.open(err, null, { isPopover: true });
+  }
+  
+  setTimeout(() => {
+    err.style.opacity = '0';
+    setTimeout(() => {
+      if (window.LayerManager) window.LayerManager.close(err);
+      err.remove();
+    }, 200);
+  }, 4000);
+}
+
+function closeEmojisModal() {
+  const overlay = $('emojis-overlay');
+  overlay.classList.remove('show');
+  if (window.LayerManager) {
+    window.LayerManager.close(overlay);
+  }
+}
+
+function resetEmojis() {
+  localStorage.removeItem('ado.custom_emojis');
+  closeEmojisModal();
+  loadActivity();
+}
+
+function saveEmojis() {
+  const custom = {};
+  const types = ['like', 'dislike', 'heart', 'hooray', 'smile', 'confused'];
+  for (const type of types) {
+    const val = $(`emoji_override_${type}`).value.trim();
+    if (val) {
+      custom[type] = val;
+    }
+  }
+  localStorage.setItem('ado.custom_emojis', JSON.stringify(custom));
+  closeEmojisModal();
+  loadActivity();
+}
+
+function updateCommentReactionsUI(commentId, reactions) {
+  const card = document.querySelector(`.comment-card[data-cid="${commentId}"]`);
+  if (!card) return;
+  const reactionsDiv = card.querySelector('.comment-reactions');
+  if (!reactionsDiv) return;
+
+  const emojiMap = getEmojiMap();
+  let reactHtml = '';
+  Object.entries(emojiMap).forEach(([type, emojiVal]) => {
+    const data = reactions[type];
+    if (data && data.count > 0) {
+      const active = data.me ? 'active' : '';
+      reactHtml += `<span class="reaction-chip ${active}" data-cid="${commentId}" data-type="${type}"><span class="emoji-symbol">${renderEmojiMarkup(type, emojiVal)}</span> <span class="rc-count">${data.count}</span></span>`;
+    }
+  });
+  reactionsDiv.innerHTML = reactHtml;
 }
 
 function toggleActivityExpand(forceState) {
@@ -3500,20 +3648,18 @@ function initActivityResizer() {
 }
 
 let activeEmojiPicker = null;
-function showEmojiPicker(e, commentId) {
-  e.stopPropagation();
+function showEmojiPicker(btn, commentId) {
   closeEmojiPicker();
   
-  const btn = e.currentTarget;
   const pop = document.createElement('div');
   pop.className = 'reactions-popover';
-  const emojiMap = { like: '👍', heart: '❤️', smile: '😄', party: '🎉', rocket: '🚀', eyes: '👀' };
+  const emojiMap = getEmojiMap();
   
-  Object.entries(emojiMap).forEach(([type, emoji]) => {
+  Object.entries(emojiMap).forEach(([type, emojiVal]) => {
     const emojiBtn = document.createElement('button');
     emojiBtn.className = 'reaction-emoji-btn';
     emojiBtn.type = 'button';
-    emojiBtn.textContent = emoji;
+    emojiBtn.innerHTML = renderEmojiMarkup(type, emojiVal);
     emojiBtn.title = type;
     emojiBtn.onclick = (ev) => {
       ev.stopPropagation();
@@ -3543,19 +3689,46 @@ function closeEmojiPickerOutside(e) {
   }
 }
 
-function toggleReaction(commentId, type) {
+async function toggleReaction(commentId, type) {
   if (cur == null) return;
-  const reacts = getReactions(cur, commentId);
-  if (!reacts[type]) reacts[type] = [];
-  const user = currentUser || 'me';
-  const idx = reacts[type].indexOf(user);
-  if (idx >= 0) {
-    reacts[type].splice(idx, 1);
+  const c = currentComments.find(x => x.id === commentId);
+  if (!c) return;
+
+  if (!c.reactions) c.reactions = {};
+  if (!c.reactions[type]) c.reactions[type] = { count: 0, me: false };
+
+  const wasMe = c.reactions[type].me;
+  
+  // Optimistic update
+  if (wasMe) {
+    c.reactions[type].me = false;
+    c.reactions[type].count = Math.max(0, c.reactions[type].count - 1);
   } else {
-    reacts[type].push(user);
+    c.reactions[type].me = true;
+    c.reactions[type].count++;
   }
-  saveReactions(cur, commentId, reacts);
-  loadActivity();
+
+  // Update specific comment reactions UI
+  updateCommentReactionsUI(commentId, c.reactions);
+
+  try {
+    if (wasMe) {
+      await api.removeCommentReaction(cur, commentId, type);
+    } else {
+      await api.addCommentReaction(cur, commentId, type);
+    }
+  } catch (err) {
+    setStatus('ERROR: ' + err.message, true);
+    // Revert optimistic update
+    if (wasMe) {
+      c.reactions[type].me = true;
+      c.reactions[type].count++;
+    } else {
+      c.reactions[type].me = false;
+      c.reactions[type].count = Math.max(0, c.reactions[type].count - 1);
+    }
+    updateCommentReactionsUI(commentId, c.reactions);
+  }
 }
 
 function editCommentInline(commentId) {
@@ -3570,30 +3743,39 @@ function editCommentInline(commentId) {
   const rawText = card.dataset.rawMarkdown || '';
   
   bodyEl.innerHTML = `
-    <textarea class="inline-comment-edit-textarea">${esc(rawText)}</textarea>
-    <div class="inline-comment-edit-actions">
-      <button type="button" class="btn btn-sm" onclick="cancelEditComment(event, ${commentId})">Cancel</button>
-      <button type="button" class="btn btn-sm save" onclick="saveEditComment(event, ${commentId})">Save</button>
+    <div class="inline-comment-edit-container" id="inline_comment_editor_${commentId}"></div>
+    <div class="inline-comment-edit-actions" style="margin-top: 8px;">
+      <button type="button" class="btn btn-sm cancel-comment-edit-btn" data-cid="${commentId}">Cancel</button>
+      <button type="button" class="btn btn-sm save save-comment-edit-btn" data-cid="${commentId}">Save</button>
     </div>
   `;
+
+  const editorContainer = document.getElementById(`inline_comment_editor_${commentId}`);
+  const ed = new MarkdownEditor(editorContainer, {
+    placeholder: 'Edit your comment...',
+    allowAttachments: false,
+    allowMentions: true
+  });
+  ed.value = rawText;
+  activeCommentEditors.set(commentId, ed);
 }
 function cancelEditComment(e, commentId) {
   e.stopPropagation();
+  activeCommentEditors.delete(commentId);
   loadActivity();
 }
 async function saveEditComment(e, commentId) {
   e.stopPropagation();
-  const card = document.querySelector(`.comment-card[data-cid="${commentId}"]`);
-  if (!card) return;
-  const ta = card.querySelector('.inline-comment-edit-textarea');
-  if (!ta) return;
-  const text = ta.value.trim();
+  const ed = activeCommentEditors.get(commentId);
+  if (!ed) return;
+  const text = ed.value.trim();
   if (!text) return;
   
   loadStart('saving…');
   try {
     await api.updateComment(cur, commentId, text);
     setStatus('Comment updated');
+    activeCommentEditors.delete(commentId);
   } catch (err) {
     setStatus('ERROR: ' + err.message, true);
   }
@@ -3630,8 +3812,56 @@ async function loadActivity(){
     arrow.classList.remove('spinning');
   }
   if(_actId!==id||cur!==id)return;                 // user switched items mid-load
+  currentComments = cs;
+  currentHistory = hs;
   renderActivity(cs,hs);
 }
+function handleActivityClick(e) {
+  const chip = e.target.closest('.reaction-chip');
+  if (chip) {
+    e.stopPropagation();
+    const cid = parseInt(chip.dataset.cid, 10);
+    const type = chip.dataset.type;
+    toggleReaction(cid, type);
+    return;
+  }
+  const reactBtn = e.target.closest('.react-btn');
+  if (reactBtn) {
+    e.stopPropagation();
+    const cid = parseInt(reactBtn.dataset.cid, 10);
+    showEmojiPicker(reactBtn, cid);
+    return;
+  }
+  const editBtn = e.target.closest('.edit-btn');
+  if (editBtn) {
+    e.stopPropagation();
+    const cid = parseInt(editBtn.dataset.cid, 10);
+    editCommentInline(cid);
+    return;
+  }
+  const deleteBtn = e.target.closest('.delete-btn');
+  if (deleteBtn) {
+    e.stopPropagation();
+    const cid = parseInt(deleteBtn.dataset.cid, 10);
+    deleteCommentAction(cid);
+    return;
+  }
+  const cancelBtn = e.target.closest('.cancel-comment-edit-btn');
+  if (cancelBtn) {
+    e.stopPropagation();
+    const cid = parseInt(cancelBtn.dataset.cid, 10);
+    cancelEditComment(e, cid);
+    return;
+  }
+  const saveBtn = e.target.closest('.save-comment-edit-btn');
+  if (saveBtn) {
+    e.stopPropagation();
+    const cid = parseInt(saveBtn.dataset.cid, 10);
+    saveEditComment(e, cid);
+    return;
+  }
+}
+
 function renderActivity(cs,hs){
   const fd=s=>s?String(s).slice(0,16).replace('T',' '):'';
   
@@ -3653,20 +3883,26 @@ function renderActivity(cs,hs){
   `;
   if(!cs.length)h+='<div class="achg">no comments</div>';
   
-  const emojiMap = { like: '👍', heart: '❤️', smile: '😄', party: '🎉', rocket: '🚀', eyes: '👀' };
+  const emojiMap = getEmojiMap();
   
   cs.forEach(c => {
     const initials = personInitials(c.by);
     const avColor = personColor(c.by);
-    const reacts = getReactions(cur, c.id);
+    const reacts = c.reactions || {};
     let reactHtml = '';
     Object.entries(emojiMap).forEach(([type, emoji]) => {
-      const users = reacts[type] || [];
-      if (users.length > 0) {
-        const active = users.includes(currentUser || 'me') ? 'active' : '';
-        reactHtml += `<span class="reaction-chip ${active}" onclick="event.stopPropagation(); toggleReaction(${c.id}, '${type}')" title="${esc(users.join(', '))}">${emoji} <span class="rc-count">${users.length}</span></span>`;
+      const data = reacts[type];
+      if (data && data.count > 0) {
+        const active = data.me ? 'active' : '';
+        reactHtml += `<span class="reaction-chip ${active}" data-cid="${c.id}" data-type="${type}"><span class="emoji-symbol">${renderEmojiMarkup(type, emoji)}</span> <span class="rc-count">${data.count}</span></span>`;
       }
     });
+    
+    const isAuthor = currentUser && c.by && (c.by.trim().toLowerCase() === currentUser.trim().toLowerCase());
+    const actionsHtml = isAuthor ? `
+              <button type="button" class="c-action-btn edit-btn" title="Edit comment" data-cid="${c.id}">✎</button>
+              <button type="button" class="c-action-btn delete-btn" title="Delete comment" data-cid="${c.id}">🗑</button>
+    ` : '';
     
     h += `
       <div class="comment-card" data-cid="${c.id}" data-raw-markdown="${esc(c.text)}">
@@ -3676,9 +3912,8 @@ function renderActivity(cs,hs){
             <span class="comment-author">${esc(c.by)}</span>
             <span class="comment-time">${fd(c.date)}</span>
             <div class="comment-actions">
-              <button type="button" class="c-action-btn react-btn" title="Add reaction" onclick="showEmojiPicker(event, ${c.id})">☺</button>
-              <button type="button" class="c-action-btn edit-btn" title="Edit comment" onclick="editCommentInline(${c.id})">✎</button>
-              <button type="button" class="c-action-btn delete-btn" title="Delete comment" onclick="deleteCommentAction(${c.id})">🗑</button>
+              <button type="button" class="c-action-btn react-btn" title="Add reaction" data-cid="${c.id}">☺</button>
+              ${actionsHtml}
             </div>
           </div>
           <div class="atext">${mdToHtml(c.text, descRenderOpts())}</div>
@@ -3723,9 +3958,15 @@ function renderActivity(cs,hs){
   });
   h += '</div>';
   
-  $('s_activity').innerHTML=h;
-  hydratePreviewImages($('s_activity'));
-  colorMentions($('s_activity'));
+  const box = $('s_activity');
+  box.innerHTML=h;
+  hydratePreviewImages(box);
+  colorMentions(box);
+  
+  if (box && !box.dataset.wired) {
+    box.dataset.wired = 'true';
+    box.addEventListener('click', handleActivityClick);
+  }
   
   const ach = $('activity_comments_header');
   if (ach) {
@@ -5262,6 +5503,41 @@ async function initialBoot(postSetup){
   $('sp_name').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createSprintSubmit();}});
   // customize-toolbar dialog
   $('cz_open').onclick=showCustomize;$('cz_done').onclick=closeCustomize;$('cz_reset').onclick=resetCustomize;
+  // customize-emojis dialog
+  $('emojis_open').onclick=showEmojisModal;$('emojis_save').onclick=saveEmojis;$('emojis_cancel').onclick=closeEmojisModal;$('emojis_reset').onclick=resetEmojis;
+  $('emojis-overlay').addEventListener('mousedown',e=>{if(e.target===$('emojis-overlay'))closeEmojisModal();});
+  $('emojis-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeEmojisModal();}});
+  
+  // Wire dynamic preview updates and file uploads for customize emojis overlay
+  const emojiTypes = ['like', 'dislike', 'heart', 'hooray', 'smile', 'confused'];
+  emojiTypes.forEach(type => {
+    const input = $(`emoji_override_${type}`);
+    if (input) {
+      input.addEventListener('input', () => updateEmojiInputPreview(type));
+    }
+  });
+  document.querySelectorAll('.emoji-file-input').forEach(fileIn => {
+    fileIn.addEventListener('change', e => {
+      const type = fileIn.dataset.type;
+      const file = e.target.files[0];
+      if (file) {
+        if (file.size > 256 * 1024) {
+          showEmojiRowError(type, 'File too large! Choose an image under 256KB.');
+          fileIn.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const input = $(`emoji_override_${type}`);
+          if (input) {
+            input.value = ev.target.result;
+            updateEmojiInputPreview(type);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  });
   $('cz_tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>setCustomizeTab(b.dataset.cz));
   loadSideLayout();applySideLayout();          // restore the saved sidebar group order / hidden set
   $('customize-overlay').addEventListener('mousedown',e=>{if(e.target===$('customize-overlay'))closeCustomize();});

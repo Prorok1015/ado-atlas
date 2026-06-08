@@ -998,13 +998,45 @@ async function deleteComment(wid, commentId) {
   return { ok: true };
 }
 
+async function addCommentReaction(wid, commentId, reactionType) {
+  const proj = await projUrl();
+  await req("PUT", `${proj}/_apis/wit/workitems/${wid}/comments/${commentId}/reactions/${reactionType}?api-version=7.1-preview.1`);
+  return { ok: true };
+}
+
+async function removeCommentReaction(wid, commentId, reactionType) {
+  const proj = await projUrl();
+  await req("DELETE", `${proj}/_apis/wit/workitems/${wid}/comments/${commentId}/reactions/${reactionType}?api-version=7.1-preview.1`);
+  return { ok: true };
+}
+
 // Existing comments on an item (newest first). Comment bodies are HTML → markdown.
 async function comments(wid, options) {
   const proj = await projUrl();
   try {
-    const r = await req("GET", `${proj}/_apis/wit/workItems/${wid}/comments?api-version=7.1-preview.3&$top=200`, undefined, undefined, options);
+    const r = await req("GET", `${proj}/_apis/wit/workitems/${wid}/comments?$expand=all&api-version=7.1-preview.3&$top=200`, undefined, undefined, options);
     return (r.comments || [])
-      .map(c => ({ id: c.id, text: htmlToMarkdown(c.text), by: ((c.createdBy || {}).displayName) || "", date: c.createdDate || c.modifiedDate || "" }))
+      .map(c => {
+        const reactions = {};
+        if (c.reactions) {
+          c.reactions.forEach(react => {
+            const type = react.commentReactionType || react.type;
+            if (type) {
+              reactions[type] = {
+                count: react.count,
+                me: !!(react.isCurrentUserReacted || react.isCurrentUserEngaged)
+              };
+            }
+          });
+        }
+        return {
+          id: c.id,
+          text: htmlToMarkdown(c.text),
+          by: ((c.createdBy || {}).displayName) || "",
+          date: c.createdDate || c.modifiedDate || "",
+          reactions: reactions
+        };
+      })
       .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   } catch (_) { return []; }
 }
@@ -1222,7 +1254,7 @@ window.api = {
   // dependency links (create / remove / per-item lookup)
   addDependency, removeDependency, dependencies,
   // item ops
-  item, updateItem, comment, comments, updateComment, deleteComment, history, createItem, deleteItem, setParent,
+  item, updateItem, comment, comments, updateComment, deleteComment, addCommentReaction, removeCommentReaction, history, createItem, deleteItem, setParent,
   // attachments + identities (description editor: upload / link / delete / @-mention)
   uploadAttachment, addAttachmentLink, removeAttachmentLink, fetchAttachmentBlob, searchIdentities,
   // time
