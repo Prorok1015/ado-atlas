@@ -517,6 +517,7 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .stime{font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
 .stime b{color:var(--txt);font-weight:600}
 .mdlink{color:var(--accent);cursor:pointer;font-size:10px;margin-left:6px;text-transform:none;letter-spacing:0}
+.md-editor { position: relative; }
 .mdview{border:1px solid var(--line);border-radius:6px;padding:6px 9px;min-height:56px;font-size:13px;overflow:auto}
 .mdview h3,.mdview h4,.mdview h5,.mdview h6{margin:.4em 0 .2em;font-size:13px}
 .mdview p{margin:.3em 0}.mdview ul,.mdview ol{margin:.3em 0;padding-left:20px}

@@ -252,7 +252,7 @@ function customConfirm(message, title = 'Confirm Action') {
     const overlay = $('confirm-overlay');
     overlay.style.display = 'flex';
     overlay.classList.add('show');
-    if (window.LayerManager) window.LayerManager.open(overlay);
+    if (window.LayerManager) window.LayerManager.open(overlay, null, { isPopover: true });
     const ok = $('confirm-ok');
     const cancel = $('confirm-cancel');
     const cleanup = () => {
@@ -280,13 +280,23 @@ function customLinkPrompt(defaultText) {
     const urlInput = $('link-dialog-url');
     const errDiv = $('link-dialog-err');
     
+    if (!overlay || !txtInput || !urlInput || !errDiv) {
+      const url = prompt('Link URL (https://…)', 'https://');
+      if (!url || !/^https?:\/\//i.test(url)) {
+        resolve(null);
+        return;
+      }
+      resolve({ text: defaultText || url, url });
+      return;
+    }
+    
     txtInput.value = defaultText || '';
     urlInput.value = 'https://';
     errDiv.textContent = '';
     
     overlay.style.display = 'flex';
     overlay.classList.add('show');
-    if (window.LayerManager) window.LayerManager.open(overlay);
+    if (window.LayerManager) window.LayerManager.open(overlay, null, { isPopover: true });
     
     if (defaultText) {
       urlInput.focus();
@@ -2361,16 +2371,21 @@ function getCaretCoordinates(element, position) {
 }
 function positionMention(){
   if(!activeEditor)return;
-  const ta=activeEditor.textarea,p=$('s_mention'),side=$('side');if(!ta||!p||!side)return;
+  const ta=activeEditor.textarea,p=$('s_mention');if(!ta||!p)return;
+  
+  if (p.parentNode !== activeEditor.container) {
+    activeEditor.container.appendChild(p);
+  }
+
   const caretPos=mentionState.start;
   const coords=getCaretCoordinates(ta,caretPos);
-  const r=ta.getBoundingClientRect(),sr=side.getBoundingClientRect();
+  const r=ta.getBoundingClientRect(),cr=activeEditor.container.getBoundingClientRect();
   
   const pWidth=p.offsetWidth||220;
-  const maxLeft=r.right-sr.left-pWidth+side.scrollLeft-8;
-  const computedLeft=r.left-sr.left+coords.left-ta.scrollLeft+side.scrollLeft;
-  const left=Math.max(r.left-sr.left+side.scrollLeft+8,Math.min(computedLeft,maxLeft));
-  const top=r.top-sr.top+coords.top+coords.height-ta.scrollTop+side.scrollTop+4;
+  const maxLeft=r.right-cr.left-pWidth-8;
+  const computedLeft=r.left-cr.left+coords.left-ta.scrollLeft;
+  const left=Math.max(r.left-cr.left+8,Math.min(computedLeft,maxLeft));
+  const top=r.top-cr.top+coords.top+coords.height-ta.scrollTop+4;
   
   p.style.left=left+'px';
   p.style.top=top+'px';
@@ -2383,7 +2398,17 @@ async function openOrUpdateMention(){
   const trig=findMentionTrigger(ta);
   if(!trig){closeMention();return;}
   mentionState.start=trig.at;mentionState.query=trig.query;mentionState.open=true;
-  const p=$('s_mention');p.style.display='block';
+  
+  let p=$('s_mention');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 's_mention';
+    p.className = 'mention-pop';
+    p.style.display = 'none';
+    activeEditor.container.appendChild(p);
+  }
+  
+  p.style.display='block';
   if (window.LayerManager) window.LayerManager.open(p, null, { isPopover: true });
   positionMention();
   const tok=++mentionState.tok;
@@ -3526,6 +3551,8 @@ function toggleActivityExpand(forceState) {
   }
 }
 
+let _actionsOrigParent = null;
+let _actionsOrigNextSibling = null;
 function toggleActivityFullscreen(forceOn) {
   const actionsGroup = document.querySelector('.sgroup[data-sg="actions"]');
   const btn = $('s_act_full');
@@ -3561,9 +3588,9 @@ function toggleActivityFullscreen(forceOn) {
     }
     
     // Move actionsGroup to document.body to break stacking context bugs
-    if (!this._actionsOrigParent) {
-      this._actionsOrigParent = actionsGroup.parentNode;
-      this._actionsOrigNextSibling = actionsGroup.nextSibling;
+    if (!_actionsOrigParent) {
+      _actionsOrigParent = actionsGroup.parentNode;
+      _actionsOrigNextSibling = actionsGroup.nextSibling;
     }
     document.body.appendChild(actionsGroup);
 
@@ -3577,14 +3604,14 @@ function toggleActivityFullscreen(forceOn) {
     
     // Restore actionsGroup to original parent
     const sideEl = $('side');
-    if (sideEl && this._actionsOrigParent) {
-      if (this._actionsOrigNextSibling) {
-        this._actionsOrigParent.insertBefore(actionsGroup, this._actionsOrigNextSibling);
+    if (sideEl && _actionsOrigParent) {
+      if (_actionsOrigNextSibling) {
+        _actionsOrigParent.insertBefore(actionsGroup, _actionsOrigNextSibling);
       } else {
-        this._actionsOrigParent.appendChild(actionsGroup);
+        _actionsOrigParent.appendChild(actionsGroup);
       }
-      this._actionsOrigParent = null;
-      this._actionsOrigNextSibling = null;
+      _actionsOrigParent = null;
+      _actionsOrigNextSibling = null;
     }
 
     actionsGroup.classList.remove('fullscreen');
