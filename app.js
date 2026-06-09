@@ -5320,6 +5320,16 @@ function renderCustomizeList(){
     if(after)list.insertBefore(dragging,after);else list.appendChild(dragging);};
 }
 
+function updateUiScale(scaleFactor) {
+  try {
+    localStorage.setItem('ado.uiScale', scaleFactor);
+  } catch(e) {}
+  document.documentElement.style.fontSize = (13 * scaleFactor) + 'px';
+  if (typeof cy !== 'undefined' && cy && typeof cy.resize === 'function') {
+    cy.resize();
+  }
+}
+
 /* ---------- main init (runs after PAT is verified) ---------- */
 let _booted=false;
 async function initialBoot(postSetup){
@@ -5417,6 +5427,7 @@ async function initialBoot(postSetup){
   try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')applyTheme('auto');});}catch(e){}
   $('export').querySelectorAll('button').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
   $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}setAutoRefresh(s);};
+  $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
   // bulk action bar (tree multi-select)
   $('bulk_state').onchange=e=>{const v=e.target.value;if(v)bulkApply('state',v);};
   $('bulk_prio').onchange=e=>{const v=e.target.value;if(v)bulkApply('priority',v);};
@@ -5759,6 +5770,7 @@ async function initialBoot(postSetup){
     const tg=localStorage.getItem('ado.tlGroup');if(tg){tlGroup=tg;$('tl_group').value=tg;}
     const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
     const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;setAutoRefresh(au);}
+    const sc=localStorage.getItem('ado.uiScale');if(sc!==null){$('f_scale').value=sc;updateUiScale(parseFloat(sc));}
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
   buildLegend();renderFilters();updateFilterCount();updatePatBadge();updateUndoButtons();updateCreateButtons();
   setInterval(updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
