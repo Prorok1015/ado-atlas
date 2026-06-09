@@ -2284,6 +2284,7 @@ async function removeAttachment(a){
    Click / Enter inserts `@[Display](descriptor)` in markdown form, which
    mdToHtml then renders as an ADO mention anchor. */
 const mentionState={open:false,query:'',start:-1,rows:[],idx:0,tok:0};
+let mentionDebounceTimeout = null;
 function findMentionTrigger(ta){
   const pos=ta.selectionStart;
   // Walk backward for an "@" with no whitespace or bracketing in between.
@@ -2311,6 +2312,7 @@ function scheduleCloseMention(){
 }
 function closeMention(){
   if(closeMentionTimeout){clearTimeout(closeMentionTimeout);closeMentionTimeout=null;}
+  if(mentionDebounceTimeout){clearTimeout(mentionDebounceTimeout);mentionDebounceTimeout=null;}
   const p=$('s_mention');if(p){
     p.style.display='none';
     if (window.LayerManager) window.LayerManager.close(p);
@@ -2393,6 +2395,7 @@ function positionMention(){
 }
 async function openOrUpdateMention(){
   if(closeMentionTimeout){clearTimeout(closeMentionTimeout);closeMentionTimeout=null;}
+  if(mentionDebounceTimeout){clearTimeout(mentionDebounceTimeout);mentionDebounceTimeout=null;}
   if(!activeEditor)return;
   const ta=activeEditor.textarea;if(!ta)return;
   const trig=findMentionTrigger(ta);
@@ -2411,12 +2414,21 @@ async function openOrUpdateMention(){
   p.style.display='block';
   if (window.LayerManager) window.LayerManager.open(p, null, { isPopover: true });
   positionMention();
-  const tok=++mentionState.tok;
-  if(!trig.query){mentionState.rows=[];mentionState.idx=0;drawMention();return;}
-  let rows=[];
-  try{rows=await api.searchIdentities(trig.query,8);}catch(e){rows=[];}
-  if(tok!==mentionState.tok||!mentionState.open)return;
-  mentionState.rows=rows;mentionState.idx=0;drawMention();
+  const tok = ++mentionState.tok;
+  if(!trig.query){
+    let rows=[];
+    try{rows=await api.searchIdentities("",8);}catch(e){rows=[];}
+    if(tok!==mentionState.tok||!mentionState.open)return;
+    mentionState.rows=rows;mentionState.idx=0;drawMention();
+    return;
+  }
+  
+  mentionDebounceTimeout = setTimeout(async () => {
+    let rows=[];
+    try{rows=await api.searchIdentities(trig.query,8);}catch(e){rows=[];}
+    if(tok!==mentionState.tok||!mentionState.open)return;
+    mentionState.rows=rows;mentionState.idx=0;drawMention();
+  }, 150);
 }
 function pickMention(){
   if(!activeEditor)return;

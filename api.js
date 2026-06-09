@@ -104,9 +104,11 @@ async function getConfig() {
   };
 }
 async function setConfig(patch) {
+  teamRosterCache = null;
   await chrome.storage.local.set(patch);
 }
 async function clearConfig() {
+  teamRosterCache = null;
   await chrome.storage.local.remove(STORE_KEYS);
   try { const all = await chrome.storage.local.get(null); const snaps = Object.keys(all).filter(k => k.startsWith("snap:")); if (snaps.length) await chrome.storage.local.remove(snaps); } catch (_) {}
 }
@@ -250,7 +252,9 @@ async function req(method, url, body, ctype, options) {
     }
     // 401 mid-session = PAT expired/revoked: let the UI react, don't retry.
     if (resp.status === 401) {
-      if (typeof window !== "undefined") { try { window.dispatchEvent(new CustomEvent("ado-401")); } catch (_) { /* no window */ } }
+      if (!(options && options.suppress401Event)) {
+        if (typeof window !== "undefined") { try { window.dispatchEvent(new CustomEvent("ado-401")); } catch (_) { /* no window */ } }
+      }
       throw await errorFrom(resp);
     }
     // Retry throttling (429) and transient server errors (5xx) with backoff.
@@ -455,24 +459,33 @@ async function workItemTypes() {
     });
 }
 
-// Members of all project teams (deduped). Falls back to AssignedTo distinct
-// values from recent items if the team API isn't permitted by the PAT scope.
-async function getAssignees() {
+let teamRosterCache = null;
+
+async function getTeamRoster() {
+  if (teamRosterCache) return teamRosterCache;
   const o = await orgUrl();
   const { project } = await getConfig();
   const p = encodeURIComponent(project);
-  const names = new Set();
+  const roster = new Map();
   try {
-    const teams = (await req("GET", `${o}/_apis/projects/${p}/teams?${API_VERSION}`)).value || [];
+    const teams = (await req("GET", `${o}/_apis/projects/${p}/teams?${API_VERSION}`, undefined, undefined, { suppress401Event: true })).value || [];
     for (const t of teams.slice(0, 10)) {
-      const m = await req("GET", `${o}/_apis/projects/${p}/teams/${t.id}/members?${API_VERSION}`);
+      const m = await req("GET", `${o}/_apis/projects/${p}/teams/${t.id}/members?${API_VERSION}`, undefined, undefined, { suppress401Event: true });
       for (const x of (m.value || [])) {
-        const dn = (x.identity || {}).displayName;
-        if (dn) names.add(dn);
+        const idObj = x.identity;
+        if (idObj && idObj.displayName) {
+          roster.set(idObj.displayName, {
+            displayName: idObj.displayName,
+            mail: idObj.uniqueName || idObj.mail || "",
+            descriptor: idObj.descriptor || "",
+            id: idObj.id || "",
+            isGroup: (idObj.isContainer) || false
+          });
+        }
       }
     }
   } catch (_) { /* fall through */ }
-  if (!names.size) {
+  if (!roster.size) {
     try {
       const ids = await wiqlIds(
         "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project ORDER BY [System.ChangedDate] DESC",
@@ -481,11 +494,21 @@ async function getAssignees() {
       const items = await batchFetch(ids, ["System.AssignedTo"]);
       for (const w of items) {
         const dn = personName((w.fields || {})["System.AssignedTo"]);
-        if (dn) names.add(dn);
+        if (dn && !roster.has(dn)) {
+          roster.set(dn, { displayName: dn, mail: "", descriptor: "", id: "", isGroup: false });
+        }
       }
     } catch (_) { /* leave empty */ }
   }
-  return [...names].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  teamRosterCache = [...roster.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+  return teamRosterCache;
+}
+
+// Members of all project teams (deduped). Falls back to AssignedTo distinct
+// values from recent items if the team API isn't permitted by the PAT scope.
+async function getAssignees() {
+  const roster = await getTeamRoster();
+  return roster.map(r => r.displayName);
 }
 
 // Identity typeahead for @mentions. The IdentityPicker endpoint accepts a free-
@@ -495,8 +518,19 @@ async function getAssignees() {
 // the endpoint is unavailable (PAT scope too narrow, or 404 on some tenants).
 async function searchIdentities(q, limit) {
   q = (q || "").trim();
-  if (!q) return [];
   limit = Math.min(Math.max(limit | 0 || 8, 1), 25);
+  const roster = await getTeamRoster();
+  
+  if (!q) {
+    return roster.slice(0, limit);
+  }
+  
+  const lq = q.toLowerCase();
+  const localMatches = roster.filter(r => 
+    r.displayName.toLowerCase().includes(lq) || 
+    (r.mail && r.mail.toLowerCase().includes(lq))
+  );
+  
   const o = await orgUrl();
   try {
     const body = {
@@ -506,7 +540,7 @@ async function searchIdentities(q, limit) {
       options: { MinResults: 1, MaxResults: limit },
       properties: ["DisplayName", "Mail", "SubjectDescriptor", "Account"],
     };
-    const r = await req("POST", `${o}/_apis/IdentityPicker/Identities?api-version=7.1-preview.1`, body);
+    const r = await req("POST", `${o}/_apis/IdentityPicker/Identities?api-version=7.1-preview.1`, body, undefined, { suppress401Event: true });
     const out = [];
     for (const set of (r.results || [])) {
       for (const id of (set.identities || [])) {
@@ -520,14 +554,9 @@ async function searchIdentities(q, limit) {
       }
     }
     if (out.length) return out.slice(0, limit);
-  } catch (_) { /* fall through to local roster */ }
-  // Fallback: substring-match the team roster (no descriptor → no notification,
-  // but the @Name still shows up in the description).
-  const names = await getAssignees();
-  const lq = q.toLowerCase();
-  return names.filter(n => n.toLowerCase().includes(lq))
-    .slice(0, limit)
-    .map(n => ({ displayName: n, mail: "", descriptor: "", isGroup: false }));
+  } catch (_) { /* fall through to local matches */ }
+  
+  return localMatches.slice(0, limit);
 }
 
 // Distinct tags seen on recent items (no dedicated tag endpoint exists for a
@@ -1031,7 +1060,7 @@ async function comments(wid, options) {
         }
         return {
           id: c.id,
-          text: htmlToMarkdown(c.text),
+          text: htmlToMarkdown(c.renderedText || c.text),
           by: ((c.createdBy || {}).displayName) || "",
           date: c.createdDate || c.modifiedDate || "",
           reactions: reactions
