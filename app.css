@@ -389,8 +389,9 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .comment-author{font-weight:600;color:var(--txt)}
 .comment-time{font-size:10px;color:var(--muted)}
 .comment-actions{display:flex;gap:4px;position:absolute;right:0;top:-2px;opacity:0;transition:opacity 0.15s ease;background:var(--panel2);padding-left:6px}
-.c-action-btn{background:transparent;border:0;cursor:pointer;padding:2px 4px;font-size:11px;border-radius:4px;transition:background 0.1s ease}
-.c-action-btn:hover{background:var(--line)}
+body.light .comment-actions{background:var(--panel)}
+.c-action-btn{background:transparent;border:0;cursor:pointer;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;border-radius:50%;transition:background 0.1s ease,color 0.1s ease;color:var(--muted);padding:0}
+.c-action-btn:hover{background:rgba(127,127,127,0.18);color:var(--txt)}
 .comment-reactions{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .reaction-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;background:var(--field);border:1px solid var(--line);border-radius:12px;font-size:10px;cursor:pointer;user-select:none;transition:all 0.1s ease}
 .reaction-chip:hover{border-color:var(--muted);background:var(--line)}
