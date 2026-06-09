@@ -1941,22 +1941,32 @@ async function renderTimeline(){
     if(sp){                                          // sprint grouping: draw the sprint's own date span as a reference line
       label+=`  (${ymd(sp.s)} → ${ymd(sp.e)})`;
       track=`<div class="tlsprintspan" style="left:${xOf(sp.s)}px;width:${wOf(sp.s,sp.e)}px" title="sprint window ${prettyDate(ymd(sp.s))} → ${prettyDate(ymd(sp.e))}"></div>`;
-    }else{const gs=Math.min(...arr.map(n=>n._tl.s)),ge=Math.max(...arr.map(n=>n._tl.e));
-      track=`<div class="tlgroupbar" style="left:${xOf(gs)}px;width:${wOf(gs,ge)}px"></div>`;}
+    }else{const datedInGroup = arr.filter(n=>n._tl);
+      if(datedInGroup.length){const gs=Math.min(...datedInGroup.map(n=>n._tl.s)),ge=Math.max(...datedInGroup.map(n=>n._tl.e));
+        track=`<div class="tlgroupbar" style="left:${xOf(gs)}px;width:${wOf(gs,ge)}px"></div>`;}
+      else{track=`<div class="tlgroupbar" style="display:none"></div>`;}}
     return `<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">${label}</div><div class="tlgrouptrack" style="width:${W}px">${track}</div></div>`;};
   let rows='';
-  if(tlGroup==='none')dated.sort(byStart).forEach(n=>{rows+=rowHTML(n);});
-  else{
-    const groups=new Map();dated.forEach(n=>{const k=tlKey(n);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
+  if(tlGroup==='none'){
+    dated.sort(byStart).forEach(n=>{rows+=rowHTML(n);});
+    if(undated.length){
+      rows+=`<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">No dates · ${undated.length}</div><div class="tlgrouptrack" style="width:${W}px"></div></div>`;
+      undated.sort((a,b)=>a.id-b.id).forEach(n=>{rows+=`<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
+    }
+  }else{
+    const groups=new Map();
+    items.forEach(n=>{const k=tlKey(n);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
     let keys=[...groups.keys()];keys=(tlGroup==='state')?orderStates(keys):keys.sort((a,b)=>a.localeCompare(b));
-    keys.forEach(k=>{const arr=groups.get(k).sort(byStart);
+    keys.forEach(k=>{
+      const arr=groups.get(k);
+      const gDated=arr.filter(n=>n._tl).sort(byStart);
+      const gUndated=arr.filter(n=>!n._tl).sort((a,b)=>a.id-b.id);
       let sp=null;
-      if(tlGroup==='sprint'){const it=_sprint(arr[0].iteration);if(it&&it.start&&it.finish)sp={s:Date.parse(it.start.slice(0,10)),e:Date.parse(it.finish.slice(0,10))};}
-      rows+=groupHead(k,arr,sp);arr.forEach(n=>{rows+=rowHTML(n,sp);});});
-  }
-  if(undated.length){
-    rows+=`<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">No dates · ${undated.length}</div><div class="tlgrouptrack" style="width:${W}px"></div></div>`;
-    undated.sort((a,b)=>a.id-b.id).forEach(n=>{rows+=`<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
+      if(tlGroup==='sprint'&&gDated.length){const it=_sprint(gDated[0].iteration);if(it&&it.start&&it.finish)sp={s:Date.parse(it.start.slice(0,10)),e:Date.parse(it.finish.slice(0,10))};}
+      rows+=groupHead(k,arr,sp);
+      gDated.forEach(n=>{rows+=rowHTML(n,sp);});
+      gUndated.forEach(n=>{rows+=`<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
+    });
   }
   const prevScroll=el.scrollLeft;                  // preserve horizontal scroll across re-renders
   el.innerHTML=`<div class="tlcanvas">`+
