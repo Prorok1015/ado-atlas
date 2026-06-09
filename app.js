@@ -379,7 +379,7 @@ const FILTERS=[
   {key:'state',label:'State',values:()=>projectStates.length?projectStates:['New','Active','Resolved','Closed','Removed']},
   {key:'type',label:'Type',values:()=>typeNames()},
   {key:'priority',label:'Priority',values:()=>[1,2,3,4],fmt:v=>'P'+v},
-  {key:'assigned',label:'Assigned',values:()=>['me',...assignees]},
+  {key:'assigned',label:'Assigned',values:()=>['me',...assignees],fmt:v=>v==='me'?(currentUser?`${currentUser} (me)`:'me'):v},
   {key:'iteration',label:'Sprint',values:()=>sprintPaths,fmt:p=>sprintNames[p]||p},
   {key:'tags',label:'Tags',values:()=>tagList},
 ];
