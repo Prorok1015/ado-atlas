@@ -1041,7 +1041,7 @@ async function removeCommentReaction(wid, commentId, reactionType) {
 
 async function commentReactionUsers(wid, commentId, reactionType) {
   const proj = await projUrl();
-  const r = await req("GET", `${proj}/_apis/wit/workitems/${wid}/comments/${commentId}/reactions/${reactionType}?api-version=7.1-preview.1`, undefined, undefined, { suppress401Event: true });
+  const r = await req("GET", `${proj}/_apis/wit/workitems/${wid}/comments/${commentId}/reactions/${reactionType}/users?api-version=7.1-preview.1`, undefined, undefined, { suppress401Event: true });
   return (r.value || []).map(u => personName(u.identity || u)).filter(Boolean);
 }
 
