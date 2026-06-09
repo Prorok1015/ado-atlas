@@ -1322,7 +1322,7 @@ function syncCyGrid(){
   el.style.backgroundPosition=p.x+'px '+p.y+'px';
 }
 function initCy(){
-  cy=cytoscape({container:$('cy'),style:gstyle(),wheelSensitivity:0.2,autounselectify:true,boxSelectionEnabled:false});
+  cy=cytoscape({container:$('cy'),style:gstyle(),wheelSensitivity:0.2,autounselectify:true,boxSelectionEnabled:false,hideEdgesOnViewport:true,textureOnViewport:true});
   cy.on('pan zoom',()=>{syncCyGrid();depHandlePlace();});                 // grid + handle follow the canvas
   let tapTimer=null,tapId=null;                 // single tap = open editor; double tap = expand
   cy.on('tap','node',e=>{const id=Number(e.target.data('id'));   // cytoscape gives a string id
@@ -1428,9 +1428,13 @@ function runLayout(fit){
   // cytoscape's own `fit:true` triggers fit at the START of the animation, so
   // when expanding a node the camera zooms before the new children have moved
   // into their final spots. Hook layoutstop instead and fit once nodes settle.
+  const animate=cy.nodes().length<200;
   const l=cy.layout({name:'dagre',rankDir,ranker:'tight-tree',
-    nodeSep:55,rankSep:110,edgeSep:25,animate:true,animationDuration:250,fit:false,padding:40});
-  if(fit)l.one('layoutstop',()=>cy.animate({fit:{padding:40}},{duration:200}));
+    nodeSep:55,rankSep:110,edgeSep:25,animate,animationDuration:250,fit:false,padding:40});
+  if(fit){
+    if(animate)l.one('layoutstop',()=>cy.animate({fit:{padding:40}},{duration:200}));
+    else cy.fit(undefined,40);
+  }
   l.run();
 }
 async function renderGraph(opts){
