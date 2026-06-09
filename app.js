@@ -1554,6 +1554,7 @@ async function renderBoard(){
   const root=iters[0]?iters[0].path.split('\\')[0]:projectName;   // project root = "no sprint"
   const order=iters.map(it=>it.path);   // ALL dated sprints (empties revealed while dragging)
   order.push('__none__');   // always show the "No sprint" column (a drop target even when empty)
+  const fragment=document.createDocumentFragment();
   order.forEach(k=>{
     const it=k==='__none__'?null:info[k];const fin=it?it.finish:null;
     const colItems=groups.get(k)||[];
@@ -1586,13 +1587,14 @@ async function renderBoard(){
     colItems.forEach(n=>wrap.appendChild(boardCard(n,fin,today)));
     if(!colItems.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
     col.dataset.field='iteration';col.dataset.val=(k==='__none__')?root:k;   // drop = change sprint
-    col.append(h,wrap);el.appendChild(col);
+    col.append(h,wrap);fragment.appendChild(col);
   });
   if(canCreateSprint){                              // phantom "add sprint" column at the right end
     const add=document.createElement('div');add.className='bcol addcol';add.title='create a new sprint';
     add.innerHTML='<div class="addinner"><span class="plus">＋</span>New sprint</div>';
-    add.onclick=()=>{if(suppressClick)return;pendingSprintItems=null;showSprintModal();};el.appendChild(add);   // plain click (not a drop)
+    add.onclick=()=>{if(suppressClick)return;pendingSprintItems=null;showSprintModal();};fragment.appendChild(add);   // plain click (not a drop)
   }
+  el.appendChild(fragment);
   setStatus(`${items.length} items`+capNote());annotateBoardTimes();
 }
 function renderBoardByAssignee(el,items){
@@ -1604,6 +1606,7 @@ function renderBoardByAssignee(el,items){
     [currentUser,...assignees].forEach(a=>{if(a&&!groups.has(a)&&!names.includes(a))names.push(a);});
   names.sort((a,b)=>a.localeCompare(b));
   if(groups.has(''))names.push('');                 // Unassigned last
+  const fragment=document.createDocumentFragment();
   names.forEach(k=>{
     const arr=groups.get(k)||[];
     const col=document.createElement('div');col.className='bcol';
@@ -1613,8 +1616,9 @@ function renderBoardByAssignee(el,items){
     arr.forEach(n=>wrap.appendChild(boardCard(n,null,'')));   // no overdue colouring in assignee view
     if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
     col.dataset.field='assigned';col.dataset.val=k;   // drop = reassign
-    col.append(h,wrap);el.appendChild(col);
+    col.append(h,wrap);fragment.appendChild(col);
   });
+  el.appendChild(fragment);
 }
 function renderBoardByState(el,items){
   const today=new Date().toISOString().slice(0,10);
@@ -1626,6 +1630,7 @@ function renderBoardByState(el,items){
     projectStates.forEach(s=>{if(!groups.has(s))keys.push(s);});
   const cols=orderStates(keys);
   if(groups.has(''))cols.push('');                  // items with no state last (rare)
+  const fragment=document.createDocumentFragment();
   cols.forEach(k=>{
     const arr=groups.get(k)||[];
     const col=document.createElement('div');col.className='bcol';
@@ -1635,8 +1640,9 @@ function renderBoardByState(el,items){
     arr.forEach(n=>wrap.appendChild(boardCard(n,null,today)));   // overdue colouring by target date
     if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
     col.dataset.field='state';col.dataset.val=k;   // drop = change state
-    col.append(h,wrap);el.appendChild(col);
+    col.append(h,wrap);fragment.appendChild(col);
   });
+  el.appendChild(fragment);
 }
 function boardCard(n,finish,today){
   const due=n.target?n.target.slice(0,10):(finish?finish.slice(0,10):null);
