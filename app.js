@@ -3860,12 +3860,21 @@ async function loadActivity(){
   currentHistory = hs;
   renderActivity(cs,hs);
 }
-async function copyCommentLink(commentId) {
+async function copyCommentLink(commentId, btn) {
   try {
     const base = await api.browserUrl(cur);
     const url = `${base}?_a=discussion&Anchor=comment-${commentId}`;
     await navigator.clipboard.writeText(url);
     setStatus('Comment link copied');
+    if (btn) {
+      const oldText = btn.textContent;
+      btn.textContent = '✓';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = oldText;
+        btn.classList.remove('copied');
+      }, 1000);
+    }
   } catch(e) {
     setStatus('Failed to copy link: ' + e.message, true);
   }
@@ -3875,7 +3884,7 @@ function handleActivityClick(e) {
   if (copylinkBtn) {
     e.stopPropagation();
     const cid = parseInt(copylinkBtn.dataset.cid, 10);
-    copyCommentLink(cid);
+    copyCommentLink(cid, copylinkBtn);
     return;
   }
   const chip = e.target.closest('.reaction-chip');
