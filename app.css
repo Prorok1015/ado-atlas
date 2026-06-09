@@ -390,7 +390,7 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .comment-time{font-size:10px;color:var(--muted)}
 .comment-actions{display:flex;gap:2px;position:absolute;right:0;top:-2px;opacity:0;transition:opacity 0.15s ease;background:var(--panel2);padding-left:6px}
 body.light .comment-actions{background:var(--panel)}
-.c-action-btn{background:transparent;border:0;cursor:pointer;width:25px;height:25px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;border-radius:50%;transition:background 0.1s ease,opacity 0.1s ease;color:var(--txt);opacity:0.6;filter:grayscale(1);padding:0}
+.c-action-btn{background:transparent;border:0;cursor:pointer;width:25px;height:25px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;border-radius:50%;transition:background 0.1s ease,opacity 0.1s ease;color:var(--txt);opacity:0.6;filter:grayscale(1);padding:0}
 .c-action-btn:hover{background:rgba(127,127,127,0.18);opacity:1}
 @keyframes copySuccess{0%{transform:scale(1)}50%{transform:scale(1.3);background:rgba(46,160,67,0.25)}100%{transform:scale(1)}}
 .c-action-btn.copied{animation:copySuccess 0.4s ease;color:#2da44e!important;opacity:1!important;filter:none!important}
