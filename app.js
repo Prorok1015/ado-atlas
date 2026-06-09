@@ -3386,12 +3386,12 @@ async function postComment(){
 /* ---------- activity reactions, expansion, inline edits ---------- */
 function getEmojiMap() {
   const defaults = {
-    like: 'icons/reactions/like.png',
-    dislike: 'icons/reactions/dislike.png',
-    heart: 'icons/reactions/heart.png',
-    hooray: 'icons/reactions/hooray.png',
-    smile: 'icons/reactions/smile.png',
-    confused: 'icons/reactions/confused.png'
+    like: 'icons/reactions/like-ezgif.com-resize.png',
+    dislike: 'icons/reactions/dislike-ezgif.com-resize.png',
+    heart: 'icons/reactions/heart-ezgif.com-resize.png',
+    hooray: 'icons/reactions/hooray-ezgif.com-resize.png',
+    smile: 'icons/reactions/smile-ezgif.com-resize.png',
+    confused: 'icons/reactions/confused-ezgif.com-resize.png'
   };
   try {
     const custom = JSON.parse(localStorage.getItem('ado.custom_emojis') || '{}');
@@ -3417,12 +3417,12 @@ function showEmojisModal() {
   }
   const current = getEmojiMap();
   const defaults = {
-    like: 'icons/reactions/like.png',
-    dislike: 'icons/reactions/dislike.png',
-    heart: 'icons/reactions/heart.png',
-    hooray: 'icons/reactions/hooray.png',
-    smile: 'icons/reactions/smile.png',
-    confused: 'icons/reactions/confused.png'
+    like: 'icons/reactions/like-ezgif.com-resize.png',
+    dislike: 'icons/reactions/dislike-ezgif.com-resize.png',
+    heart: 'icons/reactions/heart-ezgif.com-resize.png',
+    hooray: 'icons/reactions/hooray-ezgif.com-resize.png',
+    smile: 'icons/reactions/smile-ezgif.com-resize.png',
+    confused: 'icons/reactions/confused-ezgif.com-resize.png'
   };
   for (const [type, val] of Object.entries(current)) {
     const input = $(`emoji_override_${type}`);
@@ -3448,12 +3448,12 @@ function updateEmojiInputPreview(type) {
   if (!input || !previewDiv) return;
   const val = input.value.trim();
   const defaults = {
-    like: 'icons/reactions/like.png',
-    dislike: 'icons/reactions/dislike.png',
-    heart: 'icons/reactions/heart.png',
-    hooray: 'icons/reactions/hooray.png',
-    smile: 'icons/reactions/smile.png',
-    confused: 'icons/reactions/confused.png'
+    like: 'icons/reactions/like-ezgif.com-resize.png',
+    dislike: 'icons/reactions/dislike-ezgif.com-resize.png',
+    heart: 'icons/reactions/heart-ezgif.com-resize.png',
+    hooray: 'icons/reactions/hooray-ezgif.com-resize.png',
+    smile: 'icons/reactions/smile-ezgif.com-resize.png',
+    confused: 'icons/reactions/confused-ezgif.com-resize.png'
   };
   const displayVal = val || defaults[type];
   previewDiv.innerHTML = renderEmojiMarkup(type, displayVal);
