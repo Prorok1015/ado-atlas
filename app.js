@@ -3860,7 +3860,24 @@ async function loadActivity(){
   currentHistory = hs;
   renderActivity(cs,hs);
 }
+async function copyCommentLink(commentId) {
+  try {
+    const base = await api.browserUrl(cur);
+    const url = `${base}?_a=discussion&Anchor=comment-${commentId}`;
+    await navigator.clipboard.writeText(url);
+    setStatus('Comment link copied');
+  } catch(e) {
+    setStatus('Failed to copy link: ' + e.message, true);
+  }
+}
 function handleActivityClick(e) {
+  const copylinkBtn = e.target.closest('.copylink-btn');
+  if (copylinkBtn) {
+    e.stopPropagation();
+    const cid = parseInt(copylinkBtn.dataset.cid, 10);
+    copyCommentLink(cid);
+    return;
+  }
   const chip = e.target.closest('.reaction-chip');
   if (chip) {
     e.stopPropagation();
@@ -3989,6 +4006,7 @@ function renderActivity(cs,hs){
             <span class="comment-author">${esc(c.by)}</span>
             <span class="comment-time">${fd(c.date)}</span>
             <div class="comment-actions">
+              <button type="button" class="c-action-btn copylink-btn" title="Copy link to comment" data-cid="${c.id}">🔗</button>
               <button type="button" class="c-action-btn react-btn" title="Add reaction" data-cid="${c.id}">☺</button>
               ${actionsHtml}
             </div>
