@@ -4003,7 +4003,7 @@ function renderActivity(cs,hs){
     
     const isAuthor = currentUser && c.by && (c.by.trim().toLowerCase() === currentUser.trim().toLowerCase());
     const actionsHtml = isAuthor ? `
-              <button type="button" class="c-action-btn edit-btn" title="Edit comment" data-cid="${c.id}">✎</button>
+              <button type="button" class="c-action-btn edit-btn" title="Edit comment" data-cid="${c.id}">✏️</button>
               <button type="button" class="c-action-btn delete-btn" title="Delete comment" data-cid="${c.id}">🗑</button>
     ` : '';
     
@@ -4016,7 +4016,7 @@ function renderActivity(cs,hs){
             <span class="comment-time">${fd(c.date)}</span>
             <div class="comment-actions">
               <button type="button" class="c-action-btn copylink-btn" title="Copy link to comment" data-cid="${c.id}">🔗</button>
-              <button type="button" class="c-action-btn react-btn" title="Add reaction" data-cid="${c.id}">☺</button>
+              <button type="button" class="c-action-btn react-btn" title="Add reaction" data-cid="${c.id}">🙂</button>
               ${actionsHtml}
             </div>
           </div>
