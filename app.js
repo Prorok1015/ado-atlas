@@ -1848,7 +1848,11 @@ function backToBoard(){
 /* ---------- Timeline (project-wide Gantt — one continuous axis, no sprint cut-off) ---------- */
 const TL_DAY=86400000;
 const TL_PX={day:26,week:9,month:3.3};            // px per day at each zoom
-const TL_LABELW=240;                              // sticky left label column width
+let tlLabelWidth = 240;                           // sticky left label column width
+try {
+  const savedTlWidth = localStorage.getItem('ado.tlLabelWidth');
+  if (savedTlWidth) tlLabelWidth = parseInt(savedTlWidth, 10);
+} catch(e) {}
 // Effective {s,e,soft} dates (ms) for an item, or null if it has none: prefer the
 // item's own start/target, else fall back to its sprint's dates (soft=true).
 function tlDates(n){
@@ -1892,7 +1896,7 @@ async function renderTimeline(){
   const ms=new Date(min),me=new Date(max);
   const r0=Date.UTC(ms.getUTCFullYear(),ms.getUTCMonth(),1);                 // start of the first month
   const r1=Date.UTC(me.getUTCFullYear(),me.getUTCMonth()+3,1)-TL_DAY;        // +2 months of future runway past the last item / today
-  const px=TL_PX[tlZoom]||TL_PX.week,LW=TL_LABELW;
+  const px=TL_PX[tlZoom]||TL_PX.week,LW=tlLabelWidth;
   const totalDays=Math.round((r1-r0)/TL_DAY)+1,W=Math.max(Math.round(totalDays*px),200);
   const xOf=t=>Math.round(((t-r0)/TL_DAY)*px);
   const wOf=(s,e)=>Math.max(Math.round(((e-s)/TL_DAY+1)*px),6);
@@ -1956,7 +1960,7 @@ async function renderTimeline(){
   }
   const prevScroll=el.scrollLeft;                  // preserve horizontal scroll across re-renders
   el.innerHTML=`<div class="tlcanvas">`+
-    `<div class="tlhead"><div class="tlcorner" style="width:${LW}px">${months.length} mo · ${dated.length} scheduled</div><div class="tlaxis" style="width:${W}px">${axis}${ticks}</div></div>`+
+    `<div class="tlhead"><div class="tlcorner" style="width:${LW}px">${months.length} mo · ${dated.length} scheduled<div class="tl-col-resizer"></div></div><div class="tlaxis" style="width:${W}px">${axis}${ticks}</div></div>`+
     `<div class="tlbody"><div class="tlgrid" style="left:${LW}px;width:${W}px">${grid}</div>${rows}</div></div>`;
   setStatus(`${dated.length} scheduled · ${undated.length} no dates`+capNote());
   if(prevScroll>0)el.scrollLeft=prevScroll;        // keep the user's position on a re-render
@@ -5372,6 +5376,47 @@ async function initialBoot(postSetup){
     if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(id);return;}        // Ctrl/Cmd: toggle in selection
     if(e.shiftKey){e.preventDefault();bulkRange(id);return;}                    // Shift: range from anchor
     openItem(id);});
+  (function(){
+    let drag = false;
+    let startX = 0;
+    let startWidth = 0;
+    let activeResizer = null;
+    $('timeline').addEventListener('mousedown', e => {
+      const resizer = e.target.closest('.tl-col-resizer');
+      if (!resizer) return;
+      drag = true;
+      startX = e.clientX;
+      startWidth = tlLabelWidth;
+      activeResizer = resizer;
+      resizer.classList.add('active');
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    document.addEventListener('mousemove', e => {
+      if (!drag) return;
+      const deltaX = e.clientX - startX;
+      tlLabelWidth = Math.min(Math.max(startWidth + deltaX, 100), 800);
+      const corner = document.querySelector('.tlcorner');
+      if (corner) corner.style.width = tlLabelWidth + 'px';
+      const grid = document.querySelector('.tlgrid');
+      if (grid) grid.style.left = tlLabelWidth + 'px';
+      document.querySelectorAll('.tllabel, .tlgrouplabel').forEach(el => {
+        el.style.width = tlLabelWidth + 'px';
+      });
+    });
+    document.addEventListener('mouseup', () => {
+      if (drag) {
+        drag = false;
+        if (activeResizer) activeResizer.classList.remove('active');
+        document.body.style.cursor = '';
+        try {
+          localStorage.setItem('ado.tlLabelWidth', tlLabelWidth);
+        } catch(e) {}
+        renderTimeline();
+      }
+    });
+  })();
   $('filt_btn').onclick=()=>{const p=$('filterpanel');const show=p.style.display==='none';p.style.display=show?'flex':'none';$('filt_btn').classList.toggle('on',show);};
   $('filt_clear_all').onclick=()=>{for(const k in fstate)delete fstate[k];renderFilters();updateFilterCount();scheduleApply();};
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc

@@ -1274,4 +1274,19 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   width: 33.846rem !important;
 }
 
+.tl-col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background-color 0.1s;
+}
+.tl-col-resizer:hover, .tl-col-resizer.active {
+  background: var(--accent);
+}
+
 
