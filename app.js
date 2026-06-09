@@ -413,6 +413,7 @@ function renderFilters(){
       const selected=Object.keys(fstate[f.key]||{});
       const popular=getContextPopular(f.key, allVals);
       const union=new Set([...selected,...popular]);
+      if(f.key==='assigned')union.add('me');
       valsToShow=allVals.filter(v=>union.has(String(v)));
     }
 
