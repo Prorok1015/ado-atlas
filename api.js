@@ -1039,6 +1039,12 @@ async function removeCommentReaction(wid, commentId, reactionType) {
   return { ok: true };
 }
 
+async function commentReactionUsers(wid, commentId, reactionType) {
+  const proj = await projUrl();
+  const r = await req("GET", `${proj}/_apis/wit/workitems/${wid}/comments/${commentId}/reactions/${reactionType}?api-version=7.1-preview.1`, undefined, undefined, { suppress401Event: true });
+  return (r.value || []).map(u => personName(u.identity || u)).filter(Boolean);
+}
+
 // Existing comments on an item (newest first). Comment bodies are HTML → markdown.
 async function comments(wid, options) {
   const proj = await projUrl();
@@ -1283,7 +1289,7 @@ window.api = {
   // dependency links (create / remove / per-item lookup)
   addDependency, removeDependency, dependencies,
   // item ops
-  item, updateItem, comment, comments, updateComment, deleteComment, addCommentReaction, removeCommentReaction, history, createItem, deleteItem, setParent,
+  item, updateItem, comment, comments, updateComment, deleteComment, addCommentReaction, removeCommentReaction, commentReactionUsers, history, createItem, deleteItem, setParent,
   // attachments + identities (description editor: upload / link / delete / @-mention)
   uploadAttachment, addAttachmentLink, removeAttachmentLink, fetchAttachmentBlob, searchIdentities,
   // time

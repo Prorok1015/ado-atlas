@@ -2560,7 +2560,7 @@ async function openItem(id){
   if(descEditor)descEditor.value='';if(acEditor)acEditor.value='';
   atchState.list=[];atchState.uploading=0;renderAttachments();
   depsState.blockedBy=[];depsState.blocks=[];renderDeps();
-  closeMention();setSaveChip('idle');
+  closeMention();setSaveChip('idle');reactionCache.clear();
 
   // ── Highlight the target row in the tree ──
   if(selRow)selRow.classList.remove('sel');
@@ -3838,6 +3838,7 @@ async function deleteCommentAction(commentId) {
 
 /* ---------- activity: existing comments + field-change history ---------- */
 let _actId=null;
+const reactionCache=new Map();
 async function loadActivity(){
   if(cur==null)return;
   const box=$('s_activity'),id=cur;_actId=id;
@@ -3902,6 +3903,39 @@ function handleActivityClick(e) {
   }
 }
 
+function handleActivityMouseOver(e) {
+  const chip = e.target.closest('.reaction-chip');
+  if (!chip) return;
+  const cid = parseInt(chip.dataset.cid, 10);
+  const type = chip.dataset.type;
+  if (!cid || !type) return;
+  
+  const cacheKey = `${cid}_${type}`;
+  if (reactionCache.has(cacheKey)) {
+    const names = reactionCache.get(cacheKey);
+    chip.title = names.length ? names.join(', ') : 'No reactions';
+    return;
+  }
+  
+  // Set temporary loading title
+  chip.title = 'Loading...';
+  
+  // Mark as fetching to avoid duplicate requests
+  if (chip.dataset.fetching) return;
+  chip.dataset.fetching = 'true';
+  
+  api.commentReactionUsers(cur, cid, type)
+    .then(users => {
+      reactionCache.set(cacheKey, users);
+      chip.title = users.length ? users.join(', ') : 'No reactions';
+      delete chip.dataset.fetching;
+    })
+    .catch(err => {
+      chip.title = 'Failed to load';
+      delete chip.dataset.fetching;
+    });
+}
+
 function renderActivity(cs,hs){
   const fd=s=>s?String(s).slice(0,16).replace('T',' '):'';
   
@@ -3934,7 +3968,7 @@ function renderActivity(cs,hs){
       const data = reacts[type];
       if (data && data.count > 0) {
         const active = data.me ? 'active' : '';
-        reactHtml += `<span class="reaction-chip ${active}" data-cid="${c.id}" data-type="${type}"><span class="emoji-symbol">${renderEmojiMarkup(type, emoji)}</span> <span class="rc-count">${data.count}</span></span>`;
+        reactHtml += `<span class="reaction-chip ${active}" data-cid="${c.id}" data-type="${type}" title="Show who reacted"><span class="emoji-symbol">${renderEmojiMarkup(type, emoji)}</span> <span class="rc-count">${data.count}</span></span>`;
       }
     });
     
@@ -4006,6 +4040,7 @@ function renderActivity(cs,hs){
   if (box && !box.dataset.wired) {
     box.dataset.wired = 'true';
     box.addEventListener('click', handleActivityClick);
+    box.addEventListener('mouseover', handleActivityMouseOver);
   }
   
   const ach = $('activity_comments_header');
