@@ -3734,6 +3734,9 @@ async function toggleReaction(commentId, type) {
   const c = currentComments.find(x => x.id === commentId);
   if (!c) return;
 
+  const cacheKey = `${commentId}_${type}`;
+  reactionCache.delete(cacheKey);
+
   if (!c.reactions) c.reactions = {};
   if (!c.reactions[type]) c.reactions[type] = { count: 0, me: false };
 
