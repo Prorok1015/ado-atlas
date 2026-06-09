@@ -5342,7 +5342,7 @@ function renderCustomizeList(){
 
 function updateUiScale(scaleFactor) {
   try {
-    localStorage.setItem('ado.uiScale', scaleFactor);
+    localStorage.setItem('ado.uiScale', parseFloat(scaleFactor).toFixed(1));
   } catch(e) {}
   document.documentElement.style.fontSize = (13 * scaleFactor) + 'px';
   if (typeof cy !== 'undefined' && cy && typeof cy.resize === 'function') {
@@ -5831,7 +5831,14 @@ async function initialBoot(postSetup){
     const tg=localStorage.getItem('ado.tlGroup');if(tg){tlGroup=tg;$('tl_group').value=tg;}
     const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
     const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;setAutoRefresh(au);}
-    const sc=localStorage.getItem('ado.uiScale');if(sc!==null){$('f_scale').value=sc;updateUiScale(parseFloat(sc));}
+    const sc=localStorage.getItem('ado.uiScale');
+    if(sc!==null){
+      const num=parseFloat(sc);
+      if(!isNaN(num)){
+        $('f_scale').value=num.toFixed(1);
+        updateUiScale(num);
+      }
+    }
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
   buildLegend();renderFilters();updateFilterCount();updatePatBadge();updateUndoButtons();updateCreateButtons();
   setInterval(updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
