@@ -40,6 +40,7 @@ let typeList=[];                          // [{name,color}] of the project's rea
 const typeNames=()=>typeList.length?typeList.map(t=>t.name):TYPES;
 const $=id=>document.getElementById(id);
 let cy=null, mode='tree', edgeMode='hierarchy', rankDir='LR', cur=null, orig={}, selRow=null;
+let maxNodesLimit = 1000;
 let descEditor = null, acEditor = null, commentEditor = null, activeEditor = null;
 let depCache={}, renderToken=0, boardToken=0, tlToken=0;   // tokens drop superseded async renders
 let tlZoom='week', tlGroup='none';               // timeline view: zoom (day|week|month) + row grouping
@@ -1424,26 +1425,66 @@ document.addEventListener('mouseup',async()=>{
   await addDepLink(d.sourceId,target,'blocks');   // source → target (source "blocks" target)
 });
 function syncGraphBulk(){if(cy)cy.nodes().forEach(nd=>nd.toggleClass('bulk',bulkSel.has(Number(nd.data('id')))));}
-function runLayout(fit){
-  // cytoscape's own `fit:true` triggers fit at the START of the animation, so
-  // when expanding a node the camera zooms before the new children have moved
-  // into their final spots. Hook layoutstop instead and fit once nodes settle.
+function saveNodePositions() {
+  if (!cy || !projectName) return;
+  const positions = {};
+  cy.nodes().forEach(n => {
+    if (n.isChildless()) {
+      positions[n.id()] = n.position();
+    }
+  });
+  try {
+    localStorage.setItem('ado.positions:' + projectName, JSON.stringify(positions));
+  } catch(e) {}
+}
+function loadNodePositions() {
+  if (!projectName) return {};
+  try {
+    const data = localStorage.getItem('ado.positions:' + projectName);
+    return data ? JSON.parse(data) : {};
+  } catch(e) {
+    return {};
+  }
+}
+async function runLayout(fit){
+  loadStart('calculating layout…');
+  const cyl = $('cy-loading');
+  if (cyl) cyl.style.display = 'flex';
+  // yield main thread for 50ms so browser paints the loading spinner before thread freezes
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
   const animate=cy.nodes().length<200;
+  console.time("Graph: Layout execution");
   const l=cy.layout({name:'dagre',rankDir,ranker:'tight-tree',
     nodeSep:55,rankSep:110,edgeSep:25,animate,animationDuration:250,fit:false,padding:40});
-  if(fit){
-    if(animate)l.one('layoutstop',()=>cy.animate({fit:{padding:40}},{duration:200}));
-    else cy.fit(undefined,40);
-  }
-  l.run();
+  return new Promise(resolve => {
+    l.one('layoutstop', () => {
+      console.timeEnd("Graph: Layout execution");
+      saveNodePositions();
+      if(fit){
+        if(animate) cy.animate({fit:{padding:40}},{duration:200});
+        else cy.fit(undefined,40);
+      }
+      if (cyl) cyl.style.display = 'none';
+      loadEnd();
+      resolve();
+    });
+    l.run();
+  });
 }
 async function renderGraph(opts){
   opts=opts||{};
   if(!cy)initCy();
   cy.resize();
   const token=++renderToken;                    // newest render wins; stale async results bail out
-  const ids=[...reachable()].filter(id=>store.nodes[id]);
+  let ids=[...reachable()].filter(id=>store.nodes[id]);
   if(!ids.length){cy.elements().remove();setStatus('nothing matches the filters');return;}
+  const originalCount = ids.length;
+  let isTruncated = false;
+  if (ids.length > maxNodesLimit) {
+    ids = ids.slice(0, maxNodesLimit);
+    isTruncated = true;
+  }
   const idset=new Set(ids);
   // Compound nesting: each in-set parent becomes a container for its in-set children.
   // Derived from store.kids (same source as the tree), so skip-resolved children also nest correctly.
@@ -1472,6 +1513,8 @@ async function renderGraph(opts){
   // Sort ids so that any node whose compound parent is in the set comes after that parent.
   const depth={};const dep=id=>id in depth?depth[id]:(depth[id]=parentOf[id]?dep(parentOf[id])+1:0);
   const sorted=ids.slice().sort((a,b)=>dep(a)-dep(b));
+  const cachedPositions = loadNodePositions();
+  let hasAllCached = true;
   cy.batch(()=>{
     cy.nodes().forEach(n=>{if(!want.has(n.id())){n.remove();removed++;}});
     sorted.forEach(id=>{
@@ -1484,7 +1527,11 @@ async function renderGraph(opts){
         return;
       }
       const pe=cy.getElementById(String(store.parent[id]||''));  // seed near parent (no fly-from-0,0)
-      const pos=pe.nonempty()?{x:pe.position('x'),y:pe.position('y')+70}:undefined;
+      let pos = cachedPositions[id];
+      if (!pos) {
+        hasAllCached = false;
+        pos = pe.nonempty()?{x:pe.position('x'),y:pe.position('y')+70}:undefined;
+      }
       const data=Object.assign({},store.nodes[id]);              // shallow copy so we don't mutate store
       if(pid)data.parent=pid;else delete data.parent;            // normalize: only set if compound parent is in cy
       cy.add({group:'nodes',data,position:pos});added++;
@@ -1492,9 +1539,12 @@ async function renderGraph(opts){
     cy.edges().remove();
     cy.add(edges.map(e=>({group:'edges',data:e})));             // edges carry no position -> no jump
   });
-  if(opts.relayout||added||removed||reparented)runLayout(opts.fit); // relayout on topology change; fit after layout settles
-  else if(opts.fit)cy.fit(undefined,40);                        // positions unchanged -> safe to fit now
-  setStatus(`${ids.length} nodes · ${edges.length} edges`);
+  const needsLayout = opts.relayout || !hasAllCached || removed > 0 || reparented > 0;
+  if(needsLayout) await runLayout(opts.fit); // relayout on topology change; fit after layout settles
+  else if(opts.fit && (added > 0 || removed > 0 || reparented > 0))cy.fit(undefined,40);                        // positions unchanged -> safe to fit now
+  let statusText = `${ids.length} nodes · ${edges.length} edges`;
+  if (isTruncated) statusText += ` (truncated from ${originalCount}, change 'Max nodes' in settings)`;
+  setStatus(statusText);
   syncGraphBulk();                                              // re-apply the bulk highlight to (re)added nodes
   syncCyGrid();                                                 // align the dot grid with the current pan/zoom
 }
@@ -2054,8 +2104,23 @@ function renderBadgePanel(){
     if (window.LayerManager) window.LayerManager.close(p);
     return;
   }
-  p.innerHTML=`<div class="bph">${esc(BADGE_PANEL_HEADER[view]||'Show')}</div>`+
+  let html=`<div class="bph">${esc(BADGE_PANEL_HEADER[view]||'Show')}</div>`+
     fields.map(f=>`<label><input type="checkbox" data-k="${f.key}"${badgeOn(f.key,view)?' checked':''}> ${esc(f.label)}</label>`).join('');
+  if(view==='graph'){
+    html+=`<div class="bp-divider" style="margin:8px 0 6px;border-top:1px dashed var(--border)"></div>`+
+      `<div class="bp-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0">`+
+        `<span>Max nodes</span>`+
+        `<select id="f_max_nodes" style="font-size:11px;padding:2px;background:var(--bg);color:var(--txt);border:1px solid var(--border);border-radius:3px">`+
+          `<option value="200">200</option>`+
+          `<option value="500">500</option>`+
+          `<option value="1000">1000</option>`+
+          `<option value="2000">2000</option>`+
+          `<option value="5000">5000</option>`+
+          `<option value="999999">Unlimited</option>`+
+        `</select>`+
+      `</div>`;
+  }
+  p.innerHTML=html;
   p.querySelectorAll('input[data-k]').forEach(cb=>cb.onchange=()=>{
     if(!badgesOn[view])badgesOn[view]={};
     badgesOn[view][cb.dataset.k]=cb.checked;saveBadgesOn();
@@ -2064,6 +2129,17 @@ function renderBadgePanel(){
     else if(view==='tree'){const ts=$('tree').scrollTop;renderTree();$('tree').scrollTop=ts;}
     else if(view==='timeline')renderTimeline();
   });
+  if(view==='graph'){
+    const mn=$('f_max_nodes');
+    if(mn){
+      mn.value=String(maxNodesLimit);
+      mn.onchange=()=>{
+        maxNodesLimit=parseInt(mn.value,10);
+        try{localStorage.setItem('ado.maxNodes',maxNodesLimit);}catch(e){}
+        renderGraph({relayout:true,fit:true});
+      };
+    }
+  }
 }
 function toggleBadgePanel(){
   const p=$('badgepanel');
@@ -5843,6 +5919,7 @@ async function initialBoot(postSetup){
         updateUiScale(num);
       }
     }
+    const mn=localStorage.getItem('ado.maxNodes');if(mn!==null){maxNodesLimit=parseInt(mn,10);}
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
   buildLegend();renderFilters();updateFilterCount();updatePatBadge();updateUndoButtons();updateCreateButtons();
   setInterval(updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
