@@ -6524,6 +6524,19 @@ async function initialBoot(postSetup){
     if(dirty()){e.preventDefault();e.returnValue='';return '';}
   });
   $('s_customize').onclick=()=>{setCustomizeTab('side');showCustomize();};   // gear in the panel header → open Customize on the sidebar tab
+  $('s_copy_link').onclick = async () => {
+    const url = $('s_link').href;
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      const btn = $('s_copy_link');
+      const orig = btn.textContent;
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+    }
+  };
   const atchWrap = document.querySelector('.atch-wrap');
   if (atchWrap) {
     const hasFiles = e => !!(e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files'));

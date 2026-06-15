@@ -336,6 +336,36 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .shead #s_desc_full.on,.shead #s_desc_full.btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #side.fullscreen .shead #s_desc_full{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn.icon{padding:2px 0.615rem;line-height:1;text-decoration:none;display:inline-flex;align-items:center}
+.split-btn {
+  display: inline-flex;
+  align-items: stretch;
+}
+.split-btn .btn {
+  border-radius: 0;
+  margin: 0;
+}
+.split-btn .btn:first-child {
+  border-top-left-radius: 0.462rem;
+  border-bottom-left-radius: 0.462rem;
+  border-right: none;
+}
+.split-btn .btn:last-child {
+  border-top-right-radius: 0.462rem;
+  border-bottom-right-radius: 0.462rem;
+}
+.split-btn .btn:first-child:hover {
+  border-right: 1px solid var(--accent);
+  margin-right: -1px;
+  z-index: 1;
+}
+.split-btn .btn:last-child:hover {
+  border-left: 1px solid var(--accent);
+  margin-left: -1px;
+  z-index: 1;
+}
+#s_copy_link {
+  font-size: 0.77rem;
+}
 .sbadge{font-size:0.769rem;border-radius:0.769rem;padding:1px 0.615rem;color:#fff;font-weight:600}
 #s_activity{margin-top:0.615rem;display:flex;flex-direction:column;gap:0.615rem;max-height:21.538rem;overflow-y:auto}
 
