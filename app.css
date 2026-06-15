@@ -1318,4 +1318,31 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   letter-spacing: 0.5px;
 }
 
+/* type chips for customization */
+.type-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.385rem;
+}
+.type-chip {
+  background: var(--panel2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 0.846rem;
+  padding: 0.308rem 0.692rem;
+  font-size: 0.846rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.type-chip:hover {
+  background: var(--panel3);
+  color: var(--txt);
+  border-color: var(--muted);
+}
+.type-chip.on {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 

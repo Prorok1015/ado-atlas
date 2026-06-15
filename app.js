@@ -50,6 +50,13 @@ function lockSidebar(lock){
   const side=$('side');if(!side)return;
   side.classList.toggle('sidebar-loading',!!lock);
   ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est','s_area','s_storypoints','s_remaining','s_completed','s_activity_field','s_risk','s_valuearea'].forEach(id=>{const el=$(id);if(el)el.disabled=!!lock;});
+  
+  // Disable dynamic custom field inputs
+  customFieldsState.forEach(cf => {
+    const el = $(cf.elementId);
+    if (el) el.disabled = !!lock;
+  });
+
   const trigger = $('side-range-trigger');
   if (trigger) trigger.disabled = !!lock;
   if (lock) {
@@ -74,6 +81,13 @@ const HEAVY_FIELD_MAP = {
   classification: ['Microsoft.VSTS.Common.Risk', 'Microsoft.VSTS.Common.ValueArea']
 };
 
+// Global cache of custom field editors / definitions to manage dynamically.
+let customFieldsState = []; // array of { referenceName, name, type, readOnly, elementId }
+
+function getCustomFieldElementId(refName) {
+  return 's_cust_' + refName.replace(/[^a-zA-Z0-9]/g, '_');
+}
+
 function lockSidebarHeavy(lock, groupIds) {
   const targetGroups = groupIds || [...LAZY_GROUPS];
   targetGroups.forEach(g => {
@@ -90,6 +104,13 @@ function lockSidebarHeavy(lock, groupIds) {
     }
     if (g === 'attachments') { const el = $('s_atch_group'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
     if (g === 'deps') { const el = $('s_deps'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
+    
+    // Support custom fields locking
+    if (g.startsWith('cust:')) {
+      const refName = g.substring(5);
+      const el = $(getCustomFieldElementId(refName));
+      if (el) el.disabled = !!lock;
+    }
   });
 }
 
@@ -2366,7 +2387,7 @@ function renderAttachments(){
         setStatus('download failed: '+err.message,true);
       }
     };
-    row.querySelector('.ains').onclick=e=>{e.preventDefault();descEditor.insertAtCursor((isImageName(a.name)?'!':'')+`[${a.name}](${a.url})`);refreshDirty();};
+    row.querySelector('.ains').onclick=e=>{e.preventDefault();if(descEditor){descEditor.insertAtCursor((isImageName(a.name)?'!':'')+`[${a.name}](${a.url})`);refreshDirty();}};
     row.querySelector('.axdel').onclick=e=>{e.preventDefault();removeAttachment(a);};
   });
 }
@@ -2637,6 +2658,131 @@ async function toggleSidebarKids(id,btn){
     (k.state?`<span class="kidstate" style="background:${stateColor(k.state)}">${esc(k.state)}</span>`:'')+`</a>`).join('');
   box.querySelectorAll('.kidrow').forEach(r=>r.onclick=()=>openItem(+r.dataset.id));
 }
+function optionsPickerProvider(optionsList, placeholder) {
+  return {
+    localRows(q) {
+      const query = (q || '').toLowerCase();
+      const filtered = optionsList.filter(opt => String(opt).toLowerCase().includes(query));
+      return filtered.map(opt => ({
+        value: String(opt),
+        html: `<span class="ptitle">${esc(opt || '—')}</span>`
+      }));
+    },
+    renderCard(v, card) {
+      if (!v) {
+        card.innerHTML = `<span class="pcnone">${placeholder || '(no value)'}</span>`;
+      } else {
+        card.innerHTML = `<span class="pctitle">${esc(v)}</span>`;
+      }
+    }
+  };
+}
+
+function createDynamicCombobox(elId, referenceName, optionsList, placeholder, initialVal) {
+  const hidden = $(elId);
+  if (!hidden) return;
+
+  if (!window.dynamicPickers) window.dynamicPickers = {};
+
+  hidden.value = initialVal || '';
+
+  const picker = createCardPicker(elId, {
+    provider: optionsPickerProvider(optionsList, placeholder),
+    onChange: () => {
+      hidden.dispatchEvent(new Event('input'));
+      hidden.dispatchEvent(new Event('change'));
+    }
+  });
+  picker.wire();
+  picker.render();
+  window.dynamicPickers[elId] = picker;
+}
+
+function createDynamicAssigneeField(elId, referenceName, initialVal, readOnly) {
+  const hidden = $(elId);
+  if (!hidden) return;
+
+  if (!window.dynamicPickers) window.dynamicPickers = {};
+
+  hidden.value = initialVal || '';
+
+  const picker = createAssigneeField(elId, {
+    onChange: () => {
+      hidden.dispatchEvent(new Event('input'));
+      hidden.dispatchEvent(new Event('change'));
+    }
+  });
+  picker.wire();
+  picker.render();
+  if (readOnly) picker.setDisabled(true);
+  window.dynamicPickers[elId] = picker;
+}
+
+function setupDynamicDatePicker(elId, referenceName, initialVal) {
+  const trigger = $(elId + '_trigger');
+  const popover = $(elId + '_picker');
+  const hidden = $(elId);
+  if (!trigger || !popover || !hidden) return;
+
+  if (!window.dynamicDatePickers) window.dynamicDatePickers = {};
+
+  const syncFunc = (val) => {
+    if (val) {
+      trigger.value = formatDisplayDate(val);
+    } else {
+      trigger.value = '';
+    }
+    hidden.value = val || '';
+  };
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const show = !popover.classList.contains('show');
+    document.querySelectorAll('.drp-popover.show').forEach(p => {
+      if (p !== popover) {
+        p.classList.remove('show');
+        if (window.LayerManager) window.LayerManager.close(p);
+      }
+    });
+
+    popover.classList.toggle('show', show);
+    if (window.LayerManager) {
+      if (show) window.LayerManager.open(popover, null, { isPopover: true });
+      else window.LayerManager.close(popover);
+    }
+  });
+
+  window.addEventListener('mousedown', (e) => {
+    if (popover.classList.contains('show')) {
+      if (!popover.contains(e.target) && !trigger.contains(e.target)) {
+        popover.classList.remove('show');
+        if (window.LayerManager) window.LayerManager.close(popover);
+      }
+    }
+  });
+
+  wireManualDateInput(elId + '_trigger', elId, null, (start) => {
+    syncFunc(start);
+    hidden.dispatchEvent(new Event('input'));
+    hidden.dispatchEvent(new Event('change'));
+  }, true);
+
+  syncFunc(initialVal);
+
+  window.dynamicDatePickers[elId] = new DateRangePicker(elId + '_picker', {
+    start: initialVal,
+    single: true,
+    onChange: (range) => {
+      const v = range.start;
+      if (v !== hidden.value) {
+        hidden.value = v;
+        hidden.dispatchEvent(new Event('input'));
+        hidden.dispatchEvent(new Event('change'));
+      }
+    }
+  });
+}
+
 async function openItem(id){
   const myToken=++openToken;
   // Always ask before clobbering edits — including reopening the SAME dirty
@@ -2656,10 +2802,16 @@ async function openItem(id){
 
   // ── Clear stale field values so the user never sees the previous item's data ──
   $('s_title').value='';$('s_hdr').innerHTML='<span style="color:var(--muted)">loading…</span>';
-  $('s_time').innerHTML='';$('s_ctx').innerHTML='';$('s_kidlist').innerHTML='';
+  if($('s_time')) $('s_time').innerHTML='';
+  $('s_ctx').innerHTML='';$('s_kidlist').innerHTML='';
   if(descEditor)descEditor.value='';if(acEditor)acEditor.value='';
   atchState.list=[];atchState.uploading=0;renderAttachments();
   depsState.blockedBy=[];depsState.blocks=[];renderDeps();
+  
+  // Clear all custom field elements from the sidebar root and reset state
+  document.querySelectorAll('#side .sgroup[data-sg^="cust:"]').forEach(el => el.remove());
+  customFieldsState = [];
+
   closeMention();setSaveChip('idle');reactionCache.clear();
 
   // ── Highlight the target row in the tree ──
@@ -2711,6 +2863,438 @@ async function openItem(id){
   $('s_link').href=d.url;$('s_title').value=d.title;assignedEditor.set(d.assigned||'',/*silent*/true);
   descBase=(d.url||'').replace(/\/\d+$/,'');     // e.g. ".../_workitems/edit" for #N autolinks in the preview
   
+  // ── Fetch the fields definition and dynamically generate layout ──
+  let fields = [];
+  try {
+    fields = await api.getWorkItemTypeFields(d.type);
+  } catch(e) {
+    console.error("Failed to load fields definition", e);
+  }
+  if(myToken!==openToken)return;                   // a newer openItem() superseded this one
+
+  const side = $('side');
+  if (side) {
+    // Purge any existing dynamic groups from the DOM first
+    side.querySelectorAll('.sgroup').forEach(el => {
+      if (['area', 'effort', 'activity', 'classification', 'schedule', 'desc', 'ac'].includes(el.dataset.sg) || el.dataset.sg.startsWith('cust:')) {
+        el.remove();
+      }
+    });
+  }
+  customFieldsState = [];
+  descEditor = null;
+  acEditor = null;
+
+  const refNames = new Set(fields.map(f => f.referenceName));
+
+  // Determine which groups exist
+  const hasDesc = refNames.has("System.Description") || refNames.has("Microsoft.VSTS.TCM.ReproSteps");
+  const hasAc = refNames.has("Microsoft.VSTS.Common.AcceptanceCriteria");
+  const hasArea = refNames.has("System.AreaPath");
+  const hasActivity = refNames.has("Microsoft.VSTS.Common.Activity");
+  
+  const hasEffort = refNames.has("Microsoft.VSTS.Scheduling.StoryPoints") || 
+                    refNames.has("Microsoft.VSTS.Scheduling.RemainingWork") || 
+                    refNames.has("Microsoft.VSTS.Scheduling.CompletedWork");
+
+  const hasClassification = refNames.has("Microsoft.VSTS.Common.Risk") || 
+                            refNames.has("Microsoft.VSTS.Common.ValueArea");
+
+  const hasSchedule = refNames.has("Microsoft.VSTS.Scheduling.StartDate") || 
+                      refNames.has("Microsoft.VSTS.Scheduling.TargetDate") || 
+                      refNames.has("Microsoft.VSTS.Scheduling.FinishDate") || 
+                      refNames.has("Microsoft.VSTS.Scheduling.DueDate") || 
+                      refNames.has("Microsoft.VSTS.Scheduling.OriginalEstimate");
+
+  // Dynamically append the sgroup elements to #side
+  if (side) {
+    // 1. Description Group
+    if (hasDesc) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'desc';
+      div.id = 'editor_desc_container';
+      side.appendChild(div);
+
+      descEditor = new MarkdownEditor('editor_desc_container', {
+        label: refNames.has("Microsoft.VSTS.TCM.ReproSteps") ? 'Repro Steps' : 'Description',
+        placeholder: 'add description…',
+        allowAttachments: true,
+        allowMentions: true,
+        onInput: refreshDirty
+      });
+    }
+
+    // 2. Acceptance Criteria Group
+    if (hasAc) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'ac';
+      div.id = 'editor_ac_container';
+      side.appendChild(div);
+
+      acEditor = new MarkdownEditor('editor_ac_container', {
+        label: 'Acceptance Criteria',
+        placeholder: 'add acceptance criteria…',
+        allowAttachments: false,
+        allowMentions: true,
+        onInput: refreshDirty
+      });
+    }
+
+    // 3. Area Path Group
+    if (hasArea) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'area';
+      div.innerHTML = `<label>Area Path</label><input id="s_area">`;
+      const input = div.querySelector('input');
+      input.addEventListener('input', refreshDirty);
+      input.addEventListener('change', () => quickSave('area'));
+      side.appendChild(div);
+    }
+
+    // 4. Effort Group
+    if (hasEffort) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'effort';
+      div.innerHTML = `<label>Effort</label><div class="row"></div>`;
+      const row = div.querySelector('.row');
+
+      if (refNames.has("Microsoft.VSTS.Scheduling.StoryPoints")) {
+        const col = document.createElement('div');
+        col.innerHTML = `<label style="font-size:9px; text-transform:none;">Story Points</label><input id="s_storypoints" type="text">`;
+        const input = col.querySelector('input');
+        input.addEventListener('input', refreshDirty);
+        input.addEventListener('change', () => quickSave('storypoints'));
+        row.appendChild(col);
+      }
+      if (refNames.has("Microsoft.VSTS.Scheduling.RemainingWork")) {
+        const col = document.createElement('div');
+        col.innerHTML = `
+          <label style="font-size:9px; text-transform:none;">Remaining</label>
+          <div class="time-input-wrap">
+            <input id="s_remaining" type="text" placeholder="e.g. 4h">
+            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+            <div id="s_remaining_preview" class="time-preview-text"></div>
+          </div>
+        `;
+        const input = col.querySelector('input');
+        input.addEventListener('input', refreshDirty);
+        input.addEventListener('change', () => quickSave('remaining'));
+        row.appendChild(col);
+      }
+      if (refNames.has("Microsoft.VSTS.Scheduling.CompletedWork")) {
+        const col = document.createElement('div');
+        col.innerHTML = `
+          <label style="font-size:9px; text-transform:none;">Completed</label>
+          <div class="time-input-wrap">
+            <input id="s_completed" type="text" placeholder="e.g. 2d">
+            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+            <div id="s_completed_preview" class="time-preview-text"></div>
+          </div>
+        `;
+        const input = col.querySelector('input');
+        input.addEventListener('input', refreshDirty);
+        input.addEventListener('change', () => quickSave('completed'));
+        row.appendChild(col);
+      }
+      side.appendChild(div);
+      div.querySelectorAll('.time-input-wrap').forEach(wrap => {
+        const input = wrap.querySelector('input');
+        const prev = wrap.querySelector('.time-preview-text');
+        if (input && prev) {
+          const update = () => {
+            const txt = formatTimePreview(input.value);
+            prev.textContent = txt;
+            prev.style.display = txt ? 'block' : 'none';
+          };
+          input.addEventListener('input', update);
+          input.addEventListener('focus', update);
+          input.addEventListener('blur', () => { prev.style.display = 'none'; });
+        }
+      });
+    }
+
+    // 5. Activity Group
+    if (hasActivity) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'activity';
+      div.innerHTML = `
+        <label>Activity</label>
+        <select id="s_activity_field" style="width:100%">
+          <option value="">—</option>
+          <option>Development</option>
+          <option>Testing</option>
+          <option>Requirements</option>
+          <option>Design</option>
+          <option>Documentation</option>
+          <option>Deployment</option>
+        </select>
+      `;
+      const sel = div.querySelector('select');
+      sel.addEventListener('change', () => quickSave('activity'));
+      side.appendChild(div);
+    }
+
+    // 6. Classification Group
+    if (hasClassification) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'classification';
+      div.innerHTML = `<label>Classification</label><div class="row"></div>`;
+      const row = div.querySelector('.row');
+
+      if (refNames.has("Microsoft.VSTS.Common.Risk")) {
+        const col = document.createElement('div');
+        col.innerHTML = `
+          <label style="font-size:9px; text-transform:none;">Risk</label>
+          <select id="s_risk" style="width:100%">
+            <option value="">—</option>
+            <option>High</option>
+            <option>Medium</option>
+            <option>Low</option>
+          </select>
+        `;
+        const sel = col.querySelector('select');
+        sel.addEventListener('change', () => quickSave('risk'));
+        row.appendChild(col);
+      }
+      if (refNames.has("Microsoft.VSTS.Common.ValueArea")) {
+        const col = document.createElement('div');
+        col.innerHTML = `
+          <label style="font-size:9px; text-transform:none;">Value Area</label>
+          <select id="s_valuearea" style="width:100%">
+            <option value="">—</option>
+            <option>Business</option>
+            <option>Architectural</option>
+          </select>
+        `;
+        const sel = col.querySelector('select');
+        sel.addEventListener('change', () => quickSave('valuearea'));
+        row.appendChild(col);
+      }
+      side.appendChild(div);
+    }
+
+    // 7. Schedule Group
+    if (hasSchedule) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'schedule';
+      div.innerHTML = `<div class="row" style="align-items: flex-end;"></div><div id="s_time" class="stime"></div>`;
+      const row = div.querySelector('.row');
+
+      const hasStartOrTarget = refNames.has("Microsoft.VSTS.Scheduling.StartDate") || 
+                               refNames.has("Microsoft.VSTS.Scheduling.TargetDate") || 
+                               refNames.has("Microsoft.VSTS.Scheduling.FinishDate");
+
+      if (hasStartOrTarget) {
+        const col = document.createElement('div');
+        col.style.cssText = 'flex: 1.5; min-width: 140px;';
+        col.innerHTML = `
+          <label>Start — Target</label>
+          <div class="drp-wrapper" style="position:relative;">
+            <div style="position:relative; display:flex; align-items:center; width:100%;">
+              <input type="text" class="btn pcard" id="side-range-trigger" placeholder="Select dates..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+              <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+            </div>
+            <div id="side-range-picker" class="drp-popover"></div>
+          </div>
+          <input id="s_start" type="hidden">
+          <input id="s_target" type="hidden">
+        `;
+        const startInp = col.querySelector('#s_start');
+        const targetInp = col.querySelector('#s_target');
+        startInp.addEventListener('input', refreshDirty);
+        startInp.addEventListener('change', () => quickSave('start'));
+        targetInp.addEventListener('input', refreshDirty);
+        targetInp.addEventListener('change', () => quickSave('target'));
+        row.appendChild(col);
+      }
+      if (refNames.has("Microsoft.VSTS.Scheduling.DueDate")) {
+        const col = document.createElement('div');
+        col.style.cssText = 'flex: 1; min-width: 100px;';
+        col.innerHTML = `
+          <label>Due</label>
+          <div class="drp-wrapper" style="position:relative;">
+            <div style="position:relative; display:flex; align-items:center; width:100%;">
+              <input type="text" class="btn pcard" id="side-due-trigger" placeholder="Select date..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+              <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+            </div>
+            <div id="side-due-picker" class="drp-popover"></div>
+          </div>
+          <input id="s_due" type="hidden">
+        `;
+        const dueInp = col.querySelector('#s_due');
+        dueInp.addEventListener('input', refreshDirty);
+        dueInp.addEventListener('change', () => quickSave('due'));
+        row.appendChild(col);
+      }
+      if (refNames.has("Microsoft.VSTS.Scheduling.OriginalEstimate")) {
+        const col = document.createElement('div');
+        col.style.cssText = 'flex: 0.5; max-width:76px;';
+        col.innerHTML = `
+          <label>Est h</label>
+          <div class="time-input-wrap">
+            <input id="s_est" type="text" placeholder="e.g. 1d + 2h">
+            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+            <div id="s_est_preview" class="time-preview-text"></div>
+          </div>
+        `;
+        const input = col.querySelector('input');
+        input.addEventListener('input', refreshDirty);
+        input.addEventListener('change', () => quickSave('estimate'));
+        row.appendChild(col);
+        const prev = col.querySelector('.time-preview-text');
+        if (input && prev) {
+          const update = () => {
+            const txt = formatTimePreview(input.value);
+            prev.textContent = txt;
+            prev.style.display = txt ? 'block' : 'none';
+          };
+          input.addEventListener('input', update);
+          input.addEventListener('focus', update);
+          input.addEventListener('blur', () => { prev.style.display = 'none'; });
+        }
+      }
+      side.appendChild(div);
+    }
+
+    // 8. Custom Fields
+    const stdRefs = new Set([
+      'System.Id', 'System.WorkItemType', 'System.Title', 'System.State',
+      'System.AssignedTo', 'System.Parent', 'Microsoft.VSTS.Common.Priority',
+      'System.IterationPath', 'Microsoft.VSTS.Scheduling.StartDate',
+      'Microsoft.VSTS.Scheduling.TargetDate', 'Microsoft.VSTS.Scheduling.FinishDate',
+      'Microsoft.VSTS.Scheduling.DueDate', 'Microsoft.VSTS.Scheduling.OriginalEstimate',
+      'System.Tags', 'System.AreaPath', 'Microsoft.VSTS.Common.AcceptanceCriteria',
+      'System.Description', 'Microsoft.VSTS.TCM.ReproSteps',
+      'Microsoft.VSTS.Scheduling.StoryPoints', 'Microsoft.VSTS.Scheduling.RemainingWork',
+      'Microsoft.VSTS.Scheduling.CompletedWork', 'Microsoft.VSTS.Common.Activity',
+      'Microsoft.VSTS.Common.Risk', 'Microsoft.VSTS.Common.ValueArea'
+    ]);
+    const customFields = fields.filter(f => !stdRefs.has(f.referenceName));
+    customFields.forEach(cf => {
+      const elId = getCustomFieldElementId(cf.referenceName);
+      const sgId = 'cust:' + cf.referenceName;
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = sgId;
+      div.innerHTML = `<label>${esc(cf.name)}</label>`;
+
+      const type = (cf.type || '').toLowerCase();
+      let input;
+      if (type === 'html' || type === 'plaintext') {
+        input = document.createElement('textarea');
+        input.style.height = '60px';
+        input.id = elId;
+        if (cf.readOnly) input.disabled = true;
+        input.addEventListener('input', refreshDirty);
+        input.addEventListener('change', () => quickSave('cust:' + cf.referenceName));
+        div.appendChild(input);
+        side.appendChild(div);
+      } else if (type === 'datetime') {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'drp-wrapper';
+        wrapper.style.position = 'relative';
+        wrapper.innerHTML = `
+          <div style="position:relative; display:flex; align-items:center; width:100%;">
+            <input type="text" class="btn pcard" id="${elId}_trigger" placeholder="Select date..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off" ${cf.readOnly ? 'disabled' : ''}>
+            <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+          </div>
+          <div id="${elId}_picker" class="drp-popover"></div>
+        `;
+        div.appendChild(wrapper);
+        
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.id = elId;
+        hidden.addEventListener('input', refreshDirty);
+        hidden.addEventListener('change', () => quickSave('cust:' + cf.referenceName));
+        div.appendChild(hidden);
+        side.appendChild(div);
+
+        setupDynamicDatePicker(elId, cf.referenceName, '');
+      } else if (cf.allowedValues && cf.allowedValues.length > 0) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+          <input type="hidden" id="${elId}">
+          <div class="prow-field">
+            <button type="button" class="btn pcard" id="${elId}_card" title="click to change value" ${cf.readOnly ? 'disabled' : ''}></button>
+          </div>
+          <div id="${elId}_pick" class="ppick" style="display:none">
+            <input id="${elId}_search" class="psearch" placeholder="search options…  (Esc to cancel)" autocomplete="off">
+            <div id="${elId}_results" class="presults"></div>
+          </div>
+        `;
+        div.appendChild(wrapper);
+        
+        const hidden = wrapper.querySelector('input[type="hidden"]');
+        hidden.addEventListener('input', refreshDirty);
+        hidden.addEventListener('change', () => quickSave('cust:' + cf.referenceName));
+        
+        div.appendChild(wrapper);
+        side.appendChild(div);
+
+        createDynamicCombobox(elId, cf.referenceName, cf.allowedValues, cf.name, '');
+      } else if (cf.isIdentity || type === 'identity') {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+          <input type="hidden" id="${elId}">
+          <div class="prow-field">
+            <button type="button" class="btn pcard" id="${elId}_card" title="click to change value" ${cf.readOnly ? 'disabled' : ''}></button>
+          </div>
+          <div id="${elId}_pick" class="ppick" style="display:none">
+            <input id="${elId}_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+            <div id="${elId}_results" class="presults"></div>
+          </div>
+        `;
+        div.appendChild(wrapper);
+        
+        const hidden = wrapper.querySelector('input[type="hidden"]');
+        hidden.addEventListener('input', refreshDirty);
+        hidden.addEventListener('change', () => quickSave('cust:' + cf.referenceName));
+        
+        div.appendChild(wrapper);
+        side.appendChild(div);
+
+        createDynamicAssigneeField(elId, cf.referenceName, '', cf.readOnly);
+      } else {
+        input = document.createElement('input');
+        input.type = (type === 'double' || type === 'integer') ? 'number' : 'text';
+        input.id = elId;
+        if (cf.readOnly) input.disabled = true;
+        input.addEventListener('input', refreshDirty);
+        input.addEventListener('change', () => quickSave('cust:' + cf.referenceName));
+        div.appendChild(input);
+        side.appendChild(div);
+      }
+
+      customFieldsState.push({
+        referenceName: cf.referenceName,
+        name: cf.name,
+        type: cf.type,
+        readOnly: cf.readOnly,
+        isIdentity: cf.isIdentity || type === 'identity',
+        elementId: elId,
+        hasAllowedValues: cf.allowedValues && cf.allowedValues.length > 0
+      });
+
+      // Add dynamically to SIDE_GROUPS so it shows up in Customize
+      if (!SIDE_GROUPS.some(g => g.id === sgId)) {
+        SIDE_GROUPS.push({ id: sgId, label: 'Custom: ' + cf.name });
+      }
+    });
+  }
+
+  activeWType = d.type;
+  const offFormFields = fields.filter(f => !f.isOnForm).map(f => 'cust:' + f.referenceName);
+  loadSideLayout(activeWType, offFormFields);
+  applySideLayout(activeWType);
+  
   $('s_prio').value=d.priority?String(d.priority):'';
   const sel=$('s_state');sel.innerHTML='';
   let states;try{states=await api.states(d.type);}catch(e){states=['New','Active','Resolved','Closed','Removed'];}
@@ -2725,25 +3309,20 @@ async function openItem(id){
   const curIt=d.iteration||root;
   sprintEditor.set(curIt,/*silent*/true);                                // sprint card + picker (iterCache is loaded above)
   parentEditor.set(d.parent!=null?String(d.parent):'',/*silent*/true);   // set value + render card without flipping dirty
-  $('s_start').value=(d.start||'').slice(0,10);
-  $('s_target').value=(d.target||'').slice(0,10);
-  syncSideDatePicker($('s_start').value, $('s_target').value);
-  $('s_due').value=(d.due||'').slice(0,10);
-  syncSideDuePicker($('s_due').value);
-  $('s_est').value=(d.est!=null?d.est:'');
-
-  // Reset lazy field inputs to empty
-  $('s_area').value='';
-  $('s_storypoints').value='';
-  $('s_remaining').value='';
-  $('s_completed').value='';
-  $('s_activity_field').value='';
-  $('s_risk').value='';
-  $('s_valuearea').value='';
+  if ($('s_start')) $('s_start').value=(d.start||'').slice(0,10);
+  if ($('s_target')) $('s_target').value=(d.target||'').slice(0,10);
+  if ($('side-range-trigger')) syncSideDatePicker(d.start, d.target);
+  if ($('s_due')) $('s_due').value=(d.due||'').slice(0,10);
+  if ($('side-due-trigger')) syncSideDuePicker(d.due);
+  if ($('s_est')) $('s_est').value=(d.est!=null?d.est:'');
 
   orig={
     title:d.title,state:d.state,assigned:d.assigned,priority:d.priority,
-    iter:curIt,parent:(d.parent!=null?String(d.parent):''),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,
+    iter:curIt,parent:(d.parent!=null?String(d.parent):''),
+    start: $('s_start') ? $('s_start').value : '',
+    target: $('s_target') ? $('s_target').value : '',
+    due: $('s_due') ? $('s_due').value : '',
+    est: $('s_est') ? $('s_est').value : '',
     desc:'', ac:'', has_ac:false, tags:'', area:'', storypoints:null, remaining:null, completed:null, activity:'', risk:'', valuearea:'', _relationsLoaded:false
   };
 
@@ -2757,8 +3336,8 @@ async function openItem(id){
   if (activeLazyGroups.length > 0) {
     lockSidebarHeavy(true, activeLazyGroups);
     activeLazyGroups.forEach(g => {
-      if (g === 'desc') $('editor_desc_container').classList.add('loading-skeleton');
-      if (g === 'ac') $('editor_ac_container').classList.add('loading-skeleton');
+      if (g === 'desc' && $('editor_desc_container')) $('editor_desc_container').classList.add('loading-skeleton');
+      if (g === 'ac' && $('editor_ac_container')) $('editor_ac_container').classList.add('loading-skeleton');
     });
 
     let fieldsToFetch = [];
@@ -2776,36 +3355,38 @@ async function openItem(id){
       api.item(id, { fields: fieldsToFetch.length > 0 ? fieldsToFetch : undefined, expandRelations: needRelations, signal }).then(fullD => {
         if (cur !== id || phase2Token !== openToken) return; // switched items — discard stale data
 
-        if (activeLazyGroups.includes('desc')) {
+        if (activeLazyGroups.includes('desc') && descEditor) {
           descEditor.value = fullD.desc || '';
           descEditor.togglePreview(true);
           orig.desc = fullD.desc;
           orig._loaded_desc = true;
-          $('editor_desc_container').classList.remove('loading-skeleton');
+          if ($('editor_desc_container')) $('editor_desc_container').classList.remove('loading-skeleton');
         }
-        if (activeLazyGroups.includes('ac')) {
+        if (activeLazyGroups.includes('ac') && acEditor) {
           acEditor.value = fullD.ac || '';
           acEditor.togglePreview(true);
           orig.ac = fullD.ac;
           orig.has_ac = fullD.has_ac;
           orig._loaded_ac = true;
-          $('editor_ac_container').style.display = fullD.has_ac ? 'block' : 'none';
-          $('editor_ac_container').classList.remove('loading-skeleton');
+          if ($('editor_ac_container')) {
+            $('editor_ac_container').style.display = fullD.has_ac ? 'block' : 'none';
+            $('editor_ac_container').classList.remove('loading-skeleton');
+          }
         }
         if (activeLazyGroups.includes('tags')) {
           tagsEditor.set(fullD.tags || '', /*silent*/true);
           orig.tags = fullD.tags;
           orig._loaded_tags = true;
         }
-        if (activeLazyGroups.includes('area')) {
+        if (activeLazyGroups.includes('area') && $('s_area')) {
           $('s_area').value = fullD.area || '';
           orig.area = fullD.area || '';
           orig._loaded_area = true;
         }
         if (activeLazyGroups.includes('effort')) {
-          $('s_storypoints').value = fullD.storypoints != null ? fullD.storypoints : '';
-          $('s_remaining').value = fullD.remaining != null ? fullD.remaining : '';
-          $('s_completed').value = fullD.completed != null ? fullD.completed : '';
+          if ($('s_storypoints')) $('s_storypoints').value = fullD.storypoints != null ? fullD.storypoints : '';
+          if ($('s_remaining')) $('s_remaining').value = fullD.remaining != null ? fullD.remaining : '';
+          if ($('s_completed')) $('s_completed').value = fullD.completed != null ? fullD.completed : '';
           orig.storypoints = fullD.storypoints;
           orig.remaining = fullD.remaining;
           orig.completed = fullD.completed;
@@ -2813,14 +3394,14 @@ async function openItem(id){
           orig._loaded_remaining = true;
           orig._loaded_completed = true;
         }
-        if (activeLazyGroups.includes('activity')) {
+        if (activeLazyGroups.includes('activity') && $('s_activity_field')) {
           $('s_activity_field').value = fullD.activity || '';
           orig.activity = fullD.activity || '';
           orig._loaded_activity = true;
         }
         if (activeLazyGroups.includes('classification')) {
-          $('s_risk').value = fullD.risk || '';
-          $('s_valuearea').value = fullD.valuearea || '';
+          if ($('s_risk')) $('s_risk').value = fullD.risk || '';
+          if ($('s_valuearea')) $('s_valuearea').value = fullD.valuearea || '';
           orig.risk = fullD.risk || '';
           orig.valuearea = fullD.valuearea || '';
           orig._loaded_risk = true;
@@ -2836,6 +3417,40 @@ async function openItem(id){
         if (needRelations) {
           orig._relationsLoaded = true;
         }
+
+        // Dynamically build and render Custom Fields values
+        customFieldsState.forEach(cf => {
+          let val = fullD.fields[cf.referenceName] || '';
+          if (val && typeof val === 'object') {
+            val = val.displayName || val.uniqueName || '';
+          }
+          const el = $(cf.elementId);
+          if (el) {
+            const isDateTime = cf.type && cf.type.toLowerCase() === 'datetime';
+            if (isDateTime) {
+              const picker = window.dynamicDatePickers && window.dynamicDatePickers[cf.elementId];
+              if (picker) {
+                const dateStr = val ? val.slice(0, 10) : '';
+                picker.setRange(dateStr, dateStr);
+                const trigger = $(cf.elementId + '_trigger');
+                if (trigger) trigger.value = dateStr ? formatDisplayDate(dateStr) : '';
+              }
+              val = val ? val.slice(0, 10) : '';
+              el.value = val;
+            } else if (cf.hasAllowedValues || cf.isIdentity || (cf.type && cf.type.toLowerCase() === 'identity')) {
+              const picker = window.dynamicPickers && window.dynamicPickers[cf.elementId];
+              if (picker) {
+                picker.set(val, true);
+              } else {
+                el.value = val;
+              }
+            } else {
+              el.value = val;
+            }
+          }
+          orig[cf.referenceName] = val;
+          orig['_loaded_' + cf.referenceName] = true;
+        });
 
         lockSidebarHeavy(false, activeLazyGroups);
         refreshDirty();
@@ -2869,6 +3484,20 @@ function dirty(){
   if(orig._loaded_activity && v.activity!==orig.activity) return true;
   if(orig._loaded_risk && v.risk!==orig.risk) return true;
   if(orig._loaded_valuearea && v.valuearea!==orig.valuearea) return true;
+
+  // Custom fields dirty check
+  for (const cf of customFieldsState) {
+    if (orig['_loaded_' + cf.referenceName]) {
+      const currentVal = v[cf.referenceName];
+      const origVal = orig[cf.referenceName];
+      if (cf.type === 'double' || cf.type === 'integer') {
+        if (!numEq(currentVal, origVal)) return true;
+      } else {
+        if (String(currentVal) !== String(origVal)) return true;
+      }
+    }
+  }
+
   return false;
 }
 // Hybrid save: pickers (state, priority, assignee, sprint, parent, tags, dates,
@@ -2941,11 +3570,57 @@ function discardChanges(){
   $('s_activity_field').value=orig.activity||'';
   $('s_risk').value=orig.risk||'';
   $('s_valuearea').value=orig.valuearea||'';
+
+  // Restore custom fields
+  customFieldsState.forEach(cf => {
+    const el = $(cf.elementId);
+    if (el) {
+      const origVal = orig[cf.referenceName];
+      const isDateTime = cf.type && cf.type.toLowerCase() === 'datetime';
+      el.value = (isDateTime && origVal) ? origVal.slice(0, 10) : (origVal != null ? origVal : '');
+    }
+  });
+
   refreshDirty();
 }
-function editorValues(){return {title:$('s_title').value,state:$('s_state').value,assigned:$('s_assigned').value,desc:descEditor.value,ac:acEditor.value,prio:$('s_prio').value,
-  iter:$('s_iter').value,parent:$('s_parent').value.trim(),start:$('s_start').value,target:$('s_target').value,due:$('s_due').value,est:$('s_est').value,tags:tagsEditor.value(),
-  area:$('s_area').value,storypoints:$('s_storypoints').value,remaining:$('s_remaining').value,completed:$('s_completed').value,activity:$('s_activity_field').value,risk:$('s_risk').value,valuearea:$('s_valuearea').value};}
+function editorValues(){
+  const values = {
+    title: $('s_title').value,
+    state: $('s_state').value,
+    assigned: $('s_assigned').value,
+    desc: descEditor ? descEditor.value : '',
+    ac: acEditor ? acEditor.value : '',
+    prio: $('s_prio').value,
+    iter: $('s_iter').value,
+    parent: $('s_parent').value.trim(),
+    start: $('s_start') ? $('s_start').value : '',
+    target: $('s_target') ? $('s_target').value : '',
+    due: $('s_due') ? $('s_due').value : '',
+    est: $('s_est') ? $('s_est').value : '',
+    tags: tagsEditor ? tagsEditor.value() : '',
+    area: $('s_area') ? $('s_area').value : '',
+    storypoints: $('s_storypoints') ? $('s_storypoints').value : '',
+    remaining: $('s_remaining') ? $('s_remaining').value : '',
+    completed: $('s_completed') ? $('s_completed').value : '',
+    activity: $('s_activity_field') ? $('s_activity_field').value : '',
+    risk: $('s_risk') ? $('s_risk').value : '',
+    valuearea: $('s_valuearea') ? $('s_valuearea').value : ''
+  };
+  
+  // Collect dynamic custom fields values
+  customFieldsState.forEach(cf => {
+    const el = $(cf.elementId);
+    if (el) {
+      if (cf.type === 'double' || cf.type === 'integer') {
+        values[cf.referenceName] = el.value === '' ? '' : Number(el.value);
+      } else {
+        values[cf.referenceName] = el.value;
+      }
+    }
+  });
+
+  return values;
+}
 
 // Picker onChange: auto-save the field, then refresh dirty (which now only
 // tracks the manual text fields). quickSave reads orig vs editor so a no-op
@@ -3372,6 +4047,10 @@ async function quickSave(field){
   } else if(field==='storypoints' || field==='remaining' || field==='completed') {
     if(numEq(v[field], orig[field])) return;
     body[field] = v[field] === '' ? '' : Number(v[field]);
+  } else if(field.startsWith('cust:')) {
+    const refName = field.substring(5);
+    if(v[refName] === orig[refName]) return;
+    body[refName] = v[refName];
   } else {
     const keyMap={iteration:'iter',estimate:'est'};
     const k=keyMap[field]||field;
@@ -3414,6 +4093,14 @@ async function quickSave(field){
   if('risk'in body)orig.risk=vNow.risk;
   if('valuearea'in body)orig.valuearea=vNow.valuearea;
   if(parentChanged)orig.parent=vNow.parent;
+
+  // Sync custom fields to orig
+  customFieldsState.forEach(cf => {
+    if (cf.referenceName in body) {
+      orig[cf.referenceName] = vNow[cf.referenceName];
+    }
+  });
+
   refreshDirty();setSaveChip('saved');
   setStatus(`#${id} ${field} saved`+(r?` → rev ${r.rev}`:''));
   postSaveRefresh(body,parentChanged);
@@ -5252,9 +5939,28 @@ const SIDE_GROUPS=[
 ];
 const SIDE_LOCKED=new Set(['title','actions']);    // editor unusable without these
 let sideOrder=SIDE_GROUPS.map(g=>g.id), sideHidden=new Set(['area', 'activity']);
-function loadSideLayout(){
-  try{const o=JSON.parse(localStorage.getItem('ado.sideOrder')||'null');if(Array.isArray(o))sideOrder=o;}catch(e){}
-  const savedHidden = localStorage.getItem('ado.sideHidden');
+let activeWType = null; // Track current loaded work item type for sidebar
+
+function loadSideLayout(wtype, offFormFields = []){
+  const suffix = wtype ? '.' + wtype : '';
+  const orderKey = 'ado.sideOrder' + suffix;
+  const hiddenKey = 'ado.sideHidden' + suffix;
+  
+  // Default values
+  sideOrder = SIDE_GROUPS.map(g=>g.id);
+  sideHidden = new Set(['area', 'activity', ...offFormFields]);
+  
+  try {
+    const o = JSON.parse(localStorage.getItem(orderKey) || 'null');
+    if (Array.isArray(o)) sideOrder = o;
+    else if (wtype) {
+      // Fallback to default layout if type-specific layout doesn't exist
+      const fallbackO = JSON.parse(localStorage.getItem('ado.sideOrder') || 'null');
+      if (Array.isArray(fallbackO)) sideOrder = fallbackO;
+    }
+  } catch(e){}
+  
+  const savedHidden = localStorage.getItem(hiddenKey) || (wtype ? localStorage.getItem('ado.sideHidden') : null);
   if(savedHidden){
     try{
       const h=JSON.parse(savedHidden);
@@ -5265,12 +5971,25 @@ function loadSideLayout(){
           sideHidden.add(id);
         }
       });
+      offFormFields.forEach(id => {
+        if (!existingIds.has(id)) {
+          sideHidden.add(id);
+        }
+      });
     }catch(e){}
-  }else{
-    sideHidden=new Set(['area', 'activity']);
   }
 }
-function saveSideLayout(){try{localStorage.setItem('ado.sideOrder',JSON.stringify(sideOrderedIds()));localStorage.setItem('ado.sideHidden',JSON.stringify([...sideHidden]));}catch(e){}}
+
+function saveSideLayout(wtype){
+  const suffix = wtype ? '.' + wtype : '';
+  const orderKey = 'ado.sideOrder' + suffix;
+  const hiddenKey = 'ado.sideHidden' + suffix;
+  try{
+    localStorage.setItem(orderKey, JSON.stringify(sideOrderedIds()));
+    localStorage.setItem(hiddenKey, JSON.stringify([...sideHidden]));
+  }catch(e){}
+}
+
 function sideOrderedIds(){     // same recovery as barOrderedIds — re-insert missing ids near their defaults
   const def=SIDE_GROUPS.map(g=>g.id),defSet=new Set(def);
   const result=sideOrder.filter((id,i)=>id!=='actions'&&defSet.has(id)&&sideOrder.indexOf(id)===i);
@@ -5284,9 +6003,17 @@ function sideOrderedIds(){     // same recovery as barOrderedIds — re-insert m
   result.push('actions');
   return result;
 }
-function applySideLayout(){
+
+function applySideLayout(wtype){
   const side=$('side');if(!side)return;
-  sideOrderedIds().forEach(id=>{const el=side.querySelector(`.sgroup[data-sg="${id}"]`);if(el)side.appendChild(el);});
+  
+  // Sort all groups inside #side (including custom fields)
+  sideOrderedIds().forEach(id=>{
+    const el=side.querySelector(`.sgroup[data-sg="${id}"]`);
+    if(el)side.appendChild(el);
+  });
+
+  // Handle visibility & lazy loading
   SIDE_GROUPS.forEach(g=>{
     const el=side.querySelector(`.sgroup[data-sg="${g.id}"]`);
     if(el) {
@@ -5372,37 +6099,188 @@ function applyBarLayout(){
   barOrderedIds().forEach(id=>{const el=$(id);if(el)bar.appendChild(el);});   // reorder (h1 isn't listed → stays first)
   BAR_ITEMS.forEach(i=>{const el=$(i.id);if(el)el.classList.toggle('tb-hidden',barHidden.has(i.id));});
 }
-let czTab='bar';                                           // 'bar' | 'side' — which list the Customize dialog is editing
-function showCustomize(){const mp=$('morepanel');if(mp){mp.style.display='none';if (window.LayerManager) window.LayerManager.close(mp);$('morebtn').classList.remove('on');}
-  renderCustomizeList();$('customize-overlay').classList.add('show');
-  if (window.LayerManager) window.LayerManager.open($('customize-overlay'));}
-function closeCustomize(){$('customize-overlay').classList.remove('show');
-  if (window.LayerManager) window.LayerManager.close($('customize-overlay'));}
+let czWType = ''; // selected type to customize; empty string means default/all
+let czSupportedGroups = new Set();
+
+async function updateSideGroupsForType(wtype) {
+  for (let i = SIDE_GROUPS.length - 1; i >= 0; i--) {
+    if (SIDE_GROUPS[i].id.startsWith('cust:')) {
+      SIDE_GROUPS.splice(i, 1);
+    }
+  }
+  czSupportedGroups.clear();
+  
+  if (wtype) {
+    try {
+      const fields = await api.getWorkItemTypeFields(wtype);
+      const refNames = new Set(fields.map(f => f.referenceName));
+      
+      const hasDesc = refNames.has("System.Description") || refNames.has("Microsoft.VSTS.TCM.ReproSteps");
+      const hasAc = refNames.has("Microsoft.VSTS.Common.AcceptanceCriteria");
+      const hasArea = refNames.has("System.AreaPath");
+      const hasActivity = refNames.has("Microsoft.VSTS.Common.Activity");
+      
+      const hasEffort = refNames.has("Microsoft.VSTS.Scheduling.StoryPoints") || 
+                        refNames.has("Microsoft.VSTS.Scheduling.RemainingWork") || 
+                        refNames.has("Microsoft.VSTS.Scheduling.CompletedWork");
+
+      const hasClassification = refNames.has("Microsoft.VSTS.Common.Risk") || 
+                                refNames.has("Microsoft.VSTS.Common.ValueArea");
+
+      const hasSchedule = refNames.has("Microsoft.VSTS.Scheduling.StartDate") || 
+                          refNames.has("Microsoft.VSTS.Scheduling.TargetDate") || 
+                          refNames.has("Microsoft.VSTS.Scheduling.FinishDate") || 
+                          refNames.has("Microsoft.VSTS.Scheduling.DueDate") || 
+                          refNames.has("Microsoft.VSTS.Scheduling.OriginalEstimate");
+
+      // Always supported groups
+      ['nav', 'title', 'workflow', 'sprint', 'parent', 'deps', 'tags', 'attachments', 'actions'].forEach(id => czSupportedGroups.add(id));
+
+      if (hasDesc) czSupportedGroups.add('desc');
+      if (hasAc) czSupportedGroups.add('ac');
+      if (hasArea) czSupportedGroups.add('area');
+      if (hasActivity) czSupportedGroups.add('activity');
+      if (hasEffort) czSupportedGroups.add('effort');
+      if (hasClassification) czSupportedGroups.add('classification');
+      if (hasSchedule) czSupportedGroups.add('schedule');
+
+      const stdRefs = new Set([
+        'System.Id', 'System.WorkItemType', 'System.Title', 'System.State',
+        'System.AssignedTo', 'System.Parent', 'Microsoft.VSTS.Common.Priority',
+        'System.IterationPath', 'Microsoft.VSTS.Scheduling.StartDate',
+        'Microsoft.VSTS.Scheduling.TargetDate', 'Microsoft.VSTS.Scheduling.FinishDate',
+        'Microsoft.VSTS.Scheduling.DueDate', 'Microsoft.VSTS.Scheduling.OriginalEstimate',
+        'System.Tags', 'System.AreaPath', 'Microsoft.VSTS.Common.AcceptanceCriteria',
+        'System.Description', 'Microsoft.VSTS.TCM.ReproSteps',
+        'Microsoft.VSTS.Scheduling.StoryPoints', 'Microsoft.VSTS.Scheduling.RemainingWork',
+        'Microsoft.VSTS.Scheduling.CompletedWork', 'Microsoft.VSTS.Common.Activity',
+        'Microsoft.VSTS.Common.Risk', 'Microsoft.VSTS.Common.ValueArea'
+      ]);
+      fields.forEach(cf => {
+        if (!stdRefs.has(cf.referenceName)) {
+          const sgId = 'cust:' + cf.referenceName;
+          czSupportedGroups.add(sgId);
+          if (!SIDE_GROUPS.some(g => g.id === sgId)) {
+            SIDE_GROUPS.push({ id: sgId, label: 'Custom: ' + cf.name });
+          }
+        }
+      });
+    } catch(e) { console.error(e); }
+  } else {
+    SIDE_GROUPS.forEach(g => czSupportedGroups.add(g.id));
+  }
+}
+
+async function showCustomize(){
+  const mp=$('morepanel');
+  if(mp){
+    mp.style.display='none';
+    if (window.LayerManager) window.LayerManager.close(mp);
+    $('morebtn').classList.remove('on');
+  }
+  
+  czWType = activeWType || '';
+  await updateSideGroupsForType(czWType);
+  
+  // Populate wtype chips
+  const types = [''].concat(typeList.length ? typeList.map(t=>t.name) : TYPES);
+  const chipsCont = $('cz_wtype_chips');
+  if (chipsCont) {
+    chipsCont.innerHTML = types.map(t => {
+      const label = t || 'All Types';
+      const active = (czWType || '') === t ? ' class="type-chip on"' : ' class="type-chip"';
+      return `<button data-wtype="${t}"${active}>${esc(label)}</button>`;
+    }).join('');
+
+    chipsCont.querySelectorAll('button').forEach(btn => {
+      btn.onclick = async () => {
+        chipsCont.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+        czWType = btn.dataset.wtype;
+        await updateSideGroupsForType(czWType);
+        let offFormFields = [];
+        if (czWType) {
+          try {
+            const fields = await api.getWorkItemTypeFields(czWType);
+            offFormFields = fields.filter(f => !f.isOnForm).map(f => 'cust:' + f.referenceName);
+          } catch (e) {}
+        }
+        loadSideLayout(czWType, offFormFields);
+        renderCustomizeList();
+      };
+    });
+  }
+  
+  renderCustomizeList();
+  $('customize-overlay').classList.add('show');
+  if (window.LayerManager) window.LayerManager.open($('customize-overlay'));
+}
+
+function closeCustomize(){
+  $('customize-overlay').classList.remove('show');
+  if (window.LayerManager) window.LayerManager.close($('customize-overlay'));
+}
+
 function resetCustomize(){       // reset only the currently-active tab to defaults
-  if(czTab==='side'){sideOrder=SIDE_GROUPS.map(g=>g.id);sideHidden=new Set(['area', 'activity']);saveSideLayout();applySideLayout();}
+  if(czTab==='side'){
+    (async () => {
+      sideOrder=SIDE_GROUPS.map(g=>g.id);
+      let offFormFields = [];
+      if (czWType) {
+        try {
+          const fields = await api.getWorkItemTypeFields(czWType);
+          offFormFields = fields.filter(f => !f.isOnForm).map(f => 'cust:' + f.referenceName);
+        } catch (e) {}
+      }
+      sideHidden=new Set(['area', 'activity', ...offFormFields]);
+      saveSideLayout(czWType);
+      applySideLayout(czWType);
+      renderCustomizeList();
+    })();
+    return;
+  }
   else if(czTab==='bulk'){bulkOrder=BULK_ITEMS.map(i=>i.id);bulkHidden=new Set(['parent', 'dates']);saveBulkLayout();applyBulkLayout();}
   else{barOrder=BAR_ITEMS.map(i=>i.id);barHidden=new Set();saveBarLayout();applyBarLayout();}
   renderCustomizeList();
 }
-function setCustomizeTab(t){czTab=t;
+
+function setCustomizeTab(t){
+  czTab=t;
   $('cz_tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.cz===t));
   $('cz_title').textContent=t==='side'?'Customize work item panel':(t==='bulk'?'Customize bulk edit bar':'Customize toolbar');
+  const wtypeCont = $('cz_wtype_container');
+  if (wtypeCont) {
+    wtypeCont.style.display = t === 'side' ? 'flex' : 'none';
+  }
   renderCustomizeList();
 }
+
 function renderCustomizeList(){
   const list=$('customize-list');
   const cfg=czTab==='side'
-    ? {items:SIDE_GROUPS,locked:SIDE_LOCKED,orderedIds:sideOrderedIds,save:saveSideLayout,apply:applySideLayout,setOrder:o=>{sideOrder=o;},isHidden:id=>sideHidden.has(id),hide:id=>sideHidden.add(id),show:id=>sideHidden.delete(id)}
+    ? {
+        items:SIDE_GROUPS,
+        locked:SIDE_LOCKED,
+        orderedIds:sideOrderedIds,
+        save:()=>saveSideLayout(czWType),
+        apply:()=>applySideLayout(czWType),
+        setOrder:o=>{sideOrder=o;},
+        isHidden:id=>sideHidden.has(id),
+        hide:id=>sideHidden.add(id),
+        show:id=>sideHidden.delete(id)
+      }
     : (czTab==='bulk'
       ? {items:BULK_ITEMS,locked:BULK_LOCKED,orderedIds:bulkOrderedIds,save:saveBulkLayout,apply:applyBulkLayout,setOrder:o=>{bulkOrder=o;},isHidden:id=>bulkHidden.has(id),hide:id=>bulkHidden.add(id),show:id=>bulkHidden.delete(id)}
       : {items:BAR_ITEMS,  locked:BAR_LOCKED, orderedIds:barOrderedIds, save:saveBarLayout, apply:applyBarLayout, setOrder:o=>{barOrder=o;}, isHidden:id=>barHidden.has(id), hide:id=>barHidden.add(id), show:id=>barHidden.delete(id)});
+  
   const byId=Object.fromEntries(cfg.items.map(i=>[i.id,i.label]));
-  list.innerHTML=cfg.orderedIds().filter(id=>id!=='actions').map(id=>{
+  list.innerHTML=cfg.orderedIds().filter(id=>id!=='actions' && (czTab !== 'side' || !czWType || czSupportedGroups.has(id))).map(id=>{
     const locked=cfg.locked.has(id),checked=!cfg.isHidden(id);
     const grip=locked?'<span class="czgrip disabled" title="locked field">🔒</span>':'<span class="czgrip" title="drag to reorder">⠿</span>';
     return `<div class="czrow${locked?' locked':''}" draggable="${!locked}" data-id="${id}">${grip}`+
-      `<label class="czlab"><input type="checkbox" ${checked?'checked':''} ${locked?'disabled':''} data-id="${id}">${esc(byId[id])}</label></div>`;
+      `<label class="czlab"><input type="checkbox" ${checked?'checked':''} ${locked?'disabled':''} data-id="${id}">${esc(byId[id] || id)}</label></div>`;
   }).join('');
+  
   list.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
     const id=cb.dataset.id;if(cb.checked)cfg.show(id);else cfg.hide(id);cfg.save();cfg.apply();});
   let dragging=null;
@@ -5646,14 +6524,6 @@ async function initialBoot(postSetup){
     if(dirty()){e.preventDefault();e.returnValue='';return '';}
   });
   $('s_customize').onclick=()=>{setCustomizeTab('side');showCustomize();};   // gear in the panel header → open Customize on the sidebar tab
-  // Initialize unified markdown editors
-  descEditor = new MarkdownEditor('editor_desc_container', {
-    label: 'Description',
-    placeholder: 'add a description…',
-    allowAttachments: true,
-    allowMentions: true,
-    onInput: refreshDirty
-  });
   const atchWrap = document.querySelector('.atch-wrap');
   if (atchWrap) {
     const hasFiles = e => !!(e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files'));
@@ -5686,13 +6556,6 @@ async function initialBoot(postSetup){
       }
     });
   }
-  acEditor = new MarkdownEditor('editor_ac_container', {
-    label: 'Acceptance Criteria',
-    placeholder: 'add acceptance criteria…',
-    allowAttachments: false,
-    allowMentions: true,
-    onInput: refreshDirty
-  });
   commentEditor = new MarkdownEditor('comment_editor_container', {
     placeholder: 'add a comment…',
     allowAttachments: false,
@@ -5897,7 +6760,7 @@ async function initialBoot(postSetup){
     });
   });
   $('cz_tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>setCustomizeTab(b.dataset.cz));
-  loadSideLayout();applySideLayout();          // restore the saved sidebar group order / hidden set
+  loadSideLayout(activeWType);applySideLayout(activeWType);          // restore the saved sidebar group order / hidden set
   $('customize-overlay').addEventListener('mousedown',e=>{if(e.target===$('customize-overlay'))closeCustomize();});
   $('customize-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeCustomize();}});
   loadBarLayout();applyBarLayout();              // apply the saved toolbar order / hidden set

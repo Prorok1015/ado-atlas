@@ -114,9 +114,21 @@ async function clearConfig() {
 }
 
 // ---------- HTTP ----------
-function resolveField(k) {
+function resolveField(k, wtype) {
   if (k.toLowerCase() === "target") {
     return detectedTargetField || "Microsoft.VSTS.Scheduling.TargetDate";
+  }
+  if (k.toLowerCase() === "desc" || k.toLowerCase() === "description") {
+    // If wtype is provided, resolve dynamically; otherwise fallback
+    if (wtype) {
+      // NOTE: We cannot easily run async getDescriptionFieldForType inside resolveField if resolveField is sync.
+      // So we will resolve Description fields asynchronously/explicitly in the functions that call it,
+      // or we can look up from a synchronous cache if we already loaded it, or default.
+      // Let's check a synchronous cache that we populate, or let getDescriptionFieldForType handle it.
+      // To keep resolveField synchronous, we will check a global memory map populated by our async calls.
+      const cacheKey = typeof getConfig === "function" ? `${wtype}` : "";
+      // Let's use a simpler approach: we can resolve it directly in the callers (item/updateItem) and not rely purely on resolveField(desc).
+    }
   }
   return FIELD_ALIASES[k.toLowerCase()] || k;
 }
@@ -459,6 +471,124 @@ async function workItemTypes() {
     });
 }
 
+// Caches fields of a specific work item type for a project.
+let witFieldsCache = {};
+let globalFieldsCache = null;
+
+async function getFieldsMap() {
+  if (globalFieldsCache) return globalFieldsCache;
+  const { org, project } = await getConfig();
+  if (!org || !project) return {};
+  const cacheKey = `global_fields_map_v3:${org}:${project}`;
+  
+  try {
+    const cached = await chrome.storage.local.get(cacheKey);
+    if (cached && cached[cacheKey]) {
+      globalFieldsCache = cached[cacheKey];
+      return globalFieldsCache;
+    }
+  } catch (_) {}
+
+  const proj = await projUrl();
+  try {
+    const r = await req("GET", `${proj}/_apis/wit/fields?${API_VERSION}`);
+    const fieldsMap = {};
+    (r.value || []).forEach(f => {
+      fieldsMap[f.referenceName] = {
+        type: f.type,
+        readOnly: !!f.readOnly,
+        isIdentity: !!f.isIdentity
+      };
+    });
+    globalFieldsCache = fieldsMap;
+    try {
+      await chrome.storage.local.set({ [cacheKey]: fieldsMap });
+    } catch (_) {}
+    return fieldsMap;
+  } catch (err) {
+    console.error("Failed to load global fields map", err);
+    return {};
+  }
+}
+
+async function getWorkItemTypeFields(wtype) {
+  const { org, project } = await getConfig();
+  if (!org || !project || !wtype) return [];
+  const cacheKey = `wit_fields_v6:${org}:${project}:${wtype}`;
+  
+  // Try memory cache first
+  if (witFieldsCache[cacheKey]) return witFieldsCache[cacheKey];
+  
+  // Try local storage cache
+  try {
+    const cached = await chrome.storage.local.get(cacheKey);
+    if (cached && cached[cacheKey]) {
+      witFieldsCache[cacheKey] = cached[cacheKey];
+      return cached[cacheKey];
+    }
+  } catch (_) {}
+
+  const proj = await projUrl();
+  const t = encodeURIComponent(wtype);
+  try {
+    const fieldsMap = await getFieldsMap();
+    // Fetch work item type metadata containing xmlForm layout
+    const typeMeta = await req("GET", `${proj}/_apis/wit/workitemtypes/${t}?${API_VERSION}`);
+    
+    // Parse xmlForm definition to extract fields actually placed on the form
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(typeMeta.xmlForm || "", "text/xml");
+    const controls = doc.getElementsByTagName("Control");
+    const formFields = new Set();
+    for (const control of controls) {
+      const fn = control.getAttribute("FieldName");
+      if (fn) {
+        formFields.add(fn);
+      }
+    }
+
+    const r = await req("GET", `${proj}/_apis/wit/workitemtypes/${t}/fields?${API_VERSION}`);
+    const fields = (r.value || []).map(f => {
+      const globalInfo = fieldsMap[f.referenceName] || {};
+      return {
+        name: f.name,
+        referenceName: f.referenceName,
+        type: globalInfo.type || (f.field ? f.field.type : f.type) || 'string',
+        readOnly: globalInfo.readOnly !== undefined ? globalInfo.readOnly : (f.field ? f.field.readOnly : f.readOnly),
+        isIdentity: !!globalInfo.isIdentity,
+        allowedValues: f.allowedValues || [],
+        isOnForm: formFields.has(f.referenceName)
+      };
+    });
+    
+    // Save to storage & memory
+    witFieldsCache[cacheKey] = fields;
+    try {
+      await chrome.storage.local.set({ [cacheKey]: fields });
+    } catch (_) {}
+    
+    return fields;
+  } catch (err) {
+    console.error("Failed to load work item type fields for type " + wtype, err);
+    return [];
+  }
+}
+
+async function getDescriptionFieldForType(wtype) {
+  if (!wtype) return "System.Description";
+  const fields = await getWorkItemTypeFields(wtype);
+  const refNames = new Set(fields.map(f => f.referenceName));
+  if (refNames.has("Microsoft.VSTS.TCM.ReproSteps")) {
+    return "Microsoft.VSTS.TCM.ReproSteps";
+  }
+  if (refNames.has("System.Description")) {
+    return "System.Description";
+  }
+  // Fallback / default
+  return "System.Description";
+}
+
+
 let teamRosterCache = null;
 
 async function getTeamRoster() {
@@ -714,11 +844,35 @@ async function item(wid, options) {
   const proj = await projUrl();
   let url = `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`;
   const hasFields = options && Array.isArray(options.fields) && options.fields.length > 0;
+  
+  // We first fetch the item metadata (or full if requested)
+  // If we only need specific fields, we need to map System.Description to the dynamic field name.
+  // But wait, when calling api.item initially we don't know the work item type yet!
+  // However, during light fields loading, System.Description is NOT fetched.
+  // In Phase 2, we fetch fields dynamically. We will resolve the description field before fetching or handle it here.
+  let fieldsToFetch = hasFields ? [...options.fields] : null;
+  
+  // If we are asked to fetch System.Description, we will first fetch type info or let it pass through.
+  // Let's make it robust: if fieldsToFetch contains System.Description or Microsoft.VSTS.TCM.ReproSteps,
+  // we first need to know the type. Let's do a fast GET if we don't know it, or just request both fields,
+  // or fetch the work item and then map.
+  // Actually, requesting the work item without fields parameter returns ALL fields!
+  // If options.fields is specified, we fetch only those. Let's inspect options.fields.
+  // If options.fields contains System.Description, we can replace it with both System.Description and Microsoft.VSTS.TCM.ReproSteps to be safe,
+  // or resolve it. Requesting both is extremely clean and requires no extra API roundtrips!
+  if (fieldsToFetch) {
+    const descIdx = fieldsToFetch.indexOf("System.Description");
+    if (descIdx !== -1) {
+      // Replace with both so we get whichever is defined
+      fieldsToFetch.splice(descIdx, 1, "System.Description", "Microsoft.VSTS.TCM.ReproSteps");
+    }
+  }
+
   const expandRelations = (options && options.expandRelations !== undefined) ? !!options.expandRelations : (hasFields ? false : true);
   if (expandRelations) {
     url += `&$expand=relations`;
-  } else if (hasFields) {
-    url += `&fields=${options.fields.map(resolveField).join(",")}`;
+  } else if (fieldsToFetch) {
+    url += `&fields=${fieldsToFetch.map(f => resolveField(f)).join(",")}`;
   }
   const d = await req("GET", url, undefined, undefined, options);
   const f = d.fields || {};
@@ -729,13 +883,23 @@ async function item(wid, options) {
   }
   const wtype = f["System.WorkItemType"];
   const a = f["System.AssignedTo"];
+  
+  // Resolve which description field to use
+  let descVal = "";
+  if (wtype) {
+    const descField = await getDescriptionFieldForType(wtype);
+    descVal = f[descField] || f["System.Description"] || f["Microsoft.VSTS.TCM.ReproSteps"] || "";
+  } else {
+    descVal = f["System.Description"] || f["Microsoft.VSTS.TCM.ReproSteps"] || "";
+  }
+
   return {
     id: d.id, rev: d.rev, type: wtype,
     title: f["System.Title"] || "",
     state: f["System.State"] || "",
     assigned: (a && typeof a === "object") ? (a.displayName || "") : (a || ""),
     priority: f["Microsoft.VSTS.Common.Priority"],
-    desc: htmlToMarkdown(f["System.Description"]),
+    desc: htmlToMarkdown(descVal),
     ac: htmlToMarkdown(f["Microsoft.VSTS.Common.AcceptanceCriteria"]),
     has_ac: AC_TYPES.has(wtype) || "Microsoft.VSTS.Common.AcceptanceCriteria" in f,
     parent: f["System.Parent"],
@@ -755,6 +919,7 @@ async function item(wid, options) {
     deps: depsFromRelations(d.relations),
     attachments: attachmentsFromRelations(d.relations),
     url: await browserUrl(d.id),
+    fields: f,
   };
 }
 
@@ -904,17 +1069,18 @@ async function removeAttachmentLink(wid, attUrl) {
 // Body shape mirrors the old /api/item PATCH endpoint: friendly aliases
 // (title/state/assigned/iteration/desc/ac/priority/estimate/start/target/due).
 async function updateItem(wid, body) {
-  if ("target" in body && !detectedTargetField) {
+  let wtype = null;
+  if (("target" in body && !detectedTargetField) || "desc" in body) {
     try {
       const proj = await projUrl();
       const w = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`);
       const f = w.fields || {};
+      wtype = f["System.WorkItemType"];
       if ("Microsoft.VSTS.Scheduling.FinishDate" in f) {
         detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
       } else if ("Microsoft.VSTS.Scheduling.TargetDate" in f) {
         detectedTargetField = "Microsoft.VSTS.Scheduling.TargetDate";
       } else {
-        const wtype = f["System.WorkItemType"];
         if (wtype === "Product Backlog Item") {
           detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
         }
@@ -924,6 +1090,17 @@ async function updateItem(wid, body) {
   const fields = {};
   for (const k of ["title","state","assigned","iteration","start","target","due","tags","area","activity","risk","valuearea"]) {
     if (k in body) fields[k] = body[k];
+  }
+  // Copy custom fields directly
+  const handled = new Set([
+    "title", "state", "assigned", "iteration", "start", "target", "due", "tags",
+    "area", "activity", "risk", "valuearea", "priority", "storypoints",
+    "remaining", "completed", "estimate", "desc", "ac"
+  ]);
+  for (const [k, v] of Object.entries(body)) {
+    if (!handled.has(k)) {
+      fields[k] = v;
+    }
   }
   if (fields.assigned === "me") {
     const u = await me();
@@ -975,6 +1152,13 @@ async function updateItem(wid, body) {
   if ("desc" in body) fields.desc = AdoLib.mdToHtml(body.desc, mdOpts);
   if ("ac" in body) fields.ac = AdoLib.mdToHtml(body.ac, mdOpts);
   if (!Object.keys(fields).length) throw new Error("no fields");
+
+  // Determine actual description field to use for patch
+  let descField = "System.Description";
+  if ("desc" in body && wtype) {
+    descField = await getDescriptionFieldForType(wtype);
+  }
+
   // ADO REST quirks:
   // 1. op:"add" with an empty value is silently dropped on some fields (e.g.
   //    clearing dates) — use op:"remove" to clear.
@@ -985,7 +1169,13 @@ async function updateItem(wid, body) {
   //    (VS403691), so we send exactly one op for tags.
   const ops = [];
   for (const [k, v] of Object.entries(fields)) {
-    const path = `/fields/${resolveField(k)}`;
+    let resolved;
+    if (k === "desc") {
+      resolved = descField;
+    } else {
+      resolved = resolveField(k);
+    }
+    const path = `/fields/${resolved}`;
     if (v === "" || v == null) {
       ops.push({ op: "remove", path });
     } else if (k === "tags") {
@@ -1276,7 +1466,7 @@ window.api = {
   // setup picker (org / project discovery)
   orgs, projects,
   // primitives
-  me, iterations, states, workItemTypes, createSprint, updateSprintDates, assignees: getAssignees, tags, browserUrl,
+  me, iterations, states, workItemTypes, getWorkItemTypeFields, getDescriptionFieldForType, createSprint, updateSprintDates, assignees: getAssignees, tags, browserUrl,
   // work-hours config (active-time window)
   setWorkHours, getWorkHours,
   // list / search / children / parents

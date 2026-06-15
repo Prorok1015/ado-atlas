@@ -257,109 +257,10 @@
       </div>
     </div>
     </div>
-    <div class="sgroup" data-sg="schedule">
-    <div class="row" style="align-items: flex-end;">
-      <div style="flex: 1.5; min-width: 140px;">
-        <label>Start — Target</label>
-        <div class="drp-wrapper" style="position:relative;">
-          <div style="position:relative; display:flex; align-items:center; width:100%;">
-            <input type="text" class="btn pcard" id="side-range-trigger" placeholder="Select dates..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
-            <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
-          </div>
-          <div id="side-range-picker" class="drp-popover"></div>
-        </div>
-        <input id="s_start" type="hidden">
-        <input id="s_target" type="hidden">
-      </div>
-      <div style="flex: 1; min-width: 100px;">
-        <label>Due</label>
-        <div class="drp-wrapper" style="position:relative;">
-          <div style="position:relative; display:flex; align-items:center; width:100%;">
-            <input type="text" class="btn pcard" id="side-due-trigger" placeholder="Select date..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
-            <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
-          </div>
-          <div id="side-due-picker" class="drp-popover"></div>
-        </div>
-        <input id="s_due" type="hidden">
-      </div>
-      <div style="flex: 0.5; max-width:76px;">
-        <label>Est h</label>
-        <div class="time-input-wrap">
-          <input id="s_est" type="text" placeholder="e.g. 1d + 2h">
-          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
-          <div id="s_est_preview" class="time-preview-text"></div>
-        </div>
-      </div>
-    </div>
-    <div id="s_time" class="stime"></div>
-    </div>
     <div class="sgroup" data-sg="tags">
     <label>Tags</label>
     <div id="s_tags" class="tagedit"></div>
     <datalist id="tagsdl"></datalist>
-    </div>
-    <div class="sgroup" data-sg="area">
-      <label>Area Path</label>
-      <input id="s_area">
-    </div>
-    <div class="sgroup" data-sg="effort">
-      <label>Effort</label>
-      <div class="row">
-        <div>
-          <label style="font-size:9px; text-transform:none;">Story Points</label>
-          <input id="s_storypoints" type="text">
-        </div>
-        <div>
-          <label style="font-size:9px; text-transform:none;">Remaining</label>
-          <div class="time-input-wrap">
-            <input id="s_remaining" type="text" placeholder="e.g. 4h">
-            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
-            <div id="s_remaining_preview" class="time-preview-text"></div>
-          </div>
-        </div>
-        <div>
-          <label style="font-size:9px; text-transform:none;">Completed</label>
-          <div class="time-input-wrap">
-            <input id="s_completed" type="text" placeholder="e.g. 2d">
-            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
-            <div id="s_completed_preview" class="time-preview-text"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="sgroup" data-sg="activity">
-      <label>Activity</label>
-      <select id="s_activity_field" style="width:100%">
-        <option value="">—</option>
-        <option>Development</option>
-        <option>Testing</option>
-        <option>Requirements</option>
-        <option>Design</option>
-        <option>Documentation</option>
-        <option>Deployment</option>
-      </select>
-    </div>
-    <div class="sgroup" data-sg="classification">
-      <label>Classification</label>
-      <div class="row">
-        <div>
-          <label style="font-size:9px; text-transform:none;">Risk</label>
-          <select id="s_risk" style="width:100%">
-            <option value="">—</option>
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:9px; text-transform:none;">Value Area</label>
-          <select id="s_valuearea" style="width:100%">
-            <option value="">—</option>
-            <option>Business</option>
-            <option>Architectural</option>
-          </select>
-        </div>
-      </div>
     </div>
     <div class="sgroup" data-sg="attachments" id="s_atch_group" style="display:none">
       <label>Attachments</label>
@@ -368,8 +269,6 @@
         <div class="atch-dropzone"><div class="ddz-inner">📎 Drop to attach</div></div>
       </div>
     </div>
-    <div class="sgroup" data-sg="desc" id="editor_desc_container"></div>
-    <div class="sgroup" data-sg="ac" id="editor_ac_container"></div>
     <div class="sgroup" data-sg="actions">
       <div id="activity-resizer" class="activity-resizer" title="Drag to resize activity list"></div>
       <div class="activity-header">
@@ -490,6 +389,10 @@
       <button data-cz="bar" class="on">Toolbar</button>
       <button data-cz="side">Work item panel</button>
       <button data-cz="bulk">Bulk Edit</button>
+    </div>
+    <div id="cz_wtype_container" style="display:none; margin:8px 0; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <label style="font-size:12px;">Customize for type:</label>
+      <div class="type-chips" id="cz_wtype_chips"></div>
     </div>
     <p class="hint">Drag rows to reorder, uncheck to hide. Changes apply live and are remembered.</p>
     <div id="customize-list"></div>
