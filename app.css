@@ -1674,4 +1674,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   color: var(--muted);
   pointer-events: none;
 }
+.sg-group-body.cz-preview-col:empty {
+  margin: 0 0.615rem 0.615rem 0.615rem;
+}
 

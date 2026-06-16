@@ -6924,7 +6924,7 @@ function renderCanvas() {
       el.setAttribute('draggable', 'true');
       
       const locked = SIDE_LOCKED.has(fieldId);
-      const grip = locked ? '🔒' : '⠿';
+      const grip = '⠿';
       
       el.innerHTML = `<div class="field-lbl">${grip} ${esc(label)}</div>` +
         `<div class="field-mock-wrapper" style="margin-top:0.385rem; width:100%;">${getMockFieldHtml(fieldId, label)}</div>` +
@@ -7173,7 +7173,12 @@ function setupDropZone(container, isRoot = false) {
     
     removeDropIndicators();
     
-    const children = [...container.children].filter(child => child !== e.target && !child.classList.contains('cz-drop-indicator') && !child.classList.contains('cz-del-btn') && !child.classList.contains('sg-group-hdr'));
+    const children = [...container.children].filter(child => 
+      child.dataset.layoutId !== draggingNodeId && 
+      !child.classList.contains('cz-drop-indicator') && 
+      !child.classList.contains('cz-del-btn') && 
+      !child.classList.contains('sg-group-hdr')
+    );
     const afterElement = children.find(child => {
       const box = child.getBoundingClientRect();
       return e.clientY < box.top + box.height / 2;
@@ -7206,7 +7211,12 @@ function setupDropZone(container, isRoot = false) {
       return;
     }
     
-    const children = [...container.children].filter(child => !child.classList.contains('cz-drop-indicator') && !child.classList.contains('cz-del-btn') && !child.classList.contains('sg-group-hdr'));
+    const children = [...container.children].filter(child => 
+      child.dataset.layoutId !== draggingNodeId && 
+      !child.classList.contains('cz-drop-indicator') && 
+      !child.classList.contains('cz-del-btn') && 
+      !child.classList.contains('sg-group-hdr')
+    );
     const afterElement = children.find(child => {
       const box = child.getBoundingClientRect();
       return e.clientY < box.top + box.height / 2;
@@ -7266,11 +7276,6 @@ function setupDropZone(container, isRoot = false) {
       const result = findNodeAndParent(dragData.id);
       if (result) {
         nodeToInsert = result.node;
-        if (result.array === getTargetArray(container, isRoot)) {
-          if (result.index < insertIdx) {
-            insertIdx--;
-          }
-        }
         result.array.splice(result.index, 1);
       }
     }
