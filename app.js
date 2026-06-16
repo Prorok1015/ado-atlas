@@ -6297,6 +6297,22 @@ function applySideLayout(wtype) {
     loadSideLayout(wtype);
   }
   
+  const hasVisibleContent = (container) => {
+    const children = [...container.children];
+    return children.some(el => {
+      if (el.classList.contains('sg-hidden') || el.style.display === 'none') {
+        return false;
+      }
+      if (el.classList.contains('sg-row') || el.classList.contains('sg-col')) {
+        return hasVisibleContent(el);
+      }
+      if (el.classList.contains('sg-separator') || el.classList.contains('sg-custom-label')) {
+        return false;
+      }
+      return true;
+    });
+  };
+
   const renderNode = (node, parentEl) => {
     if (!node) return;
     
@@ -6398,6 +6414,11 @@ function applySideLayout(wtype) {
         renderNode(child, bodyEl);
       });
       groupEl.appendChild(bodyEl);
+      
+      if (!hasVisibleContent(bodyEl)) {
+        groupEl.style.display = 'none';
+      }
+      
       parentEl.appendChild(groupEl);
       return;
     }
