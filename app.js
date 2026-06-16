@@ -2629,12 +2629,29 @@ function toggleFullscreen(force){
   if(cy)try{cy.resize();}catch(e){}
 }
 function fmtDur(sec){const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600);return d?(d+'d'+(h?' '+h+'h':'')):(h+'h');}
+let currentTimelineId = null;
+let currentTimelineData = null;
 async function loadTimeline(id){
   const el = $('s_time');
   if (!el) return;
+  
+  let t;
+  if (id === currentTimelineId && currentTimelineData) {
+    t = currentTimelineData;
+  } else {
+    el.innerHTML = '<span style="font-size:0.846rem; color:var(--muted);">⏱ loading timeline…</span>';
+    try {
+      t = await api.timeline(id, tzOffset);
+      if (cur !== id) return;
+      currentTimelineId = id;
+      currentTimelineData = t;
+    } catch(e) {
+      el.innerHTML = '';
+      return;
+    }
+  }
+  
   el.innerHTML='';
-  let t;try{t=await api.timeline(id,tzOffset);}catch(e){return;}
-  if(cur!==id)return;                              // user switched items while timeline was loading
   if(!t.durations)return;
   const ent=Object.entries(t.durations).sort((a,b)=>b[1]-a[1]);
   if(!ent.length)return;
