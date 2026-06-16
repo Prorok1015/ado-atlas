@@ -191,22 +191,23 @@
     <div class="sgroup" data-sg="title">
       <label>Title</label><input id="s_title">
     </div>
-    <div class="sgroup" data-sg="workflow">
-    <div class="row">
-      <div><label>State</label><select id="s_state" style="width:100%"></select></div>
-      <div style="max-width:96px"><label>Priority</label><select id="s_prio" style="width:100%"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-      <div><label>Assigned</label>
-        <input type="hidden" id="s_assigned">
-        <div class="prow-field">
-          <button type="button" class="btn pcard" id="s_assigned_card" title="click to change assignee"></button>
-          <button type="button" class="btn" id="s_me" title="assign to me" style="padding:6px 9px">me</button>
-        </div>
-        <div id="s_assigned_pick" class="ppick" style="display:none">
-          <input id="s_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
-          <div id="s_assigned_results" class="presults"></div>
-        </div>
-      </div>
+    <div class="sgroup" data-sg="state">
+      <label>State</label><select id="s_state" style="width:100%"></select>
     </div>
+    <div class="sgroup" data-sg="priority">
+      <label>Priority</label><select id="s_prio" style="width:100%"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select>
+    </div>
+    <div class="sgroup" data-sg="assigned">
+      <label>Assigned</label>
+      <input type="hidden" id="s_assigned">
+      <div class="prow-field">
+        <button type="button" class="btn pcard" id="s_assigned_card" title="click to change assignee"></button>
+        <button type="button" class="btn" id="s_me" title="assign to me" style="padding:6px 9px">me</button>
+      </div>
+      <div id="s_assigned_pick" class="ppick" style="display:none">
+        <input id="s_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+        <div id="s_assigned_results" class="presults"></div>
+      </div>
     </div>
     <div class="sgroup" data-sg="sprint">
     <label>Sprint</label>
@@ -399,10 +400,32 @@
     </div>
     <p class="hint">Drag rows to reorder, uncheck to hide. Changes apply live and are remembered.</p>
     <div id="customize-list"></div>
+    <div class="cz-visual-editor-container" id="cz_visual_editor" style="display:none">
+      <div class="cz-toolbox">
+        <h3>Structure</h3>
+        <div class="cz-toolbox-section" id="cz_toolbox_structures">
+          <div class="cz-toolbox-item" draggable="true" data-type="group"><span class="grip">⠿</span> Collapsible Group</div>
+          <div class="cz-toolbox-item" draggable="true" data-type="row"><span class="grip">⠿</span> 2-Column Row</div>
+          <div class="cz-toolbox-item" draggable="true" data-type="row3"><span class="grip">⠿</span> 3-Column Row</div>
+          <div class="cz-toolbox-item" draggable="true" data-type="label"><span class="grip">⠿</span> Custom Text Block</div>
+          <div class="cz-toolbox-item" draggable="true" data-type="separator"><span class="grip">⠿</span> Separator Line</div>
+        </div>
+        <h3>Available Fields</h3>
+        <div class="cz-toolbox-section" id="cz_toolbox_fields"></div>
+      </div>
+      <div class="cz-canvas-wrapper">
+        <div class="cz-canvas-hdr">
+          <span>Sidebar Live Preview (Drag elements here)</span>
+          <span style="color:var(--accent); font-weight:500;">Live Editing</span>
+        </div>
+        <div class="cz-canvas" id="cz_canvas"></div>
+      </div>
+    </div>
     <div id="customize-actions">
       <button class="btn" id="cz_reset">Reset to default</button>
       <button class="btn save" id="cz_done">Done</button>
     </div>
+
   </div>
 </div>
 <!-- Customize emojis modal -->

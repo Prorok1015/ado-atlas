@@ -827,7 +827,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 
 /* reusable parent field: current-parent card + searchable list (editor + New modal) */
 .prow-field{display:flex;gap:0.308rem;align-items:stretch}
-.pcard{flex:1;display:flex;align-items:center;gap:0.462rem;text-align:left;overflow:hidden;min-height:2.462rem;padding:0.385rem 0.692rem}
+.pcard{flex:1;display:flex;align-items:center;gap:0.462rem;text-align:left;overflow:hidden;min-height:2.462rem;padding:0.385rem 0.692rem;min-width:0}
 /* line every panel field up with the CardPicker card (2.462rem tall) so rows align */
 #side select,#side>input,#side .row input,#newitem-box select,#newitem-box input,#child_form input,#child_form select,#link-box input{min-height:2.462rem}
 .prow-field .btn{min-height:2.462rem}
@@ -1375,4 +1375,283 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   border-color: var(--accent);
 }
 
+/* --- Advanced Sidebar Layout Customization --- */
+
+/* Renderer Layout engine classes */
+.sg-row {
+  display: flex;
+  gap: 0.769rem;
+  margin-bottom: 0.615rem;
+  width: 100%;
+}
+.sg-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.615rem;
+  flex: 1;
+  min-width: 0;
+}
+.sg-group-panel {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 0.615rem;
+  margin-bottom: 0.615rem;
+  transition: border-color 0.2s;
+}
+
+.sg-group-hdr {
+  display: flex;
+  align-items: center;
+  gap: 0.462rem;
+  padding: 0.462rem 0.615rem;
+  background: transparent;
+  font-weight: 500;
+  font-size: 0.846rem;
+  color: var(--muted);
+  user-select: none;
+}
+.sg-group-hdr .toggle-arrow {
+  font-size: 0.692rem;
+  color: var(--muted);
+  transition: transform 0.2s, opacity 0.15s ease;
+  opacity: 0;
+}
+.sg-group-hdr:hover .toggle-arrow {
+  opacity: 1;
+}
+#side .sg-group-panel.collapsed .sg-group-body {
+  display: none;
+}
+.sg-group-body {
+  padding: 0.769rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.615rem;
+}
+.sg-separator {
+  height: 1px;
+  background: var(--line);
+  margin: 0.923rem 0;
+  position: relative;
+}
+.sg-custom-label {
+  font-size: 0.846rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0.462rem 0 0.154rem;
+}
+
+/* Split Visual Builder layout rules */
+#customize-overlay.cz-side-active #customize-box {
+  width: 78.462rem;
+  max-width: 96vw;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+#customize-overlay.cz-side-active #customize-box #customize-list {
+  display: none; /* replace list with the visual editor container */
+}
+.cz-visual-editor-container {
+  display: flex;
+  gap: 1.231rem;
+  flex: 1;
+  min-height: 0;
+  margin-top: 0.769rem;
+}
+.cz-toolbox {
+  width: 20rem;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 0.615rem;
+  padding: 0.923rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.923rem;
+  overflow-y: auto;
+}
+.cz-toolbox h3 {
+  font-size: 0.923rem;
+  margin: 0 0 0.308rem 0;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.cz-toolbox-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.462rem;
+}
+.cz-toolbox-item {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.462rem;
+  padding: 0.538rem 0.769rem;
+  font-size: 0.846rem;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.462rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cz-toolbox-item:hover {
+  background: var(--panel3);
+  border-color: var(--muted);
+}
+.cz-toolbox-item .grip {
+  color: var(--muted);
+}
+.cz-canvas-wrapper {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.615rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cz-canvas-hdr {
+  background: var(--panel2);
+  border-bottom: 1px solid var(--line);
+  padding: 0.615rem 0.923rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.846rem;
+  color: var(--muted);
+}
+.cz-canvas {
+  flex: 1;
+  padding: 1.231rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.769rem;
+  min-height: 200px;
+}
+
+/* Live Preview elements on Canvas */
+.cz-preview-field {
+  background: var(--panel2);
+  border: 1px dashed var(--line);
+  border-radius: 0.462rem;
+  padding: 0.615rem 0.769rem;
+  position: relative;
+  cursor: grab;
+}
+.cz-preview-field:hover, .cz-preview-group:hover, .cz-preview-row:hover, .cz-preview-separator:hover, .cz-preview-label:hover {
+  border-color: var(--accent);
+}
+.cz-preview-field .cz-del-btn, .cz-preview-group .cz-del-btn, .cz-preview-row .cz-del-btn, .cz-preview-separator .cz-del-btn, .cz-preview-label .cz-del-btn {
+  position: absolute;
+  top: 0.385rem;
+  right: 0.385rem;
+  background: rgba(0,0,0,0.3);
+  color: var(--muted);
+  border: none;
+  width: 1.231rem;
+  height: 1.231rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.692rem;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.cz-preview-field:hover .cz-del-btn, .cz-preview-group:hover > .cz-del-btn, .cz-preview-row:hover > .cz-del-btn, .cz-preview-separator:hover .cz-del-btn, .cz-preview-label:hover .cz-del-btn {
+  opacity: 1;
+}
+.cz-preview-field .cz-del-btn:hover, .cz-preview-group .cz-del-btn:hover, .cz-preview-row .cz-del-btn:hover, .cz-preview-separator .cz-del-btn:hover, .cz-preview-label .cz-del-btn:hover {
+  color: #fff;
+  background: #e06c75;
+}
+.cz-preview-field .field-lbl {
+  font-size: 0.769rem;
+  color: var(--muted);
+  margin-bottom: 0.231rem;
+  font-weight: 500;
+}
+.cz-preview-field .field-mock-input {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  height: 1.846rem;
+  border-radius: 0.308rem;
+  opacity: 0.7;
+}
+
+/* Drop targets and drag styles */
+.cz-drop-indicator {
+  height: 4px;
+  background: var(--accent);
+  margin: 2px 0;
+  border-radius: 2px;
+  pointer-events: none;
+}
+.cz-preview-col.dragover {
+  background: rgba(100, 150, 255, 0.1);
+  border: 1.5px dashed var(--accent);
+}
+.dragging-preview {
+  opacity: 0.5;
+}
+.cz-preview-group {
+  position: relative;
+  cursor: grab;
+}
+.cz-preview-group > .cz-del-btn {
+  top: 0.462rem;
+  right: 0.462rem;
+}
+.cz-preview-row {
+  position: relative;
+  border: 1px dashed transparent;
+  padding: 4px;
+  border-radius: 0.308rem;
+  cursor: grab;
+}
+.cz-preview-row > .cz-del-btn {
+  top: 4px;
+  right: 4px;
+}
+.cz-preview-separator {
+  position: relative;
+  padding: 6px 0;
+  cursor: grab;
+}
+.cz-preview-label {
+  position: relative;
+  cursor: grab;
+  padding: 4px 0;
+}
+.cz-preview-label .lbl-txt {
+  outline: none;
+  border-bottom: 1px dashed transparent;
+}
+.cz-preview-label .lbl-txt:focus {
+  border-bottom-color: var(--muted);
+}
+
+.cz-preview-col:empty {
+  min-height: 3.077rem;
+  border: 1.5px dashed var(--line);
+  background: rgba(100, 150, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 0.385rem;
+  margin: 0.385rem 0;
+}
+.cz-preview-col:empty::after {
+  content: 'Drop elements here';
+  font-size: 0.769rem;
+  color: var(--muted);
+  pointer-events: none;
+}
 

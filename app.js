@@ -70,15 +70,18 @@ function lockSidebar(lock){
   if(tagsEditor&&tagsEditor.setDisabled)tagsEditor.setDisabled(lock);
 }
 
-const LAZY_GROUPS = new Set(['desc', 'ac', 'tags', 'attachments', 'deps', 'area', 'effort', 'activity', 'classification']);
+const LAZY_GROUPS = new Set(['desc', 'ac', 'tags', 'attachments', 'deps', 'area', 'storypoints', 'remaining', 'completed', 'activity', 'risk', 'valuearea']);
 const HEAVY_FIELD_MAP = {
   desc: ['System.Description'],
   ac: ['Microsoft.VSTS.Common.AcceptanceCriteria'],
   tags: ['System.Tags'],
   area: ['System.AreaPath'],
-  effort: ['Microsoft.VSTS.Scheduling.StoryPoints', 'Microsoft.VSTS.Scheduling.RemainingWork', 'Microsoft.VSTS.Scheduling.CompletedWork'],
+  storypoints: ['Microsoft.VSTS.Scheduling.StoryPoints'],
+  remaining: ['Microsoft.VSTS.Scheduling.RemainingWork'],
+  completed: ['Microsoft.VSTS.Scheduling.CompletedWork'],
   activity: ['Microsoft.VSTS.Common.Activity'],
-  classification: ['Microsoft.VSTS.Common.Risk', 'Microsoft.VSTS.Common.ValueArea']
+  risk: ['Microsoft.VSTS.Common.Risk'],
+  valuearea: ['Microsoft.VSTS.Common.ValueArea']
 };
 
 // Global cache of custom field editors / definitions to manage dynamically.
@@ -95,13 +98,12 @@ function lockSidebarHeavy(lock, groupIds) {
     if (g === 'ac' && acEditor) acEditor.setDisabled(lock);
     if (g === 'tags' && tagsEditor) tagsEditor.setDisabled(lock);
     if (g === 'area') { const el = $('s_area'); if (el) el.disabled = lock; }
-    if (g === 'effort') {
-      ['s_storypoints', 's_remaining', 's_completed'].forEach(id => { const el = $(id); if (el) el.disabled = lock; });
-    }
+    if (g === 'storypoints') { const el = $('s_storypoints'); if (el) el.disabled = lock; }
+    if (g === 'remaining') { const el = $('s_remaining'); if (el) el.disabled = lock; }
+    if (g === 'completed') { const el = $('s_completed'); if (el) el.disabled = lock; }
     if (g === 'activity') { const el = $('s_activity_field'); if (el) el.disabled = lock; }
-    if (g === 'classification') {
-      ['s_risk', 's_valuearea'].forEach(id => { const el = $(id); if (el) el.disabled = lock; });
-    }
+    if (g === 'risk') { const el = $('s_risk'); if (el) el.disabled = lock; }
+    if (g === 'valuearea') { const el = $('s_valuearea'); if (el) el.disabled = lock; }
     if (g === 'attachments') { const el = $('s_atch_group'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
     if (g === 'deps') { const el = $('s_deps'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
     
@@ -120,8 +122,8 @@ async function ensureFieldLoaded(groupId) {
   const myToken = openToken;                      // capture to detect stale responses
   const fieldKeyMap = {
     desc: 'desc', ac: 'ac', tags: 'tags', area: 'area',
-    effort: 'storypoints', // if storypoints is loaded, consider effort loaded
-    activity: 'activity', classification: 'risk' // if risk is loaded, consider classification loaded
+    storypoints: 'storypoints', remaining: 'remaining', completed: 'completed',
+    activity: 'activity', risk: 'risk', valuearea: 'valuearea'
   };
   const key = fieldKeyMap[groupId];
   if (key && orig[key] !== undefined && orig[key] !== '' && orig[key] !== null) return;
@@ -173,15 +175,19 @@ async function ensureFieldLoaded(groupId) {
       orig.area = d.area || '';
       orig._loaded_area = true;
     }
-    if (groupId === 'effort') {
+    if (groupId === 'storypoints') {
       $('s_storypoints').value = d.storypoints != null ? d.storypoints : '';
-      $('s_remaining').value = d.remaining != null ? d.remaining : '';
-      $('s_completed').value = d.completed != null ? d.completed : '';
       orig.storypoints = d.storypoints;
-      orig.remaining = d.remaining;
-      orig.completed = d.completed;
       orig._loaded_storypoints = true;
+    }
+    if (groupId === 'remaining') {
+      $('s_remaining').value = d.remaining != null ? d.remaining : '';
+      orig.remaining = d.remaining;
       orig._loaded_remaining = true;
+    }
+    if (groupId === 'completed') {
+      $('s_completed').value = d.completed != null ? d.completed : '';
+      orig.completed = d.completed;
       orig._loaded_completed = true;
     }
     if (groupId === 'activity') {
@@ -189,12 +195,14 @@ async function ensureFieldLoaded(groupId) {
       orig.activity = d.activity || '';
       orig._loaded_activity = true;
     }
-    if (groupId === 'classification') {
+    if (groupId === 'risk') {
       $('s_risk').value = d.risk || '';
-      $('s_valuearea').value = d.valuearea || '';
       orig.risk = d.risk || '';
-      orig.valuearea = d.valuearea || '';
       orig._loaded_risk = true;
+    }
+    if (groupId === 'valuearea') {
+      $('s_valuearea').value = d.valuearea || '';
+      orig.valuearea = d.valuearea || '';
       orig._loaded_valuearea = true;
     }
     if (groupId === 'attachments') {
@@ -2622,7 +2630,9 @@ function toggleFullscreen(force){
 }
 function fmtDur(sec){const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600);return d?(d+'d'+(h?' '+h+'h':'')):(h+'h');}
 async function loadTimeline(id){
-  $('s_time').innerHTML='';
+  const el = $('s_time');
+  if (!el) return;
+  el.innerHTML='';
   let t;try{t=await api.timeline(id,tzOffset);}catch(e){return;}
   if(cur!==id)return;                              // user switched items while timeline was loading
   if(!t.durations)return;
@@ -2876,7 +2886,7 @@ async function openItem(id){
   if (side) {
     // Purge any existing dynamic groups from the DOM first
     side.querySelectorAll('.sgroup').forEach(el => {
-      if (['area', 'effort', 'activity', 'classification', 'schedule', 'desc', 'ac'].includes(el.dataset.sg) || el.dataset.sg.startsWith('cust:')) {
+      if (['area', 'storypoints', 'remaining', 'completed', 'risk', 'valuearea', 'start_target', 'due', 'estimate', 'time_in_state', 'activity', 'desc', 'ac'].includes(el.dataset.sg) || el.dataset.sg.startsWith('cust:')) {
         el.remove();
       }
     });
@@ -2893,18 +2903,18 @@ async function openItem(id){
   const hasArea = refNames.has("System.AreaPath");
   const hasActivity = refNames.has("Microsoft.VSTS.Common.Activity");
   
-  const hasEffort = refNames.has("Microsoft.VSTS.Scheduling.StoryPoints") || 
-                    refNames.has("Microsoft.VSTS.Scheduling.RemainingWork") || 
-                    refNames.has("Microsoft.VSTS.Scheduling.CompletedWork");
+  const hasStoryPoints = refNames.has("Microsoft.VSTS.Scheduling.StoryPoints");
+  const hasRemaining = refNames.has("Microsoft.VSTS.Scheduling.RemainingWork");
+  const hasCompleted = refNames.has("Microsoft.VSTS.Scheduling.CompletedWork");
 
-  const hasClassification = refNames.has("Microsoft.VSTS.Common.Risk") || 
-                            refNames.has("Microsoft.VSTS.Common.ValueArea");
+  const hasRisk = refNames.has("Microsoft.VSTS.Common.Risk");
+  const hasValueArea = refNames.has("Microsoft.VSTS.Common.ValueArea");
 
-  const hasSchedule = refNames.has("Microsoft.VSTS.Scheduling.StartDate") || 
-                      refNames.has("Microsoft.VSTS.Scheduling.TargetDate") || 
-                      refNames.has("Microsoft.VSTS.Scheduling.FinishDate") || 
-                      refNames.has("Microsoft.VSTS.Scheduling.DueDate") || 
-                      refNames.has("Microsoft.VSTS.Scheduling.OriginalEstimate");
+  const hasStartOrTarget = refNames.has("Microsoft.VSTS.Scheduling.StartDate") || 
+                           refNames.has("Microsoft.VSTS.Scheduling.TargetDate") || 
+                           refNames.has("Microsoft.VSTS.Scheduling.FinishDate");
+  const hasDue = refNames.has("Microsoft.VSTS.Scheduling.DueDate");
+  const hasEstimate = refNames.has("Microsoft.VSTS.Scheduling.OriginalEstimate");
 
   // Dynamically append the sgroup elements to #side
   if (side) {
@@ -2954,70 +2964,81 @@ async function openItem(id){
       side.appendChild(div);
     }
 
-    // 4. Effort Group
-    if (hasEffort) {
+    // 4. Story Points Group
+    if (hasStoryPoints) {
       const div = document.createElement('div');
       div.className = 'sgroup';
-      div.dataset.sg = 'effort';
-      div.innerHTML = `<label>Effort</label><div class="row"></div>`;
-      const row = div.querySelector('.row');
-
-      if (refNames.has("Microsoft.VSTS.Scheduling.StoryPoints")) {
-        const col = document.createElement('div');
-        col.innerHTML = `<label style="font-size:9px; text-transform:none;">Story Points</label><input id="s_storypoints" type="text">`;
-        const input = col.querySelector('input');
-        input.addEventListener('input', refreshDirty);
-        input.addEventListener('change', () => quickSave('storypoints'));
-        row.appendChild(col);
-      }
-      if (refNames.has("Microsoft.VSTS.Scheduling.RemainingWork")) {
-        const col = document.createElement('div');
-        col.innerHTML = `
-          <label style="font-size:9px; text-transform:none;">Remaining</label>
-          <div class="time-input-wrap">
-            <input id="s_remaining" type="text" placeholder="e.g. 4h">
-            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
-            <div id="s_remaining_preview" class="time-preview-text"></div>
-          </div>
-        `;
-        const input = col.querySelector('input');
-        input.addEventListener('input', refreshDirty);
-        input.addEventListener('change', () => quickSave('remaining'));
-        row.appendChild(col);
-      }
-      if (refNames.has("Microsoft.VSTS.Scheduling.CompletedWork")) {
-        const col = document.createElement('div');
-        col.innerHTML = `
-          <label style="font-size:9px; text-transform:none;">Completed</label>
-          <div class="time-input-wrap">
-            <input id="s_completed" type="text" placeholder="e.g. 2d">
-            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
-            <div id="s_completed_preview" class="time-preview-text"></div>
-          </div>
-        `;
-        const input = col.querySelector('input');
-        input.addEventListener('input', refreshDirty);
-        input.addEventListener('change', () => quickSave('completed'));
-        row.appendChild(col);
-      }
+      div.dataset.sg = 'storypoints';
+      div.innerHTML = `<label>Story Points</label><input id="s_storypoints" type="text">`;
+      const input = div.querySelector('input');
+      input.addEventListener('input', refreshDirty);
+      input.addEventListener('change', () => quickSave('storypoints'));
       side.appendChild(div);
-      div.querySelectorAll('.time-input-wrap').forEach(wrap => {
-        const input = wrap.querySelector('input');
-        const prev = wrap.querySelector('.time-preview-text');
-        if (input && prev) {
-          const update = () => {
-            const txt = formatTimePreview(input.value);
-            prev.textContent = txt;
-            prev.style.display = txt ? 'block' : 'none';
-          };
-          input.addEventListener('input', update);
-          input.addEventListener('focus', update);
-          input.addEventListener('blur', () => { prev.style.display = 'none'; });
-        }
-      });
     }
 
-    // 5. Activity Group
+    // 5. Remaining Group
+    if (hasRemaining) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'remaining';
+      div.innerHTML = `
+        <label>Remaining</label>
+        <div class="time-input-wrap">
+          <input id="s_remaining" type="text" placeholder="e.g. 4h">
+          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+          <div id="s_remaining_preview" class="time-preview-text"></div>
+        </div>
+      `;
+      const input = div.querySelector('input');
+      input.addEventListener('input', refreshDirty);
+      input.addEventListener('change', () => quickSave('remaining'));
+      side.appendChild(div);
+      
+      const prev = div.querySelector('.time-preview-text');
+      if (input && prev) {
+        const update = () => {
+          const txt = formatTimePreview(input.value);
+          prev.textContent = txt;
+          prev.style.display = txt ? 'block' : 'none';
+        };
+        input.addEventListener('input', update);
+        input.addEventListener('focus', update);
+        input.addEventListener('blur', () => { prev.style.display = 'none'; });
+      }
+    }
+
+    // 6. Completed Group
+    if (hasCompleted) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'completed';
+      div.innerHTML = `
+        <label>Completed</label>
+        <div class="time-input-wrap">
+          <input id="s_completed" type="text" placeholder="e.g. 2d">
+          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+          <div id="s_completed_preview" class="time-preview-text"></div>
+        </div>
+      `;
+      const input = div.querySelector('input');
+      input.addEventListener('input', refreshDirty);
+      input.addEventListener('change', () => quickSave('completed'));
+      side.appendChild(div);
+      
+      const prev = div.querySelector('.time-preview-text');
+      if (input && prev) {
+        const update = () => {
+          const txt = formatTimePreview(input.value);
+          prev.textContent = txt;
+          prev.style.display = txt ? 'block' : 'none';
+        };
+        input.addEventListener('input', update);
+        input.addEventListener('focus', update);
+        input.addEventListener('blur', () => { prev.style.display = 'none'; });
+      }
+    }
+
+    // 7. Activity Group
     if (hasActivity) {
       const div = document.createElement('div');
       div.className = 'sgroup';
@@ -3039,127 +3060,131 @@ async function openItem(id){
       side.appendChild(div);
     }
 
-    // 6. Classification Group
-    if (hasClassification) {
+    // 8. Risk Group
+    if (hasRisk) {
       const div = document.createElement('div');
       div.className = 'sgroup';
-      div.dataset.sg = 'classification';
-      div.innerHTML = `<label>Classification</label><div class="row"></div>`;
-      const row = div.querySelector('.row');
-
-      if (refNames.has("Microsoft.VSTS.Common.Risk")) {
-        const col = document.createElement('div');
-        col.innerHTML = `
-          <label style="font-size:9px; text-transform:none;">Risk</label>
-          <select id="s_risk" style="width:100%">
-            <option value="">—</option>
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
-          </select>
-        `;
-        const sel = col.querySelector('select');
-        sel.addEventListener('change', () => quickSave('risk'));
-        row.appendChild(col);
-      }
-      if (refNames.has("Microsoft.VSTS.Common.ValueArea")) {
-        const col = document.createElement('div');
-        col.innerHTML = `
-          <label style="font-size:9px; text-transform:none;">Value Area</label>
-          <select id="s_valuearea" style="width:100%">
-            <option value="">—</option>
-            <option>Business</option>
-            <option>Architectural</option>
-          </select>
-        `;
-        const sel = col.querySelector('select');
-        sel.addEventListener('change', () => quickSave('valuearea'));
-        row.appendChild(col);
-      }
+      div.dataset.sg = 'risk';
+      div.innerHTML = `
+        <label>Risk</label>
+        <select id="s_risk" style="width:100%">
+          <option value="">—</option>
+          <option>High</option>
+          <option>Medium</option>
+          <option>Low</option>
+        </select>
+      `;
+      const sel = div.querySelector('select');
+      sel.addEventListener('change', () => quickSave('risk'));
       side.appendChild(div);
     }
 
-    // 7. Schedule Group
+    // 9. Value Area Group
+    if (hasValueArea) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'valuearea';
+      div.innerHTML = `
+        <label>Value Area</label>
+        <select id="s_valuearea" style="width:100%">
+          <option value="">—</option>
+          <option>Business</option>
+          <option>Architectural</option>
+        </select>
+      `;
+      const sel = div.querySelector('select');
+      sel.addEventListener('change', () => quickSave('valuearea'));
+      side.appendChild(div);
+    }
+
+    // 10. Start — Target Date Group
+    if (hasStartOrTarget) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'start_target';
+      div.innerHTML = `
+        <label>Start — Target</label>
+        <div class="drp-wrapper" style="position:relative;">
+          <div style="position:relative; display:flex; align-items:center; width:100%;">
+            <input type="text" class="btn pcard" id="side-range-trigger" placeholder="Select dates..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+            <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+          </div>
+          <div id="side-range-picker" class="drp-popover"></div>
+        </div>
+        <input id="s_start" type="hidden">
+        <input id="s_target" type="hidden">
+      `;
+      const startInp = div.querySelector('#s_start');
+      const targetInp = div.querySelector('#s_target');
+      startInp.addEventListener('input', refreshDirty);
+      startInp.addEventListener('change', () => quickSave('start'));
+      targetInp.addEventListener('input', refreshDirty);
+      targetInp.addEventListener('change', () => quickSave('target'));
+      side.appendChild(div);
+    }
+
+    // 11. Due Date Group
+    if (hasDue) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'due';
+      div.innerHTML = `
+        <label>Due</label>
+        <div class="drp-wrapper" style="position:relative;">
+          <div style="position:relative; display:flex; align-items:center; width:100%;">
+            <input type="text" class="btn pcard" id="side-due-trigger" placeholder="Select date..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+            <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
+          </div>
+          <div id="side-due-picker" class="drp-popover"></div>
+        </div>
+        <input id="s_due" type="hidden">
+      `;
+      const dueInp = div.querySelector('#s_due');
+      dueInp.addEventListener('input', refreshDirty);
+      dueInp.addEventListener('change', () => quickSave('due'));
+      side.appendChild(div);
+    }
+
+    // 12. Original Estimate Group
+    if (hasEstimate) {
+      const div = document.createElement('div');
+      div.className = 'sgroup';
+      div.dataset.sg = 'estimate';
+      div.innerHTML = `
+        <label>Est h</label>
+        <div class="time-input-wrap">
+          <input id="s_est" type="text" placeholder="e.g. 1d + 2h">
+          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+          <div id="s_est_preview" class="time-preview-text"></div>
+        </div>
+      `;
+      const input = div.querySelector('input');
+      input.addEventListener('input', refreshDirty);
+      input.addEventListener('change', () => quickSave('estimate'));
+      side.appendChild(div);
+      const prev = div.querySelector('.time-preview-text');
+      if (input && prev) {
+        const update = () => {
+          const txt = formatTimePreview(input.value);
+          prev.textContent = txt;
+          prev.style.display = txt ? 'block' : 'none';
+        };
+        input.addEventListener('input', update);
+        input.addEventListener('focus', update);
+      }
+    }
+
+    // 7.5. Time in State Timeline
+    const hasSchedule = refNames.has("Microsoft.VSTS.Scheduling.StartDate") || 
+                        refNames.has("Microsoft.VSTS.Scheduling.TargetDate") || 
+                        refNames.has("Microsoft.VSTS.Scheduling.FinishDate") || 
+                        refNames.has("Microsoft.VSTS.Scheduling.DueDate") || 
+                        refNames.has("Microsoft.VSTS.Scheduling.OriginalEstimate");
     if (hasSchedule) {
       const div = document.createElement('div');
       div.className = 'sgroup';
-      div.dataset.sg = 'schedule';
-      div.innerHTML = `<div class="row" style="align-items: flex-end;"></div><div id="s_time" class="stime"></div>`;
-      const row = div.querySelector('.row');
-
-      const hasStartOrTarget = refNames.has("Microsoft.VSTS.Scheduling.StartDate") || 
-                               refNames.has("Microsoft.VSTS.Scheduling.TargetDate") || 
-                               refNames.has("Microsoft.VSTS.Scheduling.FinishDate");
-
-      if (hasStartOrTarget) {
-        const col = document.createElement('div');
-        col.style.cssText = 'flex: 1.5; min-width: 140px;';
-        col.innerHTML = `
-          <label>Start — Target</label>
-          <div class="drp-wrapper" style="position:relative;">
-            <div style="position:relative; display:flex; align-items:center; width:100%;">
-              <input type="text" class="btn pcard" id="side-range-trigger" placeholder="Select dates..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
-              <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
-            </div>
-            <div id="side-range-picker" class="drp-popover"></div>
-          </div>
-          <input id="s_start" type="hidden">
-          <input id="s_target" type="hidden">
-        `;
-        const startInp = col.querySelector('#s_start');
-        const targetInp = col.querySelector('#s_target');
-        startInp.addEventListener('input', refreshDirty);
-        startInp.addEventListener('change', () => quickSave('start'));
-        targetInp.addEventListener('input', refreshDirty);
-        targetInp.addEventListener('change', () => quickSave('target'));
-        row.appendChild(col);
-      }
-      if (refNames.has("Microsoft.VSTS.Scheduling.DueDate")) {
-        const col = document.createElement('div');
-        col.style.cssText = 'flex: 1; min-width: 100px;';
-        col.innerHTML = `
-          <label>Due</label>
-          <div class="drp-wrapper" style="position:relative;">
-            <div style="position:relative; display:flex; align-items:center; width:100%;">
-              <input type="text" class="btn pcard" id="side-due-trigger" placeholder="Select date..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
-              <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
-            </div>
-            <div id="side-due-picker" class="drp-popover"></div>
-          </div>
-          <input id="s_due" type="hidden">
-        `;
-        const dueInp = col.querySelector('#s_due');
-        dueInp.addEventListener('input', refreshDirty);
-        dueInp.addEventListener('change', () => quickSave('due'));
-        row.appendChild(col);
-      }
-      if (refNames.has("Microsoft.VSTS.Scheduling.OriginalEstimate")) {
-        const col = document.createElement('div');
-        col.style.cssText = 'flex: 0.5; max-width:76px;';
-        col.innerHTML = `
-          <label>Est h</label>
-          <div class="time-input-wrap">
-            <input id="s_est" type="text" placeholder="e.g. 1d + 2h">
-            <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
-            <div id="s_est_preview" class="time-preview-text"></div>
-          </div>
-        `;
-        const input = col.querySelector('input');
-        input.addEventListener('input', refreshDirty);
-        input.addEventListener('change', () => quickSave('estimate'));
-        row.appendChild(col);
-        const prev = col.querySelector('.time-preview-text');
-        if (input && prev) {
-          const update = () => {
-            const txt = formatTimePreview(input.value);
-            prev.textContent = txt;
-            prev.style.display = txt ? 'block' : 'none';
-          };
-          input.addEventListener('input', update);
-          input.addEventListener('focus', update);
-          input.addEventListener('blur', () => { prev.style.display = 'none'; });
-        }
-      }
+      div.dataset.sg = 'time_in_state';
+      div.innerHTML = `<div id="s_time" class="stime"></div>`;
       side.appendChild(div);
     }
 
@@ -3284,8 +3309,19 @@ async function openItem(id){
       });
 
       // Add dynamically to SIDE_GROUPS so it shows up in Customize
-      if (!SIDE_GROUPS.some(g => g.id === sgId)) {
-        SIDE_GROUPS.push({ id: sgId, label: 'Custom: ' + cf.name });
+      let existingGroup = SIDE_GROUPS.find(g => g.id === sgId);
+      if (!existingGroup) {
+        SIDE_GROUPS.push({
+          id: sgId,
+          label: 'Custom: ' + cf.name,
+          customType: cf.type,
+          allowedValues: cf.allowedValues,
+          isIdentity: cf.isIdentity || type === 'identity'
+        });
+      } else {
+        existingGroup.customType = cf.type;
+        existingGroup.allowedValues = cf.allowedValues;
+        existingGroup.isIdentity = cf.isIdentity || type === 'identity';
       }
     });
   }
@@ -5120,7 +5156,7 @@ function syncSideDatePicker(start, target) {
     trigger.value = '';
   }
   
-  if (!sideRangePicker) {
+  if (!sideRangePicker || !document.body.contains(sideRangePicker.container)) {
     sideRangePicker = new DateRangePicker('side-range-picker', {
       start,
       finish: target,
@@ -5290,7 +5326,7 @@ function syncSideDuePicker(due) {
     trigger.value = '';
   }
   
-  if (!sideDuePicker) {
+  if (!sideDuePicker || !document.body.contains(sideDuePicker.container)) {
     sideDuePicker = new DateRangePicker('side-due-picker', {
       start: due,
       single: true,
@@ -5920,113 +5956,384 @@ let barOrder=BAR_ITEMS.map(i=>i.id), barHidden=new Set();
 // Work-item sidebar groups — same reorder + show/hide pattern as the toolbar.
 // Each id matches a <div class="sgroup" data-sg="..."> wrapper in #side.
 const SIDE_GROUPS=[
-  {id:'nav',     label:'Hierarchy nav (↑ parent · ↓ children)'},
-  {id:'title',   label:'Title'},
-  {id:'workflow',label:'State · Priority · Assignee'},
-  {id:'effort',  label:'Effort (Story Points · Remaining · Completed)'},
-  {id:'classification',label:'Classification (Risk · Value Area)'},
-  {id:'sprint',  label:'Sprint'},
-  {id:'parent',  label:'Parent'},
-  {id:'deps',    label:'Dependencies (blocked by · blocks)'},
-  {id:'schedule',label:'Schedule (Start · Target · Due · Estimate · time in state)'},
-  {id:'tags',    label:'Tags'},
-  {id:'attachments',label:'Attachments'},
-  {id:'desc',    label:'Description'},
-  {id:'ac',      label:'Acceptance Criteria'},
-  {id:'area',    label:'Area Path'},
-  {id:'activity',label:'Activity'},
-  {id:'actions', label:'Actions row + activity / comment / child forms'},
+  {id:'nav',          label:'Hierarchy nav (↑ parent · ↓ children)'},
+  {id:'title',        label:'Title'},
+  {id:'state',        label:'State'},
+  {id:'priority',     label:'Priority'},
+  {id:'assigned',     label:'Assignee'},
+  {id:'storypoints',  label:'Story Points'},
+  {id:'remaining',    label:'Remaining Work'},
+  {id:'completed',    label:'Completed Work'},
+  {id:'risk',         label:'Risk'},
+  {id:'valuearea',    label:'Value Area'},
+  {id:'sprint',       label:'Sprint'},
+  {id:'parent',       label:'Parent'},
+  {id:'deps',         label:'Dependencies (blocked by · blocks)'},
+  {id:'start_target', label:'Start — Target Date'},
+  {id:'due',          label:'Due Date'},
+  {id:'estimate',     label:'Original Estimate'},
+  {id:'time_in_state',label:'Time in State Timeline'},
+  {id:'tags',         label:'Tags'},
+  {id:'attachments',  label:'Attachments'},
+  {id:'desc',         label:'Description'},
+  {id:'ac',           label:'Acceptance Criteria'},
+  {id:'area',         label:'Area Path'},
+  {id:'activity',     label:'Activity'},
 ];
-const SIDE_LOCKED=new Set(['title','actions']);    // editor unusable without these
-let sideOrder=SIDE_GROUPS.map(g=>g.id), sideHidden=new Set(['area', 'activity']);
+const SIDE_LOCKED=new Set(['title','state']);    // editor unusable without these
+let sideOrder = SIDE_GROUPS.map(g => g.id), sideHidden = new Set(['area', 'activity']);
 let activeWType = null; // Track current loaded work item type for sidebar
+let currentSideLayout = null;
+let czTab = 'bar';
 
-function loadSideLayout(wtype, offFormFields = []){
+function getDefaultSideLayout(wtype) {
+  return {
+    version: "1.0",
+    wtype: wtype || "",
+    layout: [
+      { id: "nav", type: "field", ref: "nav" },
+      { id: "title", type: "field", ref: "title" },
+      {
+        id: "group_workflow",
+        type: "group",
+        title: "Workflow",
+        collapsible: true,
+        defaultCollapsed: false,
+        elements: [
+          {
+            type: "row",
+            columns: [
+              { width: "38%", elements: [{ type: "field", ref: "state" }] },
+              { width: "24%", elements: [{ type: "field", ref: "priority" }] },
+              { width: "38%", elements: [{ type: "field", ref: "assigned" }] }
+            ]
+          }
+        ]
+      },
+      {
+        id: "group_effort",
+        type: "group",
+        title: "Effort",
+        collapsible: true,
+        defaultCollapsed: false,
+        elements: [
+          {
+            type: "row",
+            columns: [
+              { width: "33%", elements: [{ type: "field", ref: "storypoints" }] },
+              { width: "33%", elements: [{ type: "field", ref: "remaining" }] },
+              { width: "33%", elements: [{ type: "field", ref: "completed" }] }
+            ]
+          }
+        ]
+      },
+      {
+        id: "group_classification",
+        type: "group",
+        title: "Classification",
+        collapsible: true,
+        defaultCollapsed: false,
+        elements: [
+          {
+            type: "row",
+            columns: [
+              { width: "50%", elements: [{ type: "field", ref: "risk" }] },
+              { width: "50%", elements: [{ type: "field", ref: "valuearea" }] }
+            ]
+          }
+        ]
+      },
+      { id: "sprint", type: "field", ref: "sprint" },
+      { id: "parent", type: "field", ref: "parent" },
+      { id: "deps", type: "field", ref: "deps" },
+      {
+        id: "group_schedule",
+        type: "group",
+        title: "Schedule",
+        collapsible: true,
+        defaultCollapsed: false,
+        elements: [
+          {
+            type: "row",
+            columns: [
+              { width: "50%", elements: [{ type: "field", ref: "start_target" }] },
+              { width: "30%", elements: [{ type: "field", ref: "due" }] },
+              { width: "20%", elements: [{ type: "field", ref: "estimate" }] }
+            ]
+          },
+          { type: "field", ref: "time_in_state" }
+        ]
+      },
+      { id: "tags", type: "field", ref: "tags" },
+      { id: "attachments", type: "field", ref: "attachments" },
+      { id: "desc", type: "field", ref: "desc" },
+      { id: "ac", type: "field", ref: "ac" },
+      { id: "area", type: "field", ref: "area" },
+      { id: "activity", type: "field", ref: "activity" }
+    ]
+  };
+}
+
+function loadSideLayout(wtype, offFormFields = []) {
   const suffix = wtype ? '.' + wtype : '';
-  const orderKey = 'ado.sideOrder' + suffix;
-  const hiddenKey = 'ado.sideHidden' + suffix;
-  
-  // Default values
-  sideOrder = SIDE_GROUPS.map(g=>g.id);
-  sideHidden = new Set(['area', 'activity', ...offFormFields]);
+  const layoutKey = 'ado.layout' + suffix;
+  const oldOrderKey = 'ado.sideOrder' + suffix;
+  const oldHiddenKey = 'ado.sideHidden' + suffix;
   
   try {
-    const o = JSON.parse(localStorage.getItem(orderKey) || 'null');
-    if (Array.isArray(o)) sideOrder = o;
-    else if (wtype) {
-      // Fallback to default layout if type-specific layout doesn't exist
-      const fallbackO = JSON.parse(localStorage.getItem('ado.sideOrder') || 'null');
-      if (Array.isArray(fallbackO)) sideOrder = fallbackO;
+    const saved = localStorage.getItem(layoutKey);
+    if (saved) {
+      currentSideLayout = JSON.parse(saved);
+      ensureLayoutFields(wtype, offFormFields);
+      return;
     }
-  } catch(e){}
+  } catch(e) {
+    console.error("Failed to load side layout schema", e);
+  }
   
-  const savedHidden = localStorage.getItem(hiddenKey) || (wtype ? localStorage.getItem('ado.sideHidden') : null);
-  if(savedHidden){
-    try{
-      const h=JSON.parse(savedHidden);
-      sideHidden=new Set(h.filter(id=>!SIDE_LOCKED.has(id)));
-      const existingIds = new Set(sideOrder.concat([...sideHidden]));
-      ['area', 'effort', 'activity', 'classification'].forEach(id => {
-        if (!existingIds.has(id)) {
-          sideHidden.add(id);
+  try {
+    const oldOrder = JSON.parse(localStorage.getItem(oldOrderKey) || 'null');
+    const oldHidden = JSON.parse(localStorage.getItem(oldHiddenKey) || 'null');
+    
+    if (Array.isArray(oldOrder)) {
+      const layoutItems = [];
+      const hiddenSet = new Set(Array.isArray(oldHidden) ? oldHidden : ['area', 'activity', ...offFormFields]);
+      
+      oldOrder.forEach(id => {
+        if (!hiddenSet.has(id) && id !== 'actions') {
+          // Map old flat composite IDs to individual fields
+          if (id === 'workflow') {
+            layoutItems.push({ id: 'state', type: 'field', ref: 'state' });
+            layoutItems.push({ id: 'priority', type: 'field', ref: 'priority' });
+            layoutItems.push({ id: 'assigned', type: 'field', ref: 'assigned' });
+          } else if (id === 'effort') {
+            layoutItems.push({ id: 'storypoints', type: 'field', ref: 'storypoints' });
+            layoutItems.push({ id: 'remaining', type: 'field', ref: 'remaining' });
+            layoutItems.push({ id: 'completed', type: 'field', ref: 'completed' });
+          } else if (id === 'classification') {
+            layoutItems.push({ id: 'risk', type: 'field', ref: 'risk' });
+            layoutItems.push({ id: 'valuearea', type: 'field', ref: 'valuearea' });
+          } else if (id === 'schedule') {
+            layoutItems.push({ id: 'start_target', type: 'field', ref: 'start_target' });
+            layoutItems.push({ id: 'due', type: 'field', ref: 'due' });
+            layoutItems.push({ id: 'estimate', type: 'field', ref: 'estimate' });
+          } else {
+            layoutItems.push({ id: id, type: 'field', ref: id });
+          }
         }
       });
-      offFormFields.forEach(id => {
-        if (!existingIds.has(id)) {
-          sideHidden.add(id);
-        }
-      });
-    }catch(e){}
+      layoutItems.push({ id: 'actions', type: 'field', ref: 'actions' });
+      
+      currentSideLayout = {
+        version: "1.0",
+        wtype: wtype || "",
+        layout: layoutItems
+      };
+      saveSideLayout(wtype);
+      return;
+    }
+  } catch(e) {
+    console.error("Failed to migrate side layout schema", e);
+  }
+  
+  const def = getDefaultSideLayout(wtype);
+  const hiddenSet = new Set(['area', 'activity', ...offFormFields]);
+  def.layout = def.layout.filter(item => !hiddenSet.has(item.ref));
+  currentSideLayout = def;
+  saveSideLayout(wtype);
+}
+
+function saveSideLayout(wtype) {
+  if (!currentSideLayout) return;
+  const suffix = wtype ? '.' + wtype : '';
+  const layoutKey = 'ado.layout' + suffix;
+  try {
+    localStorage.setItem(layoutKey, JSON.stringify(currentSideLayout));
+  } catch(e) {
+    console.error("Failed to save side layout schema", e);
   }
 }
 
-function saveSideLayout(wtype){
-  const suffix = wtype ? '.' + wtype : '';
-  const orderKey = 'ado.sideOrder' + suffix;
-  const hiddenKey = 'ado.sideHidden' + suffix;
-  try{
-    localStorage.setItem(orderKey, JSON.stringify(sideOrderedIds()));
-    localStorage.setItem(hiddenKey, JSON.stringify([...sideHidden]));
-  }catch(e){}
-}
-
-function sideOrderedIds(){     // same recovery as barOrderedIds — re-insert missing ids near their defaults
-  const def=SIDE_GROUPS.map(g=>g.id),defSet=new Set(def);
-  const result=sideOrder.filter((id,i)=>id!=='actions'&&defSet.has(id)&&sideOrder.indexOf(id)===i);
-  def.forEach((id,i)=>{
-    if(id==='actions')return;
-    if(result.includes(id))return;
-    let at=result.length;
-    for(let j=i-1;j>=0;j--){const k=result.indexOf(def[j]);if(k>=0){at=k+1;break;}}
-    result.splice(at,0,id);
-  });
-  result.push('actions');
-  return result;
-}
-
-function applySideLayout(wtype){
-  const side=$('side');if(!side)return;
+function ensureLayoutFields(wtype, offFormFields) {
+  if (!currentSideLayout) return;
+  const placed = new Set();
+  const traverse = (node) => {
+    if (!node) return;
+    if (typeof node === 'string') placed.add(node);
+    else if (node.type === 'field') placed.add(node.ref);
+    else if (node.elements) node.elements.forEach(traverse);
+    else if (node.columns) node.columns.forEach(col => (col.elements || []).forEach(traverse));
+  };
+  currentSideLayout.layout.forEach(traverse);
   
-  // Sort all groups inside #side (including custom fields)
-  sideOrderedIds().forEach(id=>{
-    const el=side.querySelector(`.sgroup[data-sg="${id}"]`);
-    if(el)side.appendChild(el);
-  });
+  if (!placed.has('title')) {
+    currentSideLayout.layout.unshift({ id: 'title', type: 'field', ref: 'title' });
+  }
+}
 
-  // Handle visibility & lazy loading
-  SIDE_GROUPS.forEach(g=>{
-    const el=side.querySelector(`.sgroup[data-sg="${g.id}"]`);
-    if(el) {
-      const hidden = sideHidden.has(g.id);
-      el.classList.toggle('sg-hidden', hidden);
-      if (!hidden && cur != null) {
-        ensureFieldLoaded(g.id);
-      }
+function sideOrderedIds() {
+  const result = [];
+  const traverse = (node) => {
+    if (!node) return;
+    if (typeof node === 'string') {
+      result.push(node);
+    } else if (node.type === 'field') {
+      result.push(node.ref);
+    } else if (node.elements) {
+      node.elements.forEach(traverse);
+    } else if (node.columns) {
+      node.columns.forEach(col => (col.elements || []).forEach(traverse));
+    }
+  };
+  if (currentSideLayout && currentSideLayout.layout) {
+    currentSideLayout.layout.forEach(traverse);
+  }
+  
+  if (!result.includes('title')) result.unshift('title');
+  
+  return [...new Set(result)];
+}
+
+function applySideLayout(wtype) {
+  const side = $('side');
+  if (!side) return;
+  
+  const sgroups = {};
+  side.querySelectorAll('.sgroup').forEach(el => {
+    const sg = el.dataset.sg;
+    if (sg) {
+      sgroups[sg] = el;
+      el.remove();
     }
   });
-  // Shead buttons that act on a specific sgroup are only meaningful while that
-  // sgroup is visible — hide them when the user hides their target via Customize.
-  const descHidden=sideHidden.has('desc');
+  
+  side.querySelectorAll('.sg-row, .sg-group-panel, .sg-separator, .sg-custom-label').forEach(el => el.remove());
+  
+  if (!currentSideLayout || currentSideLayout.wtype !== (wtype || '')) {
+    loadSideLayout(wtype);
+  }
+  
+  const renderNode = (node, parentEl) => {
+    if (!node) return;
+    
+    if (typeof node === 'string') {
+      if (node === 'actions') return;
+      const el = sgroups[node];
+      if (el) {
+        el.classList.remove('sg-hidden');
+        parentEl.appendChild(el);
+        if (cur != null) ensureFieldLoaded(node);
+      }
+      return;
+    }
+    
+    if (node.type === 'field') {
+      if (node.ref === 'actions') return;
+      if (node.visible === false) return;
+      const el = sgroups[node.ref];
+      if (el) {
+        el.classList.remove('sg-hidden');
+        parentEl.appendChild(el);
+        if (cur != null) ensureFieldLoaded(node.ref);
+      }
+      return;
+    }
+    
+    if (node.type === 'row') {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'sg-row';
+      if (node.id) rowEl.id = node.id;
+      
+      (node.columns || []).forEach(col => {
+        const colEl = document.createElement('div');
+        colEl.className = 'sg-col';
+        if (col.width) {
+          colEl.style.flex = `1 1 ${col.width}`;
+          colEl.style.maxWidth = col.width;
+        }
+        
+        (col.elements || []).forEach(child => {
+          renderNode(child, colEl);
+        });
+        rowEl.appendChild(colEl);
+      });
+      parentEl.appendChild(rowEl);
+      return;
+    }
+    
+    if (node.type === 'group') {
+      if (node.visible === false) return;
+      const groupEl = document.createElement('div');
+      groupEl.className = 'sg-group-panel';
+      if (node.id) groupEl.id = node.id;
+      
+      const hdrEl = document.createElement('div');
+      hdrEl.className = 'sg-group-hdr';
+      hdrEl.innerHTML = `<span class="toggle-arrow">▼</span> <span class="title-text">${esc(node.title)}</span>`;
+      groupEl.appendChild(hdrEl);
+      
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'sg-group-body';
+      
+      if (node.collapsible) {
+        hdrEl.style.cursor = 'pointer';
+        const collapsedKey = `ado.collapsed.${node.id}`;
+        const isCollapsed = localStorage.getItem(collapsedKey) === 'true' || (node.defaultCollapsed && localStorage.getItem(collapsedKey) === null);
+        if (isCollapsed) {
+          groupEl.classList.add('collapsed');
+          hdrEl.querySelector('.toggle-arrow').textContent = '▶';
+        }
+        hdrEl.onclick = () => {
+          const nowCollapsed = groupEl.classList.toggle('collapsed');
+          localStorage.setItem(collapsedKey, nowCollapsed ? 'true' : 'false');
+          hdrEl.querySelector('.toggle-arrow').textContent = nowCollapsed ? '▶' : '▼';
+        };
+      }
+      
+      (node.elements || []).forEach(child => {
+        renderNode(child, bodyEl);
+      });
+      groupEl.appendChild(bodyEl);
+      parentEl.appendChild(groupEl);
+      return;
+    }
+    
+    if (node.type === 'separator') {
+      const sep = document.createElement('div');
+      sep.className = 'sg-separator';
+      parentEl.appendChild(sep);
+      return;
+    }
+    
+    if (node.type === 'label') {
+      const lbl = document.createElement('div');
+      lbl.className = 'sg-custom-label';
+      lbl.textContent = node.text || '';
+      parentEl.appendChild(lbl);
+      return;
+    }
+  };
+  
+  (currentSideLayout.layout || []).forEach(node => {
+    renderNode(node, side);
+  });
+  
+  const placed = new Set(sideOrderedIds());
+  Object.keys(sgroups).forEach(ref => {
+    if (ref === 'actions') return;
+    if (!placed.has(ref)) {
+      const el = sgroups[ref];
+      el.classList.add('sg-hidden');
+      side.appendChild(el);
+    }
+  });
+  
+  if (sgroups['actions']) {
+    sgroups['actions'].classList.remove('sg-hidden');
+    side.appendChild(sgroups['actions']);
+  }
+  
+  const descHidden = !placed.has('desc');
   ['s_desc_attach','s_desc_full'].forEach(id=>{
     const el=$(id);if(el)el.style.display=descHidden?'none':'';
   });
@@ -6120,29 +6427,35 @@ async function updateSideGroupsForType(wtype) {
       const hasArea = refNames.has("System.AreaPath");
       const hasActivity = refNames.has("Microsoft.VSTS.Common.Activity");
       
-      const hasEffort = refNames.has("Microsoft.VSTS.Scheduling.StoryPoints") || 
-                        refNames.has("Microsoft.VSTS.Scheduling.RemainingWork") || 
-                        refNames.has("Microsoft.VSTS.Scheduling.CompletedWork");
+      const hasStoryPoints = refNames.has("Microsoft.VSTS.Scheduling.StoryPoints");
+      const hasRemaining = refNames.has("Microsoft.VSTS.Scheduling.RemainingWork");
+      const hasCompleted = refNames.has("Microsoft.VSTS.Scheduling.CompletedWork");
 
-      const hasClassification = refNames.has("Microsoft.VSTS.Common.Risk") || 
-                                refNames.has("Microsoft.VSTS.Common.ValueArea");
+      const hasRisk = refNames.has("Microsoft.VSTS.Common.Risk");
+      const hasValueArea = refNames.has("Microsoft.VSTS.Common.ValueArea");
 
-      const hasSchedule = refNames.has("Microsoft.VSTS.Scheduling.StartDate") || 
-                          refNames.has("Microsoft.VSTS.Scheduling.TargetDate") || 
-                          refNames.has("Microsoft.VSTS.Scheduling.FinishDate") || 
-                          refNames.has("Microsoft.VSTS.Scheduling.DueDate") || 
-                          refNames.has("Microsoft.VSTS.Scheduling.OriginalEstimate");
+      const hasStartOrTarget = refNames.has("Microsoft.VSTS.Scheduling.StartDate") || 
+                               refNames.has("Microsoft.VSTS.Scheduling.TargetDate") || 
+                               refNames.has("Microsoft.VSTS.Scheduling.FinishDate");
+      const hasDue = refNames.has("Microsoft.VSTS.Scheduling.DueDate");
+      const hasEstimate = refNames.has("Microsoft.VSTS.Scheduling.OriginalEstimate");
 
       // Always supported groups
-      ['nav', 'title', 'workflow', 'sprint', 'parent', 'deps', 'tags', 'attachments', 'actions'].forEach(id => czSupportedGroups.add(id));
+      ['nav', 'title', 'state', 'priority', 'assigned', 'sprint', 'parent', 'deps', 'tags', 'attachments'].forEach(id => czSupportedGroups.add(id));
 
       if (hasDesc) czSupportedGroups.add('desc');
       if (hasAc) czSupportedGroups.add('ac');
       if (hasArea) czSupportedGroups.add('area');
       if (hasActivity) czSupportedGroups.add('activity');
-      if (hasEffort) czSupportedGroups.add('effort');
-      if (hasClassification) czSupportedGroups.add('classification');
-      if (hasSchedule) czSupportedGroups.add('schedule');
+      if (hasStoryPoints) czSupportedGroups.add('storypoints');
+      if (hasRemaining) czSupportedGroups.add('remaining');
+      if (hasCompleted) czSupportedGroups.add('completed');
+      if (hasRisk) czSupportedGroups.add('risk');
+      if (hasValueArea) czSupportedGroups.add('valuearea');
+      if (hasStartOrTarget) czSupportedGroups.add('start_target');
+      if (hasDue) czSupportedGroups.add('due');
+      if (hasEstimate) czSupportedGroups.add('estimate');
+      if (hasStartOrTarget || hasDue || hasEstimate) czSupportedGroups.add('time_in_state');
 
       const stdRefs = new Set([
         'System.Id', 'System.WorkItemType', 'System.Title', 'System.State',
@@ -6160,8 +6473,19 @@ async function updateSideGroupsForType(wtype) {
         if (!stdRefs.has(cf.referenceName)) {
           const sgId = 'cust:' + cf.referenceName;
           czSupportedGroups.add(sgId);
-          if (!SIDE_GROUPS.some(g => g.id === sgId)) {
-            SIDE_GROUPS.push({ id: sgId, label: 'Custom: ' + cf.name });
+          let existingGroup = SIDE_GROUPS.find(g => g.id === sgId);
+          if (!existingGroup) {
+            SIDE_GROUPS.push({
+              id: sgId,
+              label: 'Custom: ' + cf.name,
+              customType: cf.type,
+              allowedValues: cf.allowedValues,
+              isIdentity: cf.isIdentity
+            });
+          } else {
+            existingGroup.customType = cf.type;
+            existingGroup.allowedValues = cf.allowedValues;
+            existingGroup.isIdentity = cf.isIdentity;
           }
         }
       });
@@ -6221,10 +6545,656 @@ function closeCustomize(){
   if (window.LayerManager) window.LayerManager.close($('customize-overlay'));
 }
 
+// Visual Layout Editor interactive preview and drag-drop logic
+let draggingNodeId = null;
+let draggingType = null;
+window.addEventListener('dragend', () => {
+  draggingType = null;
+  draggingNodeId = null;
+});
+
+function renderVisualLayoutBuilder() {
+  renderToolboxFields();
+  renderCanvas();
+  initToolboxStructures();
+}
+
+function initToolboxStructures() {
+  const container = $('cz_toolbox_structures');
+  if (!container) return;
+  container.querySelectorAll('.cz-toolbox-item').forEach(item => {
+    item.ondragstart = (e) => {
+      draggingType = item.dataset.type;
+      draggingNodeId = null;
+      e.dataTransfer.setData('text/plain', JSON.stringify({
+        source: 'toolbox',
+        type: item.dataset.type
+      }));
+    };
+  });
+}
+
+function renderToolboxFields() {
+  const container = $('cz_toolbox_fields');
+  if (!container) return;
+  
+  const placed = new Set();
+  const traverse = (node) => {
+    if (!node) return;
+    if (typeof node === 'string') placed.add(node);
+    else if (node.type === 'field') placed.add(node.ref);
+    else if (node.elements) node.elements.forEach(traverse);
+    else if (node.columns) node.columns.forEach(col => (col.elements || []).forEach(traverse));
+  };
+  if (currentSideLayout && currentSideLayout.layout) {
+    currentSideLayout.layout.forEach(traverse);
+  }
+  
+  const unused = SIDE_GROUPS.filter(g => {
+    return czSupportedGroups.has(g.id) && !placed.has(g.id);
+  });
+  
+  container.innerHTML = unused.map(g => {
+    return `<div class="cz-toolbox-item" draggable="true" data-type="field" data-ref="${g.id}">` +
+      `<span class="grip">⠿</span> ${esc(g.label || g.id)}</div>`;
+  }).join('');
+  
+  container.querySelectorAll('.cz-toolbox-item').forEach(item => {
+    item.ondragstart = (e) => {
+      draggingType = 'field';
+      draggingNodeId = null;
+      e.dataTransfer.setData('text/plain', JSON.stringify({
+        source: 'toolbox',
+        type: 'field',
+        ref: item.dataset.ref,
+        label: item.textContent.trim().replace('⠿', '').trim()
+      }));
+    };
+  });
+}
+
+function getMockFieldHtml(fieldId, label) {
+  const selectStyle = `width:100%; box-sizing:border-box; height:2.154rem; font-size:0.923rem; padding:0 8px; border:1px solid var(--line); border-radius:4px; background:var(--panel2); color:var(--txt); pointer-events:none;`;
+  const inputStyle = `width:100%; box-sizing:border-box; height:2.154rem; font-size:0.923rem; padding:0 8px; border:1px solid var(--line); border-radius:4px; background:var(--panel2); color:var(--txt); pointer-events:none;`;
+  const textareaStyle = `width:100%; box-sizing:border-box; border:1px solid var(--line); border-radius:4px; padding:6px 8px; background:var(--panel2); font-size:0.846rem; color:var(--muted); min-height:3.692rem; pointer-events:none; font-family:inherit; resize:none; line-height:1.4;`;
+  
+  if (fieldId === 'title') {
+    return `<input type="text" value="Implement layout customization" style="${inputStyle}">`;
+  }
+  if (fieldId === 'state') {
+    return `<select style="${selectStyle}"><option>Active</option></select>`;
+  }
+  if (fieldId === 'priority') {
+    return `<select style="${selectStyle}"><option>2</option></select>`;
+  }
+  if (fieldId === 'assigned') {
+    return `<div style="display:flex; gap:4px; width:100%;">
+      <div class="btn pcard" style="flex:1; pointer-events:none; border:1px solid var(--line); background:var(--panel2); height:2.462rem; min-width:0; margin:0; display:flex; align-items:center; padding:0.385rem 0.692rem;">
+        <div class="pav pavsm" style="background:#2f6fed; display:inline-flex; align-items:center; justify-content:center; font-size:0.615rem; font-weight:700; color:#fff; border-radius:50%; width:1.231rem; height:1.231rem; flex:none;">JD</div>
+        <div class="pctitle" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-left:6px; font-size:0.923rem; color:var(--txt);">John Doe</div>
+      </div>
+      <button class="btn" disabled style="padding:6px 9px; height:2.462rem; background:var(--panel2); border:1px solid var(--line); border-radius:4px; font-size:0.923rem; margin:0; color:var(--txt);">me</button>
+    </div>`;
+  }
+  if (fieldId === 'sprint') {
+    return `<div class="btn pcard" style="width:100%; pointer-events:none; border:1px solid var(--line); background:var(--panel2); height:2.462rem; margin:0; display:flex; align-items:center; padding:0.385rem 0.692rem;">
+      <span style="color:var(--muted); margin-right:4px; font-size:0.923rem;">🏃</span>
+      <div class="pctitle" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.923rem; color:var(--txt);">Sprint 24</div>
+    </div>`;
+  }
+  if (fieldId === 'parent') {
+    return `<div style="display:flex; gap:4px; width:100%;">
+      <div class="btn pcard" style="flex:1; pointer-events:none; border:1px solid var(--line); background:var(--panel2); height:2.462rem; min-width:0; margin:0; display:flex; align-items:center; padding:0.385rem 0.692rem;">
+        <span class="pcid" style="color:var(--muted); font-size:0.923rem; flex:none;">#1024</span>
+        <div class="pctitle" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-left:6px; font-size:0.923rem; color:var(--txt);">Epic: User Profile</div>
+      </div>
+      <button class="btn" disabled style="padding:6px 9px; height:2.462rem; background:var(--panel2); border:1px solid var(--line); border-radius:4px; font-size:0.923rem; margin:0; color:var(--txt);">↗</button>
+    </div>`;
+  }
+  if (fieldId === 'storypoints') {
+    return `<input type="text" value="8" style="${inputStyle}">`;
+  }
+  if (fieldId === 'remaining') {
+    return `<input type="text" value="4" style="${inputStyle}">`;
+  }
+  if (fieldId === 'completed') {
+    return `<input type="text" value="12" style="${inputStyle}">`;
+  }
+  if (fieldId === 'estimate') {
+    return `<input type="text" value="16" style="${inputStyle}">`;
+  }
+  if (fieldId === 'risk') {
+    return `<select style="${selectStyle}"><option>Medium</option></select>`;
+  }
+  if (fieldId === 'valuearea') {
+    return `<select style="${selectStyle}"><option>Business</option></select>`;
+  }
+  if (fieldId === 'activity') {
+    return `<select style="${selectStyle}"><option>Development</option></select>`;
+  }
+  if (fieldId === 'area') {
+    return `<input type="text" value="Project\\Development\\Frontend" style="${inputStyle}">`;
+  }
+  if (fieldId === 'start_target') {
+    return `<div style="position:relative; width:100%;">
+      <input type="text" value="2026-06-01 — 2026-06-15" style="${inputStyle} text-align:left; padding-right:24px;">
+      <span style="position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:10px;">▼</span>
+    </div>`;
+  }
+  if (fieldId === 'due') {
+    return `<div style="position:relative; width:100%;">
+      <input type="text" value="2026-06-30" style="${inputStyle} text-align:left; padding-right:24px;">
+      <span style="position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:10px;">▼</span>
+    </div>`;
+  }
+  if (fieldId === 'tags') {
+    return `<div style="display:flex; flex-wrap:wrap; gap:4px; width:100%; min-height:2.154rem; align-items:center;">
+      <span style="font-size:0.769rem; background:rgba(47,111,237,0.15); color:var(--accent); padding:2px 8px; border-radius:12px; font-weight:500;">frontend</span>
+      <span style="font-size:0.769rem; background:rgba(47,111,237,0.15); color:var(--accent); padding:2px 8px; border-radius:12px; font-weight:500;">v2</span>
+    </div>`;
+  }
+  if (fieldId === 'deps') {
+    return `<div style="font-size:0.846rem; color:var(--muted); display:flex; flex-direction:column; gap:4px; width:100%;">
+      <div style="font-size:0.692rem; text-transform:uppercase; color:var(--muted); font-weight:600; letter-spacing:0.5px;">Blocked By</div>
+      <div style="display:flex; gap:4px;">
+        <div style="font-size:0.769rem; background:var(--panel); border:1px solid var(--line); padding:2px 8px; border-radius:12px; color:var(--txt);">#1080 Database Schema</div>
+      </div>
+    </div>`;
+  }
+  if (fieldId === 'time_in_state') {
+    return `<div style="display:flex; flex-direction:column; gap:4px; font-size:0.769rem; color:var(--muted); width:100%;">
+      <div style="display:flex; justify-content:space-between; font-weight:500;">
+        <span>Active: 3d</span>
+        <span>Resolved: 1d</span>
+      </div>
+      <div style="display:flex; height:6px; border-radius:3px; overflow:hidden; background:var(--line);">
+        <div style="width:75%; background:#2f6fed;"></div>
+        <div style="width:25%; background:#2ebb4e;"></div>
+      </div>
+    </div>`;
+  }
+  if (fieldId === 'attachments') {
+    return `<div style="font-size:0.846rem; color:var(--muted); display:flex; align-items:center; gap:6px; width:100%;">
+      <span>📎 screenshot.png (240 KB)</span>
+    </div>`;
+  }
+  if (fieldId === 'desc') {
+    return `<textarea style="${textareaStyle}" readonly>Detailed user story description goes here...</textarea>`;
+  }
+  if (fieldId === 'ac') {
+    return `<textarea style="${textareaStyle}" readonly>- GIVEN custom layouts\n- WHEN viewing preview\n- THEN show real fields</textarea>`;
+  }
+  if (fieldId === 'actions') {
+    return `<div style="display:flex; justify-content:space-between; align-items:center; width:100%; border-top:1px solid var(--line); padding-top:8px;">
+      <div style="display:flex; gap:8px;">
+        <span style="font-weight:600; font-size:0.846rem; color:var(--accent); border-bottom:2px solid var(--accent); padding-bottom:2px;">Timeline</span>
+        <span style="font-size:0.846rem; color:var(--muted);">History</span>
+      </div>
+      <button class="btn" disabled style="padding:4px 8px; font-size:0.769rem; background:var(--accent); color:#fff; border:none; border-radius:4px; cursor:default; margin:0;">Add Comment</button>
+    </div>`;
+  }
+  if (fieldId === 'nav') {
+    return `<div style="font-size:0.769rem; color:var(--muted); display:flex; gap:4px; align-items:center;">
+      <span>Parent Item</span> <span>&gt;</span> <span style="color:var(--txt); font-weight:500;">Current Item</span>
+    </div>`;
+  }
+  
+  if (fieldId.startsWith('cust:')) {
+    const foundGroup = SIDE_GROUPS.find(g => g.id === fieldId);
+    if (foundGroup) {
+      const type = (foundGroup.customType || '').toLowerCase();
+      const hasAllowedValues = foundGroup.allowedValues && foundGroup.allowedValues.length > 0;
+      const isIdentity = foundGroup.isIdentity || type === 'identity';
+      
+      if (type === 'html' || type === 'plaintext') {
+        return `<textarea style="${textareaStyle}" readonly>Mock HTML / Plaintext value...</textarea>`;
+      }
+      if (type === 'datetime') {
+        return `<div style="position:relative; width:100%;">
+          <input type="text" value="2026-06-16" style="${inputStyle} text-align:left; padding-right:24px;">
+          <span style="position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:10px;">▼</span>
+        </div>`;
+      }
+      if (hasAllowedValues) {
+        const firstVal = foundGroup.allowedValues[0] || 'Option 1';
+        return `<div class="btn pcard" style="width:100%; pointer-events:none; border:1px solid var(--line); background:var(--panel2); height:2.462rem; margin:0; display:flex; align-items:center; padding:0.385rem 0.692rem;">
+          <div class="pctitle" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.923rem; color:var(--txt);">${esc(firstVal)}</div>
+          <span style="color:var(--muted); font-size:10px; margin-left:4px;">▼</span>
+        </div>`;
+      }
+      if (isIdentity) {
+        return `<div class="btn pcard" style="width:100%; pointer-events:none; border:1px solid var(--line); background:var(--panel2); height:2.462rem; margin:0; display:flex; align-items:center; padding:0.385rem 0.692rem;">
+          <div class="pav pavsm" style="background:#2ebb4e; display:inline-flex; align-items:center; justify-content:center; font-size:0.615rem; font-weight:700; color:#fff; border-radius:50%; width:1.231rem; height:1.231rem; flex:none;">US</div>
+          <div class="pctitle" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-left:6px; font-size:0.923rem; color:var(--txt);">User Name</div>
+        </div>`;
+      }
+      if (type === 'double' || type === 'integer') {
+        return `<input type="number" value="42" style="${inputStyle}">`;
+      }
+    }
+    return `<input type="text" placeholder="[Custom Field Value]" style="${inputStyle}">`;
+  }
+  return `<input type="text" placeholder="[${esc(label)}]" style="${inputStyle}">`;
+}
+
+function renderCanvas() {
+  const canvas = $('cz_canvas');
+  if (!canvas) return;
+  canvas.innerHTML = '';
+  
+  if (!currentSideLayout || !currentSideLayout.layout) return;
+  const byId = Object.fromEntries(SIDE_GROUPS.map(i => [i.id, i.label]));
+  
+  const renderPreviewNode = (node, parentEl) => {
+    if (!node) return;
+    if (!node.id) node.id = 'node_' + Math.random().toString(36).substring(2, 9);
+    
+    if (typeof node === 'string' || node.type === 'field') {
+      const fieldId = typeof node === 'string' ? node : node.ref;
+      const label = byId[fieldId] || fieldId;
+      
+      const el = document.createElement('div');
+      el.className = 'cz-preview-field';
+      el.dataset.layoutId = node.id;
+      el.setAttribute('draggable', 'true');
+      
+      const locked = SIDE_LOCKED.has(fieldId);
+      const grip = locked ? '🔒' : '⠿';
+      
+      el.innerHTML = `<div class="field-lbl">${grip} ${esc(label)}</div>` +
+        `<div class="field-mock-wrapper" style="margin-top:0.385rem; width:100%;">${getMockFieldHtml(fieldId, label)}</div>` +
+        (locked ? '' : `<button class="cz-del-btn" title="Remove field">✕</button>`);
+      
+      if (!locked) {
+        el.querySelector('.cz-del-btn').onclick = (e) => {
+          e.stopPropagation();
+          removeLayoutNode(node.id);
+        };
+      }
+      
+      el.ondragstart = (e) => {
+        e.stopPropagation();
+        draggingNodeId = node.id;
+        draggingType = 'field';
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          source: 'canvas',
+          id: node.id
+        }));
+      };
+      
+      parentEl.appendChild(el);
+      return;
+    }
+    
+    if (node.type === 'group') {
+      const el = document.createElement('div');
+      el.className = 'sg-group-panel cz-preview-group';
+      el.dataset.layoutId = node.id;
+      el.setAttribute('draggable', 'true');
+      
+      el.innerHTML = `<div class="sg-group-hdr">` +
+        `<span class="toggle-arrow">▼</span>` +
+        `<span class="title-text" contenteditable="true" style="outline:none; border-bottom:1px dashed var(--muted);">${esc(node.title)}</span>` +
+        `</div>` +
+        `<div class="sg-group-body cz-preview-col" data-col-parent-id="${node.id}"></div>` +
+        `<button class="cz-del-btn" title="Delete group">✕</button>`;
+      
+      // In the layout editor preview, we keep all groups expanded so the user can see their contents and drag/drop elements into them.
+      
+      const titleSpan = el.querySelector('.title-text');
+      titleSpan.onblur = () => {
+        node.title = titleSpan.textContent.trim() || "New Group";
+        saveSideLayout(czWType);
+        applySideLayout(czWType);
+      };
+      titleSpan.addEventListener('mousedown', e => e.stopPropagation());
+      titleSpan.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          titleSpan.blur();
+        }
+      });
+      
+      el.querySelector('.cz-del-btn').onclick = (e) => {
+        e.stopPropagation();
+        removeLayoutNode(node.id);
+      };
+      
+      el.ondragstart = (e) => {
+        e.stopPropagation();
+        draggingNodeId = node.id;
+        draggingType = 'group';
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          source: 'canvas',
+          id: node.id
+        }));
+      };
+      
+      const body = el.querySelector('.sg-group-body');
+      (node.elements || []).forEach(child => {
+        renderPreviewNode(child, body);
+      });
+      
+      parentEl.appendChild(el);
+      setupDropZone(body);
+      return;
+    }
+    
+    if (node.type === 'row') {
+      const el = document.createElement('div');
+      el.className = 'sg-row cz-preview-row';
+      el.dataset.layoutId = node.id;
+      el.setAttribute('draggable', 'true');
+      
+      el.innerHTML = `<button class="cz-del-btn" title="Delete row">✕</button>`;
+      
+      el.querySelector('.cz-del-btn').onclick = (e) => {
+        e.stopPropagation();
+        removeLayoutNode(node.id);
+      };
+      
+      el.ondragstart = (e) => {
+        e.stopPropagation();
+        draggingNodeId = node.id;
+        draggingType = 'row';
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          source: 'canvas',
+          id: node.id
+        }));
+      };
+      
+      (node.columns || []).forEach((col, idx) => {
+        const colEl = document.createElement('div');
+        colEl.className = 'sg-col cz-preview-col';
+        colEl.style.flex = `1 1 ${col.width || '50%'}`;
+        colEl.style.maxWidth = col.width || '50%';
+        colEl.dataset.rowId = node.id;
+        colEl.dataset.colIdx = idx;
+        
+        (col.elements || []).forEach(child => {
+          renderPreviewNode(child, colEl);
+        });
+        
+        el.appendChild(colEl);
+        setupDropZone(colEl);
+      });
+      
+      parentEl.appendChild(el);
+      return;
+    }
+    
+    if (node.type === 'separator') {
+      const el = document.createElement('div');
+      el.className = 'sg-separator cz-preview-separator';
+      el.dataset.layoutId = node.id;
+      el.setAttribute('draggable', 'true');
+      
+      el.innerHTML = `<span class="sep-line"></span><button class="cz-del-btn" title="Remove separator">✕</button>`;
+      
+      el.querySelector('.cz-del-btn').onclick = (e) => {
+        e.stopPropagation();
+        removeLayoutNode(node.id);
+      };
+      
+      el.ondragstart = (e) => {
+        e.stopPropagation();
+        draggingNodeId = node.id;
+        draggingType = 'separator';
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          source: 'canvas',
+          id: node.id
+        }));
+      };
+      
+      parentEl.appendChild(el);
+      return;
+    }
+    
+    if (node.type === 'label') {
+      const el = document.createElement('div');
+      el.className = 'sg-custom-label cz-preview-label';
+      el.dataset.layoutId = node.id;
+      el.setAttribute('draggable', 'true');
+      
+      el.innerHTML = `<span class="lbl-txt" contenteditable="true" style="outline:none; border-bottom:1px dashed var(--muted);">${esc(node.text || 'Custom Text')}</span>` +
+        `<button class="cz-del-btn" title="Remove block">✕</button>`;
+      
+      const txtSpan = el.querySelector('.lbl-txt');
+      txtSpan.onblur = () => {
+        node.text = txtSpan.textContent.trim() || "Custom Text";
+        saveSideLayout(czWType);
+        applySideLayout(czWType);
+      };
+      txtSpan.addEventListener('mousedown', e => e.stopPropagation());
+      txtSpan.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          txtSpan.blur();
+        }
+      });
+      
+      el.querySelector('.cz-del-btn').onclick = (e) => {
+        e.stopPropagation();
+        removeLayoutNode(node.id);
+      };
+      
+      el.ondragstart = (e) => {
+        e.stopPropagation();
+        draggingNodeId = node.id;
+        draggingType = 'label';
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          source: 'canvas',
+          id: node.id
+        }));
+      };
+      
+      parentEl.appendChild(el);
+      return;
+    }
+  };
+  
+  currentSideLayout.layout.forEach(node => {
+    renderPreviewNode(node, canvas);
+  });
+  
+  setupDropZone(canvas, true);
+}
+
+function findNodeAndParent(id) {
+  if (!currentSideLayout || !currentSideLayout.layout) return null;
+  const search = (array) => {
+    for (let i = 0; i < array.length; i++) {
+      const node = array[i];
+      if (node && node.id === id) {
+        return { array, index: i, node };
+      }
+      if (node && node.elements) {
+        const found = search(node.elements);
+        if (found) return found;
+      }
+      if (node && node.columns) {
+        for (let col of node.columns) {
+          const found = search(col.elements || []);
+          if (found) return found;
+        }
+      }
+    }
+    return null;
+  };
+  return search(currentSideLayout.layout);
+}
+
+function removeLayoutNode(id) {
+  const result = findNodeAndParent(id);
+  if (result) {
+    result.array.splice(result.index, 1);
+    saveSideLayout(czWType);
+    applySideLayout(czWType);
+    renderToolboxFields();
+    renderCanvas();
+  }
+}
+
+function setupDropZone(container, isRoot = false) {
+  container.addEventListener('dragover', (e) => {
+    if (draggingType === 'group' && !isRoot) {
+      return;
+    }
+    if (draggingType === 'row' && !isRoot && !container.dataset.colParentId) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    
+    removeDropIndicators();
+    
+    const children = [...container.children].filter(child => child !== e.target && !child.classList.contains('cz-drop-indicator') && !child.classList.contains('cz-del-btn') && !child.classList.contains('sg-group-hdr'));
+    const afterElement = children.find(child => {
+      const box = child.getBoundingClientRect();
+      return e.clientY < box.top + box.height / 2;
+    });
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'cz-drop-indicator';
+    if (afterElement) {
+      container.insertBefore(indicator, afterElement);
+    } else {
+      container.appendChild(indicator);
+    }
+  });
+  
+  container.addEventListener('dragleave', (e) => {
+    if (!container.contains(e.relatedTarget)) {
+      removeDropIndicators();
+    }
+  });
+  
+  container.ondrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    removeDropIndicators();
+    
+    let dragData;
+    try {
+      dragData = JSON.parse(e.dataTransfer.getData('text/plain'));
+    } catch(err) {
+      return;
+    }
+    
+    const children = [...container.children].filter(child => !child.classList.contains('cz-drop-indicator') && !child.classList.contains('cz-del-btn') && !child.classList.contains('sg-group-hdr'));
+    const afterElement = children.find(child => {
+      const box = child.getBoundingClientRect();
+      return e.clientY < box.top + box.height / 2;
+    });
+    
+    let insertIdx = afterElement ? children.indexOf(afterElement) : children.length;
+    let nodeToInsert = null;
+    
+    if (dragData.source === 'toolbox') {
+      if (dragData.type === 'field') {
+        nodeToInsert = {
+          id: 'node_' + Math.random().toString(36).substring(2, 9),
+          type: 'field',
+          ref: dragData.ref
+        };
+      } else if (dragData.type === 'group') {
+        nodeToInsert = {
+          id: 'node_' + Math.random().toString(36).substring(2, 9),
+          type: 'group',
+          title: 'New Group',
+          collapsible: true,
+          defaultCollapsed: false,
+          elements: []
+        };
+      } else if (dragData.type === 'row') {
+        nodeToInsert = {
+          id: 'node_' + Math.random().toString(36).substring(2, 9),
+          type: 'row',
+          columns: [
+            { width: '50%', elements: [] },
+            { width: '50%', elements: [] }
+          ]
+        };
+      } else if (dragData.type === 'row3') {
+        nodeToInsert = {
+          id: 'node_' + Math.random().toString(36).substring(2, 9),
+          type: 'row',
+          columns: [
+            { width: '33.3%', elements: [] },
+            { width: '33.3%', elements: [] },
+            { width: '33.3%', elements: [] }
+          ]
+        };
+      } else if (dragData.type === 'label') {
+        nodeToInsert = {
+          id: 'node_' + Math.random().toString(36).substring(2, 9),
+          type: 'label',
+          text: 'Custom Text Block'
+        };
+      } else if (dragData.type === 'separator') {
+        nodeToInsert = {
+          id: 'node_' + Math.random().toString(36).substring(2, 9),
+          type: 'separator'
+        };
+      }
+    } else if (dragData.source === 'canvas') {
+      const result = findNodeAndParent(dragData.id);
+      if (result) {
+        nodeToInsert = result.node;
+        if (result.array === getTargetArray(container, isRoot)) {
+          if (result.index < insertIdx) {
+            insertIdx--;
+          }
+        }
+        result.array.splice(result.index, 1);
+      }
+    }
+    
+    if (nodeToInsert) {
+      const targetArray = getTargetArray(container, isRoot);
+      if (targetArray) {
+        targetArray.splice(insertIdx, 0, nodeToInsert);
+        saveSideLayout(czWType);
+        applySideLayout(czWType);
+        renderToolboxFields();
+        renderCanvas();
+      }
+    }
+  };
+}
+
+function removeDropIndicators() {
+  document.querySelectorAll('.cz-drop-indicator').forEach(el => el.remove());
+}
+
+function getTargetArray(container, isRoot) {
+  if (isRoot) {
+    return currentSideLayout.layout;
+  }
+  if (container.dataset.colParentId) {
+    const parentNode = findNodeAndParent(container.dataset.colParentId);
+    if (parentNode && parentNode.node) {
+      if (!parentNode.node.elements) parentNode.node.elements = [];
+      return parentNode.node.elements;
+    }
+  }
+  if (container.dataset.rowId) {
+    const parentNode = findNodeAndParent(container.dataset.rowId);
+    if (parentNode && parentNode.node && parentNode.node.columns) {
+      const colIdx = parseInt(container.dataset.colIdx);
+      const col = parentNode.node.columns[colIdx];
+      if (col) {
+        if (!col.elements) col.elements = [];
+        return col.elements;
+      }
+    }
+  }
+  return null;
+}
+
 function resetCustomize(){       // reset only the currently-active tab to defaults
   if(czTab==='side'){
     (async () => {
-      sideOrder=SIDE_GROUPS.map(g=>g.id);
       let offFormFields = [];
       if (czWType) {
         try {
@@ -6232,10 +7202,13 @@ function resetCustomize(){       // reset only the currently-active tab to defau
           offFormFields = fields.filter(f => !f.isOnForm).map(f => 'cust:' + f.referenceName);
         } catch (e) {}
       }
-      sideHidden=new Set(['area', 'activity', ...offFormFields]);
+      const def = getDefaultSideLayout(czWType);
+      const hiddenSet = new Set(['area', 'activity', ...offFormFields]);
+      def.layout = def.layout.filter(item => !hiddenSet.has(item.ref));
+      currentSideLayout = def;
       saveSideLayout(czWType);
       applySideLayout(czWType);
-      renderCustomizeList();
+      renderVisualLayoutBuilder();
     })();
     return;
   }
@@ -6252,10 +7225,26 @@ function setCustomizeTab(t){
   if (wtypeCont) {
     wtypeCont.style.display = t === 'side' ? 'flex' : 'none';
   }
+  const overlay = $('customize-overlay');
+  const visualEditor = $('cz_visual_editor');
+  const list = $('customize-list');
+  if (t === 'side') {
+    overlay.classList.add('cz-side-active');
+    if (visualEditor) visualEditor.style.display = 'flex';
+    if (list) list.style.display = 'none';
+  } else {
+    overlay.classList.remove('cz-side-active');
+    if (visualEditor) visualEditor.style.display = 'none';
+    if (list) list.style.display = 'block';
+  }
   renderCustomizeList();
 }
 
 function renderCustomizeList(){
+  if (czTab === 'side') {
+    renderVisualLayoutBuilder();
+    return;
+  }
   const list=$('customize-list');
   const cfg=czTab==='side'
     ? {
