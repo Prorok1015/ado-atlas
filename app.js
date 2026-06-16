@@ -6328,19 +6328,39 @@ function applySideLayout(wtype) {
       rowEl.className = 'sg-row';
       if (node.id) rowEl.id = node.id;
       
+      const colsToRender = [];
       (node.columns || []).forEach(col => {
         const colEl = document.createElement('div');
         colEl.className = 'sg-col';
-        if (col.width) {
-          colEl.style.flex = `1 1 ${col.width}`;
-          colEl.style.maxWidth = col.width;
-        }
         
         (col.elements || []).forEach(child => {
           renderNode(child, colEl);
         });
-        rowEl.appendChild(colEl);
+        colsToRender.push({ colEl, colWidth: col.width });
       });
+      
+      const visibleCols = colsToRender.filter(c => {
+        return [...c.colEl.children].some(child => !child.classList.contains('sg-hidden'));
+      });
+      
+      colsToRender.forEach(c => {
+        const isVisible = visibleCols.includes(c);
+        if (!isVisible) {
+          c.colEl.style.display = 'none';
+        } else {
+          c.colEl.style.display = '';
+          if (c.colWidth) {
+            c.colEl.style.flex = `1 1 ${c.colWidth}`;
+            if (visibleCols.length < colsToRender.length) {
+              c.colEl.style.maxWidth = 'none';
+            } else {
+              c.colEl.style.maxWidth = c.colWidth;
+            }
+          }
+        }
+        rowEl.appendChild(c.colEl);
+      });
+      
       parentEl.appendChild(rowEl);
       return;
     }
