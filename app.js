@@ -7162,34 +7162,63 @@ function removeLayoutNode(id) {
 
 function setupDropZone(container, isRoot = false) {
   container.addEventListener('dragover', (e) => {
-    if (draggingType === 'group' && !isRoot) {
-      return;
-    }
-    if (draggingType === 'row' && !isRoot && !container.dataset.colParentId) {
-      return;
-    }
     e.preventDefault();
     e.stopPropagation();
     
     removeDropIndicators();
     
-    const children = [...container.children].filter(child => 
-      child.dataset.layoutId !== draggingNodeId && 
-      !child.classList.contains('cz-drop-indicator') && 
-      !child.classList.contains('cz-del-btn') && 
-      !child.classList.contains('sg-group-hdr')
-    );
-    const afterElement = children.find(child => {
-      const box = child.getBoundingClientRect();
-      return e.clientY < box.top + box.height / 2;
-    });
-    
     const indicator = document.createElement('div');
     indicator.className = 'cz-drop-indicator';
-    if (afterElement) {
-      container.insertBefore(indicator, afterElement);
+    
+    if (draggingType === 'group') {
+      // Groups can only be placed at the root of the canvas.
+      const canvas = $('cz_canvas');
+      const topLevelEl = e.target.closest('#cz_canvas > *');
+      if (topLevelEl && topLevelEl !== indicator) {
+        const box = topLevelEl.getBoundingClientRect();
+        const placeBefore = e.clientY < box.top + box.height / 2;
+        if (placeBefore) {
+          canvas.insertBefore(indicator, topLevelEl);
+        } else {
+          canvas.insertBefore(indicator, topLevelEl.nextSibling);
+        }
+      } else {
+        canvas.appendChild(indicator);
+      }
+    } else if (draggingType === 'row') {
+      // Rows can be placed in the root canvas or inside a group body.
+      const acceptor = e.target.closest('#cz_canvas, .sg-group-body');
+      if (acceptor) {
+        const childEl = [...acceptor.children].find(child => child.contains(e.target) && child !== indicator);
+        if (childEl) {
+          const box = childEl.getBoundingClientRect();
+          const placeBefore = e.clientY < box.top + box.height / 2;
+          if (placeBefore) {
+            acceptor.insertBefore(indicator, childEl);
+          } else {
+            acceptor.insertBefore(indicator, childEl.nextSibling);
+          }
+        } else {
+          acceptor.appendChild(indicator);
+        }
+      }
     } else {
-      container.appendChild(indicator);
+      // Fields, labels, separators can be placed in canvas, group body, or columns.
+      const acceptor = e.target.closest('#cz_canvas, .sg-group-body, .sg-col');
+      if (acceptor) {
+        const childEl = [...acceptor.children].find(child => child.contains(e.target) && child !== indicator);
+        if (childEl) {
+          const box = childEl.getBoundingClientRect();
+          const placeBefore = e.clientY < box.top + box.height / 2;
+          if (placeBefore) {
+            acceptor.insertBefore(indicator, childEl);
+          } else {
+            acceptor.insertBefore(indicator, childEl.nextSibling);
+          }
+        } else {
+          acceptor.appendChild(indicator);
+        }
+      }
     }
   });
   
@@ -7202,27 +7231,39 @@ function setupDropZone(container, isRoot = false) {
   container.ondrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    removeDropIndicators();
+    
+    const indicator = document.querySelector('.cz-drop-indicator');
+    if (!indicator) return;
     
     let dragData;
     try {
       dragData = JSON.parse(e.dataTransfer.getData('text/plain'));
     } catch(err) {
+      removeDropIndicators();
       return;
     }
     
-    const children = [...container.children].filter(child => 
-      child.dataset.layoutId !== draggingNodeId && 
-      !child.classList.contains('cz-drop-indicator') && 
-      !child.classList.contains('cz-del-btn') && 
-      !child.classList.contains('sg-group-hdr')
-    );
-    const afterElement = children.find(child => {
-      const box = child.getBoundingClientRect();
-      return e.clientY < box.top + box.height / 2;
-    });
+    const targetContainer = indicator.parentElement;
+    const targetIsRoot = (targetContainer === $('cz_canvas'));
     
-    let insertIdx = afterElement ? children.indexOf(afterElement) : children.length;
+    // Calculate insertIdx based on indicator position
+    const siblings = [...targetContainer.children];
+    let insertIdx = 0;
+    for (let child of siblings) {
+      if (child === indicator) {
+        break;
+      }
+      if (child.dataset.layoutId && 
+          child.dataset.layoutId !== draggingNodeId && 
+          !child.classList.contains('cz-drop-indicator') && 
+          !child.classList.contains('cz-del-btn') && 
+          !child.classList.contains('sg-group-hdr')) {
+        insertIdx++;
+      }
+    }
+    
+    removeDropIndicators();
+    
     let nodeToInsert = null;
     
     if (dragData.source === 'toolbox') {
@@ -7281,7 +7322,7 @@ function setupDropZone(container, isRoot = false) {
     }
     
     if (nodeToInsert) {
-      const targetArray = getTargetArray(container, isRoot);
+      const targetArray = getTargetArray(targetContainer, targetIsRoot);
       if (targetArray) {
         targetArray.splice(insertIdx, 0, nodeToInsert);
         saveSideLayout(czWType);
