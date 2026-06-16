@@ -928,10 +928,10 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 .tb-hidden{display:none!important}
 #customize-overlay{position:fixed;inset:0;background:rgba(8,11,15,0.85);z-index:10000;display:none;align-items:center;justify-content:center}
 #customize-overlay.show{display:flex}
-#customize-box{background:var(--panel);border:1px solid var(--line);border-radius:0.769rem;padding:1.692rem;width:29.231rem;max-width:92vw;color:var(--txt)}
+#customize-box{background:var(--panel);border:1px solid var(--line);border-radius:0.769rem;padding:1.692rem;width:78.462rem;max-width:96vw;height:85vh;display:flex;flex-direction:column;color:var(--txt)}
 #customize-box h1{font-size:1.231rem;margin:0 0 0.462rem}
 #customize-box .hint{color:var(--muted);font-size:0.923rem;margin:0 0 0.769rem}
-#customize-list{max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:0.615rem}
+#customize-list{flex:1;overflow-y:auto;border:1px solid var(--line);border-radius:0.615rem;margin-bottom:0.769rem}
 .czrow{display:flex;align-items:center;gap:0.615rem;padding:0.462rem 0.769rem;border-bottom:1px solid var(--line);background:var(--panel)}
 .czrow:last-child{border-bottom:0}
 .czrow.dragging{opacity:.45}
@@ -1464,13 +1464,6 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 }
 
 /* Split Visual Builder layout rules */
-#customize-overlay.cz-side-active #customize-box {
-  width: 78.462rem;
-  max-width: 96vw;
-  height: 85vh;
-  display: flex;
-  flex-direction: column;
-}
 #customize-overlay.cz-side-active #customize-box #customize-list {
   display: none; /* replace list with the visual editor container */
 }
