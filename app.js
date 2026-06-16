@@ -2638,8 +2638,75 @@ async function loadTimeline(id){
   if(!t.durations)return;
   const ent=Object.entries(t.durations).sort((a,b)=>b[1]-a[1]);
   if(!ent.length)return;
-  $('s_time').innerHTML='<span>⏱ time in state:</span>'+ent.map(([s,sec])=>
-    `<span><span class="sbadge" style="background:${stateColor(s)};font-size:9px">${esc(s)}</span> <b>${fmtDur(sec)}</b></span>`).join('');
+
+  const currentView = localStorage.getItem('ado.timelineView') || 'bar';
+  
+  // Header with toggle button
+  const hdr = document.createElement('div');
+  hdr.style.display = 'flex';
+  hdr.style.justify = 'space-between';
+  hdr.style.alignItems = 'center';
+  hdr.style.width = '100%';
+  
+  hdr.innerHTML = `<span style="font-weight:500; font-size:0.846rem; color:var(--muted); display:flex; align-items:center; gap:4px;">⏱ time in state</span>` +
+    `<button class="stime-toggle-btn" title="Toggle view">${currentView === 'bar' ? '☰ List' : '📊 Bar'}</button>`;
+  
+  hdr.querySelector('.stime-toggle-btn').onclick = () => {
+    localStorage.setItem('ado.timelineView', currentView === 'bar' ? 'list' : 'bar');
+    loadTimeline(id);
+  };
+  el.appendChild(hdr);
+
+  if (currentView === 'bar') {
+    const totalSec = ent.reduce((sum, [_, sec]) => sum + sec, 0);
+    
+    // Progress bar
+    const bar = document.createElement('div');
+    bar.style.display = 'flex';
+    bar.style.height = '8px';
+    bar.style.borderRadius = '4px';
+    bar.style.overflow = 'hidden';
+    bar.style.background = 'var(--line)';
+    bar.style.margin = '4px 0';
+    bar.style.width = '100%';
+    
+    ent.forEach(([s, sec]) => {
+      const seg = document.createElement('div');
+      seg.style.width = `${(sec / totalSec) * 100}%`;
+      seg.style.background = stateColor(s);
+      seg.style.height = '100%';
+      seg.title = `${s}: ${fmtDur(sec)}`;
+      bar.appendChild(seg);
+    });
+    el.appendChild(bar);
+    
+    // Legend list
+    const legend = document.createElement('div');
+    legend.style.display = 'flex';
+    legend.style.flexWrap = 'wrap';
+    legend.style.gap = '0.308rem 0.615rem';
+    legend.style.width = '100%';
+    legend.innerHTML = ent.map(([s, sec]) => 
+      `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11px;">` +
+        `<span style="width:6px; height:6px; border-radius:50%; background:${stateColor(s)}; display:inline-block;"></span>` +
+        `<span style="color:var(--muted);">${esc(s)}:</span>` +
+        `<b>${fmtDur(sec)}</b>` +
+      `</span>`
+    ).join('');
+    el.appendChild(legend);
+  } else {
+    // List view
+    const list = document.createElement('div');
+    list.style.display = 'flex';
+    list.style.flexWrap = 'wrap';
+    list.style.gap = '0.308rem 0.615rem';
+    list.style.alignItems = 'center';
+    list.style.width = '100%';
+    list.innerHTML = ent.map(([s, sec]) =>
+      `<span><span class="sbadge" style="background:${stateColor(s)};font-size:9px">${esc(s)}</span> <b>${fmtDur(sec)}</b></span>`
+    ).join('');
+    el.appendChild(list);
+  }
 }
 // Sidebar hierarchy nav: an "↑ parent" chip to go up and a "↓ children" chip
 // that expands an inline, clickable child list — so you can walk the tree both
