@@ -7170,17 +7170,30 @@ function setupDropZone(container, isRoot = false) {
     const indicator = document.createElement('div');
     indicator.className = 'cz-drop-indicator';
     
+    const getAcceptorChildUnderMouse = (acceptor, clientY) => {
+      const children = [...acceptor.children].filter(child => 
+        !child.classList.contains('cz-drop-indicator') && 
+        !child.classList.contains('cz-del-btn') && 
+        !child.classList.contains('sg-group-hdr') &&
+        child.dataset.layoutId !== draggingNodeId
+      );
+      return children.find(child => {
+        const box = child.getBoundingClientRect();
+        return clientY < box.bottom;
+      }) || null;
+    };
+    
     if (draggingType === 'group') {
       // Groups can only be placed at the root of the canvas.
       const canvas = $('cz_canvas');
-      const topLevelEl = e.target.closest('#cz_canvas > *');
-      if (topLevelEl && topLevelEl !== indicator) {
-        const box = topLevelEl.getBoundingClientRect();
+      const child = getAcceptorChildUnderMouse(canvas, e.clientY);
+      if (child) {
+        const box = child.getBoundingClientRect();
         const placeBefore = e.clientY < box.top + box.height / 2;
         if (placeBefore) {
-          canvas.insertBefore(indicator, topLevelEl);
+          canvas.insertBefore(indicator, child);
         } else {
-          canvas.insertBefore(indicator, topLevelEl.nextSibling);
+          canvas.insertBefore(indicator, child.nextSibling);
         }
       } else {
         canvas.appendChild(indicator);
@@ -7189,14 +7202,14 @@ function setupDropZone(container, isRoot = false) {
       // Rows can be placed in the root canvas or inside a group body.
       const acceptor = e.target.closest('#cz_canvas, .sg-group-body');
       if (acceptor) {
-        const childEl = [...acceptor.children].find(child => child.contains(e.target) && child !== indicator);
-        if (childEl) {
-          const box = childEl.getBoundingClientRect();
+        const child = getAcceptorChildUnderMouse(acceptor, e.clientY);
+        if (child) {
+          const box = child.getBoundingClientRect();
           const placeBefore = e.clientY < box.top + box.height / 2;
           if (placeBefore) {
-            acceptor.insertBefore(indicator, childEl);
+            acceptor.insertBefore(indicator, child);
           } else {
-            acceptor.insertBefore(indicator, childEl.nextSibling);
+            acceptor.insertBefore(indicator, child.nextSibling);
           }
         } else {
           acceptor.appendChild(indicator);
@@ -7206,14 +7219,14 @@ function setupDropZone(container, isRoot = false) {
       // Fields, labels, separators can be placed in canvas, group body, or columns.
       const acceptor = e.target.closest('#cz_canvas, .sg-group-body, .sg-col');
       if (acceptor) {
-        const childEl = [...acceptor.children].find(child => child.contains(e.target) && child !== indicator);
-        if (childEl) {
-          const box = childEl.getBoundingClientRect();
+        const child = getAcceptorChildUnderMouse(acceptor, e.clientY);
+        if (child) {
+          const box = child.getBoundingClientRect();
           const placeBefore = e.clientY < box.top + box.height / 2;
           if (placeBefore) {
-            acceptor.insertBefore(indicator, childEl);
+            acceptor.insertBefore(indicator, child);
           } else {
-            acceptor.insertBefore(indicator, childEl.nextSibling);
+            acceptor.insertBefore(indicator, child.nextSibling);
           }
         } else {
           acceptor.appendChild(indicator);

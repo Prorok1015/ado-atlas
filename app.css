@@ -1608,10 +1608,13 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 /* Drop targets and drag styles */
 .cz-drop-indicator {
   height: 4px;
-  background: var(--accent);
-  margin: 2px 0;
+  background: var(--accent) !important;
+  margin: 6px 0;
   border-radius: 2px;
   pointer-events: none;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 4px;
 }
 .cz-preview-col.dragover {
   background: rgba(100, 150, 255, 0.1);
