@@ -6699,6 +6699,45 @@ function initToolboxStructures() {
   });
 }
 
+function getIconForField(g) {
+  if (!g) return '⠿';
+  const id = g.id;
+  if (id.startsWith('cust:')) {
+    if (g.isIdentity) return '👤';
+    if (g.customType === 'dateTime') return '📅';
+    if (g.customType === 'allowedValues' || g.allowedValues) return '▼';
+    if (g.customType === 'html') return '📝';
+    if (g.customType === 'plain') return '🔤';
+    return '⚙️';
+  }
+  const mapping = {
+    nav: '🧭',
+    title: '📛',
+    state: '🔄',
+    priority: '⚡',
+    assigned: '👤',
+    storypoints: '🔢',
+    remaining: '⏳',
+    completed: '✅',
+    risk: '⚠️',
+    valuearea: '💎',
+    sprint: '🏃',
+    parent: '⬆',
+    deps: '🔗',
+    start_target: '📅',
+    due: '⏰',
+    estimate: '📐',
+    time_in_state: '🕒',
+    tags: '🏷️',
+    attachments: '📎',
+    desc: '📝',
+    ac: '📋',
+    area: '📍',
+    activity: '⚙️'
+  };
+  return mapping[id] || '⠿';
+}
+
 function renderToolboxFields() {
   const container = $('cz_toolbox_fields');
   if (!container) return;
@@ -6721,18 +6760,20 @@ function renderToolboxFields() {
   
   container.innerHTML = unused.map(g => {
     return `<div class="cz-toolbox-item" draggable="true" data-type="field" data-ref="${g.id}">` +
-      `<span class="grip">⠿</span> ${esc(g.label || g.id)}</div>`;
+      `<span class="grip">${getIconForField(g)}</span> ${esc(g.label || g.id)}</div>`;
   }).join('');
   
   container.querySelectorAll('.cz-toolbox-item').forEach(item => {
     item.ondragstart = (e) => {
       draggingType = 'field';
       draggingNodeId = null;
+      const ref = item.dataset.ref;
+      const g = SIDE_GROUPS.find(x => x.id === ref);
       e.dataTransfer.setData('text/plain', JSON.stringify({
         source: 'toolbox',
         type: 'field',
-        ref: item.dataset.ref,
-        label: item.textContent.trim().replace('⠿', '').trim()
+        ref: ref,
+        label: g ? (g.label || g.id) : ref
       }));
     };
   });
