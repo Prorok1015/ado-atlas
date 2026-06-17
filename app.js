@@ -132,8 +132,14 @@ async function ensureFieldLoaded(groupId) {
   if ((groupId === 'deps' || groupId === 'attachments') && orig._relationsLoaded) return;
   
   lockSidebarHeavy(true, [groupId]);
-  if (groupId === 'desc') $('editor_desc_container').classList.add('loading-skeleton');
-  if (groupId === 'ac') $('editor_ac_container').classList.add('loading-skeleton');
+  if (groupId === 'desc') {
+    const el = $('editor_desc_container');
+    if (el) el.classList.add('loading-skeleton');
+  }
+  if (groupId === 'ac') {
+    const el = $('editor_ac_container');
+    if (el) el.classList.add('loading-skeleton');
+  }
   
   let fieldsToFetch = HEAVY_FIELD_MAP[groupId] || [];
   let needRelations = (groupId === 'deps' || groupId === 'attachments');
@@ -150,58 +156,73 @@ async function ensureFieldLoaded(groupId) {
     if (cur !== id || myToken !== openToken) return;  // switched items — discard stale data
     
     if (groupId === 'desc') {
-      descEditor.value = d.desc || '';
-      descEditor.togglePreview(true);
+      if (descEditor) {
+        descEditor.value = d.desc || '';
+        descEditor.togglePreview(true);
+      }
       orig.desc = d.desc;
       orig._loaded_desc = true;
-      $('editor_desc_container').classList.remove('loading-skeleton');
+      const el = $('editor_desc_container');
+      if (el) el.classList.remove('loading-skeleton');
     }
     if (groupId === 'ac') {
-      acEditor.value = d.ac || '';
-      acEditor.togglePreview(true);
+      if (acEditor) {
+        acEditor.value = d.ac || '';
+        acEditor.togglePreview(true);
+      }
       orig.ac = d.ac;
       orig.has_ac = d.has_ac;
       orig._loaded_ac = true;
-      $('editor_ac_container').style.display = d.has_ac ? 'block' : 'none';
-      $('editor_ac_container').classList.remove('loading-skeleton');
+      const el = $('editor_ac_container');
+      if (el) {
+        el.style.display = d.has_ac ? 'block' : 'none';
+        el.classList.remove('loading-skeleton');
+      }
     }
     if (groupId === 'tags') {
-      tagsEditor.set(d.tags || '', /*silent*/true);
+      if (tagsEditor) tagsEditor.set(d.tags || '', /*silent*/true);
       orig.tags = d.tags;
       orig._loaded_tags = true;
     }
     if (groupId === 'area') {
-      $('s_area').value = d.area || '';
+      const el = $('s_area');
+      if (el) el.value = d.area || '';
       orig.area = d.area || '';
       orig._loaded_area = true;
     }
     if (groupId === 'storypoints') {
-      $('s_storypoints').value = d.storypoints != null ? d.storypoints : '';
+      const el = $('s_storypoints');
+      if (el) el.value = d.storypoints != null ? d.storypoints : '';
       orig.storypoints = d.storypoints;
       orig._loaded_storypoints = true;
     }
     if (groupId === 'remaining') {
-      $('s_remaining').value = d.remaining != null ? d.remaining : '';
+      const el = $('s_remaining');
+      if (el) el.value = d.remaining != null ? d.remaining : '';
       orig.remaining = d.remaining;
       orig._loaded_remaining = true;
     }
     if (groupId === 'completed') {
-      $('s_completed').value = d.completed != null ? d.completed : '';
+      const el = $('s_completed');
+      if (el) el.value = d.completed != null ? d.completed : '';
       orig.completed = d.completed;
       orig._loaded_completed = true;
     }
     if (groupId === 'activity') {
-      $('s_activity_field').value = d.activity || '';
+      const el = $('s_activity_field');
+      if (el) el.value = d.activity || '';
       orig.activity = d.activity || '';
       orig._loaded_activity = true;
     }
     if (groupId === 'risk') {
-      $('s_risk').value = d.risk || '';
+      const el = $('s_risk');
+      if (el) el.value = d.risk || '';
       orig.risk = d.risk || '';
       orig._loaded_risk = true;
     }
     if (groupId === 'valuearea') {
-      $('s_valuearea').value = d.valuearea || '';
+      const el = $('s_valuearea');
+      if (el) el.value = d.valuearea || '';
       orig.valuearea = d.valuearea || '';
       orig._loaded_valuearea = true;
     }
