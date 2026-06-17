@@ -2268,7 +2268,7 @@ async function loadChildCounts(ids){      // top-level refresh path: guarded so 
 /* ---------- editor ---------- */
 async function closePanel(force){
   if(!force&&dirty()&&!await customConfirm('Discard unsaved changes?', 'Discard Changes'))return;
-  document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+  document.querySelectorAll('.modal-backdrop:not(#confirm-overlay):not(#link-overlay)').forEach(el => el.remove());
   parentEditor.close();depBlockedByPicker.close();depBlocksPicker.close();closeMention();
   if($('side').classList.contains('fullscreen'))toggleFullscreen(false);   // restore inline width before hiding
   $('side').classList.add('hidden');
