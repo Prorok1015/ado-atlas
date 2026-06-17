@@ -11,46 +11,57 @@ const MAX_RETRIES = 3;   // retries for throttling (429) / transient 5xx
 const AdoLib = (typeof globalThis !== "undefined" ? globalThis : window).AdoLib;
 const { wiqlQuote, htmlEsc, htmlUnesc, htmlToText, htmlToMarkdown } = AdoLib;
 
-const FIELD_ALIASES = {
-  title: "System.Title",
-  state: "System.State",
-  desc: "System.Description",
-  description: "System.Description",
-  ac: "Microsoft.VSTS.Common.AcceptanceCriteria",
-  assigned: "System.AssignedTo",
-  assignedto: "System.AssignedTo",
-  tags: "System.Tags",
-  iteration: "System.IterationPath",
-  area: "System.AreaPath",
-  priority: "Microsoft.VSTS.Common.Priority",
-  effort: "Microsoft.VSTS.Scheduling.Effort",
-  estimate: "Microsoft.VSTS.Scheduling.OriginalEstimate",
-  start: "Microsoft.VSTS.Scheduling.StartDate",
-  target: "Microsoft.VSTS.Scheduling.TargetDate",
-  due: "Microsoft.VSTS.Scheduling.DueDate",
-  storypoints: "Microsoft.VSTS.Scheduling.StoryPoints",
-  remaining: "Microsoft.VSTS.Scheduling.RemainingWork",
-  completed: "Microsoft.VSTS.Scheduling.CompletedWork",
-  activity: "Microsoft.VSTS.Common.Activity",
-  risk: "Microsoft.VSTS.Common.Risk",
-  valuearea: "Microsoft.VSTS.Common.ValueArea",
+const FIELD_REGISTRY = {
+  id:          { ref: "System.Id", type: "integer" },
+  type:        { ref: "System.WorkItemType", type: "string" },
+  title:       { ref: "System.Title", type: "string" },
+  state:       { ref: "System.State", type: "string" },
+  assigned:    { ref: "System.AssignedTo", type: "identity", aliases: ["assignedto"] },
+  parent:      { ref: "System.Parent", type: "integer" },
+  priority:    { ref: "Microsoft.VSTS.Common.Priority", type: "integer" },
+  iteration:   { ref: "System.IterationPath", type: "string" },
+  start:       { ref: "Microsoft.VSTS.Scheduling.StartDate", type: "dateTime" },
+  target:      { ref: "Microsoft.VSTS.Scheduling.TargetDate", type: "dateTime" },
+  finish:      { ref: "Microsoft.VSTS.Scheduling.FinishDate", type: "dateTime" },
+  due:         { ref: "Microsoft.VSTS.Scheduling.DueDate", type: "dateTime" },
+  estimate:    { ref: "Microsoft.VSTS.Scheduling.OriginalEstimate", type: "double" },
+  tags:        { ref: "System.Tags", type: "tags" },
+  area:        { ref: "System.AreaPath", type: "string" },
+  desc:        { ref: "System.Description", type: "html", fallbackRefs: ["Microsoft.VSTS.TCM.ReproSteps"], aliases: ["description"] },
+  ac:          { ref: "Microsoft.VSTS.Common.AcceptanceCriteria", type: "html" },
+  storypoints: { ref: "Microsoft.VSTS.Scheduling.StoryPoints", type: "double" },
+  remaining:   { ref: "Microsoft.VSTS.Scheduling.RemainingWork", type: "double" },
+  completed:   { ref: "Microsoft.VSTS.Scheduling.CompletedWork", type: "double" },
+  activity:    { ref: "Microsoft.VSTS.Common.Activity", type: "string" },
+  risk:        { ref: "Microsoft.VSTS.Common.Risk", type: "string" },
+  valuearea:   { ref: "Microsoft.VSTS.Common.ValueArea", type: "string" }
 };
 
+const FIELD_ALIASES = {};
+for (const [key, val] of Object.entries(FIELD_REGISTRY)) {
+  FIELD_ALIASES[key] = val.ref;
+  if (val.aliases) {
+    for (const alias of val.aliases) {
+      FIELD_ALIASES[alias] = val.ref;
+    }
+  }
+}
+
 const DEFAULT_FIELDS = [
-  "System.Id",
-  "System.WorkItemType",
-  "System.Title",
-  "System.State",
-  "System.AssignedTo",
-  "System.Parent",
-  "Microsoft.VSTS.Common.Priority",
-  "System.IterationPath",
-  "Microsoft.VSTS.Scheduling.StartDate",
-  "Microsoft.VSTS.Scheduling.TargetDate",
-  "Microsoft.VSTS.Scheduling.FinishDate",
-  "Microsoft.VSTS.Scheduling.DueDate",
-  "Microsoft.VSTS.Scheduling.OriginalEstimate",
-  "System.Tags",
+  FIELD_REGISTRY.id.ref,
+  FIELD_REGISTRY.type.ref,
+  FIELD_REGISTRY.title.ref,
+  FIELD_REGISTRY.state.ref,
+  FIELD_REGISTRY.assigned.ref,
+  FIELD_REGISTRY.parent.ref,
+  FIELD_REGISTRY.priority.ref,
+  FIELD_REGISTRY.iteration.ref,
+  FIELD_REGISTRY.start.ref,
+  FIELD_REGISTRY.target.ref,
+  FIELD_REGISTRY.finish.ref,
+  FIELD_REGISTRY.due.ref,
+  FIELD_REGISTRY.estimate.ref,
+  FIELD_REGISTRY.tags.ref,
 ];
 
 let detectedTargetField = null;
@@ -60,12 +71,12 @@ const AC_TYPES = new Set(["User Story", "Feature", "Epic", "Issue", "Product Bac
 // Same filter registry the chip UI uses. Mirrors FILTER_FIELDS in the old
 // Flask backend — change one place when you add a column.
 const FILTER_FIELDS = {
-  type:      { ref: "System.WorkItemType" },
-  state:     { ref: "System.State" },
-  priority:  { ref: "Microsoft.VSTS.Common.Priority", num: true },
-  assigned:  { ref: "System.AssignedTo", identity: true },
-  iteration: { ref: "System.IterationPath" },
-  tags:      { ref: "System.Tags", contains: true },   // semicolon-list field → CONTAINS, not IN
+  type:      { ref: FIELD_REGISTRY.type.ref },
+  state:     { ref: FIELD_REGISTRY.state.ref },
+  priority:  { ref: FIELD_REGISTRY.priority.ref, num: true },
+  assigned:  { ref: FIELD_REGISTRY.assigned.ref, identity: true },
+  iteration: { ref: FIELD_REGISTRY.iteration.ref },
+  tags:      { ref: FIELD_REGISTRY.tags.ref, contains: true },   // semicolon-list field → CONTAINS, not IN
 };
 
 // ---------- storage (PAT + org/project) ----------
@@ -116,7 +127,7 @@ async function clearConfig() {
 // ---------- HTTP ----------
 function resolveField(k, wtype) {
   if (k.toLowerCase() === "target") {
-    return detectedTargetField || "Microsoft.VSTS.Scheduling.TargetDate";
+    return detectedTargetField || FIELD_REGISTRY.target.ref;
   }
   if (k.toLowerCase() === "desc" || k.toLowerCase() === "description") {
     // If wtype is provided, resolve dynamically; otherwise fallback
@@ -284,24 +295,24 @@ function personName(v) {
 // Project-side _node() helper (mirrors the Flask version).
 function nodeOf(w) {
   const f = w.fields || {};
-  if ("Microsoft.VSTS.Scheduling.FinishDate" in f) {
-    detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
-  } else if ("Microsoft.VSTS.Scheduling.TargetDate" in f) {
-    detectedTargetField = "Microsoft.VSTS.Scheduling.TargetDate";
+  if (FIELD_REGISTRY.finish.ref in f) {
+    detectedTargetField = FIELD_REGISTRY.finish.ref;
+  } else if (FIELD_REGISTRY.target.ref in f) {
+    detectedTargetField = FIELD_REGISTRY.target.ref;
   }
   return {
     id: w.id,
-    type: f["System.WorkItemType"],
-    title: f["System.Title"] || "",
-    state: f["System.State"] || "",
-    assigned: personName(f["System.AssignedTo"]),
-    priority: f["Microsoft.VSTS.Common.Priority"],
-    parent: f["System.Parent"],
-    iteration: f["System.IterationPath"],
-    start: f["Microsoft.VSTS.Scheduling.StartDate"],
-    est: f["Microsoft.VSTS.Scheduling.OriginalEstimate"],
-    target: f["Microsoft.VSTS.Scheduling.TargetDate"] || f["Microsoft.VSTS.Scheduling.FinishDate"] || f["Microsoft.VSTS.Scheduling.DueDate"],
-    tags: f["System.Tags"] || "",
+    type: f[FIELD_REGISTRY.type.ref],
+    title: f[FIELD_REGISTRY.title.ref] || "",
+    state: f[FIELD_REGISTRY.state.ref] || "",
+    assigned: personName(f[FIELD_REGISTRY.assigned.ref]),
+    priority: f[FIELD_REGISTRY.priority.ref],
+    parent: f[FIELD_REGISTRY.parent.ref],
+    iteration: f[FIELD_REGISTRY.iteration.ref],
+    start: f[FIELD_REGISTRY.start.ref],
+    est: f[FIELD_REGISTRY.estimate.ref],
+    target: f[FIELD_REGISTRY.target.ref] || f[FIELD_REGISTRY.finish.ref] || f[FIELD_REGISTRY.due.ref],
+    tags: f[FIELD_REGISTRY.tags.ref] || "",
   };
 }
 
@@ -338,13 +349,13 @@ async function batchFetch(ids, fields) {
 async function list({ wtype, parent, text, order, filters } = {}) {
   const where = ["[System.TeamProject] = @project"];
   for (const c of buildClauses(filters || {})) where.push(c);
-  if (wtype) where.push(`[System.WorkItemType] = '${wiqlQuote(wtype)}'`);
-  if (parent != null) where.push(`[System.Parent] = ${parent|0}`);
-  if (text) where.push(`[System.Title] CONTAINS '${wiqlQuote(text)}'`);
+  if (wtype) where.push(`[${FIELD_REGISTRY.type.ref}] = '${wiqlQuote(wtype)}'`);
+  if (parent != null) where.push(`[${FIELD_REGISTRY.parent.ref}] = ${parent|0}`);
+  if (text) where.push(`[${FIELD_REGISTRY.title.ref}] CONTAINS '${wiqlQuote(text)}'`);
   const orderBy = order === "priority"
-    ? "[Microsoft.VSTS.Common.Priority], [System.Id]"
-    : "[System.Id]";
-  const wiql = "SELECT [System.Id] FROM WorkItems WHERE " + where.join(" AND ") + " ORDER BY " + orderBy;
+    ? `[${FIELD_REGISTRY.priority.ref}], [${FIELD_REGISTRY.id.ref}]`
+    : `[${FIELD_REGISTRY.id.ref}]`;
+  const wiql = `SELECT [${FIELD_REGISTRY.id.ref}] FROM WorkItems WHERE ` + where.join(" AND ") + " ORDER BY " + orderBy;
   const ids = await wiqlIds(wiql, LIST_CAP);
   const items = await batchFetch(ids);
   const out = items.map(nodeOf);
@@ -575,17 +586,17 @@ async function getWorkItemTypeFields(wtype) {
 }
 
 async function getDescriptionFieldForType(wtype) {
-  if (!wtype) return "System.Description";
+  if (!wtype) return FIELD_REGISTRY.desc.ref;
   const fields = await getWorkItemTypeFields(wtype);
   const refNames = new Set(fields.map(f => f.referenceName));
-  if (refNames.has("Microsoft.VSTS.TCM.ReproSteps")) {
-    return "Microsoft.VSTS.TCM.ReproSteps";
+  for (const fallback of FIELD_REGISTRY.desc.fallbackRefs) {
+    if (refNames.has(fallback)) return fallback;
   }
-  if (refNames.has("System.Description")) {
-    return "System.Description";
+  if (refNames.has(FIELD_REGISTRY.desc.ref)) {
+    return FIELD_REGISTRY.desc.ref;
   }
   // Fallback / default
-  return "System.Description";
+  return FIELD_REGISTRY.desc.ref;
 }
 
 
@@ -660,6 +671,10 @@ async function searchIdentities(q, limit) {
     r.displayName.toLowerCase().includes(lq) || 
     (r.mail && r.mail.toLowerCase().includes(lq))
   );
+  
+  if (localMatches.length > 0) {
+    return localMatches.slice(0, limit);
+  }
   
   const o = await orgUrl();
   try {
@@ -781,10 +796,10 @@ async function parents(ids) {
   const out = {};
   for (let i = 0; i < ids.length; i += 200) {
     const chunk = ids.slice(i, i + 200);
-    const url = `${proj}/_apis/wit/workitems?ids=${chunk.join(",")}&fields=System.Parent&${API_VERSION}`;
+     const url = `${proj}/_apis/wit/workitems?ids=${chunk.join(",")}&fields=${FIELD_REGISTRY.parent.ref}&${API_VERSION}`;
     try {
       const res = await req("GET", url);
-      for (const w of (res.value || [])) out[w.id] = (w.fields || {})["System.Parent"] || null;
+      for (const w of (res.value || [])) out[w.id] = (w.fields || {})[FIELD_REGISTRY.parent.ref] || null;
     } catch (_) { /* skip the chunk on error */ }
   }
   return out;
@@ -861,10 +876,10 @@ async function item(wid, options) {
   // If options.fields contains System.Description, we can replace it with both System.Description and Microsoft.VSTS.TCM.ReproSteps to be safe,
   // or resolve it. Requesting both is extremely clean and requires no extra API roundtrips!
   if (fieldsToFetch) {
-    const descIdx = fieldsToFetch.indexOf("System.Description");
+    const descIdx = fieldsToFetch.indexOf(FIELD_REGISTRY.desc.ref);
     if (descIdx !== -1) {
       // Replace with both so we get whichever is defined
-      fieldsToFetch.splice(descIdx, 1, "System.Description", "Microsoft.VSTS.TCM.ReproSteps");
+      fieldsToFetch.splice(descIdx, 1, FIELD_REGISTRY.desc.ref, ...FIELD_REGISTRY.desc.fallbackRefs);
     }
   }
 
@@ -888,34 +903,34 @@ async function item(wid, options) {
   let descVal = "";
   if (wtype) {
     const descField = await getDescriptionFieldForType(wtype);
-    descVal = f[descField] || f["System.Description"] || f["Microsoft.VSTS.TCM.ReproSteps"] || "";
+    descVal = f[descField] || f[FIELD_REGISTRY.desc.ref] || f[FIELD_REGISTRY.desc.fallbackRefs[0]] || "";
   } else {
-    descVal = f["System.Description"] || f["Microsoft.VSTS.TCM.ReproSteps"] || "";
+    descVal = f[FIELD_REGISTRY.desc.ref] || f[FIELD_REGISTRY.desc.fallbackRefs[0]] || "";
   }
 
   return {
     id: d.id, rev: d.rev, type: wtype,
-    title: f["System.Title"] || "",
-    state: f["System.State"] || "",
+    title: f[FIELD_REGISTRY.title.ref] || "",
+    state: f[FIELD_REGISTRY.state.ref] || "",
     assigned: (a && typeof a === "object") ? (a.displayName || "") : (a || ""),
-    priority: f["Microsoft.VSTS.Common.Priority"],
+    priority: f[FIELD_REGISTRY.priority.ref],
     desc: htmlToMarkdown(descVal),
-    ac: htmlToMarkdown(f["Microsoft.VSTS.Common.AcceptanceCriteria"]),
-    has_ac: AC_TYPES.has(wtype) || "Microsoft.VSTS.Common.AcceptanceCriteria" in f,
-    parent: f["System.Parent"],
-    iteration: f["System.IterationPath"],
-    start: f["Microsoft.VSTS.Scheduling.StartDate"],
-    est: f["Microsoft.VSTS.Scheduling.OriginalEstimate"],
-    target: f["Microsoft.VSTS.Scheduling.TargetDate"] || f["Microsoft.VSTS.Scheduling.FinishDate"],
-    due: f["Microsoft.VSTS.Scheduling.DueDate"],
-    tags: f["System.Tags"] || "",
-    area: f["System.AreaPath"] || "",
-    storypoints: f["Microsoft.VSTS.Scheduling.StoryPoints"],
-    remaining: f["Microsoft.VSTS.Scheduling.RemainingWork"],
-    completed: f["Microsoft.VSTS.Scheduling.CompletedWork"],
-    activity: f["Microsoft.VSTS.Common.Activity"] || "",
-    risk: f["Microsoft.VSTS.Common.Risk"] || "",
-    valuearea: f["Microsoft.VSTS.Common.ValueArea"] || "",
+    ac: htmlToMarkdown(f[FIELD_REGISTRY.ac.ref]),
+    has_ac: AC_TYPES.has(wtype) || FIELD_REGISTRY.ac.ref in f,
+    parent: f[FIELD_REGISTRY.parent.ref],
+    iteration: f[FIELD_REGISTRY.iteration.ref],
+    start: f[FIELD_REGISTRY.start.ref],
+    est: f[FIELD_REGISTRY.estimate.ref],
+    target: f[FIELD_REGISTRY.target.ref] || f[FIELD_REGISTRY.finish.ref],
+    due: f[FIELD_REGISTRY.due.ref],
+    tags: f[FIELD_REGISTRY.tags.ref] || "",
+    area: f[FIELD_REGISTRY.area.ref] || "",
+    storypoints: f[FIELD_REGISTRY.storypoints.ref],
+    remaining: f[FIELD_REGISTRY.remaining.ref],
+    completed: f[FIELD_REGISTRY.completed.ref],
+    activity: f[FIELD_REGISTRY.activity.ref] || "",
+    risk: f[FIELD_REGISTRY.risk.ref] || "",
+    valuearea: f[FIELD_REGISTRY.valuearea.ref] || "",
     deps: depsFromRelations(d.relations),
     attachments: attachmentsFromRelations(d.relations),
     url: await browserUrl(d.id),
@@ -1075,14 +1090,14 @@ async function updateItem(wid, body) {
       const proj = await projUrl();
       const w = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`);
       const f = w.fields || {};
-      wtype = f["System.WorkItemType"];
-      if ("Microsoft.VSTS.Scheduling.FinishDate" in f) {
-        detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
-      } else if ("Microsoft.VSTS.Scheduling.TargetDate" in f) {
-        detectedTargetField = "Microsoft.VSTS.Scheduling.TargetDate";
+      wtype = f[FIELD_REGISTRY.type.ref];
+      if (FIELD_REGISTRY.finish.ref in f) {
+        detectedTargetField = FIELD_REGISTRY.finish.ref;
+      } else if (FIELD_REGISTRY.target.ref in f) {
+        detectedTargetField = FIELD_REGISTRY.target.ref;
       } else {
         if (wtype === "Product Backlog Item") {
-          detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
+          detectedTargetField = FIELD_REGISTRY.finish.ref;
         }
       }
     } catch (_) {}
@@ -1269,10 +1284,15 @@ async function comments(wid, options) {
 // Field-change history (newest first), derived from the revision updates we
 // already fetch for time-in-state. Each entry: {by, date, changes:[{field,from,to}]}.
 const HISTORY_FIELDS = {
-  "System.State": "State", "System.AssignedTo": "Assigned", "System.Title": "Title",
-  "System.IterationPath": "Sprint", "Microsoft.VSTS.Common.Priority": "Priority",
-  "System.Parent": "Parent", "Microsoft.VSTS.Scheduling.TargetDate": "Target",
-  "Microsoft.VSTS.Scheduling.OriginalEstimate": "Estimate", "System.Tags": "Tags",
+  [FIELD_REGISTRY.state.ref]: "State",
+  [FIELD_REGISTRY.assigned.ref]: "Assigned",
+  [FIELD_REGISTRY.title.ref]: "Title",
+  [FIELD_REGISTRY.iteration.ref]: "Sprint",
+  [FIELD_REGISTRY.priority.ref]: "Priority",
+  [FIELD_REGISTRY.parent.ref]: "Parent",
+  [FIELD_REGISTRY.target.ref]: "Target",
+  [FIELD_REGISTRY.estimate.ref]: "Estimate",
+  [FIELD_REGISTRY.tags.ref]: "Tags",
 };
 async function history(wid) {
   const ups = await updatesFor(wid);
@@ -1344,7 +1364,7 @@ async function setParent(wid, newParentId) {
   }
   if (ops.length === 1) throw new Error("no parent change");   // nothing to remove and nothing to add
   const r = await req("PATCH", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`, ops, "application/json-patch+json");
-  return { id: r.id, rev: r.rev, parent: (r.fields || {})["System.Parent"] || null };
+  return { id: r.id, rev: r.rev, parent: (r.fields || {})[FIELD_REGISTRY.parent.ref] || null };
 }
 
 // ---------- updates / business-hours (active time per item) ----------
@@ -1486,4 +1506,6 @@ window.api = {
   times, timeline,
   // utils
   pool, chunk200, req,
+  // registry
+  FIELD_REGISTRY,
 };

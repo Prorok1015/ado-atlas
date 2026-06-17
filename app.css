@@ -704,9 +704,10 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
 .atchhead{font-size:0.769rem;color:var(--muted);text-transform:uppercase;letter-spacing:.0.308rem;display:flex;align-items:center;gap:0.462rem;padding:0 0.154rem 0.231rem}
 .atchhead .acount{color:var(--accent);font-weight:700}
 /* @mention typeahead popup */
-.mention-pop{position:absolute;z-index:10000;background:var(--panel);border:1px solid var(--line);border-radius:0.615rem;overflow:hidden;min-width:16.923rem;max-width:26.154rem;box-shadow:0 0.462rem 1.692rem rgba(0,0,0,.4)}
+.mention-pop{position:absolute;z-index:10000;background:var(--panel);border:1px solid var(--line);border-radius:0.615rem;overflow-y:auto;max-height:16.923rem;min-width:16.923rem;max-width:26.154rem;box-shadow:0 0.462rem 1.692rem rgba(0,0,0,.4)}
 .mention-pop .mrow{display:flex;align-items:center;gap:0.615rem;padding:0.462rem 0.769rem;cursor:pointer;font-size:0.923rem}
-.mention-pop .mrow.on{background:rgba(47,111,237,.18)}
+.mention-pop .mrow:hover,
+.mention-pop .mrow.on{background:var(--panel2)}
 .mention-pop .mrow .mname{flex:1;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mention-pop .mrow .mmail{color:var(--muted);font-size:0.769rem;flex:none;max-width:10rem;overflow:hidden;text-overflow:ellipsis}
 .mention-pop .mempty{padding:0.615rem 0.769rem;font-size:0.923rem;color:var(--muted)}

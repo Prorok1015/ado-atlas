@@ -12,17 +12,31 @@ function createCardPicker(base,opts){
         Search=()=>$(base+'_search'),Results=()=>$(base+'_results'),Open=()=>$(base+'_open');
   let idx=0,rows=[],searchTimer=null,searchTok=0,searching=false;
   function render(){
-    const v=V().value.trim(),card=Card(),openBtn=Open();
+    const vEl=V(); if(!vEl)return;
+    const card=Card(); if(!card)return;
+    const v=vEl.value.trim(),openBtn=Open();
     card.dataset.val=v;                              // lets the provider drop stale async card renders
     if(openBtn)openBtn.style.display=(v&&prov.openValue)?'':'none';
     prov.renderCard(v,card);
   }
-  function set(v,silent){V().value=(v==null?'':String(v));render();close();if(!silent)onChange();}
-  function get(){return V().value.trim();}
-  function open(){const p=Pick();if(p.style.display!=='none'){close();return;}   // toggle
+  function set(v,silent){
+    const vEl=V(); if(!vEl)return;
+    vEl.value=(v==null?'':String(v));
+    render();
+    close();
+    if(!silent)onChange();
+  }
+  function get(){
+    const vEl=V();
+    return vEl ? vEl.value.trim() : '';
+  }
+  function open(){
+    const p=Pick(); if(!p)return;
+    if(p.style.display!=='none'){close();return;}   // toggle
     p.style.display='block';
     if (window.LayerManager) window.LayerManager.open(p, null, { isPopover: true });
-    const i=Search();i.value='';results('');i.focus();}
+    const i=Search(); if(i){i.value='';results('');i.focus();}
+  }
   function close(){const p=Pick();if(p){p.style.display='none';if (window.LayerManager) window.LayerManager.close(p);}}
   function isOpen(){const p=Pick();return !!p&&p.style.display!=='none';}
   function results(q){
@@ -40,7 +54,7 @@ function createCardPicker(base,opts){
     draw();
   }
   function draw(){
-    const list=Results();
+    const list=Results(); if(!list)return;
     list.innerHTML=rows.map((r,i)=>`<div class="prow${i===idx?' on':''}" data-i="${i}">${r.html}</div>`).join('')
       +(searching?'<div class="prow"><span class="pkind"></span><span class="ptitle pcnone">searching…</span></div>':'');
     list.querySelectorAll('.prow[data-i]').forEach(r=>{
@@ -50,21 +64,33 @@ function createCardPicker(base,opts){
     const first=list.querySelector('.prow[data-i]');     // cap the visible window at ~5 rows, rest scrolls
     if(first)list.style.maxHeight=(first.offsetHeight*5)+'px';
   }
-  function highlight(){Results().querySelectorAll('.prow[data-i]').forEach(r=>r.classList.toggle('on',+r.dataset.i===idx));}
-  function move(d){if(!rows.length)return;idx=(idx+d+rows.length)%rows.length;highlight();
-    const el=Results().querySelector('.prow.on');if(el)el.scrollIntoView({block:'nearest'});}
+  function highlight(){
+    const list=Results(); if(!list)return;
+    list.querySelectorAll('.prow[data-i]').forEach(r=>r.classList.toggle('on',+r.dataset.i===idx));
+  }
+  function move(d){
+    if(!rows.length)return;idx=(idx+d+rows.length)%rows.length;highlight();
+    const list=Results(); if(!list)return;
+    const el=list.querySelector('.prow.on');if(el)el.scrollIntoView({block:'nearest'});
+  }
   function pick(){const r=rows[idx];if(!r)return;set(r.value);}
   function wire(){
-    Card().onclick=open;
-    Search().addEventListener('input',e=>results(e.target.value));
-    Search().addEventListener('keydown',e=>{
-      if(e.key==='ArrowDown'){e.preventDefault();move(1);}
-      else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}
-      else if(e.key==='Enter'){e.preventDefault();pick();}
-      else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();Card().focus();}
-    });
+    const card=Card(); if(card)card.onclick=open;
+    const s=Search();
+    if(s){
+      s.addEventListener('input',e=>results(e.target.value));
+      s.addEventListener('keydown',e=>{
+        if(e.key==='ArrowDown'){e.preventDefault();move(1);}
+        else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}
+        else if(e.key==='Enter'){e.preventDefault();pick();}
+        else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();const c=Card();if(c)c.focus();}
+      });
+    }
     const ob=Open();if(ob)ob.onclick=()=>{const v=get();if(prov.openValue)prov.openValue(v);};
-    document.addEventListener('mousedown',e=>{if(isOpen()&&!Pick().contains(e.target)&&!Card().contains(e.target))close();});
+    document.addEventListener('mousedown',e=>{
+      const p=Pick(), c=Card();
+      if(isOpen()&&p&&c&&!p.contains(e.target)&&!c.contains(e.target))close();
+    });
   }
   function setDisabled(d){const c=Card();if(c)c.style.pointerEvents=d?'none':'';const v=V();if(v)v.disabled=!!d;}
   return {set,get,render,open,close,isOpen,wire,setDisabled};

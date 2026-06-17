@@ -16,9 +16,22 @@ let TYPE_COLOR={Epic:'#8e44ad',Feature:'#e67e22','User Story':'#3498db',Bug:'#e7
 const tyVar=t=>'--ty-'+String(t).toLowerCase().replace(/[^a-z0-9]+/g,'-');
 const tyColor=t=>`var(${tyVar(t)}, ${TYPE_COLOR[t]||'#95a5a6'})`;   // CSS var with the default hex as fallback
 const PRIO_COLOR={1:'#e74c3c',2:'#e67e22',3:'#f1c40f',4:'#95a5a6'};   // P1 urgent … P4 low
-const prioColor=p=>PRIO_COLOR[p]||'#5b6b7d';
+const prioColor=p=>{
+  if (typeof document !== 'undefined') {
+    const custom = getComputedStyle(document.documentElement).getPropertyValue(`--prio-${p}`).trim();
+    if (custom) return custom;
+  }
+  return PRIO_COLOR[p]||'#5b6b7d';
+};
 const STATE_COLOR={New:'#6b7785',Active:'#2f6fed',Resolved:'#1e7a44',Closed:'#5b6b7d',Removed:'#9b2c2c',Done:'#1e7a44'};
-const stateColor=s=>STATE_COLOR[s]||'#6b7785';
+const stateColor=s=>{
+  if (typeof document !== 'undefined') {
+    const norm = String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const custom = getComputedStyle(document.documentElement).getPropertyValue(`--state-${norm}`).trim();
+    if (custom) return custom;
+  }
+  return STATE_COLOR[s]||'#6b7785';
+};
 // Canonical left-to-right order for the by-State board and the State filter
 // chips; states not listed here keep their discovered order, appended after.
 const STATE_ORDER=['New','Proposed','To Do','Approved','Active','Doing','In Progress','Committed','Resolved','Done','Closed','Removed'];
@@ -72,16 +85,16 @@ function lockSidebar(lock){
 
 const LAZY_GROUPS = new Set(['desc', 'ac', 'tags', 'attachments', 'deps', 'area', 'storypoints', 'remaining', 'completed', 'activity', 'risk', 'valuearea']);
 const HEAVY_FIELD_MAP = {
-  desc: ['System.Description'],
-  ac: ['Microsoft.VSTS.Common.AcceptanceCriteria'],
-  tags: ['System.Tags'],
-  area: ['System.AreaPath'],
-  storypoints: ['Microsoft.VSTS.Scheduling.StoryPoints'],
-  remaining: ['Microsoft.VSTS.Scheduling.RemainingWork'],
-  completed: ['Microsoft.VSTS.Scheduling.CompletedWork'],
-  activity: ['Microsoft.VSTS.Common.Activity'],
-  risk: ['Microsoft.VSTS.Common.Risk'],
-  valuearea: ['Microsoft.VSTS.Common.ValueArea']
+  desc: [api.FIELD_REGISTRY.desc.ref],
+  ac: [api.FIELD_REGISTRY.ac.ref],
+  tags: [api.FIELD_REGISTRY.tags.ref],
+  area: [api.FIELD_REGISTRY.area.ref],
+  storypoints: [api.FIELD_REGISTRY.storypoints.ref],
+  remaining: [api.FIELD_REGISTRY.remaining.ref],
+  completed: [api.FIELD_REGISTRY.completed.ref],
+  activity: [api.FIELD_REGISTRY.activity.ref],
+  risk: [api.FIELD_REGISTRY.risk.ref],
+  valuearea: [api.FIELD_REGISTRY.valuearea.ref]
 };
 
 // Global cache of custom field editors / definitions to manage dynamically.
@@ -1174,13 +1187,8 @@ async function bulkApply(field,val){
 }
 
 function resolveBulkField(field) {
-  if (field === 'state') return 'System.State';
-  if (field === 'iteration') return 'System.IterationPath';
-  if (field === 'assigned') return 'System.AssignedTo';
-  if (field === 'priority') return 'Microsoft.VSTS.Common.Priority';
-  if (field === 'start') return 'Microsoft.VSTS.Scheduling.StartDate';
-  if (field === 'target') return detectedTargetField || 'Microsoft.VSTS.Scheduling.TargetDate';
-  if (field === 'tags') return 'System.Tags';
+  if (field === 'target') return detectedTargetField || api.FIELD_REGISTRY.target.ref;
+  if (field in api.FIELD_REGISTRY) return api.FIELD_REGISTRY[field].ref;
   return field;
 }
 
@@ -2289,7 +2297,7 @@ async function loadChildCounts(ids){      // top-level refresh path: guarded so 
 /* ---------- editor ---------- */
 async function closePanel(force){
   if(!force&&dirty()&&!await customConfirm('Discard unsaved changes?', 'Discard Changes'))return;
-  document.querySelectorAll('.modal-backdrop:not(#confirm-overlay):not(#link-overlay)').forEach(el => el.remove());
+  document.querySelectorAll('.sidebar-backdrop, .activity-backdrop, .editor-backdrop').forEach(el => el.remove());
   parentEditor.close();depBlockedByPicker.close();depBlocksPicker.close();closeMention();
   if($('side').classList.contains('fullscreen'))toggleFullscreen(false);   // restore inline width before hiding
   $('side').classList.add('hidden');
@@ -2480,6 +2488,12 @@ function drawMention(){
     `</div>`).join('');
   p.querySelectorAll('.mrow').forEach(r=>{
     r.onmousedown=e=>{e.preventDefault();mentionState.idx=+r.dataset.i;pickMention();};
+    r.onmouseenter=()=>{
+      mentionState.idx=+r.dataset.i;
+      p.querySelectorAll('.mrow').forEach((el, idx) => {
+        el.classList.toggle('on', idx === mentionState.idx);
+      });
+    };
   });
 }
 function getCaretCoordinates(element, position) {
@@ -2568,7 +2582,7 @@ async function openOrUpdateMention(){
   const tok = ++mentionState.tok;
   if(!trig.query){
     let rows=[];
-    try{rows=await api.searchIdentities("",8);}catch(e){rows=[];}
+    try{rows=await api.searchIdentities("",20);}catch(e){rows=[];}
     if(tok!==mentionState.tok||!mentionState.open)return;
     mentionState.rows=rows;mentionState.idx=0;drawMention();
     return;
@@ -2576,7 +2590,7 @@ async function openOrUpdateMention(){
   
   mentionDebounceTimeout = setTimeout(async () => {
     let rows=[];
-    try{rows=await api.searchIdentities(trig.query,8);}catch(e){rows=[];}
+    try{rows=await api.searchIdentities(trig.query,20);}catch(e){rows=[];}
     if(tok!==mentionState.tok||!mentionState.open)return;
     mentionState.rows=rows;mentionState.idx=0;drawMention();
   }, 150);
@@ -2942,11 +2956,19 @@ async function openItem(id){
   loadStart('loading #'+id+'…');
 
   const LIGHT_FIELDS = [
-    "System.Id", "System.WorkItemType", "System.Title", "System.State",
-    "System.AssignedTo", "System.Parent", "Microsoft.VSTS.Common.Priority",
-    "System.IterationPath", "Microsoft.VSTS.Scheduling.StartDate",
-    "Microsoft.VSTS.Scheduling.TargetDate", "Microsoft.VSTS.Scheduling.FinishDate",
-    "Microsoft.VSTS.Scheduling.DueDate", "Microsoft.VSTS.Scheduling.OriginalEstimate"
+    api.FIELD_REGISTRY.id.ref,
+    api.FIELD_REGISTRY.type.ref,
+    api.FIELD_REGISTRY.title.ref,
+    api.FIELD_REGISTRY.state.ref,
+    api.FIELD_REGISTRY.assigned.ref,
+    api.FIELD_REGISTRY.parent.ref,
+    api.FIELD_REGISTRY.priority.ref,
+    api.FIELD_REGISTRY.iteration.ref,
+    api.FIELD_REGISTRY.start.ref,
+    api.FIELD_REGISTRY.target.ref,
+    api.FIELD_REGISTRY.finish.ref,
+    api.FIELD_REGISTRY.due.ref,
+    api.FIELD_REGISTRY.estimate.ref
   ];
 
   // ── Fetch the item (cancellable) ──
@@ -3294,18 +3316,13 @@ async function openItem(id){
     }
 
     // 8. Custom Fields
-    const stdRefs = new Set([
-      'System.Id', 'System.WorkItemType', 'System.Title', 'System.State',
-      'System.AssignedTo', 'System.Parent', 'Microsoft.VSTS.Common.Priority',
-      'System.IterationPath', 'Microsoft.VSTS.Scheduling.StartDate',
-      'Microsoft.VSTS.Scheduling.TargetDate', 'Microsoft.VSTS.Scheduling.FinishDate',
-      'Microsoft.VSTS.Scheduling.DueDate', 'Microsoft.VSTS.Scheduling.OriginalEstimate',
-      'System.Tags', 'System.AreaPath', 'Microsoft.VSTS.Common.AcceptanceCriteria',
-      'System.Description', 'Microsoft.VSTS.TCM.ReproSteps',
-      'Microsoft.VSTS.Scheduling.StoryPoints', 'Microsoft.VSTS.Scheduling.RemainingWork',
-      'Microsoft.VSTS.Scheduling.CompletedWork', 'Microsoft.VSTS.Common.Activity',
-      'Microsoft.VSTS.Common.Risk', 'Microsoft.VSTS.Common.ValueArea'
-    ]);
+    const stdRefs = new Set();
+    for (const val of Object.values(api.FIELD_REGISTRY)) {
+      stdRefs.add(val.ref);
+      if (val.fallbackRefs) {
+        val.fallbackRefs.forEach(f => stdRefs.add(f));
+      }
+    }
     const customFields = fields.filter(f => !stdRefs.has(f.referenceName));
     customFields.forEach(cf => {
       const elId = getCustomFieldElementId(cf.referenceName);
@@ -6603,18 +6620,13 @@ async function updateSideGroupsForType(wtype) {
       if (hasEstimate) czSupportedGroups.add('estimate');
       if (hasStartOrTarget || hasDue || hasEstimate) czSupportedGroups.add('time_in_state');
 
-      const stdRefs = new Set([
-        'System.Id', 'System.WorkItemType', 'System.Title', 'System.State',
-        'System.AssignedTo', 'System.Parent', 'Microsoft.VSTS.Common.Priority',
-        'System.IterationPath', 'Microsoft.VSTS.Scheduling.StartDate',
-        'Microsoft.VSTS.Scheduling.TargetDate', 'Microsoft.VSTS.Scheduling.FinishDate',
-        'Microsoft.VSTS.Scheduling.DueDate', 'Microsoft.VSTS.Scheduling.OriginalEstimate',
-        'System.Tags', 'System.AreaPath', 'Microsoft.VSTS.Common.AcceptanceCriteria',
-        'System.Description', 'Microsoft.VSTS.TCM.ReproSteps',
-        'Microsoft.VSTS.Scheduling.StoryPoints', 'Microsoft.VSTS.Scheduling.RemainingWork',
-        'Microsoft.VSTS.Scheduling.CompletedWork', 'Microsoft.VSTS.Common.Activity',
-        'Microsoft.VSTS.Common.Risk', 'Microsoft.VSTS.Common.ValueArea'
-      ]);
+      const stdRefs = new Set();
+      for (const val of Object.values(api.FIELD_REGISTRY)) {
+        stdRefs.add(val.ref);
+        if (val.fallbackRefs) {
+          val.fallbackRefs.forEach(f => stdRefs.add(f));
+        }
+      }
       fields.forEach(cf => {
         if (!stdRefs.has(cf.referenceName)) {
           const sgId = 'cust:' + cf.referenceName;
