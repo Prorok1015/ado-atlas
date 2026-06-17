@@ -3678,18 +3678,18 @@ function refreshDirty(){
 }
 function discardChanges(){
   if(cur==null||!orig)return;
-  $('s_title').value=orig.title;
-  descEditor.value=orig.desc;
-  if(orig.has_ac){
+  if ($('s_title')) $('s_title').value=orig.title;
+  if (descEditor) descEditor.value=orig.desc;
+  if(orig.has_ac && acEditor){
     acEditor.value=orig.ac;
   }
-  $('s_area').value=orig.area||'';
-  $('s_storypoints').value=orig.storypoints!=null?orig.storypoints:'';
-  $('s_remaining').value=orig.remaining!=null?orig.remaining:'';
-  $('s_completed').value=orig.completed!=null?orig.completed:'';
-  $('s_activity_field').value=orig.activity||'';
-  $('s_risk').value=orig.risk||'';
-  $('s_valuearea').value=orig.valuearea||'';
+  if ($('s_area')) $('s_area').value=orig.area||'';
+  if ($('s_storypoints')) $('s_storypoints').value=orig.storypoints!=null?orig.storypoints:'';
+  if ($('s_remaining')) $('s_remaining').value=orig.remaining!=null?orig.remaining:'';
+  if ($('s_completed')) $('s_completed').value=orig.completed!=null?orig.completed:'';
+  if ($('s_activity_field')) $('s_activity_field').value=orig.activity||'';
+  if ($('s_risk')) $('s_risk').value=orig.risk||'';
+  if ($('s_valuearea')) $('s_valuearea').value=orig.valuearea||'';
 
   // Restore custom fields
   customFieldsState.forEach(cf => {
@@ -3705,14 +3705,14 @@ function discardChanges(){
 }
 function editorValues(){
   const values = {
-    title: $('s_title').value,
-    state: $('s_state').value,
-    assigned: $('s_assigned').value,
+    title: $('s_title') ? $('s_title').value : '',
+    state: $('s_state') ? $('s_state').value : '',
+    assigned: $('s_assigned') ? $('s_assigned').value : '',
     desc: descEditor ? descEditor.value : '',
     ac: acEditor ? acEditor.value : '',
-    prio: $('s_prio').value,
-    iter: $('s_iter').value,
-    parent: $('s_parent').value.trim(),
+    prio: $('s_prio') ? $('s_prio').value : '',
+    iter: $('s_iter') ? $('s_iter').value : '',
+    parent: $('s_parent') ? $('s_parent').value.trim() : '',
     start: $('s_start') ? $('s_start').value : '',
     target: $('s_target') ? $('s_target').value : '',
     due: $('s_due') ? $('s_due').value : '',
