@@ -466,7 +466,7 @@ function filtersObj(){
   return out;
 }
 function filterCount(){let n=0;for(const k in fstate)n+=Object.keys(fstate[k]).length;return n;}
-function updateFilterCount(){const n=filterCount();$('filt_count').textContent=n?('('+n+')'):'';}
+function updateFilterCount(){const n=filterCount();const el=$('filt_count');if(el)el.textContent=n?('('+n+')'):'';}
 function renderFilters(){
   const el=$('filterchips');el.innerHTML='';
   // toggle the static "✕ Clear all" in the Find row — visibility (not display)
@@ -5760,6 +5760,18 @@ async function cycleFollowNotify() {
   await chrome.storage.local.set({ followNotify: next });
   applyFollowNotify(next);
 }
+function applyMentionNotify(status) {
+  const btn = $('f_mention_notify');
+  if (!btn) return;
+  btn.title = 'mention notifications: ' + status + ' — click to change';
+  btn.innerHTML = (status === 'on' ? '🔔 ' : '🔕 ') + `<span id="f_mention_notify_label">${status}</span>`;
+}
+async function cycleMentionNotify() {
+  const { mentionNotify = 'on' } = await chrome.storage.local.get("mentionNotify");
+  const next = mentionNotify === 'on' ? 'off' : 'on';
+  await chrome.storage.local.set({ mentionNotify: next });
+  applyMentionNotify(next);
+}
 let autoTimer=null;
 function autoTick(){
   updatePatBadge();                          // keep the countdown fresh on long-lived tabs
@@ -7769,6 +7781,7 @@ async function initialBoot(postSetup){
   $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}setAutoRefresh(s);};
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
   $('f_follow_notify').onclick=cycleFollowNotify;
+  $('f_mention_notify').onclick=cycleMentionNotify;
   // bulk action bar (tree multi-select)
   $('bulk_state').onchange=e=>{const v=e.target.value;if(v)bulkApply('state',v);};
   $('bulk_prio').onchange=e=>{const v=e.target.value;if(v)bulkApply('priority',v);};
@@ -8143,9 +8156,32 @@ async function initialBoot(postSetup){
   loadBulkLayout();applyBulkLayout();            // apply the saved bulk edit bar order / hidden set
   wireTreeDnD();                                  // drag tree rows to re-parent
   try{const sf=localStorage.getItem('ado.filters');if(sf)Object.assign(fstate,JSON.parse(sf));updateFollowedBtnVisual();
-    chrome.storage.local.get("followNotify").then(({followNotify})=>{
+    chrome.storage.local.get(["followNotify", "mentionNotify", "notifyAge"]).then(({followNotify, mentionNotify, notifyAge})=>{
       applyFollowNotify(followNotify||'on');
+      applyMentionNotify(mentionNotify||'on');
+      const ageSel = $('f_notify_age');
+      if (ageSel) ageSel.value = notifyAge || '172800';
     });
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      setTimeout(() => {
+        try {
+          chrome.runtime.sendMessage({ action: "checkMentionsAndFollows" })
+            .then(() => {
+              const err = chrome.runtime.lastError;
+              if (err) console.warn("Could not check notifications on startup:", err.message);
+            })
+            .catch(err => {
+              console.warn("Could not establish connection to background worker on startup:", err.message);
+            });
+        } catch (_) {}
+      }, 500);
+    }
+    const ageSelect = $('f_notify_age');
+    if (ageSelect) {
+      ageSelect.onchange = () => {
+        chrome.storage.local.set({ notifyAge: ageSelect.value });
+      };
+    }
     const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
     if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
     const bg=localStorage.getItem('ado.boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
@@ -8230,3 +8266,19 @@ window.addEventListener('DOMContentLoaded',async()=>{
   }catch(e){showSetup(false);$('setup-err').textContent='Stored credentials are invalid: '+e.message;return;}
   initialBoot(false);
 });
+
+// Debug method to force notifications check from console
+window.debugForceNotificationCheck = function() {
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    console.log("Forcing background notifications check (follows and mentions)...");
+    chrome.runtime.sendMessage({ action: "checkMentionsAndFollows" })
+      .then((response) => {
+        console.log("Response from background check handler:", response);
+      })
+      .catch((err) => {
+        console.warn("Could not check notifications via debug call:", err.message);
+      });
+  } else {
+    console.error("Chrome extension runtime is not available.");
+  }
+};

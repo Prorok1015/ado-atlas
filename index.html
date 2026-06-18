@@ -55,8 +55,18 @@
         <select id="f_tz" title="timezone for work-hours / active-time"></select></div>
       <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours</span>
         <span class="whrs"><input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span></div>
-      <div class="mrow"><span class="ml">Notifications</span>
+      <div class="mrow"><span>Notifications</span>
         <button class="btn" id="f_follow_notify" title="toggle desktop notifications">🔔 <span id="f_follow_notify_label">on</span></button></div>
+      <div class="mrow"><span>Mentions</span>
+        <button class="btn" id="f_mention_notify" title="toggle mention notifications">🔔 <span id="f_mention_notify_label">on</span></button></div>
+      <div class="mrow"><span>Notify age</span>
+        <select id="f_notify_age" title="maximum age of changes to notify about">
+          <option value="1800">30 min</option>
+          <option value="3600">1 hour</option>
+          <option value="86400">1 day</option>
+          <option value="172800" selected>2 days</option>
+          <option value="604800">1 week</option>
+        </select></div>
       <div class="mrow mrow-full" style="display:flex;gap:6px;align-items:stretch">
         <button class="btn" id="cz_open" style="flex:1" title="reorder / show-hide toolbar buttons and work-item panel fields">⠿ Customize layout…</button>
         <button class="btn" id="emojis_open" style="width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Customize reactions emojis or images">☺</button>

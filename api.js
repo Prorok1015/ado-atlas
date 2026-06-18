@@ -1498,6 +1498,7 @@ async function batchUpdate(operations) {
   // setup picker (org / project discovery)
   orgs, projects,
   // primitives
+  // primitives
   me, iterations, states, workItemTypes, getWorkItemTypeFields, getDescriptionFieldForType, createSprint, updateSprintDates, assignees: getAssignees, tags, browserUrl,
   // work-hours config (active-time window)
   setWorkHours, getWorkHours,
@@ -1517,7 +1518,7 @@ async function batchUpdate(operations) {
   // time
   times, timeline,
   // utils
-  pool, chunk200, req,
+  pool, chunk200, req, projUrl, batchFetch,
   // registry
   FIELD_REGISTRY,
 };

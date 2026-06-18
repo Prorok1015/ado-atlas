@@ -5,10 +5,36 @@ chrome.action.onClicked.addListener(async () => {
   await openAppWindow();
 });
 
+// Handle notification clicks
+chrome.notifications.onClicked.addListener((notificationId) => {
+  const match = notificationId.match(/^app-item-(\d+)/);
+  if (match) {
+    const itemId = match[1];
+    openAppWindow(itemId);
+  }
+});
+
+chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+  const match = notificationId.match(/^app-item-(\d+)/);
+  if (match) {
+    const itemId = match[1];
+    openAppWindow(itemId);
+  }
+});
+
 async function openAppWindow(itemId) {
   const baseUrl = chrome.runtime.getURL("index.html");
   const tabs = await chrome.tabs.query({});
-  const existing = tabs.find((t) => t.url && t.url.startsWith(baseUrl));
+  const existing = tabs.find((t) => {
+    if (!t.url) return false;
+    try {
+      const tabUrlClean = t.url.split('?')[0].split('#')[0];
+      const baseUrlClean = baseUrl.split('?')[0].split('#')[0];
+      return tabUrlClean === baseUrlClean;
+    } catch (_) {
+      return t.url.startsWith(baseUrl);
+    }
+  });
   if (existing) {
     await chrome.tabs.update(existing.id, { active: true });
     await chrome.windows.update(existing.windowId, { focused: true });
@@ -24,24 +50,55 @@ async function openAppWindow(itemId) {
 
 // Alarms to check for updates
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create("check-followed-items", { periodInMinutes: 5 });
+  chrome.alarms.create("check-notifications", { periodInMinutes: 5 });
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === "check-followed-items") {
-    await checkFollowedItems();
+  if (alarm.name === "check-notifications") {
+    await runAllNotificationChecks();
   }
 });
 
-async function checkFollowedItems() {
+// Run check on startup/service worker load
+chrome.runtime.onStartup.addListener(async () => {
+  await runAllNotificationChecks();
+});
+
+// Listen to trigger checks from the frontend page
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === "checkMentionsAndFollows") {
+    runAllNotificationChecks().then(() => {
+      if (sendResponse) sendResponse({ success: true });
+    }).catch(err => {
+      console.error("Manual notification sync check failed:", err);
+      if (sendResponse) sendResponse({ error: err.message });
+    });
+    return true; // Keep channel open for async response
+  }
+});
+
+async function runAllNotificationChecks() {
   try {
-    const { followedItems = {}, followNotify = "on" } = await chrome.storage.local.get(["followedItems", "followNotify"]);
+    const { 
+      followedItems = {}, followNotify = "on", 
+      mentionedItems = {}, mentionNotify = "on", mentionCacheInitialized = false,
+      notifyAge = "172800"
+    } = await chrome.storage.local.get([
+      "followedItems", "followNotify", 
+      "mentionedItems", "mentionNotify", "mentionCacheInitialized", "notifyAge"
+    ]);
+
+    const maxAgeMs = parseInt(notifyAge, 10) * 1000;
 
     const config = await api.getConfig();
     if (!config || !config.org || !config.project) return;
 
-    // 1. Fetch native followed item IDs from the ADO server
-    let serverIds = [];
+    // 1. Get authenticated user display name for mentions
+    const displayName = await api.me();
+    const escapedName = displayName ? displayName.replace(/'/g, "''") : "";
+
+    // 2. Fetch native followed item IDs
+    let serverFollowedIds = [];
     try {
       const proj = await api.projUrl();
       const url = `${proj}/_apis/wit/wiql?api-version=7.1`;
@@ -49,15 +106,15 @@ async function checkFollowedItems() {
         query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.Id] IN (@follows)`
       };
       const res = await api.req("POST", url, query);
-      serverIds = (res.workItems || []).map(wi => wi.id);
-    } catch (wiqlErr) {
-      console.error("Failed to query @follows from server:", wiqlErr);
+      serverFollowedIds = (res.workItems || []).map(wi => wi.id);
+    } catch (err) {
+      console.error("Failed to query @follows:", err);
     }
 
-    // 2. Identify new items followed on the server that are not in followedItems
-    const newServerIds = serverIds.filter(id => !followedItems[id]);
-    if (newServerIds.length > 0) {
-      const newRawItems = await api.batchFetch(newServerIds, ["System.Rev"]);
+    // Identify new followed items on the server
+    const newServerFollowedIds = serverFollowedIds.filter(id => !followedItems[id]);
+    if (newServerFollowedIds.length > 0) {
+      const newRawItems = await api.batchFetch(newServerFollowedIds, ["System.Rev"]);
       for (const raw of newRawItems) {
         followedItems[raw.id] = {
           id: raw.id,
@@ -70,158 +127,314 @@ async function checkFollowedItems() {
       }
     }
 
-    // 3. Filter followed items matching current org & project
+    // 3. Fetch native mentioned item IDs via WIQL if name resolved
+    let serverMentionedIds = [];
+    if (displayName) {
+      try {
+        const proj = await api.projUrl();
+        const url = `${proj}/_apis/wit/wiql?api-version=7.1`;
+        const query = {
+          query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.History] CONTAINS '@[${escapedName}]'`
+        };
+        const res = await api.req("POST", url, query);
+        serverMentionedIds = (res.workItems || []).map(wi => wi.id);
+      } catch (err) {
+        console.error("Failed to query mentions:", err);
+      }
+    }
+
+    // Check Stage 1 initialization for mentions
+    if (!mentionCacheInitialized && displayName) {
+      const currentMentionItems = await api.batchFetch(serverMentionedIds, ["System.Rev"]);
+      for (const raw of currentMentionItems) {
+        mentionedItems[raw.id] = {
+          id: raw.id,
+          rev: raw.rev,
+          org: config.org,
+          project: config.project
+        };
+      }
+      await chrome.storage.local.set({
+        mentionedItems,
+        mentionCacheInitialized: true,
+        followedItems
+      });
+      return;
+    }
+
+    // 4. Combine all IDs to inspect for changes (Union of followed + mentioned)
     const activeFollowed = Object.values(followedItems).filter(
-      (item) => item.org === config.org && item.project === config.project
+      item => item.org === config.org && item.project === config.project
     );
-    if (activeFollowed.length === 0) {
-      if (newServerIds.length > 0) {
+    const activeMentioned = Object.values(mentionedItems).filter(
+      item => item.org === config.org && item.project === config.project
+    );
+
+    const allMonitoredIds = Array.from(new Set([
+      ...activeFollowed.map(item => item.id),
+      ...serverMentionedIds
+    ]));
+
+    if (allMonitoredIds.length === 0) {
+      // Clean up server followed items if needed
+      let cleanUpdated = false;
+      for (const id in followedItems) {
+        const stored = followedItems[id];
+        if (stored.followedOnServer && stored.org === config.org && stored.project === config.project) {
+          if (!serverFollowedIds.includes(Number(id))) {
+            delete followedItems[id];
+            cleanUpdated = true;
+          }
+        }
+      }
+      if (cleanUpdated) {
         await chrome.storage.local.set({ followedItems });
       }
       return;
     }
 
-    const ids = activeFollowed.map((item) => item.id);
-    // Fetch only System.Rev field from ADO API
-    const currentItems = await api.batchFetch(ids, ["System.Rev"]);
+    // Fetch only System.Rev field for all IDs in bulk
+    const currentRevs = await api.batchFetch(allMonitoredIds, ["System.Rev"]);
 
-    // Find which items have newer revisions
-    const changedItems = [];
-    for (const raw of currentItems) {
-      const stored = followedItems[raw.id];
-      if (stored && raw.rev > stored.rev) {
-        changedItems.push({ id: raw.id, oldRev: stored.rev, newRev: raw.rev });
+    // Determine tasks to check history for
+    const itemsToCheck = [];
+    for (const raw of currentRevs) {
+      const storedFollow = followedItems[raw.id];
+      const storedMention = mentionedItems[raw.id];
+      
+      const isFollowChanged = storedFollow && raw.rev > storedFollow.rev;
+      const isMentionChanged = storedMention && raw.rev > storedMention.rev;
+      const isNewMention = !storedMention && serverMentionedIds.includes(raw.id);
+
+      if (isFollowChanged || isMentionChanged || isNewMention) {
+        itemsToCheck.push({
+          id: raw.id,
+          oldFollowRev: storedFollow ? storedFollow.rev : raw.rev,
+          oldMentionRev: storedMention ? storedMention.rev : 0,
+          newRev: raw.rev,
+          isFollowChanged,
+          isMentionChanged,
+          isNewMention
+        });
       }
     }
 
-    let updated = false;
-    if (changedItems.length > 0) {
-      // Fetch history details and item headers in parallel (max 6-wide concurrency)
-      const results = await api.pool(changedItems.map(item => async () => {
-        try {
-          // 1. Fetch the updates history for the item
-          const proj = await api.projUrl();
-          const r = await api.req("GET", `${proj}/_apis/wit/workItems/${item.id}/updates?api-version=7.1`);
-          const updates = r.value || [];
+    if (itemsToCheck.length === 0) {
+      // Clean up server followed items if needed
+      let cleanUpdated = false;
+      for (const id in followedItems) {
+        const stored = followedItems[id];
+        if (stored.followedOnServer && stored.org === config.org && stored.project === config.project) {
+          if (!serverFollowedIds.includes(Number(id))) {
+            delete followedItems[id];
+            cleanUpdated = true;
+          }
+        }
+      }
+      if (cleanUpdated) {
+        await chrome.storage.local.set({ followedItems });
+      }
+      return;
+    }
 
-          // 2. Fetch the current item details (title etc.)
-          const rawItems = await api.batchFetch([item.id], ["System.Title"]);
-          const title = (rawItems[0] && rawItems[0].fields && rawItems[0].fields["System.Title"]) || `Work Item #${item.id}`;
+    // Concurrently fetch updates history and titles (max 6-wide concurrency)
+    const results = await api.pool(itemsToCheck.map(item => async () => {
+      try {
+        const proj = await api.projUrl();
+        const r = await api.req("GET", `${proj}/_apis/wit/workItems/${item.id}/updates?api-version=7.1`);
+        const updates = r.value || [];
 
-          // Filter updates that occurred between oldRev and newRev
-          const recentUpdates = updates.filter(u => u.rev > item.oldRev && u.rev <= item.newRev);
+        const rawItems = await api.batchFetch([item.id], ["System.Title"]);
+        const title = (rawItems[0] && rawItems[0].fields && rawItems[0].fields["System.Title"]) || `Work Item #${item.id}`;
 
-          // Aggregate changes
-          const changeDescriptions = [];
-          let author = "Someone";
+        const minOldRev = Math.min(item.oldFollowRev, item.oldMentionRev === 0 ? item.newRev : item.oldMentionRev);
+        const recentUpdates = updates.filter(u => u.rev > minOldRev && u.rev <= item.newRev);
 
-          recentUpdates.forEach(u => {
-            if (u.revisedBy && u.revisedBy.displayName) {
-              author = u.revisedBy.displayName;
+        let author = "Someone";
+        const foundMentions = [];
+        const changeDescriptions = [];
+
+        recentUpdates.forEach(u => {
+          if (u.revisedBy && u.revisedBy.displayName) {
+            author = u.revisedBy.displayName;
+          }
+          
+          // Check update timestamp to filter outdated events
+          const updateDateStr = u.revisedDate || (u.fields && u.fields["System.ChangedDate"] && u.fields["System.ChangedDate"].newValue);
+          const updateTime = updateDateStr ? new Date(updateDateStr).getTime() : 0;
+          const isTooOld = updateTime > 0 && (Date.now() - updateTime) > maxAgeMs;
+
+          const fields = u.fields || {};
+
+          for (const ref of Object.keys(fields)) {
+            if (ref === "System.Rev" || ref === "System.ChangedDate" || ref === "System.ChangedBy" || 
+                ref === "System.Watermark" || ref === "System.AuthorizedDate" || ref === "System.RevisedDate" ||
+                ref === "System.AuthorizedAs") continue;
+
+            const ov = fields[ref] || {};
+            const textVal = ov.newValue ? (typeof ov.newValue === "object" ? ov.newValue.displayName || JSON.stringify(ov.newValue) : String(ov.newValue)) : "";
+
+            // 1. Map field name
+            let fieldName = ref;
+            if (ref === "System.State") fieldName = "State";
+            else if (ref === "System.AssignedTo") fieldName = "Assigned";
+            else if (ref === "System.Title") fieldName = "Title";
+            else if (ref === "System.IterationPath") fieldName = "Sprint";
+            else if (ref === "Microsoft.VSTS.Common.Priority") fieldName = "Priority";
+            else if (ref === "System.Parent") fieldName = "Parent";
+            else if (ref === "Microsoft.VSTS.Scheduling.TargetDate") fieldName = "Target Date";
+            else if (ref === "Microsoft.VSTS.Scheduling.OriginalEstimate") fieldName = "Estimate";
+            else if (ref === "System.Tags") fieldName = "Tags";
+            else if (ref === "System.History") fieldName = "Comment";
+            else if (ref === "System.Description") fieldName = "Description";
+            else if (ref === "Microsoft.VSTS.Common.AcceptanceCriteria") fieldName = "Acceptance Criteria";
+            else {
+              const parts = ref.split('.');
+              fieldName = parts[parts.length - 1];
             }
-            const fields = u.fields || {};
-            for (const ref of Object.keys(fields)) {
-              if (ref === "System.Rev" || ref === "System.ChangedDate" || ref === "System.ChangedBy") continue;
-              const ov = fields[ref] || {};
-              if (!("newValue" in ov) && !("oldValue" in ov)) continue;
 
-              // Map common fields to clean names
-              let fieldName = ref;
-              if (ref === "System.State") fieldName = "State";
-              else if (ref === "System.AssignedTo") fieldName = "Assigned";
-              else if (ref === "System.Title") fieldName = "Title";
-              else if (ref === "System.IterationPath") fieldName = "Sprint";
-              else if (ref === "Microsoft.VSTS.Common.Priority") fieldName = "Priority";
-              else if (ref === "System.Parent") fieldName = "Parent";
-              else if (ref === "Microsoft.VSTS.Scheduling.TargetDate") fieldName = "Target Date";
-              else if (ref === "Microsoft.VSTS.Scheduling.OriginalEstimate") fieldName = "Estimate";
-              else if (ref === "System.Tags") fieldName = "Tags";
-              else {
-                // Shorten field name if it's long
-                const parts = ref.split('.');
-                fieldName = parts[parts.length - 1];
+            // 2. Check for mentions if revision is newer than the old mention revision
+            const isMentionRev = u.rev > item.oldMentionRev;
+            if (!isTooOld && isMentionRev && displayName && (textVal.includes(`@[${displayName}]`) || textVal.includes(`@${displayName}`))) {
+              let cleanText = textVal.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+              if (cleanText.length > 120) {
+                cleanText = cleanText.slice(0, 120) + "...";
               }
+              foundMentions.push({ author, fieldName, text: cleanText });
+            }
 
-              const fromVal = ov.oldValue ? (typeof ov.oldValue === "object" ? ov.oldValue.displayName || JSON.stringify(ov.oldValue) : String(ov.oldValue)) : "None";
-              const toVal = ov.newValue ? (typeof ov.newValue === "object" ? ov.newValue.displayName || JSON.stringify(ov.newValue) : String(ov.newValue)) : "None";
+            // 3. Collect general changes if revision is newer than old follow revision
+            const isFollowRev = u.rev > item.oldFollowRev;
+            if (!isTooOld && isFollowRev) {
+              // Ignore comment count metadata changes, since they are redundant with actual comments
+              if (ref === "System.CommentCount") continue;
+
+              let fromVal = ov.oldValue ? (typeof ov.oldValue === "object" ? ov.oldValue.displayName || JSON.stringify(ov.oldValue) : String(ov.oldValue)) : "None";
+              let toVal = ov.newValue ? (typeof ov.newValue === "object" ? ov.newValue.displayName || JSON.stringify(ov.newValue) : String(ov.newValue)) : "None";
+              
+              // Strip HTML tags for cleaner display in notification popup
+              fromVal = fromVal.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+              toVal = toVal.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
               changeDescriptions.push(`${fieldName}: ${fromVal} ➔ ${toVal}`);
             }
-          });
-
-          return {
-            id: item.id,
-            newRev: item.newRev,
-            title,
-            author,
-            changes: changeDescriptions
-          };
-        } catch (err) {
-          console.error(`Error fetching updates for #${item.id}:`, err);
-          return null;
-        }
-      }), 6);
-
-      // Process results and trigger notifications
-      for (const res of results) {
-        if (!res) continue;
-        const stored = followedItems[res.id];
-        if (!stored) continue;
-
-        // Send browser notification if enabled
-        if (followNotify !== "off") {
-          let message = res.changes.length > 0
-            ? res.changes.join("\n")
-            : `Revision changed to ${res.newRev}`;
-          
-          // Truncate message if it is too long (Chrome has limits on notification message height)
-          if (res.changes.length > 5) {
-            message = res.changes.slice(0, 5).join("\n") + `\n(+ ${res.changes.length - 5} more changes)`;
           }
+        });
 
-          chrome.notifications.create(`follow-item-${res.id}`, {
+        return {
+          id: item.id,
+          newRev: item.newRev,
+          title,
+          author,
+          foundMentions,
+          changes: changeDescriptions,
+          isFollowed: !!followedItems[String(item.id)],
+          isMentioned: serverMentionedIds.includes(Number(item.id))
+        };
+      } catch (err) {
+        console.error(`Error processing updates for #${item.id}:`, err);
+        return null;
+      }
+    }), 6);
+
+    let followedItemsUpdated = false;
+    let mentionedItemsUpdated = false;
+
+    for (const res of results) {
+      if (!res) continue;
+
+      // Prioritize Mention notification over Followed notification if BOTH occurred
+      if (res.foundMentions.length > 0 && mentionNotify !== "off") {
+        // Group mentions
+        const uniqueMentionsByAuthor = {};
+        res.foundMentions.forEach(m => {
+          const key = `${m.author}_${m.fieldName}`;
+          if (!uniqueMentionsByAuthor[key]) uniqueMentionsByAuthor[key] = [];
+          uniqueMentionsByAuthor[key].push(m.text);
+        });
+
+        Object.keys(uniqueMentionsByAuthor).forEach((key, idx) => {
+          const [author, fieldName] = key.split('_');
+          const texts = uniqueMentionsByAuthor[key];
+          const combinedText = texts.join("\n...\n");
+
+          chrome.notifications.create(`app-item-${res.id}-${idx}`, {
             type: "basic",
             iconUrl: "icons/icon-128.png",
-            title: `[#${res.id}] ${res.title}`,
-            message: `${res.author} updated this item:\n${message}`,
+            title: `Mentioned in [#${res.id}] ${res.title}`,
+            message: `${author} in ${fieldName}:\n"${combinedText}"`,
             contextMessage: `ADO Atlas`,
+            buttons: [{ title: "Open" }],
+            priority: 2,
             requireInteraction: true
+          }, (id) => {
+            if (chrome.runtime.lastError) {
+              console.error("Mention notification error:", chrome.runtime.lastError);
+            }
           });
+        });
+      } else if (res.changes.length > 0 && res.isFollowed && followNotify !== "off") {
+        // Standard Follow notification
+        let message = res.changes.join("\n");
+        if (res.changes.length > 5) {
+          message = res.changes.slice(0, 5).join("\n") + `\n(+ ${res.changes.length - 5} more changes)`;
         }
 
-        // Update stored cache
+        chrome.notifications.create(`app-item-${res.id}-follow`, {
+          type: "basic",
+          iconUrl: "icons/icon-128.png",
+          title: `[#${res.id}] ${res.title}`,
+          message: `${res.author} updated this item:\n${message}`,
+          contextMessage: `ADO Atlas`,
+          buttons: [{ title: "Open" }],
+          priority: 2,
+          requireInteraction: true
+        }, (id) => {
+          if (chrome.runtime.lastError) {
+            console.error("Follow notification error:", chrome.runtime.lastError);
+          }
+        });
+      }
+
+      // Update Followed cache if it was monitored and changed
+      if (followedItems[res.id]) {
         followedItems[res.id] = {
-          ...stored,
+          ...followedItems[res.id],
           rev: res.newRev,
           updatedTime: new Date().toISOString()
         };
-        updated = true;
+        followedItemsUpdated = true;
       }
+
+      // Update Mentioned cache
+      mentionedItems[res.id] = {
+        id: res.id,
+        rev: res.newRev,
+        org: config.org,
+        project: config.project
+      };
+      mentionedItemsUpdated = true;
     }
 
-    // 4. Clean up items that were followed on server, but have been unfollowed on server
+    // Clean up server followed items
     for (const id in followedItems) {
       const stored = followedItems[id];
       if (stored.followedOnServer && stored.org === config.org && stored.project === config.project) {
-        if (!serverIds.includes(Number(id))) {
+        if (!serverFollowedIds.includes(Number(id))) {
           delete followedItems[id];
-          updated = true;
+          followedItemsUpdated = true;
         }
       }
     }
 
-    if (updated || newServerIds.length > 0) {
+    if (followedItemsUpdated) {
       await chrome.storage.local.set({ followedItems });
     }
+    if (mentionedItemsUpdated) {
+      await chrome.storage.local.set({ mentionedItems });
+    }
+
   } catch (err) {
-    console.error("Error checking followed items:", err);
+    console.error("Error running notification checks:", err);
   }
 }
-
-// Handle notification clicks
-chrome.notifications.onClicked.addListener((notificationId) => {
-  if (notificationId.startsWith("follow-item-")) {
-    const itemId = notificationId.replace("follow-item-", "");
-    openAppWindow(itemId);
-  }
-});
