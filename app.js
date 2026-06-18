@@ -52,7 +52,7 @@ const TYPES=['Epic','Feature','User Story','Bug','Task','Issue'];
 let typeList=[];                          // [{name,color}] of the project's real work-item types
 const typeNames=()=>typeList.length?typeList.map(t=>t.name):TYPES;
 const $=id=>document.getElementById(id);
-let cy=null, mode='tree', edgeMode='hierarchy', rankDir='LR', cur=null, orig={}, selRow=null;
+let cy=null, mode='tree', edgeMode='hierarchy', rankDir='LR', cur=null, orig={}, selRow=null, activeItemData=null;
 let maxNodesLimit = 1000;
 let descEditor = null, acEditor = null, commentEditor = null, activeEditor = null;
 let depCache={}, renderToken=0, boardToken=0, tlToken=0;   // tokens drop superseded async renders
@@ -457,6 +457,12 @@ function filtersObj(){
   for(const f of FILTERS){const m=fstate[f.key]||{};const inc=[],exc=[];
     for(const v in m)(m[v]==='in'?inc:exc).push(v);
     if(inc.length||exc.length)out[f.key]={in:inc,not:exc};}
+  if (fstate.followed) {
+    const m = fstate.followed;
+    const inc = [], exc = [];
+    for (const v in m) (m[v] === 'in' ? inc : exc).push(v);
+    if (inc.length || exc.length) out.followed = { in: inc, not: exc };
+  }
   return out;
 }
 function filterCount(){let n=0;for(const k in fstate)n+=Object.keys(fstate[k]).length;return n;}
@@ -791,6 +797,35 @@ function syncBulkBarValues() {
   if (bulkStart) bulkStart.value = startVal;
   if (bulkTarget) bulkTarget.value = targetVal;
   syncBulkDatePicker(startVal || null, targetVal || null);
+
+  // Sync follow buttons visibility based on followed states
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get("followedItems").then(({ followedItems = {} }) => {
+      let followCount = 0;
+      ids.forEach(id => {
+        if (followedItems[id]) {
+          followCount++;
+        }
+      });
+      const elFollow = $('bulk_follow_btn');
+      const elUnfollow = $('bulk_unfollow_btn');
+      if (elFollow && elUnfollow) {
+        if (followCount === ids.length) {
+          // All are followed -> Show only unfollow button
+          elFollow.style.display = 'none';
+          elUnfollow.style.display = '';
+        } else if (followCount === 0) {
+          // All are unfollowed -> Show only follow button
+          elFollow.style.display = '';
+          elUnfollow.style.display = 'none';
+        } else {
+          // Mixed states -> Show both buttons
+          elFollow.style.display = '';
+          elUnfollow.style.display = '';
+        }
+      }
+    }).catch(() => {});
+  }
 }
 
 function updateBulkBar(){
@@ -2985,6 +3020,8 @@ async function openItem(id){
 
   // ── Populate the sidebar with fresh data ──
   cur=id;
+  activeItemData=d;
+  SubscriptionManager.updateButtonState(id);
   api.comments(id).then(cs => {
     if (cur !== id) return;
     const badge = $('s_activity_count');
@@ -4259,6 +4296,7 @@ async function quickSave(field){
     }
   });
 
+  if(r&&r.rev)SubscriptionManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
   refreshDirty();setSaveChip('saved');
   setStatus(`#${id} ${field} saved`+(r?` → rev ${r.rev}`:''));
   postSaveRefresh(body,parentChanged);
@@ -4283,6 +4321,7 @@ async function save(){
   if('title'in body)orig.title=v.title;
   if('desc'in body)orig.desc=v.desc;
   if('ac'in body)orig.ac=v.ac;
+  if(r&&r.rev)SubscriptionManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
   refreshDirty();setSaveChip('saved');setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
   postSaveRefresh(body,false);
 }
@@ -5709,6 +5748,18 @@ function cycleTheme(){
   try{localStorage.setItem('ado.theme',m);}catch(e){}
   applyTheme(m);
 }
+function applyFollowNotify(status) {
+  const btn = $('f_follow_notify');
+  if (!btn) return;
+  btn.title = 'notifications: ' + status + ' — click to change';
+  btn.innerHTML = (status === 'on' ? '🔔 ' : '🔕 ') + `<span id="f_follow_notify_label">${status}</span>`;
+}
+async function cycleFollowNotify() {
+  const { followNotify = 'on' } = await chrome.storage.local.get("followNotify");
+  const next = followNotify === 'on' ? 'off' : 'on';
+  await chrome.storage.local.set({ followNotify: next });
+  applyFollowNotify(next);
+}
 let autoTimer=null;
 function autoTick(){
   updatePatBadge();                          // keep the countdown fresh on long-lived tabs
@@ -6065,7 +6116,7 @@ const BAR_ITEMS=[
   {id:'tlzoom',label:'Timeline: zoom'},
   {id:'tl_group',label:'Timeline: grouping'},
   {id:'empty_btn',label:'Empty-columns toggle (∅)'},
-  {id:'filt_btn',label:'Filters'},
+  {id:'filter-split',label:'Filters & Followed'},
   {id:'fit',label:'Fit graph'},
   {id:'bar-spacer',label:'↔ Right-align spacer (flexible gap)'},
   {id:'export',label:'Export (CSV / JSON)'},
@@ -6509,9 +6560,10 @@ const BULK_ITEMS=[
   {id:'parent',label:'Parent'},
   {id:'tags',label:'Tags (Add/Remove)'},
   {id:'dates',label:'Dates (Start/Target)'},
+  {id:'followed',label:'Follow / Unfollow'},
 ];
 const BULK_LOCKED=new Set();
-let bulkOrder=BULK_ITEMS.map(i=>i.id), bulkHidden=new Set(['parent', 'dates']);
+let bulkOrder=BULK_ITEMS.map(i=>i.id), bulkHidden=new Set(['parent', 'dates', 'followed']);
 function loadBulkLayout(){
   try{const o=JSON.parse(localStorage.getItem('ado.bulkOrder')||'null');if(Array.isArray(o))bulkOrder=o;}catch(e){}
   try{const h=JSON.parse(localStorage.getItem('ado.bulkHidden')||'null');if(Array.isArray(h))bulkHidden=new Set(h);}catch(e){}
@@ -7638,8 +7690,30 @@ async function initialBoot(postSetup){
       }
     });
   })();
+  function updateFollowedBtnVisual() {
+    const btn = $('followed_btn');
+    if (!btn) return;
+    const active = !!(fstate.followed && fstate.followed['yes'] === 'in');
+    btn.classList.toggle('on', active);
+    btn.textContent = active ? '★' : '☆';
+  }
+  function toggleFollowedFilter(active) {
+    if (active) {
+      fstate.followed = { 'yes': 'in' };
+    } else {
+      delete fstate.followed;
+    }
+    updateFollowedBtnVisual();
+    renderFilters();
+    updateFilterCount();
+    scheduleApply();
+  }
+  $('followed_btn').onclick=()=>{
+    const active = !$('followed_btn').classList.contains('on');
+    toggleFollowedFilter(active);
+  };
   $('filt_btn').onclick=()=>{const p=$('filterpanel');const show=p.style.display==='none';p.style.display=show?'flex':'none';$('filt_btn').classList.toggle('on',show);};
-  $('filt_clear_all').onclick=()=>{for(const k in fstate)delete fstate[k];renderFilters();updateFilterCount();scheduleApply();};
+  $('filt_clear_all').onclick=()=>{for(const k in fstate)delete fstate[k];updateFollowedBtnVisual();renderFilters();updateFilterCount();scheduleApply();};
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
   const moreP=$('morepanel'),moreB=$('morebtn');
   const closeMore=()=>{moreP.style.display='none';moreB.classList.remove('on');if (window.LayerManager) window.LayerManager.close(moreP);};
@@ -7694,6 +7768,7 @@ async function initialBoot(postSetup){
   $('export').querySelectorAll('button').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
   $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}setAutoRefresh(s);};
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
+  $('f_follow_notify').onclick=cycleFollowNotify;
   // bulk action bar (tree multi-select)
   $('bulk_state').onchange=e=>{const v=e.target.value;if(v)bulkApply('state',v);};
   $('bulk_prio').onchange=e=>{const v=e.target.value;if(v)bulkApply('priority',v);};
@@ -7721,6 +7796,43 @@ async function initialBoot(postSetup){
   };
   $('bulk_clear').onclick=clearBulk;
   $('bulk_cust_btn').onclick=()=>{ showCustomize(); setCustomizeTab('bulk'); };
+  $('bulk_follow_btn').onclick=async()=>{
+    const ids=[...bulkSel];
+    if(!ids.length)return;
+    const { followedItems = {} } = await chrome.storage.local.get("followedItems");
+    const { org, project } = await api.getConfig();
+    ids.forEach(id=>{
+      const itemData = store.nodes[id];
+      if (itemData) {
+        followedItems[id] = {
+          id: itemData.id,
+          title: itemData.title,
+          rev: itemData.rev || 1,
+          state: itemData.state,
+          assigned: itemData.assigned,
+          updatedTime: new Date().toISOString(),
+          org,
+          project
+        };
+      }
+    });
+    await chrome.storage.local.set({ followedItems });
+    if(cur!=null)SubscriptionManager.updateButtonState(cur);
+    updateFollowedBtnVisual();
+    syncBulkBarValues();
+  };
+  $('bulk_unfollow_btn').onclick=async()=>{
+    const ids=[...bulkSel];
+    if(!ids.length)return;
+    const { followedItems = {} } = await chrome.storage.local.get("followedItems");
+    ids.forEach(id=>{
+      delete followedItems[id];
+    });
+    await chrome.storage.local.set({ followedItems });
+    if(cur!=null)SubscriptionManager.updateButtonState(cur);
+    updateFollowedBtnVisual();
+    syncBulkBarValues();
+  };
   syncBulkDatePicker(null, null);
   // command palette (Ctrl/Cmd+K)
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.code==='KeyK'&&!e.altKey){e.preventDefault();
@@ -7764,6 +7876,10 @@ async function initialBoot(postSetup){
   // Wrap so the click Event isn't passed as `force` (which would skip the
   // discard-confirm check inside closePanel).
   $('s_close').onclick=()=>closePanel();
+  $('s_follow').onclick=async()=>{
+    if(cur==null||!activeItemData)return;
+    await SubscriptionManager.toggleFollow(cur,activeItemData);
+  };
   // Native "leave site?" guard for page reload / tab close / Cmd+W. Modern
   // browsers ignore custom text — assigning any non-empty returnValue is enough
   // to trigger the dialog.
@@ -8026,7 +8142,10 @@ async function initialBoot(postSetup){
   loadBarLayout();applyBarLayout();              // apply the saved toolbar order / hidden set
   loadBulkLayout();applyBulkLayout();            // apply the saved bulk edit bar order / hidden set
   wireTreeDnD();                                  // drag tree rows to re-parent
-  try{const sf=localStorage.getItem('ado.filters');if(sf)Object.assign(fstate,JSON.parse(sf));
+  try{const sf=localStorage.getItem('ado.filters');if(sf)Object.assign(fstate,JSON.parse(sf));updateFollowedBtnVisual();
+    chrome.storage.local.get("followNotify").then(({followNotify})=>{
+      applyFollowNotify(followNotify||'on');
+    });
     const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
     if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
     const bg=localStorage.getItem('ado.boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
@@ -8058,6 +8177,12 @@ async function initialBoot(postSetup){
   if(root){await openItem(parseInt(root));}
   if(mode==='tree')await loadSnapshot();   // paint last session's tree instantly while the network refresh runs
   refresh().then(warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
+  try {
+    const tm = new TutorialManager();
+    await tm.init();
+  } catch (e) {
+    console.error('Failed to initialize TutorialManager:', e);
+  }
 }
 
 async function loadIdentity(){
@@ -8091,6 +8216,7 @@ async function loadFilterData(){
 /* ---------- boot ---------- */
 window.addEventListener('DOMContentLoaded',async()=>{
   wireSetup();
+  SubscriptionManager.init(openItem);
   const cfg=await api.getConfig();
   projectName=cfg.project;                  // "no sprint" root path fallback
   const hasAuth=cfg.authMode==='oauth'?(!!cfg.oauthAccess||!!cfg.oauthRefresh):(!!cfg.pat&&!!cfg.org&&!!cfg.project);

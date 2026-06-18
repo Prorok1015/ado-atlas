@@ -335,6 +335,8 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .shead .ttl{flex:1;font-size:1rem;font-weight:600;display:flex;align-items:center;gap:0.462rem;flex-wrap:wrap;min-width:0}
 .shead #s_desc_full.on,.shead #s_desc_full.btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #side.fullscreen .shead #s_desc_full{background:var(--accent);color:#fff;border-color:var(--accent)}
+#s_follow.active{color:#ffb703;background:rgba(255,183,3,0.1);border-color:#ffb703}
+#followed_btn.on{color:#ffb703;background:rgba(255,183,3,0.1);border-color:#ffb703}
 .btn.icon{padding:2px 0.615rem;line-height:1;text-decoration:none;display:inline-flex;align-items:center}
 .split-btn {
   display: inline-flex;
@@ -1674,4 +1676,99 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 .sg-group-body.cz-preview-col:empty {
   margin: 0 0.615rem 0.615rem 0.615rem;
 }
+
+/* Dark backdrop mask */
+.tut-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  transition: opacity 0.2s ease;
+}
+
+/* Elevated target element highlight */
+.tut-highlighted {
+  position: relative !important;
+  z-index: 10002 !important;
+  box-shadow: 0 0 0 4px var(--accent), 0 8px 24px rgba(0,0,0,0.4) !important;
+  background-color: var(--panel) !important;
+  pointer-events: none !important;
+}
+
+/* Tutorial popover container */
+.tut-popover {
+  position: absolute;
+  z-index: 10003;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.615rem;
+  padding: 1.077rem;
+  width: 18.462rem;
+  box-shadow: 0 0.615rem 1.846rem rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.615rem;
+  animation: slideUpFade 0.2s ease;
+}
+
+.tut-popover h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tut-popover p {
+  margin: 0;
+  font-size: 0.846rem;
+  color: var(--txt);
+  line-height: 1.4;
+}
+
+.tut-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.308rem;
+}
+
+.tut-steps-indicator {
+  font-size: 0.769rem;
+  color: var(--muted);
+}
+
+.tut-buttons {
+  display: flex;
+  gap: 0.462rem;
+}
+
+.tut-btn {
+  font-size: 0.769rem;
+  padding: 0.308rem 0.615rem;
+  border-radius: 0.308rem;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--txt);
+}
+
+.tut-btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* Elevate ancestors to solve stacking context issues */
+.tut-ancestor-elevated {
+  z-index: 10002 !important;
+}
+
+/* Tutorial text key term highlighting */
+.tut-key {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+
 

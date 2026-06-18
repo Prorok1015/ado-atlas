@@ -24,7 +24,10 @@
   <div class="seg" id="tlzoom" style="display:none" title="timeline zoom"><button data-z="day">Day</button><button data-z="week" class="on">Week</button><button data-z="month">Month</button></div>
   <select id="tl_group" title="group timeline rows" style="display:none"><option value="none">group: none</option><option value="sprint">by Sprint</option><option value="state">by State</option><option value="assignee">by Assignee</option><option value="type">by Type</option></select>
   <button class="btn" id="empty_btn" title="show empty columns (sprints / states / assignees)" style="display:none">∅ empty</button>
-  <button class="btn" id="filt_btn" title="filters, search &amp; sort">Filters <span id="filt_count"></span></button>
+  <div class="split-btn" id="filter-split">
+    <button class="btn" id="filt_btn" title="filters, search &amp; sort">Filters <span id="filt_count"></span></button>
+    <button class="btn icon" id="followed_btn" title="Filter by followed items">☆</button>
+  </div>
   <button class="btn" id="fit" title="fit graph" style="display:none">Fit</button>
   <span class="barspacer" id="bar-spacer"></span>
   <div class="seg" id="export" title="export the current (filtered) view"><button data-x="csv">⬇ CSV</button><button data-x="json">JSON</button></div>
@@ -52,6 +55,8 @@
         <select id="f_tz" title="timezone for work-hours / active-time"></select></div>
       <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours</span>
         <span class="whrs"><input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span></div>
+      <div class="mrow"><span class="ml">Notifications</span>
+        <button class="btn" id="f_follow_notify" title="toggle desktop notifications">🔔 <span id="f_follow_notify_label">on</span></button></div>
       <div class="mrow mrow-full" style="display:flex;gap:6px;align-items:stretch">
         <button class="btn" id="cz_open" style="flex:1" title="reorder / show-hide toolbar buttons and work-item panel fields">⠿ Customize layout…</button>
         <button class="btn" id="emojis_open" style="width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Customize reactions emojis or images">☺</button>
@@ -148,6 +153,12 @@
     <button class="btn" id="bulk_dates_btn">set dates</button>
   </div>
 
+  <!-- Followed Actions -->
+  <div class="bulk-group" id="bulk_g_followed" style="display:inline-flex;gap:4px;align-items:center;">
+    <button class="btn" id="bulk_follow_btn" title="Follow all selected items" style="padding: 6px 9px;">★</button>
+    <button class="btn" id="bulk_unfollow_btn" title="Unfollow all selected items" style="padding: 6px 9px;">☆</button>
+  </div>
+
   <button class="btn" id="bulk_clear" title="clear selection">✕ clear</button>
   <button class="btn" id="bulk_cust_btn" title="customize bulk bar" style="padding: 2px 8px;">⋮</button>
 </div>
@@ -177,11 +188,12 @@
       </div>
       <button class="btn icon" id="s_desc_attach" title="attach a file (or paste / drop into the description)">📎</button>
       <button class="btn icon" id="s_customize" title="customize this panel (reorder / show-hide fields)">⚙</button>
-      <div class="split-btn">
+      <div class="split-btn" id="s_link_split">
         <button class="btn icon" id="s_copy_link" title="Copy link to Azure DevOps">🔗</button>
         <a class="btn icon" id="s_link" target="_blank" title="open in Azure DevOps">↗</a>
       </div>
       <button class="btn icon" id="s_desc_full" title="toggle full-screen editor (Esc to exit)">⛶</button>
+      <button class="btn icon" id="s_follow" title="Follow / Unfollow this item">☆</button>
       <button class="btn icon" id="s_close" title="close (Esc)">✕</button>
     </div>
     <div class="sgroup" data-sg="nav">
@@ -612,6 +624,8 @@
 <script src="components/card-picker.js"></script>
 <script src="components/tags-editor.js"></script>
 <script src="components/date-range-picker.js"></script>
+<script src="components/tutorial-manager.js"></script>
+<script src="components/subscription-manager.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

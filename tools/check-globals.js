@@ -14,6 +14,8 @@ const files = [
   "components/markdown-editor.js",
   "components/card-picker.js",
   "components/tags-editor.js",
+  "components/tutorial-manager.js",
+  "components/subscription-manager.js",
   "app.js"
 ];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");

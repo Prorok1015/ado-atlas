@@ -349,6 +349,18 @@ async function batchFetch(ids, fields) {
 async function list({ wtype, parent, text, order, filters } = {}) {
   const where = ["[System.TeamProject] = @project"];
   for (const c of buildClauses(filters || {})) where.push(c);
+  if (filters && filters.followed && filters.followed.in && filters.followed.in.includes('yes')) {
+    const { org, project } = await getConfig();
+    const { followedItems } = await chrome.storage.local.get("followedItems");
+    const activeIds = Object.values(followedItems || {})
+      .filter(item => item.org === org && item.project === project)
+      .map(item => item.id);
+    if (activeIds.length > 0) {
+      where.push(`[System.Id] IN (${activeIds.join(",")})`);
+    } else {
+      where.push(`[System.Id] = 0`);
+    }
+  }
   if (wtype) where.push(`[${FIELD_REGISTRY.type.ref}] = '${wiqlQuote(wtype)}'`);
   if (parent != null) where.push(`[${FIELD_REGISTRY.parent.ref}] = ${parent|0}`);
   if (text) where.push(`[${FIELD_REGISTRY.title.ref}] CONTAINS '${wiqlQuote(text)}'`);
@@ -1477,7 +1489,7 @@ async function batchUpdate(operations) {
 }
 
 // ---------- exported facade (everything app.js needs) ----------
-window.api = {
+(typeof window !== "undefined" ? window : self).api = {
   batchUpdate,
   // config
   getConfig, setConfig, clearConfig,
