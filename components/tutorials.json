@@ -70,6 +70,12 @@
         "position": "bottom"
       },
       {
+        "element": "#f_follow_notify",
+        "title": "🔔 Notifications & Mentions",
+        "text": "Toggle desktop alerts for <span class='tut-key'>Followed Items</span> and <span class='tut-key'>User Mentions</span>, and define the maximum age threshold (e.g. 2 days) to filter out older historic changes.",
+        "position": "bottom"
+      },
+      {
         "element": "#cz_open",
         "title": "⠿ Customize Layout",
         "text": "Reorder, pin, or show/hide toolbar buttons, columns, and work item detail fields.",
