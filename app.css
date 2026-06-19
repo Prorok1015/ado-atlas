@@ -1770,5 +1770,80 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   font-weight: 700;
 }
 
+/* Startup prompt styles */
+.tut-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.tut-prompt-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.692rem;
+  padding: 1.538rem;
+  width: 23.077rem;
+  box-shadow: 0 0.923rem 2.769rem rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 1.154rem;
+  animation: slideUpFade 0.2s ease;
+  color: var(--txt);
+}
+
+.tut-prompt-box h2 {
+  margin: 0;
+  font-size: 1.154rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tut-prompt-box p {
+  margin: 0;
+  font-size: 0.846rem;
+  color: var(--txt);
+  line-height: 1.5;
+}
+
+.tut-prompt-hint {
+  margin-top: 0.25rem !important;
+  font-size: 0.77rem !important;
+  color: var(--txt-secondary, #999) !important;
+  opacity: 0.85;
+}
+
+.tut-prompt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.615rem;
+}
+
+.tut-prompt-item {
+  display: flex;
+  align-items: center;
+  gap: 0.615rem;
+  font-size: 0.846rem;
+  color: var(--txt);
+}
+
+.tut-prompt-item .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.tut-prompt-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.615rem;
+}
+
+
 
 

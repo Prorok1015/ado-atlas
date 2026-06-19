@@ -3486,8 +3486,19 @@ async function openItem(id){
   }
 
   activeWType = d.type;
+  const stdRefs = new Set();
+  for (const val of Object.values(api.FIELD_REGISTRY)) {
+    stdRefs.add(val.ref);
+    if (val.fallbackRefs) {
+      val.fallbackRefs.forEach(f => stdRefs.add(f));
+    }
+  }
+  const customFieldIds = fields
+    .filter(cf => !stdRefs.has(cf.referenceName) && cf.isOnForm)
+    .map(cf => ({ id: 'cust:' + cf.referenceName, formGroup: cf.formGroup, fieldType: cf.type }));
+
   const offFormFields = fields.filter(f => !f.isOnForm).map(f => 'cust:' + f.referenceName);
-  loadSideLayout(activeWType, offFormFields);
+  loadSideLayout(activeWType, offFormFields, customFieldIds);
   applySideLayout(activeWType);
   
   $('s_prio').value=d.priority?String(d.priority):'';
@@ -6259,7 +6270,7 @@ function getDefaultSideLayout(wtype) {
   };
 }
 
-function loadSideLayout(wtype, offFormFields = []) {
+function loadSideLayout(wtype, offFormFields = [], availableCustomFields = []) {
   const suffix = wtype ? '.' + wtype : '';
   const layoutKey = 'ado.layout' + suffix;
   const oldOrderKey = 'ado.sideOrder' + suffix;
@@ -6269,7 +6280,7 @@ function loadSideLayout(wtype, offFormFields = []) {
     const saved = localStorage.getItem(layoutKey);
     if (saved) {
       currentSideLayout = JSON.parse(saved);
-      ensureLayoutFields(wtype, offFormFields);
+      ensureLayoutFields(wtype, offFormFields, availableCustomFields);
       return;
     }
   } catch(e) {
@@ -6314,6 +6325,7 @@ function loadSideLayout(wtype, offFormFields = []) {
         wtype: wtype || "",
         layout: layoutItems
       };
+      ensureLayoutFields(wtype, offFormFields, availableCustomFields);
       saveSideLayout(wtype);
       return;
     }
@@ -6325,6 +6337,7 @@ function loadSideLayout(wtype, offFormFields = []) {
   const hiddenSet = new Set(['area', 'activity', ...offFormFields]);
   def.layout = def.layout.filter(item => !hiddenSet.has(item.ref));
   currentSideLayout = def;
+  ensureLayoutFields(wtype, offFormFields, availableCustomFields);
   saveSideLayout(wtype);
 }
 
@@ -6339,7 +6352,7 @@ function saveSideLayout(wtype) {
   }
 }
 
-function ensureLayoutFields(wtype, offFormFields) {
+function ensureLayoutFields(wtype, offFormFields, availableCustomFields = []) {
   if (!currentSideLayout) return;
   const placed = new Set();
   const traverse = (node) => {
@@ -6353,6 +6366,144 @@ function ensureLayoutFields(wtype, offFormFields) {
   
   if (!placed.has('title')) {
     currentSideLayout.layout.unshift({ id: 'title', type: 'field', ref: 'title' });
+    placed.add('title');
+  }
+
+  // Field types that need full width (no row batching)
+  const WIDE_TYPES = new Set(['html', 'plainText', 'history']);
+
+  // Build a lookup from cfId → {formGroup, fieldType}
+  const cfMetaMap = new Map();
+  availableCustomFields.forEach(cf => {
+    if (typeof cf === 'object') {
+      cfMetaMap.set(cf.id, { formGroup: cf.formGroup || null, fieldType: cf.fieldType || 'string' });
+    }
+  });
+
+  // Helper: arrange field IDs into layout elements with row batching for compact types
+  const buildGroupElements = (fieldIds) => {
+    const elements = [];
+    const compactBatch = []; // accumulate compact fields
+
+    const flushBatch = () => {
+      if (compactBatch.length === 0) return;
+      if (compactBatch.length === 1) {
+        // Single compact field — no need for a row wrapper
+        elements.push(compactBatch[0]);
+      } else {
+        // Batch into rows of 2-3
+        for (let i = 0; i < compactBatch.length; i += 3) {
+          const chunk = compactBatch.slice(i, i + 3);
+          const pct = chunk.length === 3 ? '33.3%' : '50%';
+          elements.push({
+            type: 'row',
+            columns: chunk.map(f => ({ width: pct, elements: [f] }))
+          });
+        }
+      }
+      compactBatch.length = 0;
+    };
+
+    fieldIds.forEach(cfId => {
+      const meta = cfMetaMap.get(cfId);
+      const fType = meta ? meta.fieldType : 'string';
+      const fieldNode = { id: cfId, type: 'field', ref: cfId };
+
+      if (WIDE_TYPES.has(fType)) {
+        flushBatch();
+        elements.push(fieldNode);
+      } else {
+        compactBatch.push(fieldNode);
+      }
+    });
+    flushBatch();
+    return elements;
+  };
+
+  // Helper: create or find a cust_group node and set its elements
+  const makeGroupId = (label) => 'cust_group_' + label.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+
+  const insertIntoGroup = (label, fieldIds) => {
+    const groupId = makeGroupId(label);
+    const existingGroup = currentSideLayout.layout.find(n => n.id === groupId && n.type === 'group');
+    if (existingGroup) {
+      const existingRefs = new Set();
+      const collectRefs = (node) => {
+        if (node.type === 'field') existingRefs.add(node.ref);
+        else if (node.elements) node.elements.forEach(collectRefs);
+        else if (node.columns) node.columns.forEach(c => (c.elements || []).forEach(collectRefs));
+      };
+      existingGroup.elements.forEach(collectRefs);
+      const newIds = fieldIds.filter(id => !existingRefs.has(id));
+      if (newIds.length > 0) {
+        existingGroup.elements.push(...buildGroupElements(newIds));
+      }
+    } else {
+      currentSideLayout.layout.push({
+        id: groupId,
+        type: 'group',
+        title: label,
+        collapsible: true,
+        defaultCollapsed: false,
+        elements: buildGroupElements(fieldIds)
+      });
+    }
+  };
+
+  // Migrate existing flat custom fields at root level into group nodes
+  if (cfMetaMap.size > 0) {
+    const toRegroup = []; // {cfId, formGroup}
+    for (let i = currentSideLayout.layout.length - 1; i >= 0; i--) {
+      const node = currentSideLayout.layout[i];
+      if (node && node.type === 'field' && node.ref && node.ref.startsWith('cust:')) {
+        const meta = cfMetaMap.get(node.ref);
+        if (meta && meta.formGroup) {
+          toRegroup.push({ cfId: node.ref, formGroup: meta.formGroup });
+          currentSideLayout.layout.splice(i, 1);
+        }
+      }
+    }
+    // Insert regrouped fields
+    const regrouped = {};
+    toRegroup.forEach(cf => {
+      (regrouped[cf.formGroup] = regrouped[cf.formGroup] || []).push(cf.cfId);
+    });
+    for (const [label, fieldIds] of Object.entries(regrouped)) {
+      insertIntoGroup(label, fieldIds);
+    }
+  }
+
+  // Auto-append any newly discovered custom fields that aren't already placed & not hidden.
+  const hiddenFields = currentSideLayout.hiddenFields || [];
+  const toInsert = []; // {id, formGroup}
+  availableCustomFields.forEach(cf => {
+    const cfId = typeof cf === 'string' ? cf : cf.id;
+    const formGroup = typeof cf === 'string' ? null : (cf.formGroup || null);
+    if (!placed.has(cfId) && !hiddenFields.includes(cfId)) {
+      toInsert.push({ id: cfId, formGroup });
+      placed.add(cfId);
+    }
+  });
+
+  // Group by formGroup label
+  const grouped = {};
+  const ungrouped = [];
+  toInsert.forEach(cf => {
+    if (cf.formGroup) {
+      (grouped[cf.formGroup] = grouped[cf.formGroup] || []).push(cf.id);
+    } else {
+      ungrouped.push(cf.id);
+    }
+  });
+
+  // Insert grouped custom fields as collapsible group nodes with row batching
+  for (const [label, fieldIds] of Object.entries(grouped)) {
+    insertIntoGroup(label, fieldIds);
+  }
+
+  // Insert ungrouped custom fields flat (with row batching)
+  if (ungrouped.length > 0) {
+    currentSideLayout.layout.push(...buildGroupElements(ungrouped));
   }
 }
 
@@ -6745,13 +6896,24 @@ async function showCustomize(){
         czWType = btn.dataset.wtype;
         await updateSideGroupsForType(czWType);
         let offFormFields = [];
+        let customFieldIds = [];
         if (czWType) {
           try {
             const fields = await api.getWorkItemTypeFields(czWType);
             offFormFields = fields.filter(f => !f.isOnForm).map(f => 'cust:' + f.referenceName);
+            const stdRefs = new Set();
+            for (const val of Object.values(api.FIELD_REGISTRY)) {
+              stdRefs.add(val.ref);
+              if (val.fallbackRefs) {
+                val.fallbackRefs.forEach(f => stdRefs.add(f));
+              }
+            }
+            customFieldIds = fields
+              .filter(cf => !stdRefs.has(cf.referenceName) && cf.isOnForm)
+              .map(cf => ({ id: 'cust:' + cf.referenceName, formGroup: cf.formGroup, fieldType: cf.type }));
           } catch (e) {}
         }
-        loadSideLayout(czWType, offFormFields);
+        loadSideLayout(czWType, offFormFields, customFieldIds);
         renderCustomizeList();
       };
     });
@@ -7290,6 +7452,16 @@ function findNodeAndParent(id) {
 function removeLayoutNode(id) {
   const result = findNodeAndParent(id);
   if (result) {
+    const node = result.array[result.index];
+    const fieldId = typeof node === 'string' ? node : (node && node.ref);
+    if (fieldId && fieldId.startsWith('cust:')) {
+      if (!currentSideLayout.hiddenFields) {
+        currentSideLayout.hiddenFields = [];
+      }
+      if (!currentSideLayout.hiddenFields.includes(fieldId)) {
+        currentSideLayout.hiddenFields.push(fieldId);
+      }
+    }
     result.array.splice(result.index, 1);
     saveSideLayout(czWType);
     applySideLayout(czWType);

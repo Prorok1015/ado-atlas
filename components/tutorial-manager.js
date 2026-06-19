@@ -55,18 +55,165 @@ class TutorialManager {
     const data = await chrome.storage.local.get("tutorials_seen");
     this.seen = data.tutorials_seen || {};
 
-    // Initial check on boot
-    this.checkAvailableTutorials();
+    // Check if there are unseen tutorials
+    const unseenIds = Object.keys(this.registry).filter(id => !this.seen[id]);
+    
+    if (unseenIds.length > 0 && !window.tutorialPromptShown) {
+      window.tutorialPromptShown = true;
+      this.showStartupPrompt(unseenIds);
+    } else {
+      this.checkAvailableTutorials();
+    }
 
     // Re-check when user interacts (e.g. opens a panel/sidebar)
     // Using capture phase (true) to bypass stopPropagation() on elements like #morebtn
     document.addEventListener('click', () => {
       setTimeout(() => this.checkAvailableTutorials(), 150);
     }, true);
+
+    // Bind to the Replay Tours button
+    const tutBtn = document.getElementById('tutorialbtn');
+    if (tutBtn) {
+      tutBtn.onclick = () => this.showReplayModal();
+    }
+  }
+
+  showStartupPrompt(unseenIds) {
+    if (document.querySelector('.tut-prompt-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'tut-prompt-overlay';
+    
+    const listHtml = unseenIds.map(id => {
+      const name = this.registry[id]?.title || id;
+      return `<div class="tut-prompt-item"><span class="dot"></span>${name}</div>`;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div class="tut-prompt-box">
+        <h2>👋 Welcome to ADO Atlas!</h2>
+        <p>You have uncompleted feature tours. Would you like to start the guide or skip them for now?</p>
+        <p class="tut-prompt-hint">💡 You can always replay tours later from <strong>Settings → Interactive Tours</strong></p>
+        <div class="tut-prompt-list">
+          ${listHtml}
+        </div>
+        <div class="tut-prompt-buttons">
+          <button class="tut-btn tut-prompt-skip">Skip All</button>
+          <button class="tut-btn tut-btn-primary tut-prompt-start">Start Tour</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('.tut-prompt-skip').onclick = async () => {
+      overlay.remove();
+      const data = await chrome.storage.local.get("tutorials_seen");
+      const seen = data.tutorials_seen || {};
+      for (const id of unseenIds) {
+        seen[id] = true;
+        this.seen[id] = true;
+      }
+      await chrome.storage.local.set({ tutorials_seen: seen });
+      this.checkAvailableTutorials();
+    };
+
+    overlay.querySelector('.tut-prompt-start').onclick = () => {
+      overlay.remove();
+      this.checkAvailableTutorials();
+    };
+  }
+
+  showReplayModal() {
+    if (document.querySelector('.tut-prompt-overlay')) return;
+
+    // Close settings popover so it doesn't overlap
+    const morePanel = document.querySelector('#morepanel');
+    if (morePanel) {
+      morePanel.style.display = 'none';
+      const moreBtn = document.querySelector('#morebtn');
+      if (moreBtn) moreBtn.classList.remove('on');
+      if (window.LayerManager) window.LayerManager.close(morePanel);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'tut-prompt-overlay';
+    overlay.addEventListener('mousedown', e => e.stopPropagation());
+    
+    const itemsHtml = Object.keys(this.registry).map(id => {
+      const name = this.registry[id]?.title || id;
+      const isCompleted = !!this.seen[id];
+      const statusText = isCompleted ? '✅ Completed' : '⏳ New';
+      return `
+        <div class="tut-replay-item" style="display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:0.846rem; border-bottom:1px solid var(--line); padding:8px 0;">
+          <span>${name} <small style="color:var(--muted); font-size:0.75rem;">(${statusText})</small></span>
+          <button class="tut-btn tut-replay-start" data-id="${id}" style="padding:4px 8px;">Run</button>
+        </div>
+      `;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div class="tut-prompt-box" style="width: 25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 style="margin:0;">📖 Feature Tours</h2>
+          <button class="tut-btn tut-close-replay" style="border:none; background:transparent; font-size:1.1rem; padding:0; cursor:pointer; color:var(--txt);">✕</button>
+        </div>
+        <p>Select any tour to replay it. Follow the highlights to explore the features.</p>
+        <div class="tut-replay-list" style="display:flex; flex-direction:column; max-height:200px; overflow-y:auto;">
+          ${itemsHtml}
+        </div>
+        <div class="tut-prompt-buttons" style="margin-top:8px;">
+          <button class="tut-btn tut-replay-reset-all" style="margin-right:auto;">Reset All</button>
+          <button class="tut-btn tut-btn-primary tut-close-replay">Close</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelectorAll('.tut-close-replay').forEach(btn => {
+      btn.onclick = () => overlay.remove();
+    });
+    
+    // Bind Start buttons
+    overlay.querySelectorAll('.tut-replay-start').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        overlay.remove();
+        
+        // Temporarily mark as unseen so we can run it
+        delete this.seen[id];
+        
+        // Handle contextual triggers before starting
+        if (id === 'v1.2.0_display_settings') {
+          const moreBtn = document.querySelector('#morebtn');
+          const morePanel = document.querySelector('#morepanel');
+          if (moreBtn && morePanel && morePanel.style.display === 'none') {
+            moreBtn.click();
+          }
+        }
+        
+        if (id === 'v1.2.0_sidebar_features') {
+          const side = document.querySelector('#side');
+          if (side && side.classList.contains('hidden')) {
+            alert('Please click on any work item to open the sidebar and start the sidebar tour.');
+          }
+        }
+
+        this.start(id, this.registry[id]);
+      };
+    });
+
+    overlay.querySelector('.tut-replay-reset-all').onclick = async () => {
+      overlay.remove();
+      await chrome.storage.local.remove("tutorials_seen");
+      this.seen = {};
+      this.checkAvailableTutorials();
+    };
   }
 
   checkAvailableTutorials() {
-    if (this.currentTutorial) return; // Already running a tutorial
+    if (this.currentTutorial || document.querySelector('.tut-prompt-overlay')) return; // Already running a tutorial or prompt is open
 
     for (const [id, config] of Object.entries(this.registry)) {
       if (!this.seen[id]) {

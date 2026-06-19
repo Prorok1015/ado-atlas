@@ -537,7 +537,7 @@ async function getFieldsMap() {
 async function getWorkItemTypeFields(wtype) {
   const { org, project } = await getConfig();
   if (!org || !project || !wtype) return [];
-  const cacheKey = `wit_fields_v6:${org}:${project}:${wtype}`;
+  const cacheKey = `wit_fields_v7:${org}:${project}:${wtype}`;
   
   // Try memory cache first
   if (witFieldsCache[cacheKey]) return witFieldsCache[cacheKey];
@@ -558,15 +558,24 @@ async function getWorkItemTypeFields(wtype) {
     // Fetch work item type metadata containing xmlForm layout
     const typeMeta = await req("GET", `${proj}/_apis/wit/workitemtypes/${t}?${API_VERSION}`);
     
-    // Parse xmlForm definition to extract fields actually placed on the form
+    // Parse xmlForm definition to extract fields placed on the form and their group labels
     const parser = new DOMParser();
     const doc = parser.parseFromString(typeMeta.xmlForm || "", "text/xml");
     const controls = doc.getElementsByTagName("Control");
-    const formFields = new Set();
+    const formFieldGroups = new Map(); // referenceName → group label
     for (const control of controls) {
       const fn = control.getAttribute("FieldName");
       if (fn) {
-        formFields.add(fn);
+        let groupLabel = null;
+        let el = control.parentElement;
+        while (el) {
+          if (el.tagName === "Group") {
+            groupLabel = el.getAttribute("Label") || null;
+            break;
+          }
+          el = el.parentElement;
+        }
+        formFieldGroups.set(fn, groupLabel);
       }
     }
 
@@ -580,7 +589,8 @@ async function getWorkItemTypeFields(wtype) {
         readOnly: globalInfo.readOnly !== undefined ? globalInfo.readOnly : (f.field ? f.field.readOnly : f.readOnly),
         isIdentity: !!globalInfo.isIdentity,
         allowedValues: f.allowedValues || [],
-        isOnForm: formFields.has(f.referenceName)
+        isOnForm: formFieldGroups.has(f.referenceName),
+        formGroup: formFieldGroups.get(f.referenceName) || null
       };
     });
     

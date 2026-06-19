@@ -1,5 +1,6 @@
 {
   "v1.2.0_toolbar_controls": {
+    "title": "🧭 Toolbar & Navigation Tour",
     "version": "1.2.0",
     "context": "board",
     "steps": [
@@ -36,6 +37,7 @@
     ]
   },
   "v1.2.0_display_settings": {
+    "title": "⚙️ Display Settings Tour",
     "version": "1.2.0",
     "context": "settings",
     "steps": [
@@ -96,6 +98,7 @@
     ]
   },
   "v1.2.0_sidebar_features": {
+    "title": "📋 Sidebar Details & Actions",
     "version": "1.2.0",
     "context": "sidebar",
     "steps": [
