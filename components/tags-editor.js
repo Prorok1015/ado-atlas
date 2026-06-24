@@ -52,7 +52,7 @@ class TagsEditor {
     }
 
     let html = this.cur.map((t, i) => 
-      `<span class="tagchip ${opClass}" style="background:${personColor(t)}">${esc(t)}<b data-i="${i}" title="remove">×</b></span>`
+      `<span class="tagchip ${opClass}" style="background:${personColor(t)}">${htmlEsc(t)}<b data-i="${i}" title="remove">×</b></span>`
     ).join('');
 
     if (!this.cur.length && !this.adding) {

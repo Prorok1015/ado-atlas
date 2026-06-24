@@ -966,9 +966,9 @@ function wireTreeDnD(){
 }
 function buildBulkControls(){            // (re)fill the bar's dropdowns from loaded project data
   const st=$('bulk_state');if(st){st.innerHTML='<option value="">State…</option>'+
-    (projectStates.length?projectStates:['New','Active','Resolved','Closed','Removed']).map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');}
+    (projectStates.length?projectStates:['New','Active','Resolved','Closed','Removed']).map(s=>`<option value="${htmlEsc(s)}">${htmlEsc(s)}</option>`).join('');}
   const it=$('bulk_iter');if(it){it.innerHTML='<option value="">Sprint…</option>'+
-    sprintPaths.map(p=>`<option value="${esc(p)}">${esc(sprintNames[p]||p)}</option>`).join('');}
+    sprintPaths.map(p=>`<option value="${htmlEsc(p)}">${htmlEsc(sprintNames[p]||p)}</option>`).join('');}
 }
 function syncSidebarField(field, ids) {
   if (cur == null || !ids.includes(cur)) return;
@@ -1039,7 +1039,7 @@ async function bulkApply(field,val){
   };
   const displayName = fieldNamesMap[field] || field;
 
-  let htmlVal = `<span class="tagchip" style="background:var(--accent); margin:0 4px; display:inline-flex; vertical-align:middle; font-weight:600; border-radius:14px; padding:3px 10px; color:#fff;">${esc(labelVal)}</span>`;
+  let htmlVal = `<span class="tagchip" style="background:var(--accent); margin:0 4px; display:inline-flex; vertical-align:middle; font-weight:600; border-radius:14px; padding:3px 10px; color:#fff;">${htmlEsc(labelVal)}</span>`;
   let itemsListHtml = '<div style="margin-top:10px; max-height:150px; overflow-y:auto; border:1px solid var(--line); border-radius:6px; padding:8px; background:var(--panel2); text-align:left;">';
   ids.forEach(id => {
     const node = store.nodes[id];
@@ -1048,12 +1048,12 @@ async function bulkApply(field,val){
     itemsListHtml += `<div style="margin-bottom:6px; font-size:12px; display:flex; align-items:center; gap:6px;">` +
       `<i class="dot" style="background:${tyColor(type)}"></i>` +
       `<span style="color:var(--muted); font-weight:600; flex:none;">#${id}</span>` +
-      `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--txt);">${esc(title)}</span>` +
+      `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--txt);">${htmlEsc(title)}</span>` +
       `</div>`;
   });
   itemsListHtml += '</div>';
 
-  const msg = `Apply <strong style="color:var(--txt); font-weight:700;">${esc(displayName)}</strong> = ${htmlVal} to ${ids.length} item(s):` + itemsListHtml;
+  const msg = `Apply <strong style="color:var(--txt); font-weight:700;">${htmlEsc(displayName)}</strong> = ${htmlVal} to ${ids.length} item(s):` + itemsListHtml;
   if(!await customConfirm(msg, 'Bulk Apply')) {
     syncBulkBarValues();
     return;
@@ -1712,7 +1712,7 @@ async function renderGraph(opts){
 }
 
 /* ---------- board (sprints) ---------- */
-const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+
 // ISO date/datetime -> "30 May 2026" (UTC, so it never drifts a day across timezones)
 function prettyDate(s){if(!s)return '';const m=String(s).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return String(s).slice(0,10);
   return (+m[3])+' '+new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).toLocaleString('en-US',{month:'short',timeZone:'UTC'})+' '+m[1];}
@@ -1786,8 +1786,8 @@ async function renderBoard(){
         ?''
         :`<small>${(it.start||'').slice(0,10)}→${(fin||'').slice(0,10)}</small>`)
       :'';
-    const pinBtn=k!=='__none__'?`<button class="pin-btn${isPinned?' pinned':''}" data-path="${esc(k)}" title="${isPinned?'Unpin column':'Pin column'}">📌</button>`:'';
-    h.innerHTML=(k==='__none__'?'No sprint':`${esc(it.name)} ${dateBadge} ${pinBtn}`)+'<br>'+colMeta(colItems);
+    const pinBtn=k!=='__none__'?`<button class="pin-btn${isPinned?' pinned':''}" data-path="${htmlEsc(k)}" title="${isPinned?'Unpin column':'Pin column'}">📌</button>`:'';
+    h.innerHTML=(k==='__none__'?'No sprint':`${htmlEsc(it.name)} ${dateBadge} ${pinBtn}`)+'<br>'+colMeta(colItems);
     if(k!=='__none__'){
       h.style.cursor='pointer';h.title='open sprint timeline';
       h.addEventListener('click',(e)=>{
@@ -1827,7 +1827,7 @@ function renderBoardByAssignee(el,items){
     const arr=groups.get(k)||[];
     const col=document.createElement('div');col.className='bcol';
     const h=document.createElement('div');h.className='bhead';
-    h.innerHTML=(k?esc(k):'Unassigned')+'<br>'+colMeta(arr);
+    h.innerHTML=(k?htmlEsc(k):'Unassigned')+'<br>'+colMeta(arr);
     const wrap=document.createElement('div');wrap.className='bcards';
     arr.forEach(n=>wrap.appendChild(boardCard(n,null,'')));   // no overdue colouring in assignee view
     if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
@@ -1851,7 +1851,7 @@ function renderBoardByState(el,items){
     const arr=groups.get(k)||[];
     const col=document.createElement('div');col.className='bcol';
     const h=document.createElement('div');h.className='bhead';
-    h.innerHTML=(k?`<span class="sbadge" style="background:${stateColor(k)}">${esc(k)}</span>`:'(no state)')+'<br>'+colMeta(arr);
+    h.innerHTML=(k?`<span class="sbadge" style="background:${stateColor(k)}">${htmlEsc(k)}</span>`:'(no state)')+'<br>'+colMeta(arr);
     const wrap=document.createElement('div');wrap.className='bcards';
     arr.forEach(n=>wrap.appendChild(boardCard(n,null,today)));   // overdue colouring by target date
     if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
@@ -1875,14 +1875,14 @@ function boardCard(n,finish,today){
     const ts=tagList_(n.tags);if(!ts.length)return '';
     const show=ts.slice(0,4),extra=ts.length-show.length;
     return `<div class="btags">`+
-      show.map(t=>`<span class="ttag" style="background:${personColor(t)}" title="${esc(t)}">${esc(t)}</span>`).join('')+
-      (extra>0?`<span class="ttag" style="background:var(--muted)" title="${esc(ts.slice(4).join(', '))}">+${extra}</span>`:'')+
+      show.map(t=>`<span class="ttag" style="background:${personColor(t)}" title="${htmlEsc(t)}">${htmlEsc(t)}</span>`).join('')+
+      (extra>0?`<span class="ttag" style="background:var(--muted)" title="${htmlEsc(ts.slice(4).join(', '))}">+${extra}</span>`:'')+
       `</div>`;
   })();
-  c.innerHTML=`<div class="bttl">${showAssigned&&n.assigned?personChipT(n.assigned):''}<span class="btxt">#${n.id} ${esc(n.title)}</span></div>`+
-    `<div class="bmeta">`+(showType?`<span>${esc(n.type)}</span>`:'')+
+  c.innerHTML=`<div class="bttl">${showAssigned&&n.assigned?personChipT(n.assigned):''}<span class="btxt">#${n.id} ${htmlEsc(n.title)}</span></div>`+
+    `<div class="bmeta">`+(showType?`<span>${htmlEsc(n.type)}</span>`:'')+
     (showPrio&&n.priority?`<span class="prio" style="background:${prioColor(n.priority)}">P${n.priority}</span>`:'')+
-    (showState?`<span>${esc(n.state)}</span>`:'')+(overdue?'<span class="od">overdue</span>':'')+`</div>`+
+    (showState?`<span>${htmlEsc(n.state)}</span>`:'')+(overdue?'<span class="od">overdue</span>':'')+`</div>`+
     tagsHtml+
     (showEst?`<div class="bfoot">`+(n.est!=null?`<div class="tbar"><div class="tfill"></div></div>`:'')+
       `<span class="tlabel">${n.est!=null?'est '+(+n.est)+'h':'⏱ …'}</span></div>`:'');
@@ -1986,7 +1986,7 @@ function renderSprint(path){
   const top=document.createElement('div');top.className='gtop';
   const curMark=isCurrentSprint(it)?`<span class="curdot" title="current sprint"></span>`:'';
   top.innerHTML=`<button class="btn" id="g_back" title="back to board">←</button>`+
-    `<span style="display:inline-flex;align-items:center;gap:6px">${curMark}<b>${esc(it.name)}</b></span> <span style="color:var(--muted)">${it.start.slice(0,10)} → ${it.finish.slice(0,10)} · ${items.length} items`+
+    `<span style="display:inline-flex;align-items:center;gap:6px">${curMark}<b>${htmlEsc(it.name)}</b></span> <span style="color:var(--muted)">${it.start.slice(0,10)} → ${it.finish.slice(0,10)} · ${items.length} items`+
     `${se?' · Σest '+(Math.round(se*10)/10)+'h':''} · <span id="g_act">Σ⏱ …</span></span>`+
     (canEditSprint?`<button class="btn" id="g_editdates" title="edit sprint dates">✎ dates</button>`:'')+
     `<button class="btn${sprintGroup==='assignee'?' on':''}" id="g_group" title="group rows by assignee" style="margin-left:auto">by assignee</button>`;
@@ -2028,7 +2028,7 @@ function renderSprint(path){
       const arr=groups.get(k).sort(cmpBySort);
       const ge=arr.reduce((s,n)=>s+(n.est||0),0);
       const gh=document.createElement('div');gh.className='ggroup';gh.dataset.group=k;
-      gh.innerHTML=`<span>${k?esc(k):'Unassigned'} · ${arr.length}${ge?' · Σest '+(Math.round(ge*10)/10)+'h':''}</span><span class="gact">⏱ …</span>`;
+      gh.innerHTML=`<span>${k?htmlEsc(k):'Unassigned'} · ${arr.length}${ge?' · Σest '+(Math.round(ge*10)/10)+'h':''}</span><span class="gact">⏱ …</span>`;
       el.appendChild(gh);
       arr.forEach(n=>{const r=mkRow(n);r.dataset.group=k;el.appendChild(r);});
     });
@@ -2126,7 +2126,7 @@ async function renderTimeline(){
   const months=tlMonths(r0,r1);
   let axis='',grid='';
   months.forEach(m=>{const l=xOf(m.start),w=Math.round(((m.end-m.start)/TL_DAY+1)*px);
-    axis+=`<div class="tlmonth" style="left:${l}px;width:${w}px">${esc(m.label)}</div>`;
+    axis+=`<div class="tlmonth" style="left:${l}px;width:${w}px">${htmlEsc(m.label)}</div>`;
     grid+=`<div class="tlvline" style="left:${l}px"></div>`;});
   if(tlZoom!=='month'){let d=r0-((new Date(r0).getUTCDay()+6)%7)*TL_DAY;   // week lines (Mondays)
     for(;d<=r1;d+=7*TL_DAY)if(d>=r0)grid+=`<div class="tlvline wk" style="left:${xOf(d)}px"></div>`;}
@@ -2149,17 +2149,17 @@ async function renderTimeline(){
   const showTlPrio=badgeOn('priority','timeline'),showTlState=badgeOn('state','timeline'),showTlAsg=badgeOn('assigned','timeline');
   const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${tyColor(n.type)}"></i>`+
     (showTlAsg&&n.assigned?personChipT(n.assigned):'')+
-    `<span class="tllab">#${n.id} ${esc(n.title)}</span>`+
-    (showTlState&&n.state?`<span class="sbadge tlst" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'')+
+    `<span class="tllab">#${n.id} ${htmlEsc(n.title)}</span>`+
+    (showTlState&&n.state?`<span class="sbadge tlst" style="background:${stateColor(n.state)}">${htmlEsc(n.state)}</span>`:'')+
     `</div>`;
   // sp (optional) = the group's sprint window {s,e}; bars outside it are flagged.
   const rowHTML=(n,sp)=>{const t=n._tl,oos=sp&&(t.s<sp.s||t.e>sp.e);
     const tip=`${n.start?prettyDate(n.start):(t.soft?'sprint start':'?')} → ${(n.target||n.due)?prettyDate(n.target||n.due):(t.soft?'sprint finish':'?')}`+(oos?'  ⚠ dates fall outside the sprint':'');
     const prefix=(showTlPrio&&n.priority)?('P'+n.priority+' '):'';
-    return `<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${esc(tip)}">${esc(prefix)}#${n.id} ${esc(n.title)}</div></div></div>`;};
+    return `<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${htmlEsc(tip)}">${htmlEsc(prefix)}#${n.id} ${htmlEsc(n.title)}</div></div></div>`;};
   const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
   const groupHead=(k,arr,sp)=>{
-    let label=esc(k)+' · '+arr.length,track;
+    let label=htmlEsc(k)+' · '+arr.length,track;
     if(sp){                                          // sprint grouping: draw the sprint's own date span as a reference line
       label+=`  (${ymd(sp.s)} → ${ymd(sp.e)})`;
       track=`<div class="tlsprintspan" style="left:${xOf(sp.s)}px;width:${wOf(sp.s,sp.e)}px" title="sprint window ${prettyDate(ymd(sp.s))} → ${prettyDate(ymd(sp.e))}"></div>`;
@@ -2244,7 +2244,7 @@ function renderViewHelp(){
   const hasFields=!!(BADGE_FIELDS_BY_VIEW[mode]&&BADGE_FIELDS_BY_VIEW[mode].length);
   const gear=hasFields?`<button class="vhbadge" id="vhbadge" title="show / hide fields on this view">⚙</button>`:'';
   box.innerHTML=`<div class="vhh" id="vhh">${gear}<span class="vhctrl">${collapsed?'▸':'▾'} Controls</span></div>`+
-    `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${esc(r[0])}</span><span class="vk">${esc(r[1])}</span><span class="vd">${esc(r[2])}</span></div>`).join('')+
+    `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${htmlEsc(r[0])}</span><span class="vk">${htmlEsc(r[1])}</span><span class="vd">${htmlEsc(r[2])}</span></div>`).join('')+
     `<div class="vhnote">selecting items opens the bulk-edit bar</div></div>`;
   // Clicking the "Controls" label collapses/expands; the gear is its own button.
   $('vhh').querySelector('.vhctrl').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
@@ -2266,8 +2266,8 @@ function renderBadgePanel(){
     if (window.LayerManager) window.LayerManager.close(p);
     return;
   }
-  let html=`<div class="bph">${esc(BADGE_PANEL_HEADER[view]||'Show')}</div>`+
-    fields.map(f=>`<label><input type="checkbox" data-k="${f.key}"${badgeOn(f.key,view)?' checked':''}> ${esc(f.label)}</label>`).join('');
+  let html=`<div class="bph">${htmlEsc(BADGE_PANEL_HEADER[view]||'Show')}</div>`+
+    fields.map(f=>`<label><input type="checkbox" data-k="${f.key}"${badgeOn(f.key,view)?' checked':''}> ${htmlEsc(f.label)}</label>`).join('');
   if(view==='graph'){
     html+=`<div class="bp-divider" style="margin:8px 0 6px;border-top:1px dashed var(--border)"></div>`+
       `<div class="bp-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0">`+
@@ -2501,7 +2501,7 @@ function renderAttachments(){
     const size=a.size!=null?fmtBytes(a.size):'';
     return `<div class="atchrow" data-i="${i}">`+
       `<span class="aico">${icon}</span>`+
-      `<a class="aname" href="#" title="${esc(a.url)}">${esc(a.name)}</a>`+
+      `<a class="aname" href="#" title="${htmlEsc(a.url)}">${htmlEsc(a.name)}</a>`+
       (size?`<span class="asize">${size}</span>`:'')+
       `<button class="ains" title="insert ${isImageName(a.name)?'image':'link'} into the description">↩ insert</button>`+
       `<button class="axdel" title="remove attachment">✕</button>`+
@@ -2587,8 +2587,8 @@ function drawMention(){
   if(!mentionState.rows.length){p.innerHTML='<div class="mempty">no matches — keep typing</div>';return;}
   p.innerHTML=mentionState.rows.map((r,i)=>
     `<div class="mrow${i===mentionState.idx?' on':''}" data-i="${i}">`+
-      `<span class="mname">${esc(r.displayName)}${r.isGroup?' <span class="pcnone">(group)</span>':''}</span>`+
-      (r.mail?`<span class="mmail">${esc(r.mail)}</span>`:'')+
+      `<span class="mname">${htmlEsc(r.displayName)}${r.isGroup?' <span class="pcnone">(group)</span>':''}</span>`+
+      (r.mail?`<span class="mmail">${htmlEsc(r.mail)}</span>`:'')+
     `</div>`).join('');
   p.querySelectorAll('.mrow').forEach(r=>{
     r.onmousedown=e=>{e.preventDefault();mentionState.idx=+r.dataset.i;pickMention();};
@@ -2845,7 +2845,7 @@ async function loadTimeline(id){
     legend.innerHTML = ent.map(([s, sec]) => 
       `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11px;">` +
         `<span style="width:6px; height:6px; border-radius:50%; background:${stateColor(s)}; display:inline-block;"></span>` +
-        `<span style="color:var(--muted);">${esc(s)}:</span>` +
+        `<span style="color:var(--muted);">${htmlEsc(s)}:</span>` +
         `<b>${fmtDur(sec)}</b>` +
       `</span>`
     ).join('');
@@ -2859,7 +2859,7 @@ async function loadTimeline(id){
     list.style.alignItems = 'center';
     list.style.width = '100%';
     list.innerHTML = ent.map(([s, sec]) =>
-      `<span><span class="sbadge" style="background:${stateColor(s)};font-size:9px">${esc(s)}</span> <b>${fmtDur(sec)}</b></span>`
+      `<span><span class="sbadge" style="background:${stateColor(s)};font-size:9px">${htmlEsc(s)}</span> <b>${fmtDur(sec)}</b></span>`
     ).join('');
     el.appendChild(list);
   }
@@ -2887,8 +2887,8 @@ async function toggleSidebarKids(id,btn){
   const nodes=kids.map(k=>store.nodes[k]).filter(Boolean);
   if(!nodes.length){box.innerHTML='<div class="kidmsg">(no children)</div>';return;}
   box.innerHTML=nodes.map(k=>`<a class="kidrow" data-id="${k.id}"><i class="dot" style="background:${tyColor(k.type)}"></i>`+
-    `<span class="kidttl">#${k.id} ${esc(k.title||'')}</span>`+
-    (k.state?`<span class="kidstate" style="background:${stateColor(k.state)}">${esc(k.state)}</span>`:'')+`</a>`).join('');
+    `<span class="kidttl">#${k.id} ${htmlEsc(k.title||'')}</span>`+
+    (k.state?`<span class="kidstate" style="background:${stateColor(k.state)}">${htmlEsc(k.state)}</span>`:'')+`</a>`).join('');
   box.querySelectorAll('.kidrow').forEach(r=>r.onclick=()=>openItem(+r.dataset.id));
 }
 function optionsPickerProvider(optionsList, placeholder) {
@@ -2910,7 +2910,7 @@ function optionsPickerProvider(optionsList, placeholder) {
       filtered.forEach(opt => {
         out.push({
           value: String(opt),
-          html: `<span class="ptitle">${esc(opt || '—')}</span>`
+          html: `<span class="ptitle">${htmlEsc(opt || '—')}</span>`
         });
       });
 
@@ -2918,7 +2918,7 @@ function optionsPickerProvider(optionsList, placeholder) {
       if (query && !filtered.some(opt => String(opt).toLowerCase() === queryLower)) {
         out.push({
           value: query,
-          html: `<span class="ptitle" style="font-style: italic;">Use custom: "${esc(query)}"</span>`
+          html: `<span class="ptitle" style="font-style: italic;">Use custom: "${htmlEsc(query)}"</span>`
         });
       }
 
@@ -2928,7 +2928,7 @@ function optionsPickerProvider(optionsList, placeholder) {
       if (!v) {
         card.innerHTML = `<span class="pcnone">${placeholder || '(no value)'}</span>`;
       } else {
-        card.innerHTML = `<span class="pctitle">${esc(v)}</span>`;
+        card.innerHTML = `<span class="pctitle">${htmlEsc(v)}</span>`;
       }
     }
   };
@@ -3042,8 +3042,8 @@ function setupDynamicDatePicker(elId, referenceName, initialVal) {
 function renderSidebarHeader(d) {
   const hdr = $('s_hdr');
   if (!hdr) return;
-  hdr.innerHTML=`<i class="dot" style="background:${tyColor(d.type)}"></i>#${d.id} ${esc(d.type)}`+
-    ` <span class="sbadge" style="background:${stateColor(d.state)}">${esc(d.state)}</span>`+
+  hdr.innerHTML=`<i class="dot" style="background:${tyColor(d.type)}"></i>#${d.id} ${htmlEsc(d.type)}`+
+    ` <span class="sbadge" style="background:${stateColor(d.state)}">${htmlEsc(d.state)}</span>`+
     `<span id="s_rev" style="color:var(--muted);font-weight:400;font-size:11px;margin-left:4px;">${d.rev ? 'rev' + d.rev : ''}</span>`;
 }
 
@@ -3500,7 +3500,7 @@ async function openItem(id){
       const div = document.createElement('div');
       div.className = 'sgroup';
       div.dataset.sg = sgId;
-      div.innerHTML = `<label>${esc(cf.name)}</label>`;
+      div.innerHTML = `<label>${htmlEsc(cf.name)}</label>`;
 
       const type = (cf.type || '').toLowerCase();
       let input;
@@ -4066,7 +4066,7 @@ function renderDeps(){
   const chip=(id,dir)=>{
     const n=store.nodes[id];
     const ty=n?tyColor(n.type):'#95a5a6';
-    const ttl=n?esc(n.title||''):'';
+    const ttl=n?htmlEsc(n.title||''):'';
     return `<span class="depchip"><i class="dot" style="background:${ty}"></i>`+
       `<a class="depopen" data-id="${id}">#${id}</a>`+
       (ttl?`<span class="depttl">${ttl}</span>`:'')+
@@ -4263,7 +4263,7 @@ function registerNewTags(tagsStr) {
   if (changed) {
     tagList.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     const dl = $('tagsdl');
-    if (dl) dl.innerHTML = tagList.map(x => `<option value="${esc(x)}">`).join('');
+    if (dl) dl.innerHTML = tagList.map(x => `<option value="${htmlEsc(x)}">`).join('');
     renderFilters();
   }
 }
@@ -4279,110 +4279,6 @@ function getWorkDayHours() {
     }
   } catch (e) {}
   return Math.max(1, we - ws);
-}
-
-function timeExprToMath(str, workHours) {
-  const weekHours = workHours * 5;
-  let res = str.toLowerCase();
-  res = res.replace(/(\d+(?:\.\d+)?)\s*w/g, '($1 * ' + weekHours + ')');
-  res = res.replace(/(\d+(?:\.\d+)?)\s*d/g, '($1 * ' + workHours + ')');
-  res = res.replace(/(\d+(?:\.\d+)?)\s*h/g, '($1 * 1)');
-  return res;
-}
-
-function evaluateMath(str) {
-  let pos = 0;
-  let hasError = false;
-  
-  function consume(char) {
-    if (str[pos] === char) {
-      pos++;
-      return true;
-    }
-    return false;
-  }
-  
-  function skipWhitespace() {
-    while (pos < str.length && /\s/.test(str[pos])) {
-      pos++;
-    }
-  }
-  
-  function parseExpression() {
-    let val = parseTerm();
-    skipWhitespace();
-    while (pos < str.length) {
-      if (consume('+')) {
-        val += parseTerm();
-      } else if (consume('-')) {
-        val -= parseTerm();
-      } else {
-        break;
-      }
-      skipWhitespace();
-    }
-    return val;
-  }
-  
-  function parseTerm() {
-    let val = parseFactor();
-    skipWhitespace();
-    while (pos < str.length) {
-      if (consume('*')) {
-        val *= parseFactor();
-      } else if (consume('/')) {
-        const den = parseFactor();
-        if (den === 0) {
-          hasError = true;
-          val = 0;
-        } else {
-          val /= den;
-        }
-      } else {
-        break;
-      }
-      skipWhitespace();
-    }
-    return val;
-  }
-  
-  function parseFactor() {
-    skipWhitespace();
-    if (consume('(')) {
-      const val = parseExpression();
-      skipWhitespace();
-      if (!consume(')')) {
-        hasError = true;
-      }
-      return val;
-    }
-    
-    let start = pos;
-    if (str[pos] === '-' || str[pos] === '+') {
-      pos++;
-    }
-    while (pos < str.length && (/[0-9.]/.test(str[pos]))) {
-      pos++;
-    }
-    if (start === pos) {
-      hasError = true;
-      pos++; // Avoid infinite loop
-      return NaN;
-    }
-    const numStr = str.substring(start, pos);
-    const val = parseFloat(numStr);
-    if (isNaN(val)) {
-      hasError = true;
-      return NaN;
-    }
-    return val;
-  }
-  
-  const result = parseExpression();
-  if (hasError || isNaN(result) || pos < str.length) {
-    return NaN;
-  }
-  return result;
 }
 
 function formatTimePreview(str) {
@@ -5224,11 +5120,11 @@ function renderActivity(cs,hs){
     ` : '';
     
     h += `
-      <div class="comment-card" data-cid="${c.id}" data-raw-markdown="${esc(c.text)}">
-        <div class="comment-avatar" style="background:${avColor}">${esc(initials)}</div>
+      <div class="comment-card" data-cid="${c.id}" data-raw-markdown="${htmlEsc(c.text)}">
+        <div class="comment-avatar" style="background:${avColor}">${htmlEsc(initials)}</div>
         <div class="comment-main">
           <div class="comment-header">
-            <span class="comment-author">${esc(c.by)}</span>
+            <span class="comment-author">${htmlEsc(c.by)}</span>
             <span class="comment-time">${fd(c.date)}</span>
             <div class="comment-actions">
               <button type="button" class="c-action-btn copylink-btn" title="Copy link to comment" data-cid="${c.id}">🔗</button>
@@ -5256,10 +5152,10 @@ function renderActivity(cs,hs){
   hs.forEach(u => {
     const chg = u.changes.map(c => `
       <div class="achg-row">
-        <span class="achg-field">${esc(c.field)}:</span>
-        <span class="achg-from">${esc(String(c.from)||'∅')}</span>
+        <span class="achg-field">${htmlEsc(c.field)}:</span>
+        <span class="achg-from">${htmlEsc(String(c.from)||'∅')}</span>
         <span class="achg-arrow">→</span>
-        <span class="achg-to">${esc(String(c.to)||'∅')}</span>
+        <span class="achg-to">${htmlEsc(String(c.to)||'∅')}</span>
       </div>
     `).join('');
     
@@ -5268,7 +5164,7 @@ function renderActivity(cs,hs){
         <div class="history-avatar">🔧</div>
         <div class="history-main">
           <div class="history-header">
-            <span class="history-author">${esc(u.by)}</span>
+            <span class="history-author">${htmlEsc(u.by)}</span>
             <span class="history-time">${fd(u.date)}</span>
           </div>
           <div class="history-changes">${chg}</div>
@@ -5942,7 +5838,7 @@ function fillTypeSelect(id,preferred){
   sel.value=names.includes(prev)?prev:(names.includes(preferred)?preferred:(names[0]||''));
 }
 
-function buildLegend(){$('legend').innerHTML=typeNames().map(k=>`<span><i style="background:${tyColor(k)}"></i>${esc(k)}</span>`).join('');}
+function buildLegend(){$('legend').innerHTML=typeNames().map(k=>`<span><i style="background:${tyColor(k)}"></i>${htmlEsc(k)}</span>`).join('');}
 
 /* ---------- export the current (filtered) view ---------- */
 const EXPORT_COLS=['id','type','title','state','assigned','priority','iteration','parent','start','target','est','tags'];
@@ -6079,8 +5975,8 @@ function drawPalette(){
   const list=$('palette-list');
   if(!palItems.length){list.innerHTML='<div class="prow"><span class="ptitle" style="color:var(--muted)">no matches</span></div>';return;}
   list.innerHTML=palItems.map((it,i)=>{
-    const badge=it.state?`<span class="pbadge" style="background:${stateColor(it.state)}">${esc(it.state)}</span>`:'';
-    return `<div class="prow${i===palIdx?' on':''}" data-i="${i}"><span class="pkind">${esc(it.kind)}</span><span class="ptitle">${esc(it.title)}</span>${badge}</div>`;
+    const badge=it.state?`<span class="pbadge" style="background:${stateColor(it.state)}">${htmlEsc(it.state)}</span>`:'';
+    return `<div class="prow${i===palIdx?' on':''}" data-i="${i}"><span class="pkind">${htmlEsc(it.kind)}</span><span class="ptitle">${htmlEsc(it.title)}</span>${badge}</div>`;
   }).join('');
   list.querySelectorAll('.prow[data-i]').forEach(r=>{
     r.onclick=()=>{palIdx=+r.dataset.i;runPalette();};
@@ -6269,7 +6165,7 @@ async function updateProjectBadge(){
   try{const c=await api.getConfig();org=c.org||'';project=c.project||'';}catch(e){}
   if(!project){el.style.display='none';return;}
   el.style.display='inline-flex';
-  el.innerHTML=(org?`<span class="pb-org">${esc(org)}</span><span class="pb-sep">/</span>`:'')+`<span class="pb-proj">${esc(project)}</span>`;
+  el.innerHTML=(org?`<span class="pb-org">${htmlEsc(org)}</span><span class="pb-sep">/</span>`:'')+`<span class="pb-proj">${htmlEsc(project)}</span>`;
   el.title=`Current project: ${org?org+' / ':''}${project} — click to switch`;
 }
 async function updatePatBadge(){
@@ -6862,7 +6758,7 @@ function applySideLayout(wtype) {
       
       const hdrEl = document.createElement('div');
       hdrEl.className = 'sg-group-hdr';
-      hdrEl.innerHTML = `<span class="toggle-arrow">▼</span> <span class="title-text">${esc(node.title)}</span>`;
+      hdrEl.innerHTML = `<span class="toggle-arrow">▼</span> <span class="title-text">${htmlEsc(node.title)}</span>`;
       groupEl.appendChild(hdrEl);
       
       const bodyEl = document.createElement('div');
@@ -7100,7 +6996,7 @@ async function showCustomize(){
     chipsCont.innerHTML = types.map(t => {
       const label = t || 'All Types';
       const active = (czWType || '') === t ? ' class="type-chip on"' : ' class="type-chip"';
-      return `<button data-wtype="${t}"${active}>${esc(label)}</button>`;
+      return `<button data-wtype="${t}"${active}>${htmlEsc(label)}</button>`;
     }).join('');
 
     chipsCont.querySelectorAll('button').forEach(btn => {
@@ -7226,7 +7122,7 @@ function renderToolboxFields() {
   
   container.innerHTML = unused.map(g => {
     return `<div class="cz-toolbox-item" draggable="true" data-type="field" data-ref="${g.id}">` +
-      `<span class="grip">${getIconForField(g)}</span> ${esc(g.label || g.id)}</div>`;
+      `<span class="grip">${getIconForField(g)}</span> ${htmlEsc(g.label || g.id)}</div>`;
   }).join('');
   
   container.querySelectorAll('.cz-toolbox-item').forEach(item => {
@@ -7390,7 +7286,7 @@ function getMockFieldHtml(fieldId, label) {
       if (hasAllowedValues) {
         const firstVal = foundGroup.allowedValues[0] || 'Option 1';
         return `<div class="btn pcard" style="width:100%; pointer-events:none; border:1px solid var(--line); background:var(--panel2); height:2.462rem; margin:0; display:flex; align-items:center; padding:0.385rem 0.692rem;">
-          <div class="pctitle" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.923rem; color:var(--txt);">${esc(firstVal)}</div>
+          <div class="pctitle" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.923rem; color:var(--txt);">${htmlEsc(firstVal)}</div>
           <span style="color:var(--muted); font-size:10px; margin-left:4px;">▼</span>
         </div>`;
       }
@@ -7406,7 +7302,7 @@ function getMockFieldHtml(fieldId, label) {
     }
     return `<input type="text" placeholder="[Custom Field Value]" style="${inputStyle}">`;
   }
-  return `<input type="text" placeholder="[${esc(label)}]" style="${inputStyle}">`;
+  return `<input type="text" placeholder="[${htmlEsc(label)}]" style="${inputStyle}">`;
 }
 
 function renderCanvas() {
@@ -7433,7 +7329,7 @@ function renderCanvas() {
       const locked = SIDE_LOCKED.has(fieldId);
       const grip = '⠿';
       
-      el.innerHTML = `<div class="field-lbl">${grip} ${esc(label)}</div>` +
+      el.innerHTML = `<div class="field-lbl">${grip} ${htmlEsc(label)}</div>` +
         `<div class="field-mock-wrapper" style="margin-top:0.385rem; width:100%;">${getMockFieldHtml(fieldId, label)}</div>` +
         (locked ? '' : `<button class="cz-del-btn" title="Remove field">✕</button>`);
       
@@ -7466,7 +7362,7 @@ function renderCanvas() {
       
       el.innerHTML = `<div class="sg-group-hdr">` +
         `<span class="toggle-arrow">▼</span>` +
-        `<span class="title-text" contenteditable="true" style="outline:none; border-bottom:1px dashed var(--muted);">${esc(node.title)}</span>` +
+        `<span class="title-text" contenteditable="true" style="outline:none; border-bottom:1px dashed var(--muted);">${htmlEsc(node.title)}</span>` +
         `</div>` +
         `<div class="sg-group-body cz-preview-col" data-col-parent-id="${node.id}"></div>` +
         `<button class="cz-del-btn" title="Delete group">✕</button>`;
@@ -7588,7 +7484,7 @@ function renderCanvas() {
       el.dataset.layoutId = node.id;
       el.setAttribute('draggable', 'true');
       
-      el.innerHTML = `<span class="lbl-txt" contenteditable="true" style="outline:none; border-bottom:1px dashed var(--muted);">${esc(node.text || 'Custom Text')}</span>` +
+      el.innerHTML = `<span class="lbl-txt" contenteditable="true" style="outline:none; border-bottom:1px dashed var(--muted);">${htmlEsc(node.text || 'Custom Text')}</span>` +
         `<button class="cz-del-btn" title="Remove block">✕</button>`;
       
       const txtSpan = el.querySelector('.lbl-txt');
@@ -7968,7 +7864,7 @@ function renderCustomizeList(){
     const locked=cfg.locked.has(id),checked=!cfg.isHidden(id);
     const grip=locked?'<span class="czgrip disabled" title="locked field">🔒</span>':'<span class="czgrip" title="drag to reorder">⠿</span>';
     return `<div class="czrow${locked?' locked':''}" draggable="${!locked}" data-id="${id}">${grip}`+
-      `<label class="czlab"><input type="checkbox" ${checked?'checked':''} ${locked?'disabled':''} data-id="${id}">${esc(byId[id] || id)}</label></div>`;
+      `<label class="czlab"><input type="checkbox" ${checked?'checked':''} ${locked?'disabled':''} data-id="${id}">${htmlEsc(byId[id] || id)}</label></div>`;
   }).join('');
   
   list.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
@@ -8661,7 +8557,7 @@ async function loadFilterData(){
       const all=[];per.forEach(arr=>arr.forEach(s=>{if(!all.includes(s))all.push(s);}));
       projectStates=all.length?orderStates(all):[];
     }catch(e){projectStates=[];}})(),
-    (async()=>{try{tagList=await api.tags();$('tagsdl').innerHTML=tagList.map(x=>`<option value="${esc(x)}">`).join('');}catch(e){tagList=[];}})(),
+    (async()=>{try{tagList=await api.tags();$('tagsdl').innerHTML=tagList.map(x=>`<option value="${htmlEsc(x)}">`).join('');}catch(e){tagList=[];}})(),
     (async()=>{try{const its=await getIterations();sprintPaths=its.map(i=>i.path);
       sprintNames={};its.forEach(i=>{sprintNames[i.path]=i.name;});}
       catch(e){sprintPaths=[];sprintNames={};}})(),

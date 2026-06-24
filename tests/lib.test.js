@@ -147,7 +147,9 @@ test("buildClauses: FilterIR UNDER / NOT UNDER", () => {
       ]
     }
   };
-  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["([System.State] UNDER 'Area/Path' AND NOT [System.State] UNDER 'Area/Path2')"]);
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
+    "(([System.State] = 'Area/Path' OR [System.State] UNDER 'Area/Path') AND ([System.State] <> 'Area/Path2' AND [System.State] NOT UNDER 'Area/Path2'))"
+  ]);
 });
 
 test("buildClauses: FilterIR UNDER / NOT UNDER with arrays", () => {
@@ -161,7 +163,9 @@ test("buildClauses: FilterIR UNDER / NOT UNDER with arrays", () => {
       ]
     }
   };
-  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["(([System.State] UNDER 'Area/Path' OR [System.State] UNDER 'Area/Path2') AND (NOT [System.State] UNDER 'Area/Path3' AND NOT [System.State] UNDER 'Area/Path4'))"]);
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
+    "((([System.State] = 'Area/Path' OR [System.State] UNDER 'Area/Path') OR ([System.State] = 'Area/Path2' OR [System.State] UNDER 'Area/Path2')) AND (([System.State] <> 'Area/Path3' AND [System.State] NOT UNDER 'Area/Path3') AND ([System.State] <> 'Area/Path4' AND [System.State] NOT UNDER 'Area/Path4')))"
+  ]);
 });
 
 test("buildClauses: FilterIR operators >, <, >=, <=", () => {
@@ -177,9 +181,7 @@ test("buildClauses: FilterIR operators >, <, >=, <=", () => {
       ]
     }
   };
-  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
-    "([Microsoft.VSTS.Common.Priority] > 1 AND [Microsoft.VSTS.Common.Priority] < 5 AND [Microsoft.VSTS.Common.Priority] >= 2 AND [Microsoft.VSTS.Common.Priority] <= 4)"
-  ]);
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["([Microsoft.VSTS.Common.Priority] > 1 OR [Microsoft.VSTS.Common.Priority] < 5 OR [Microsoft.VSTS.Common.Priority] >= 2 OR [Microsoft.VSTS.Common.Priority] <= 4)"]);
 });
 
 test("buildClauses: FilterIR values are WIQL-escaped", () => {
@@ -636,6 +638,14 @@ test("FilterManager: onChange listener and unsubscribe", () => {
   unsubscribe();
   fm.toggleChip("state", "New", "in");
   assert.strictEqual(count, 1); // should not have incremented
+});
+
+test("timeExprToMath and evaluateMath", () => {
+  assert.strictEqual(lib.evaluateMath(lib.timeExprToMath("1d 4h", 8)), 12);
+  assert.strictEqual(lib.evaluateMath(lib.timeExprToMath("1w 2d 3h", 8)), 59);
+  assert.strictEqual(lib.evaluateMath(lib.timeExprToMath("2d + 4h", 8)), 20);
+  assert.strictEqual(lib.evaluateMath(lib.timeExprToMath("1.5d - 2h", 8)), 10);
+  assert.ok(isNaN(lib.evaluateMath(lib.timeExprToMath("invalid", 8))));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

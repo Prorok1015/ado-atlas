@@ -133,6 +133,63 @@
     return '=';
   }
 
+  const ADO_MACROS = ['@today', '@me', '@currentiteration', '@project', '@empty'];
+
+  function isMacroAllowed(field, macro) {
+    if (!field) return true;
+    const m = macro.toLowerCase();
+    if (m === '@empty') return true;
+
+    const type = getFieldType(field);
+    const rawType = (window.api && window.api.FIELD_REGISTRY && window.api.FIELD_REGISTRY[field]) 
+      ? window.api.FIELD_REGISTRY[field].type : null;
+
+    if (m === '@today') return type === 'datetime';
+    if (m === '@me') return type === 'user' || rawType === 'identity' || field === 'assigned';
+    if (m === '@currentiteration') return field === 'iteration' || rawType === 'tree';
+    if (m === '@project') return field === 'area' || field === 'iteration' || rawType === 'tree';
+    
+    return false;
+  }
+
+  function validateInput(strategy, val, field) {
+    if (!val || typeof val !== 'string') return false;
+    if (val.startsWith('@')) {
+      const match = ADO_MACROS.find(m => val.toLowerCase().startsWith(m));
+      if (!match) return false;
+      return isMacroAllowed(field, match);
+    }
+
+    if (strategy === InputStrategies.dateTime) {
+      const ms = Date.parse(val);
+      if (isNaN(ms)) return false;
+      // ADO rejects "2026-". We should ensure it's at least 4 chars.
+      return val.length >= 4;
+    }
+    if (strategy === InputStrategies.numeric) {
+      return !isNaN(Number(val));
+    }
+    if (strategy === InputStrategies.timeMath) {
+      if (!isNaN(Number(val))) return true;
+      try {
+        const mathExpr = window.AdoLib.timeExprToMath(val);
+        const num = window.AdoLib.evaluateMath(mathExpr);
+        return !isNaN(num);
+      } catch (e) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  function triggerInputError(el) {
+    if (!el) return;
+    el.classList.remove('error');
+    void el.offsetWidth;
+    el.classList.add('error');
+    setTimeout(() => el.classList.remove('error'), 400);
+  }
+
   // --- State Mutators ---
   function updateState(mutationFn) {
     if (mutationFn) {
@@ -311,9 +368,10 @@
           `;
         }
         return `
-          <div class="f-dropdown-container fb-date-picker-row" style="position: relative; display: inline-flex; align-items: center;">
+          <div class="f-dropdown-container fb-date-picker-row" style="position: relative; display: inline-flex; align-items: center; gap: 4px;">
             <input type="hidden" id="fb-val-${cardIdx}-${field}">
             <input type="text" class="tag-search" id="fb-val-${cardIdx}-${field}_trigger" placeholder="Add date..." autocomplete="off" style="width: 100px;">
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
             <div id="fb-val-${cardIdx}-${field}_picker" class="drp-popover" style="position: absolute; z-index: 1010;"></div>
           </div>
         `;
@@ -323,6 +381,7 @@
         const baseId = `fb-val-${cardIdx}-${field}`;
         const trigger = document.getElementById(baseId + '_trigger');
         const popover = document.getElementById(baseId + '_picker');
+        const applyBtn = document.getElementById(`fb-apply-btn-${cardIdx}-${field}`);
         if (!trigger || !popover) return;
 
         trigger.onclick = (e) => {
@@ -338,7 +397,7 @@
 
         const onMouseDownDate = (e) => {
           if (popover.classList.contains('show')) {
-            if (!popover.contains(e.target) && !trigger.contains(e.target)) {
+            if (!popover.contains(e.target) && !trigger.contains(e.target) && (!applyBtn || !applyBtn.contains(e.target))) {
               popover.classList.remove('show');
               popover.style.display = '';
               if (window.LayerManager) window.LayerManager.close(popover);
@@ -351,6 +410,48 @@
           addDocListener('mousedown', onMouseDownDate);
         });
 
+        const submitManualDate = () => {
+          const val = trigger.value.trim();
+          if (val) {
+            const parsed = window.AdoLib.parseOperatorValue(val);
+            let dateStr = parsed.value.trim();
+            if (dateStr) {
+              if (!validateInput(InputStrategies.dateTime, dateStr, field)) {
+                triggerInputError(trigger);
+                return;
+              }
+              if (!dateStr.startsWith('@')) {
+                const d = new Date(dateStr);
+                if (!isNaN(d.getTime())) {
+                  dateStr = d.toLocaleDateString('en-US');
+                }
+              }
+              let op = parsed.op;
+              if (op === '=') {
+                op = getDefaultOperator(field);
+              }
+              updateState(() => addCondition(cardIdx, field, op, dateStr));
+              trigger.value = '';
+              popover.classList.remove('show');
+              popover.style.display = '';
+              if (window.LayerManager) window.LayerManager.close(popover);
+            }
+          }
+        };
+
+        if (applyBtn) {
+          applyBtn.onclick = (e) => {
+            e.stopPropagation();
+            submitManualDate();
+          };
+        }
+
+        trigger.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            submitManualDate();
+          }
+        };
+
         new window.DateRangePicker(baseId + '_picker', {
           single: false,
           onChange: (range) => {
@@ -361,8 +462,7 @@
                 if (start === finish) {
                   addCondition(cardIdx, field, '=', start);
                 } else {
-                  addCondition(cardIdx, field, '>=', start);
-                  addCondition(cardIdx, field, '<=', finish);
+                  addCondition(cardIdx, field, 'RANGE', `${start}...${finish}`);
                 }
               });
               trigger.value = '';
@@ -380,18 +480,16 @@
         if (!schemaLoaded) {
           return `
             <div class="f-dropdown-container fb-card-picker-row" style="position: relative; display: inline-flex; align-items: center; gap: 6px;">
-              <button type="button" class="btn pcard" disabled style="font-size: 11px; padding: 2px 8px; min-height: 22px; height: 22px; line-height: 18px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); display: inline-flex; align-items: center; gap: 4px;">
-                <span class="spin" style="width: 8px; height: 8px; border-width: 1px;"></span>Loading schema...
-              </button>
+              <input class="tag-search" placeholder="Loading schema..." disabled autocomplete="off" style="font-size: 11px; padding: 2px 8px; min-height: 22px; height: 22px; line-height: 18px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel);">
+              <span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>
             </div>
           `;
         }
         return `
-          <div class="f-dropdown-container fb-card-picker-row" style="position: relative; display: inline-flex; align-items: center;">
-            <input type="hidden" id="fb-val-${cardIdx}-${field}">
-            <button type="button" class="btn pcard" id="fb-val-${cardIdx}-${field}_card" style="font-size: 11px; padding: 2px 8px; min-height: 22px; height: 22px; line-height: 18px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel);">Choose...</button>
+          <div class="f-dropdown-container fb-card-picker-row" style="position: relative; display: inline-flex; align-items: center; gap: 4px;">
+            <input type="text" id="fb-val-${cardIdx}-${field}" class="tag-search" placeholder="Choose..." autocomplete="off">
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
             <div id="fb-val-${cardIdx}-${field}_pick" class="ppick" style="display:none; position:absolute; left:0; top:100%; z-index:1010;">
-              <input id="fb-val-${cardIdx}-${field}_search" class="psearch" placeholder="Search..." autocomplete="off">
               <div id="fb-val-${cardIdx}-${field}_results" class="presults"></div>
             </div>
           </div>
@@ -400,17 +498,46 @@
       wire(cardIdx, field) {
         if (!schemaLoaded) return;
         const baseId = `fb-val-${cardIdx}-${field}`;
-        const opts = {
-          onChange: () => {
-            const hiddenEl = document.getElementById(baseId);
-            const val = hiddenEl ? hiddenEl.value : '';
-            if (val) {
-              updateState(() => addCondition(cardIdx, field, getDefaultOperator(field), val));
-              if (picker) {
-                picker.set('', true);
+        const inputEl = document.getElementById(baseId);
+        const applyBtn = document.getElementById(`fb-apply-btn-${cardIdx}-${field}`);
+        
+        const submitValue = () => {
+          const val = inputEl ? inputEl.value.trim() : '';
+          if (val) {
+            const parsed = window.AdoLib.parseOperatorValue(val);
+            const str = parsed.value.trim();
+            if (!validateInput(InputStrategies.picker, str, field)) {
+              triggerInputError(inputEl);
+              return;
+            }
+            
+            const isNumericField = (type === 'numeric' || rawType === 'integer' || rawType === 'double');
+            if (isNumericField && isNaN(Number(str)) && !str.startsWith('@')) {
+              triggerInputError(inputEl);
+              return;
+            }
+            
+            if (field === 'iteration' && !str.startsWith('@') && window.sprintPaths) {
+              if (!window.sprintPaths.some(p => p.toLowerCase() === str.toLowerCase())) {
+                triggerInputError(inputEl);
+                return;
               }
             }
+            let op = parsed.op;
+            if (op === '=') op = getDefaultOperator(field);
+            
+            updateState(() => addCondition(cardIdx, field, op, str));
+            if (picker) {
+              picker.set('', true);
+            } else {
+              inputEl.value = '';
+            }
           }
+        };
+
+        const opts = {
+          keepTextOnClose: true,
+          onChange: submitValue
         };
         
         let picker;
@@ -431,6 +558,22 @@
           picker.wire();
           picker.render();
         }
+
+        if (applyBtn) {
+          applyBtn.onclick = (e) => {
+            e.stopPropagation();
+            submitValue();
+          };
+        }
+
+        if (inputEl) {
+          inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              submitValue();
+            }
+          });
+        }
       }
     },
 
@@ -445,8 +588,9 @@
           `;
         }
         return `
-          <div class="f-dropdown-container">
+          <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 4px; position: relative;">
             <input id="fb-input-${cardIdx}-${field}" class="tag-search" placeholder="Add value..." autocomplete="off">
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
             <div id="fb-dropdown-${cardIdx}-${field}" class="f-dropdown" style="display:none"></div>
           </div>
         `;
@@ -455,6 +599,7 @@
         if (!schemaLoaded) return;
         const inputEl = document.getElementById(`fb-input-${cardIdx}-${field}`);
         const dropdownEl = document.getElementById(`fb-dropdown-${cardIdx}-${field}`);
+        const applyBtn = document.getElementById(`fb-apply-btn-${cardIdx}-${field}`);
         if (!inputEl || !dropdownEl) return;
 
         const vals = getFieldValues(field);
@@ -503,27 +648,38 @@
         inputEl.onfocus = () => showMatches(inputEl.value);
         inputEl.oninput = () => showMatches(inputEl.value);
         
+        const submitValue = () => {
+          const val = inputEl.value.trim();
+          if (val) {
+            const parsed = window.AdoLib.parseOperatorValue(val);
+            let op = parsed.op;
+            let cleanVal = parsed.value;
+            if (op === '=') {
+              op = getDefaultOperator(field);
+            }
+            updateState(() => addCondition(cardIdx, field, op, cleanVal));
+            inputEl.value = '';
+            hideDropdown();
+          }
+        };
+
+        if (applyBtn) {
+          applyBtn.onclick = (e) => {
+            e.stopPropagation();
+            submitValue();
+          };
+        }
+
         inputEl.onkeydown = (e) => {
           if (e.key === 'Enter') {
-            const val = inputEl.value.trim();
-            if (val) {
-              const parsed = window.AdoLib.parseOperatorValue(val);
-              let op = parsed.op;
-              let cleanVal = parsed.value;
-              if (op === '=') {
-                op = getDefaultOperator(field);
-              }
-              updateState(() => addCondition(cardIdx, field, op, cleanVal));
-              inputEl.value = '';
-              hideDropdown();
-            }
+            submitValue();
           } else if (e.key === 'Escape') {
             hideDropdown();
           }
         };
 
         const onMouseDown = (e) => {
-          if (!inputEl.contains(e.target) && !dropdownEl.contains(e.target)) {
+          if (!inputEl.contains(e.target) && !dropdownEl.contains(e.target) && (!applyBtn || !applyBtn.contains(e.target))) {
             hideDropdown();
             removeDocListener('mousedown', onMouseDown);
           }
@@ -540,37 +696,127 @@
         if (!schemaLoaded) {
           return `
             <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 6px;">
-              <input type="number" class="tag-search" placeholder="Loading schema..." disabled style="width: 80px;">
+              <input type="text" class="tag-search" placeholder="Loading schema..." disabled>
               <span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>
             </div>
           `;
         }
         return `
-          <div class="f-dropdown-container">
-            <input id="fb-input-${cardIdx}-${field}" type="number" class="tag-search" placeholder="Add value..." autocomplete="off" style="width: 80px;">
+          <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 4px;">
+            <input id="fb-input-${cardIdx}-${field}" type="text" class="tag-search" placeholder="Add value..." autocomplete="off">
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
           </div>
         `;
       },
       wire(cardIdx, field) {
         if (!schemaLoaded) return;
         const inputEl = document.getElementById(`fb-input-${cardIdx}-${field}`);
+        const applyBtn = document.getElementById(`fb-apply-btn-${cardIdx}-${field}`);
         if (!inputEl) return;
+
+        const submitValue = () => {
+          const val = inputEl.value.trim();
+          if (val) {
+            const parsed = window.AdoLib.parseOperatorValue(val);
+            const numStr = String(parsed.value).trim();
+            if (numStr !== '') {
+              if (!validateInput(InputStrategies.numeric, numStr, field)) {
+                triggerInputError(inputEl);
+                return;
+              }
+              let op = parsed.op;
+              if (op === '=') {
+                op = getDefaultOperator(field);
+              }
+              updateState(() => addCondition(cardIdx, field, op, numStr));
+              inputEl.value = '';
+            }
+          }
+        };
+
+        if (applyBtn) {
+          applyBtn.onclick = (e) => {
+            e.stopPropagation();
+            submitValue();
+          };
+        }
 
         inputEl.onkeydown = (e) => {
           if (e.key === 'Enter') {
-            const val = inputEl.value.trim();
-            if (val) {
-              const parsed = window.AdoLib.parseOperatorValue(val);
-              const numStr = String(parsed.value).trim();
-              if (numStr !== '' && !isNaN(Number(numStr))) {
-                let op = parsed.op;
-                if (op === '=') {
-                  op = getDefaultOperator(field);
-                }
-                updateState(() => addCondition(cardIdx, field, op, numStr));
+            submitValue();
+          }
+        };
+      }
+    },
+
+    timeMath: {
+      render(cardIdx, field) {
+        if (!schemaLoaded) {
+          return `
+            <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 6px;">
+              <input type="text" class="tag-search" placeholder="Loading schema..." disabled>
+              <span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>
+            </div>
+          `;
+        }
+        return `
+          <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 4px;">
+            <div class="time-input-wrap">
+              <input id="fb-input-${cardIdx}-${field}" type="text" class="tag-search" placeholder="Add value..." autocomplete="off">
+              <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+            </div>
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
+          </div>
+        `;
+      },
+      wire(cardIdx, field) {
+        if (!schemaLoaded) return;
+        const inputEl = document.getElementById(`fb-input-${cardIdx}-${field}`);
+        const applyBtn = document.getElementById(`fb-apply-btn-${cardIdx}-${field}`);
+        if (!inputEl) return;
+
+        const submitValue = () => {
+          const val = inputEl.value.trim();
+          if (val) {
+            const parsed = window.AdoLib.parseOperatorValue(val);
+            const timeExpr = String(parsed.value).trim();
+            if (timeExpr) {
+              if (!validateInput(InputStrategies.timeMath, timeExpr, field)) {
+                triggerInputError(inputEl);
+                return;
+              }
+              let op = parsed.op;
+              if (op === '=') {
+                op = getDefaultOperator(field);
+              }
+              if (timeExpr.startsWith('@')) {
+                updateState(() => addCondition(cardIdx, field, op, timeExpr));
                 inputEl.value = '';
+              } else {
+                const mathExpr = window.AdoLib.timeExprToMath(timeExpr, 8);
+                const total = window.AdoLib.evaluateMath(mathExpr);
+                if (!isNaN(total) && isFinite(total)) {
+                  const numStr = String(Number(total.toFixed(2)));
+                  updateState(() => addCondition(cardIdx, field, op, numStr));
+                  inputEl.value = '';
+                } else {
+                  triggerInputError(inputEl);
+                }
               }
             }
+          }
+        };
+
+        if (applyBtn) {
+          applyBtn.onclick = (e) => {
+            e.stopPropagation();
+            submitValue();
+          };
+        }
+
+        inputEl.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            submitValue();
           }
         };
       }
@@ -614,7 +860,41 @@
     }
   };
 
+  function isTimeMathField(field) {
+    if (!field) return false;
+    const timeFields = ['remaining', 'estimate', 'completed', 'storypoints'];
+    const timeRefs = [
+      'microsoft.vsts.scheduling.remainingwork',
+      'microsoft.vsts.scheduling.originalestimate',
+      'microsoft.vsts.scheduling.completedwork',
+      'microsoft.vsts.scheduling.storypoints'
+    ];
+    const timeLabels = [
+      'remaining work',
+      'original estimate',
+      'completed work',
+      'story points'
+    ];
+
+    if (timeFields.includes(field)) return true;
+
+    const meta = getFieldMeta(field);
+    if (meta) {
+      if (meta.ref && timeRefs.includes(meta.ref.toLowerCase())) return true;
+      if (meta.displayName && timeLabels.includes(meta.displayName.toLowerCase())) return true;
+    }
+    
+    const label = getFieldLabel(field);
+    if (label && timeLabels.includes(label.toLowerCase())) return true;
+
+    return false;
+  }
+
   function getInputStrategy(field) {
+    if (isTimeMathField(field)) {
+      return InputStrategies.timeMath;
+    }
+
     const type = getFieldType(field);
     const rawType = (window.api && window.api.FIELD_REGISTRY && window.api.FIELD_REGISTRY[field]) 
       ? window.api.FIELD_REGISTRY[field].type 
@@ -635,6 +915,16 @@
     return InputStrategies.autocomplete;
   }
 
+  function getTooltipHtml(field) {
+    const strategy = getInputStrategy(field);
+    const title = 'Values within a field are joined by <b>OR</b>.<br>For empty values, use <code>@empty</code> or <code>""</code>.<br><br><b>Supported Operators:</b><br>';
+    if (strategy === InputStrategies.dateTime) return title + '<code>=, &lt;&gt;, &gt;, &lt;, &gt;=, &lt;=, RANGE</code>';
+    if (strategy === InputStrategies.numeric) return title + '<code>=, &lt;&gt;, &gt;, &lt;, &gt;=, &lt;=</code>';
+    if (strategy === InputStrategies.timeMath) return title + '<code>=, &lt;&gt;, &gt;, &lt;, &gt;=, &lt;=</code><br><br><i>Supports math: 1d 4h</i>';
+    if (strategy === InputStrategies.picker) return title + '<code>=, &lt;&gt;, UNDER, NOT UNDER</code>';
+    return title + '<code>=, &lt;&gt;, CONTAINS, NOT CONTAINS</code>';
+  }
+
   // --- Rendering Helpers ---
   function getAvailableFieldsForCard(card) {
     const existingFields = card.rules.map(r => r.field);
@@ -648,13 +938,23 @@
     if (rule.value === '') return '';
     const isExclude = ['<>', 'NOT IN', 'NOT CONTAINS', 'NOT UNDER', '<', '>'].includes(rule.op);
     let chipsHtml = '';
+
+    
+    const type = getFieldType(rule.field);
+    const formatValue = (v) => {
+      if (type === 'dateTime' && typeof v === 'string' && !v.startsWith('@')) {
+        const d = new Date(v);
+        if (!isNaN(d.getTime())) return d.toLocaleDateString();
+      }
+      return v;
+    };
     
     if (Array.isArray(rule.value)) {
       rule.value.forEach(val => {
         chipsHtml += `
           <span class="chip ${isExclude ? 'out' : 'in'}" id="fb-chip-${cardIdx}-${ruleIdx}-${val}">
-            <span>${val}</span>
-            <span class="fb-chip-delete" data-card="${cardIdx}" data-rule="${ruleIdx}" data-val="${val}">&times;</span>
+            <span>${htmlEsc(String(formatValue(val)))}</span>
+            <span class="fb-chip-delete" data-card="${cardIdx}" data-rule="${ruleIdx}" data-val="${htmlEsc(String(val))}">&times;</span>
           </span>
         `;
       });
@@ -663,7 +963,7 @@
       const displayOp = (cleanOp === '=' || cleanOp === '<>' || cleanOp === 'IN') ? '' : cleanOp + ' ';
       chipsHtml += `
         <span class="chip ${isExclude ? 'out' : 'in'}" id="fb-chip-${cardIdx}-${ruleIdx}">
-          <span>${displayOp}${rule.value}</span>
+          <span>${displayOp}${htmlEsc(String(formatValue(rule.value)))}</span>
           <span class="fb-chip-delete" data-card="${cardIdx}" data-rule="${ruleIdx}">&times;</span>
         </span>
       `;
@@ -860,6 +1160,7 @@
           fieldsInCard.push(r.field);
         }
       });
+      fieldsInCard.sort((a, b) => getFieldLabel(a).localeCompare(getFieldLabel(b)));
 
       let rowsHtml = '';
       fieldsInCard.forEach(field => {
@@ -880,6 +1181,7 @@
             <div class="fb-field-label-wrap">
               <button class="fb-field-delete" id="fb-field-delete-${cardIdx}-${field}" title="Remove Field row">&times;</button>
               <span class="fb-field-label">${displayName}:</span>
+              <span class="logic-hint" data-tooltip-html="${htmlEsc(getTooltipHtml(field))}">(?)</span>
             </div>
             <div class="fb-chips-container">
               ${chipsHtml}
@@ -1051,6 +1353,35 @@
       });
     });
 
+    let globalTooltip = document.getElementById('fb-global-logic-tooltip');
+    if (!globalTooltip) {
+      globalTooltip = document.createElement('div');
+      globalTooltip.id = 'fb-global-logic-tooltip';
+      globalTooltip.className = 'logic-tooltip';
+      globalTooltip.style.display = 'none';
+      document.body.appendChild(globalTooltip);
+    }
+
+    container.querySelectorAll('.logic-hint').forEach(hint => {
+      hint.onmouseenter = () => {
+        if (window.LayerManager) {
+          globalTooltip.innerHTML = window.AdoLib.htmlUnesc(hint.getAttribute('data-tooltip-html'));
+          const rect = hint.getBoundingClientRect();
+          globalTooltip.style.position = 'absolute';
+          globalTooltip.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+          globalTooltip.style.left = (rect.left + window.scrollX - 10) + 'px';
+          globalTooltip.style.display = 'block';
+          window.LayerManager.open(globalTooltip, hint, { isPopover: true, direction: 'bottom' });
+        }
+      };
+      hint.onmouseleave = () => {
+        if (window.LayerManager) {
+          globalTooltip.style.display = 'none';
+          window.LayerManager.close(globalTooltip);
+        }
+      };
+    });
+
     // 6. Add group OR button
     const addGroupBtn = document.createElement('button');
     addGroupBtn.className = 'fb-add-group-btn';
@@ -1105,7 +1436,7 @@
               <div class="trow" data-id="${n.id}">
                 <span class="tog leaf"></span>
                 <i class="dot" style="background:${getTypeColor(n.type)}"></i>
-                <span class="lab">#${n.id} ${esc(n.title)}</span>
+                <span class="lab">#${n.id} ${htmlEsc(n.title)}</span>
               </div>
             </li>
           `;

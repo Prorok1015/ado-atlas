@@ -19,7 +19,7 @@ class MarkdownEditor {
   render() {
     this.container.innerHTML = `
       <div class="desc-tools">
-        <label class="dlabel">${esc(this.options.label)}</label>
+        <label class="dlabel">${htmlEsc(this.options.label)}</label>
         <div class="dfmt">
           <button type="button" class="dbtn dbtn-i-only" data-fmt="bold"   title="Bold (Ctrl+B)"><b>B</b></button>
           <button type="button" class="dbtn dbtn-i-only" data-fmt="italic" title="Italic (Ctrl+I)"><i>I</i></button>
@@ -37,7 +37,7 @@ class MarkdownEditor {
         <button type="button" class="dbtn icon dbtn-full" title="Toggle fullscreen mode (Esc to exit)">⛶</button>
       </div>
       <div class="desc-wrap">
-        <textarea placeholder="${esc(this.options.placeholder)}"></textarea>
+        <textarea placeholder="${htmlEsc(this.options.placeholder)}"></textarea>
         <div class="mdview" style="display:none"></div>
         ${this.options.allowAttachments ? '<div class="desc-dropzone"><div class="ddz-inner">📎 Drop to attach & insert into description</div></div>' : ''}
       </div>

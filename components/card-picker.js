@@ -1,7 +1,7 @@
 function parentCardHtml(n, isBulk){
   return `<i class="dot" style="background:${tyColor(n.type)}"></i>`+
-    `<span class="pcid">#${n.id}</span><span class="pctitle">${esc(n.title||'')}</span>`+
-    (n.state?`<span class="pcstate" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'');
+    `<span class="pcid">#${n.id}</span><span class="pctitle">${htmlEsc(n.title||'')}</span>`+
+    (n.state?`<span class="pcstate" style="background:${stateColor(n.state)}">${htmlEsc(n.state)}</span>`:'');
 }
 
 function createCardPicker(base,opts){
@@ -10,14 +10,16 @@ function createCardPicker(base,opts){
   const prov=opts.provider;
   const V=()=>$(base),Card=()=>$(base+'_card'),Pick=()=>$(base+'_pick'),
         Search=()=>$(base+'_search'),Results=()=>$(base+'_results'),Open=()=>$(base+'_open');
-  let idx=0,rows=[],searchTimer=null,searchTok=0,searching=false;
+  let idx=0,rows=[],searchTimer=null,searchTok=0,searching=false,hasMoved=false;
   function render(){
     const vEl=V(); if(!vEl)return;
-    const card=Card(); if(!card)return;
+    const card=Card();
     const v=vEl.value.trim(),openBtn=Open();
-    card.dataset.val=v;                              // lets the provider drop stale async card renders
     if(openBtn)openBtn.style.display=(v&&prov.openValue)?'':'none';
-    prov.renderCard(v,card);
+    if(card) {
+      card.dataset.val=v;                              // lets the provider drop stale async card renders
+      prov.renderCard(v,card);
+    }
   }
   function set(v,silent){
     const vEl=V(); if(!vEl)return;
@@ -35,12 +37,20 @@ function createCardPicker(base,opts){
     if(p.style.display!=='none'){close();return;}   // toggle
     p.style.display='block';
     if (window.LayerManager) window.LayerManager.open(p, null, { isPopover: true });
-    const i=Search(); if(i){i.value='';results('');i.focus();}
+    const i=Search();
+    if(i){
+      i.value='';
+      results('');
+      i.focus();
+    } else {
+      const vEl=V();
+      results(vEl ? vEl.value : '');
+    }
   }
   function close(){const p=Pick();if(p){p.style.display='none';if (window.LayerManager) window.LayerManager.close(p);}}
   function isOpen(){const p=Pick();return !!p&&p.style.display!=='none';}
   function results(q){
-    rows=prov.localRows(q);idx=0;
+    rows=prov.localRows(q);idx=0;hasMoved=false;
     clearTimeout(searchTimer);const tok=++searchTok;searching=false;
     const run=prov.apiExpand?prov.apiExpand(q,rows):null;   // null → no server lookup for this query
     if(run){
@@ -69,27 +79,85 @@ function createCardPicker(base,opts){
     list.querySelectorAll('.prow[data-i]').forEach(r=>r.classList.toggle('on',+r.dataset.i===idx));
   }
   function move(d){
-    if(!rows.length)return;idx=(idx+d+rows.length)%rows.length;highlight();
+    if(!rows.length)return;
+    hasMoved=true;
+    idx=(idx+d+rows.length)%rows.length;
+    highlight();
     const list=Results(); if(!list)return;
     const el=list.querySelector('.prow.on');if(el)el.scrollIntoView({block:'nearest'});
   }
   function pick(){const r=rows[idx];if(!r)return;set(r.value);}
   function wire(){
-    const card=Card(); if(card)card.onclick=open;
+    const vEl=V(); if(!vEl)return;
+    const isTextInput = vEl.tagName === 'INPUT' && vEl.type === 'text';
+
+    const card=Card();
+    if(card) {
+      card.onclick=open;
+    } else if(isTextInput) {
+      vEl.addEventListener('focus', () => {
+        if (!isOpen()) open();
+      });
+      vEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!isOpen()) open();
+      });
+    }
+
+    if (isTextInput) {
+      vEl.addEventListener('input', e => {
+        if (!isOpen()) open();
+        results(e.target.value);
+      });
+      vEl.addEventListener('keydown', e => {
+        if(e.key==='ArrowDown'){e.preventDefault(); if(!isOpen())open(); move(1);}
+        else if(e.key==='ArrowUp'){e.preventDefault(); if(!isOpen())open(); move(-1);}
+        else if(e.key==='Enter'){
+          if (isOpen() && rows[idx]) {
+            const exactMatch = rows[idx].value.toLowerCase() === vEl.value.trim().toLowerCase();
+            if (hasMoved || exactMatch) {
+              e.preventDefault(); e.stopPropagation(); pick();
+            }
+          }
+        }
+        else if(e.key==='Escape'){e.preventDefault(); e.stopPropagation(); close(); if(!opts.keepTextOnClose)vEl.value = ''; vEl.blur();}
+      });
+    }
+
     const s=Search();
     if(s){
       s.addEventListener('input',e=>results(e.target.value));
       s.addEventListener('keydown',e=>{
         if(e.key==='ArrowDown'){e.preventDefault();move(1);}
         else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}
-        else if(e.key==='Enter'){e.preventDefault();pick();}
-        else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();const c=Card();if(c)c.focus();}
+        else if(e.key==='Enter'){
+          const rows=Rows();
+          if (idx>=0 && idx<rows.length) {
+            e.preventDefault();
+            e.stopPropagation();
+            pick();
+          }
+        }
+        else if(e.key==='Escape'){
+          e.preventDefault();
+          e.stopPropagation();
+          close();
+          if (!opts.keepTextOnClose && e.target && e.target.type === 'text') {
+            e.target.value = '';
+          }
+          const c=Card();if(c)c.focus();
+        }
       });
     }
     const ob=Open();if(ob)ob.onclick=()=>{const v=get();if(prov.openValue)prov.openValue(v);};
     document.addEventListener('mousedown',e=>{
-      const p=Pick(), c=Card();
-      if(isOpen()&&p&&c&&!p.contains(e.target)&&!c.contains(e.target))close();
+      const p=Pick(), c=Card(), v=V();
+      if(isOpen()&&p&&!p.contains(e.target)&&(!c||!c.contains(e.target))&&(!v||!v.contains(e.target))){
+        close();
+        if (!opts.keepTextOnClose && v && v.type === 'text') {
+          v.value = '';
+        }
+      }
     });
   }
   function setDisabled(d){const c=Card();if(c)c.style.pointerEvents=d?'none':'';const v=V();if(v)v.disabled=!!d;}
@@ -97,8 +165,8 @@ function createCardPicker(base,opts){
 }
 
 /* --- provider: parent / any work-item (id+title, with server-side search) --- */
-function itemRow(n){const badge=n.state?`<span class="pbadge" style="background:${stateColor(n.state)}">${esc(n.state)}</span>`:'';
-  return {value:String(n.id),html:`<i class="dot" style="background:${tyColor(n.type)}"></i><span class="ptitle">#${n.id} ${esc(n.title||'')}</span>${badge}`};}
+function itemRow(n){const badge=n.state?`<span class="pbadge" style="background:${stateColor(n.state)}">${htmlEsc(n.state)}</span>`:'';
+  return {value:String(n.id),html:`<i class="dot" style="background:${tyColor(n.type)}"></i><span class="ptitle">#${n.id} ${htmlEsc(n.title||'')}</span>${badge}`};}
 
 async function itemApiSearch(term){            // look up items the local tree hasn't loaded
   const m=term.match(/^#?(\d+)$/);
@@ -166,8 +234,8 @@ function itemPickerProvider(getExclude){
 /* --- provider: assignee / person (team roster is fully loaded in `assignees`) --- */
 function personColor(name){let h=0;name=String(name);for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))>>>0;return `hsl(${h%360} 52% 45%)`;}
 function personInitials(name){const p=String(name).trim().split(/\s+/).filter(Boolean);return (((p[0]||'')[0]||'')+(p.length>1?(p[p.length-1][0]||''):'')).toUpperCase()||'?';}
-function personChip(name){return `<i class="pav" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}
-function personChipT(name){return `<i class="pav pavsm" title="${esc(name)}" style="background:${personColor(name)}">${esc(personInitials(name))}</i>`;}   // small, tooltipped — board cards
+function personChip(name){return `<i class="pav" style="background:${personColor(name)}">${htmlEsc(personInitials(name))}</i>`;}
+function personChipT(name){return `<i class="pav pavsm" title="${htmlEsc(name)}" style="background:${personColor(name)}">${htmlEsc(personInitials(name))}</i>`;}   // small, tooltipped — board cards
 const BLANK_IMG="data:image/svg+xml;utf8,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'></svg>");   // transparent slot for an absent multi-background layer
 // All node badges are SVG drawn into a viewBox while width/height attrs are 3×
 // the logical size — the browser rasterises at 3× then cytoscape scales down:
@@ -187,14 +255,14 @@ function bookmarkUri(color,text,dir){
     : `M2 3 Q2 1 4 1 L${W-4} 1 Q${W-2} 1 ${W-2} 3 L${W-2} ${H-4} L${W/2} ${H-9} L2 ${H-4} Z`;
   const ty=dir==='up'?17:13;
   return svgTag(W,H,`<path d='${path}' fill='${color}'/>`+
-    `<text x='${W/2}' y='${ty}' font-size='${fs}' font-family='${BADGE_FONT}' font-weight='600' fill='#ffffff' text-anchor='middle'>${esc(text)}</text>`);
+    `<text x='${W/2}' y='${ty}' font-size='${fs}' font-family='${BADGE_FONT}' font-weight='600' fill='#ffffff' text-anchor='middle'>${htmlEsc(text)}</text>`);
 }
 // rounded "pill": soft tinted fill + thin same-colour border + coloured text (Excalidraw-ish)
 function pillW(text,max){return Math.round(Math.min(max||150,Math.max(26,10+String(text).length*6.4)));}
 function pillUri(text,color,max){const w=pillW(text,max),h=18,light=document.body.classList.contains('light');
   const fill=light?hexToRgba(color,0.16):hexToRgba(color,0.28),txt=light?color:'#ffffff';
   return svgTag(w,h,`<rect x='0.75' y='0.75' rx='${h/2}' ry='${h/2}' width='${w-1.5}' height='${h-1.5}' fill='${fill}' stroke='${color}' stroke-width='1.2'/>`+
-    `<text x='${w/2}' y='${h/2+3.6}' font-size='10.5' font-family='${BADGE_FONT}' font-weight='600' fill='${txt}' text-anchor='middle'>${esc(text)}</text>`);}
+    `<text x='${w/2}' y='${h/2+3.6}' font-size='10.5' font-family='${BADGE_FONT}' font-weight='600' fill='${txt}' text-anchor='middle'>${htmlEsc(text)}</text>`);}
 const statePillW=t=>pillW(t),statePillUri=(t,c)=>pillUri(t,c);
 // assignee badge: same flat bookmark in the person's colour with their initials
 function avatarBadgeUri(name){return bookmarkUri(personColor(name),personInitials(name),'down');}
@@ -214,7 +282,7 @@ function cornerTagUri(text,color,corner,max){const w=cornerW(text,max),h=16,ro=8
   // radii [tl,tr,br,bl]: round the node corner + its diagonal (inner) corner
   const R={tl:[ro,0,ri,0],tr:[0,ro,0,ri],br:[ri,0,ro,0],bl:[0,ri,0,ro]}[corner]||[0,0,0,0];
   return {w,h,uri:svgTag(w,h,`<path d='${roundRectPath(w,h,R)}' fill='${color}'/>`+
-    `<text x='${w/2}' y='${h/2+3.4}' font-size='10' font-family='${BADGE_FONT}' font-weight='600' fill='${idealText(color)}' text-anchor='middle'>${esc(text)}</text>`)};}
+    `<text x='${w/2}' y='${h/2+3.4}' font-size='10' font-family='${BADGE_FONT}' font-weight='600' fill='${idealText(color)}' text-anchor='middle'>${htmlEsc(text)}</text>`)};}
 // node tags: parse the ";"-list, take the short name of an iteration path
 function tagList_(s){return String(s||'').split(/;\s*/).map(t=>t.trim()).filter(Boolean);}
 function sprintShort(path){if(!path)return '';return sprintNames[path]||String(path).split('\\').pop();}
@@ -234,19 +302,19 @@ function assigneePeople(){const seen=new Set(),out=[];   // current user first, 
 function assigneePickerProvider(){
   return {
     renderCard(v,card){
-      if(!v){card.innerHTML='<span class="pcnone">(unassigned)</span>';return;}
-      card.innerHTML=`${personChip(v)}<span class="pctitle">${esc(v)}</span>`;
+      if(!v || v === '@empty'){card.innerHTML='<span class="pcnone">(unassigned)</span>';return;}
+      card.innerHTML=`${personChip(v)}<span class="pctitle">${htmlEsc(v)}</span>`;
     },
     localRows(q){
       q=(q||'').trim().toLowerCase();
-      const out=[{value:'',html:`<i class="pav pav0"></i><span class="ptitle pcnone">(unassigned)</span>`}];
+      const out=[{value:'@empty',html:`<i class="pav pav0"></i><span class="ptitle pcnone">(unassigned)</span>`}];
       if(currentUser&&(!q||currentUser.toLowerCase().includes(q)))
-        out.push({value:currentUser,html:`${personChip(currentUser)}<span class="ptitle">${esc(currentUser)} <span class="pcnone">· me</span></span>`});
+        out.push({value:currentUser,html:`${personChip(currentUser)}<span class="ptitle">${htmlEsc(currentUser)} <span class="pcnone">· me</span></span>`});
       let n=0;
       for(const a of assigneePeople()){
         if(a===currentUser)continue;
         if(q&&!a.toLowerCase().includes(q))continue;
-        out.push({value:a,html:`${personChip(a)}<span class="ptitle">${esc(a)}</span>`});
+        out.push({value:a,html:`${personChip(a)}<span class="ptitle">${htmlEsc(a)}</span>`});
         if(++n>=40)break;
       }
       return out;
@@ -259,16 +327,16 @@ function assigneePickerProvider(){
 function sprintRoot(){return (iterCache&&iterCache[0])?iterCache[0].path.split('\\')[0]:projectName;}   // project segment = "no sprint"
 function sprintRangeText(it){const s=it.start?it.start.slice(0,10):'',f=it.finish?it.finish.slice(0,10):'';return (s||f)?(s+'→'+f):'';}
 function sprintPickerProvider(getNone){
-  getNone=getNone||(()=>'');
-  function isNone(v){return !v||v===getNone();}
+  getNone=getNone||(()=>'@empty');
+  function isNone(v){return !v||v===getNone()||v==='@empty';}
   return {
     renderCard(v,card){
       if(isNone(v)){card.innerHTML='<span class="pcnone">(no sprint)</span>';return;}
       const it=_sprint(v);
-      if(!it){card.innerHTML=`<span class="pctitle">${esc(v.split('\\').slice(1).join('\\')||v)}</span>`;return;}
+      if(!it){card.innerHTML=`<span class="pctitle">${htmlEsc(v.split('\\').slice(1).join('\\')||v)}</span>`;return;}
       const rt=sprintRangeText(it);
       card.innerHTML=(isCurrentSprint(it)?'<span class="curdot" title="current sprint"></span>':'')+
-        `<span class="pctitle">${esc(it.name)}</span>`+(rt?`<span class="pcnone" style="flex:none">${esc(rt)}</span>`:'');
+        `<span class="pctitle">${htmlEsc(it.name)}</span>`+(rt?`<span class="pcnone" style="flex:none">${htmlEsc(rt)}</span>`:'');
     },
     localRows(q){
       q=(q||'').trim().toLowerCase();
@@ -277,7 +345,7 @@ function sprintPickerProvider(getNone){
         if(q&&!it.name.toLowerCase().includes(q))continue;
         const rt=sprintRangeText(it);
         out.push({value:it.path,html:(isCurrentSprint(it)?'<span class="curdot"></span>':'<span class="pkind"></span>')+
-          `<span class="ptitle">${esc(it.name)}</span>`+(rt?`<span class="pcnone" style="flex:none; margin-left:auto;">${esc(rt)}</span>`:'')});
+          `<span class="ptitle">${htmlEsc(it.name)}</span>`+(rt?`<span class="pcnone" style="flex:none; margin-left:auto;">${htmlEsc(rt)}</span>`:'')});
       }
       return out;
     },
@@ -285,9 +353,9 @@ function sprintPickerProvider(getNone){
   };
 }
 
-function createParentField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:itemPickerProvider(opts.getExcludeId)});}
-function createAssigneeField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:assigneePickerProvider()});}
-function createSprintField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange,provider:sprintPickerProvider(opts.getNone)});}
+function createParentField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange, keepTextOnClose:opts.keepTextOnClose, provider:itemPickerProvider(opts.getExcludeId)});}
+function createAssigneeField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange, keepTextOnClose:opts.keepTextOnClose, provider:assigneePickerProvider()});}
+function createSprintField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange, keepTextOnClose:opts.keepTextOnClose, provider:sprintPickerProvider(opts.getNone)});}
 
 // Adapter on top of itemPickerProvider: hides the items already linked in the
 // chosen direction and always renders the card as a "+ add" affordance (the

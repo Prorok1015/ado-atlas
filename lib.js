@@ -6,6 +6,8 @@
   const lib = factory();
   if (typeof module !== "undefined" && module.exports) module.exports = lib;
   root.AdoLib = lib;
+  root.timeExprToMath = lib.timeExprToMath;
+  root.evaluateMath = lib.evaluateMath;
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
@@ -102,9 +104,11 @@
       const identity = spec.identity || spec.type === 'identity';
 
       const op = (cond.op || '=').toUpperCase();
-      const rawVal = cond.value;
+      let rawVal = cond.value;
 
-      if (rawVal === "" || rawVal === null || rawVal === undefined || (Array.isArray(rawVal) && rawVal.length === 0)) {
+      if (rawVal === '""' || rawVal === "''" || rawVal === "@empty") {
+        rawVal = "";
+      } else if (rawVal === "" || rawVal === null || rawVal === undefined || (Array.isArray(rawVal) && rawVal.length === 0)) {
         return "";
       }
 
@@ -118,14 +122,20 @@
       };
 
       if (op === 'IN' || op === 'NOT IN') {
-        const arr = Array.isArray(rawVal) ? rawVal : [rawVal];
+        let arr = Array.isArray(rawVal) ? rawVal : [rawVal];
+        arr = arr.map(v => (v === '""' || v === "''" || v === "@empty") ? "" : v);
+        const hasEmpty = arr.includes("");
         const hasMe = identity && arr.includes("me");
-        const nonMe = arr.filter(v => !(identity && v === "me"));
+        const normalVals = arr.filter(v => v !== "" && !(identity && v === "me"));
+        
         const parts = [];
+        if (hasEmpty) {
+          parts.push(`[${ref}] ${op === 'NOT IN' ? '<>' : '='} ''`);
+        }
         if (hasMe) {
           parts.push(`[${ref}] ${op === 'NOT IN' ? '<>' : '='} @me`);
         }
-        const vals = nonMe.map(lit).filter(x => x !== null);
+        const vals = normalVals.map(lit).filter(x => x !== null);
         if (vals.length) {
           parts.push(`[${ref}] ${op} (${vals.join(",")})`);
         }
@@ -135,8 +145,12 @@
       }
 
       if (op === 'CONTAINS' || op === 'NOT CONTAINS') {
-        const arr = Array.isArray(rawVal) ? rawVal : [rawVal];
+        let arr = Array.isArray(rawVal) ? rawVal : [rawVal];
+        arr = arr.map(v => (v === '""' || v === "''" || v === "@empty") ? "" : v);
         const clauses = arr.map(v => {
+          if (v === "") {
+            return `[${ref}] ${op === 'NOT CONTAINS' ? '<>' : '='} ''`;
+          }
           const formatted = lit(v);
           if (op === 'NOT CONTAINS') {
             return `NOT [${ref}] CONTAINS ${formatted}`;
@@ -150,21 +164,37 @@
       }
 
       if (op === 'UNDER' || op === 'NOT UNDER') {
-        const arr = Array.isArray(rawVal) ? rawVal : [rawVal];
+        let arr = Array.isArray(rawVal) ? rawVal : [rawVal];
+        arr = arr.map(v => (v === '""' || v === "''" || v === "@empty") ? "" : v);
         const clauses = arr.map(v => {
+          if (v === "") {
+            return `[${ref}] ${op === 'NOT UNDER' ? '<>' : '='} ''`;
+          }
           const formatted = lit(v);
           if (op === 'NOT UNDER') {
-            return `NOT [${ref}] UNDER ${formatted}`;
-          } else {
-            return `[${ref}] UNDER ${formatted}`;
+            return `([${ref}] <> ${formatted} AND [${ref}] NOT UNDER ${formatted})`;
           }
+          return `([${ref}] = ${formatted} OR [${ref}] UNDER ${formatted})`;
         });
-        if (clauses.length === 0) return "";
-        if (clauses.length === 1) return clauses[0];
-        return "(" + clauses.join(op === 'NOT UNDER' ? ' AND ' : ' OR ') + ")";
+        return clauses.length > 1 ? `(${clauses.join(op === 'NOT UNDER' ? ' AND ' : ' OR ')})` : clauses[0];
       }
 
-      const formatted = lit(rawVal);
+      if (op === 'RANGE') {
+        const parts = String(rawVal).split('...');
+        if (parts.length === 2) {
+          return `([${ref}] >= ${lit(parts[0])} AND [${ref}] <= ${lit(parts[1])})`;
+        }
+        // Fallback if formatting was weird
+        return `[${ref}] = ${lit(rawVal)}`;
+      }
+
+      if (rawVal === "") {
+        return `[${ref}] ${['<>', '!=', 'NOT IN'].includes(op) ? '<>' : '='} ''`;
+      }
+      
+      return `[${ref}] ${op} ${lit(rawVal)}`;
+
+      const formatted = Array.isArray(rawVal) ? rawVal.map(lit).join(', ') : lit(rawVal);
       return `[${ref}] ${op} ${formatted}`;
     };
 
@@ -173,12 +203,42 @@
         if (!rule) return "";
         if (rule.kind === 'group') {
           const logic = rule.logic || 'AND';
-          const children = (rule.rules || [])
-            .map(compileRule)
-            .filter(Boolean);
-          if (children.length === 0) return "";
-          if (children.length === 1) return children[0];
-          return "(" + children.join(` ${logic} `) + ")";
+          const groupedByField = {};
+          const standardChildren = [];
+          
+          (rule.rules || []).forEach(r => {
+            if (r.kind === 'condition') {
+              if (!groupedByField[r.field]) groupedByField[r.field] = [];
+              groupedByField[r.field].push(r);
+            } else {
+              standardChildren.push(compileRule(r));
+            }
+          });
+
+          const fieldGroups = Object.values(groupedByField).map(conds => {
+            if (conds.length === 1) return compileCondition(conds[0], filterFields);
+            
+            const positiveOps = ['=', 'IN', 'CONTAINS', 'UNDER', 'RANGE', '>', '<', '>=', '<='];
+            const negativeOps = ['<>', 'NOT IN', 'NOT CONTAINS', 'NOT UNDER'];
+            
+            const posCompiled = conds.filter(c => positiveOps.includes(c.op)).map(c => compileCondition(c, filterFields)).filter(Boolean);
+            const negCompiled = conds.filter(c => negativeOps.includes(c.op)).map(c => compileCondition(c, filterFields)).filter(Boolean);
+            const otherCompiled = conds.filter(c => !positiveOps.includes(c.op) && !negativeOps.includes(c.op)).map(c => compileCondition(c, filterFields)).filter(Boolean);
+            
+            const parts = [];
+            if (posCompiled.length > 0) parts.push(posCompiled.length > 1 ? `(${posCompiled.join(' OR ')})` : posCompiled[0]);
+            if (negCompiled.length > 0) parts.push(negCompiled.length > 1 ? `(${negCompiled.join(' AND ')})` : negCompiled[0]);
+            if (otherCompiled.length > 0) parts.push(...otherCompiled);
+            
+            if (parts.length === 0) return "";
+            if (parts.length === 1) return parts[0];
+            return "(" + parts.join(' AND ') + ")";
+          }).filter(Boolean);
+
+          const allChildren = [...fieldGroups, ...standardChildren].filter(Boolean);
+          if (allChildren.length === 0) return "";
+          if (allChildren.length === 1) return allChildren[0];
+          return "(" + allChildren.join(` ${logic} `) + ")";
         }
         if (rule.kind === 'condition') {
           return compileCondition(rule, filterFields);
@@ -423,6 +483,112 @@
     } catch (_) { return {}; }
   }
 
+  function timeExprToMath(str, workHours) {
+    const weekHours = workHours * 5;
+    let res = str.toLowerCase();
+    res = res.replace(/(\d+(?:\.\d+)?)\s*w/g, '($1 * ' + weekHours + ')');
+    res = res.replace(/(\d+(?:\.\d+)?)\s*d/g, '($1 * ' + workHours + ')');
+    res = res.replace(/(\d+(?:\.\d+)?)\s*h/g, '($1 * 1)');
+    // Support space-separated adjacent terms like "1d 4h" -> "(1 * 8) + (4 * 1)"
+    res = res.replace(/\)\s*\(/g, ') + (');
+    return res;
+  }
+
+  function evaluateMath(str) {
+    let pos = 0;
+    let hasError = false;
+    
+    function consume(char) {
+      if (str[pos] === char) {
+        pos++;
+        return true;
+      }
+      return false;
+    }
+    
+    function skipWhitespace() {
+      while (pos < str.length && /\s/.test(str[pos])) {
+        pos++;
+      }
+    }
+    
+    function parseExpression() {
+      let val = parseTerm();
+      skipWhitespace();
+      while (pos < str.length) {
+        if (consume('+')) {
+          val += parseTerm();
+        } else if (consume('-')) {
+          val -= parseTerm();
+        } else {
+          break;
+        }
+        skipWhitespace();
+      }
+      return val;
+    }
+    
+    function parseTerm() {
+      let val = parseFactor();
+      skipWhitespace();
+      while (pos < str.length) {
+        if (consume('*')) {
+          val *= parseFactor();
+        } else if (consume('/')) {
+          const den = parseFactor();
+          if (den === 0) {
+            hasError = true;
+            val = 0;
+          } else {
+            val /= den;
+          }
+        } else {
+          break;
+        }
+        skipWhitespace();
+      }
+      return val;
+    }
+    
+    function parseFactor() {
+      skipWhitespace();
+      if (consume('(')) {
+        const val = parseExpression();
+        skipWhitespace();
+        if (!consume(')')) {
+          hasError = true;
+        }
+        return val;
+      }
+      
+      let start = pos;
+      if (str[pos] === '-' || str[pos] === '+') {
+        pos++;
+      }
+      while (pos < str.length && (/[0-9.]/.test(str[pos]))) {
+        pos++;
+      }
+      if (start === pos) {
+        hasError = true;
+        pos++; // Avoid infinite loop
+        return NaN;
+      }
+      const numStr = str.substring(start, pos);
+      const val = parseFloat(numStr);
+      if (isNaN(val)) {
+        hasError = true;
+        return NaN;
+      }
+      return val;
+    }
+    
+    const result = parseExpression();
+    if (hasError || isNaN(result) || pos < str.length) {
+      return NaN;
+    }
+    return result;
+  }
+
   return { wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml,
-           base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams };
+           base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath };
 });

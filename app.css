@@ -889,7 +889,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 .ppick{margin-top:0.308rem;border:1px solid var(--line);border-radius:0.615rem;background:var(--panel);overflow:hidden}
 .ppick .psearch{width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;color:var(--txt);padding:0.615rem 0.769rem;margin:0;outline:none}
 .ppick .presults{max-height:11.538rem;overflow:auto}   /* ~5 rows; JS refines to exactly 5 */
-.ppick .prow{padding:0.462rem 0.769rem;font-size:0.923rem}
+.ppick .prow{padding:0.462rem 0.769rem;font-size:0.923rem;white-space:nowrap}
 .ppick .prow .pkind{width:auto;max-width:5.692rem;overflow:hidden;text-overflow:ellipsis}
 
 /* ---- setup modal (first-run / "Settings" gear) ---- */
