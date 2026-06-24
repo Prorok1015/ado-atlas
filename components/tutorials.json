@@ -157,5 +157,30 @@
         "position": "left"
       }
     ]
+  },
+  "v1.2.0_advanced_filter_syntax": {
+    "title": "🔍 Advanced Filter Syntax",
+    "version": "1.2.0",
+    "context": "advanced_filter_modal",
+    "steps": [
+      {
+        "element": ".fb-group-card",
+        "title": "⚖️ Comparisons",
+        "text": "<p style='margin:0 0 12px 0;'>Type mathematical operators directly into the value fields.</p><div class='tut-examples'><div class='tut-ex'><code class='tut-ex-code'>&gt; 5</code> <span class='tut-ex-desc'>in Story Points (greater than 5)</span></div><div class='tut-ex'><code class='tut-ex-code'>&lt;= 2</code> <span class='tut-ex-desc'>in Priority (less than or equal to 2)</span></div><div class='tut-ex'><code class='tut-ex-code'>&lt;&gt; Active</code> <span class='tut-ex-desc'>in State (not equal to Active)</span></div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-group-card",
+        "title": "🔍 Text & Lists",
+        "text": "<p style='margin:0 0 12px 0;'>Use text operators to search string fields.</p><div class='tut-examples'><div class='tut-ex'><code class='tut-ex-code'>contains backend</code> <span class='tut-ex-desc'>contains the word backend</span></div><div class='tut-ex'><code class='tut-ex-code'>not contains bug</code> <span class='tut-ex-desc'>does not contain the word bug</span></div></div><p style='margin:12px 0 8px 0;'>For lists, type values one by one and press <kbd style='background:var(--panel2); border:1px solid var(--line); border-radius:3px; padding:1px 4px; box-shadow:0 1px 0 rgba(0,0,0,0.2);'>Enter</kbd>, or type a list manually:</p><div class='tut-examples'><div class='tut-ex'><code class='tut-ex-code'>in (Bug, Task)</code> <span class='tut-ex-desc'>matches Bug or Task</span></div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-group-card",
+        "title": "🌳 Hierarchy & Pro Tips",
+        "text": "<p style='margin:0 0 12px 0;'>Use hierarchy operators for Area Paths:</p><div class='tut-examples' style='margin-bottom:12px;'><div class='tut-ex'><code class='tut-ex-code'>under Project\\Area</code> <span class='tut-ex-desc'>includes all child areas</span></div></div><div class='tut-examples'><div class='tut-ex'><code class='tut-ex-code'>@me</code> <span class='tut-ex-desc'>inserts the current user in user fields</span></div><div class='tut-ex'><span class='tut-ex-desc'>Click an operator chip (e.g., <code>=</code>) to quickly flip it to its opposite (e.g., <code>&lt;&gt;</code>)</span></div></div>",
+        "position": "right"
+      }
+    ]
   }
 }

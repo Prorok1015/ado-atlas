@@ -12,44 +12,184 @@
   // ---- WIQL ----
   function wiqlQuote(v) { return String(v).replace(/'/g, "''"); }
 
-  // Build WHERE clauses from a filter registry + a {key:{in:[],not:[]}} object.
+  function splitQuotedList(str) {
+    const parts = [];
+    let current = "";
+    let inDouble = false;
+    let inSingle = false;
+    for (let i = 0; i < str.length; i++) {
+      const char = str[i];
+      if (char === '"' && !inSingle) {
+        inDouble = !inDouble;
+        current += char;
+      } else if (char === "'" && !inDouble) {
+        inSingle = !inSingle;
+        current += char;
+      } else if (char === ',' && !inDouble && !inSingle) {
+        parts.push(current);
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    parts.push(current);
+
+    return parts.map(x => {
+      let s = x.trim();
+      if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+        s = s.slice(1, -1);
+      }
+      return s.trim();
+    }).filter(Boolean);
+  }
+
+  function parseOperatorValue(v) {
+    if (v == null) return { op: "=", value: "" };
+    const s = String(v).trim();
+    if (s.startsWith(">=")) return { op: ">=", value: s.slice(2).trim() };
+    if (s.startsWith("<=")) return { op: "<=", value: s.slice(2).trim() };
+    if (s.startsWith("<>")) return { op: "<>", value: s.slice(2).trim() };
+    if (s.startsWith(">")) return { op: ">", value: s.slice(1).trim() };
+    if (s.startsWith("<")) return { op: "<", value: s.slice(1).trim() };
+    if (s.startsWith("=")) return { op: "=", value: s.slice(1).trim() };
+
+    const notContainsMatch = s.match(/^not contains\s+(.*)/i);
+    if (notContainsMatch) return { op: "NOT CONTAINS", value: notContainsMatch[1].trim() };
+
+    const containsMatch = s.match(/^contains\s+(.*)/i);
+    if (containsMatch) return { op: "CONTAINS", value: containsMatch[1].trim() };
+
+    const notUnderMatch = s.match(/^not under\s+(.*)/i);
+    if (notUnderMatch) return { op: "NOT UNDER", value: notUnderMatch[1].trim() };
+
+    const underMatch = s.match(/^under\s+(.*)/i);
+    if (underMatch) return { op: "UNDER", value: underMatch[1].trim() };
+
+    const notInMatch = s.match(/^not in\s+(.*)/i);
+    if (notInMatch) {
+      let val = notInMatch[1].trim();
+      if (val.startsWith("(") && val.endsWith(")")) {
+        val = val.slice(1, -1).trim();
+      }
+      const parts = splitQuotedList(val);
+      return { op: "NOT IN", value: parts };
+    }
+
+    const inMatch = s.match(/^in\s+(.*)/i);
+    if (inMatch) {
+      let val = inMatch[1].trim();
+      if (val.startsWith("(") && val.endsWith(")")) {
+        val = val.slice(1, -1).trim();
+      }
+      const parts = splitQuotedList(val);
+      return { op: "IN", value: parts };
+    }
+
+    return { op: "=", value: s };
+  }
+
+  // Build WHERE clauses from a filter registry + a FilterIR object.
   // Mirrors the chip UI. Tag-style fields (spec.contains) use CONTAINS instead
   // of IN; identity fields support the @me sentinel; numeric fields coerce.
   function buildClauses(filterFields, filters) {
     filters = filters || {};
-    const clauses = [];
-    for (const key of Object.keys(filterFields)) {
-      const spec = filterFields[key];
-      const f = filters[key] || {};
-      const inc = f.in || [], exc = f.not || [];
-      const { ref, identity, num, contains } = spec;
+
+    const compileCondition = (cond, fields) => {
+      const field = cond.field;
+      const spec = (fields && fields[field]) || { ref: field };
+      const ref = spec.ref || field;
+      const num = spec.num || spec.type === 'integer' || spec.type === 'double';
+      const identity = spec.identity || spec.type === 'identity';
+
+      const op = (cond.op || '=').toUpperCase();
+      const rawVal = cond.value;
+
+      if (rawVal === "" || rawVal === null || rawVal === undefined || (Array.isArray(rawVal) && rawVal.length === 0)) {
+        return "";
+      }
+
       const lit = v => {
-        if (num) { const n = parseInt(v, 10); return Number.isFinite(n) ? String(n) : null; }
+        if (identity && v === "me") return "@me";
+        if (num) {
+          const n = Number(v);
+          return Number.isFinite(n) ? String(n) : "null";
+        }
         return "'" + wiqlQuote(v) + "'";
       };
-      if (contains) {
-        if (inc.length) clauses.push("(" + inc.map(v => `[${ref}] CONTAINS '${wiqlQuote(v)}'`).join(" OR ") + ")");
-        if (exc.length) clauses.push("(" + exc.map(v => `NOT [${ref}] CONTAINS '${wiqlQuote(v)}'`).join(" AND ") + ")");
-        continue;
-      }
-      if (inc.length) {
+
+      if (op === 'IN' || op === 'NOT IN') {
+        const arr = Array.isArray(rawVal) ? rawVal : [rawVal];
+        const hasMe = identity && arr.includes("me");
+        const nonMe = arr.filter(v => !(identity && v === "me"));
         const parts = [];
-        const names = inc.filter(v => !(identity && v === "me"));
-        if (identity && inc.includes("me")) parts.push(`[${ref}] = @me`);
-        const vals = names.map(lit).filter(x => x !== null);
-        if (vals.length) parts.push(`[${ref}] IN (${vals.join(",")})`);
-        if (parts.length) clauses.push("(" + parts.join(" OR ") + ")");
+        if (hasMe) {
+          parts.push(`[${ref}] ${op === 'NOT IN' ? '<>' : '='} @me`);
+        }
+        const vals = nonMe.map(lit).filter(x => x !== null);
+        if (vals.length) {
+          parts.push(`[${ref}] ${op} (${vals.join(",")})`);
+        }
+        if (parts.length === 0) return "";
+        if (parts.length === 1) return parts[0];
+        return "(" + parts.join(op === 'NOT IN' ? ' AND ' : ' OR ') + ")";
       }
-      if (exc.length) {
-        const parts = [];
-        const names = exc.filter(v => !(identity && v === "me"));
-        if (identity && exc.includes("me")) parts.push(`[${ref}] <> @me`);
-        const vals = names.map(lit).filter(x => x !== null);
-        if (vals.length) parts.push(`[${ref}] NOT IN (${vals.join(",")})`);
-        if (parts.length) clauses.push("(" + parts.join(" AND ") + ")");
+
+      if (op === 'CONTAINS' || op === 'NOT CONTAINS') {
+        const arr = Array.isArray(rawVal) ? rawVal : [rawVal];
+        const clauses = arr.map(v => {
+          const formatted = lit(v);
+          if (op === 'NOT CONTAINS') {
+            return `NOT [${ref}] CONTAINS ${formatted}`;
+          } else {
+            return `[${ref}] CONTAINS ${formatted}`;
+          }
+        });
+        if (clauses.length === 0) return "";
+        if (clauses.length === 1) return clauses[0];
+        return "(" + clauses.join(op === 'NOT CONTAINS' ? ' AND ' : ' OR ') + ")";
       }
+
+      if (op === 'UNDER' || op === 'NOT UNDER') {
+        const arr = Array.isArray(rawVal) ? rawVal : [rawVal];
+        const clauses = arr.map(v => {
+          const formatted = lit(v);
+          if (op === 'NOT UNDER') {
+            return `NOT [${ref}] UNDER ${formatted}`;
+          } else {
+            return `[${ref}] UNDER ${formatted}`;
+          }
+        });
+        if (clauses.length === 0) return "";
+        if (clauses.length === 1) return clauses[0];
+        return "(" + clauses.join(op === 'NOT UNDER' ? ' AND ' : ' OR ') + ")";
+      }
+
+      const formatted = lit(rawVal);
+      return `[${ref}] ${op} ${formatted}`;
+    };
+
+    if (filters.where && filters.where.kind === 'group') {
+      const compileRule = (rule) => {
+        if (!rule) return "";
+        if (rule.kind === 'group') {
+          const logic = rule.logic || 'AND';
+          const children = (rule.rules || [])
+            .map(compileRule)
+            .filter(Boolean);
+          if (children.length === 0) return "";
+          if (children.length === 1) return children[0];
+          return "(" + children.join(` ${logic} `) + ")";
+        }
+        if (rule.kind === 'condition') {
+          return compileCondition(rule, filterFields);
+        }
+        return "";
+      };
+      const compiled = compileRule(filters.where);
+      return compiled ? [compiled] : [];
     }
-    return clauses;
+
+    return [];
   }
 
   // ---- markdown-lite <-> HTML ----
@@ -283,6 +423,6 @@
     } catch (_) { return {}; }
   }
 
-  return { wiqlQuote, buildClauses, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml,
+  return { wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml,
            base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams };
 });

@@ -64,10 +64,23 @@ function lockSidebar(lock){
   side.classList.toggle('sidebar-loading',!!lock);
   ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est','s_area','s_storypoints','s_remaining','s_completed','s_activity_field','s_risk','s_valuearea'].forEach(id=>{const el=$(id);if(el)el.disabled=!!lock;});
   
-  // Disable dynamic custom field inputs
+  // Disable standard dynamic pickers
+  ['s_activity_field', 's_risk', 's_valuearea'].forEach(id => {
+    if (window.dynamicPickers && window.dynamicPickers[id]) {
+      window.dynamicPickers[id].setDisabled(lock);
+    }
+  });
+
+  // Disable dynamic custom field inputs and pickers
   customFieldsState.forEach(cf => {
     const el = $(cf.elementId);
     if (el) el.disabled = !!lock;
+    if (window.dynamicPickers && window.dynamicPickers[cf.elementId]) {
+      window.dynamicPickers[cf.elementId].setDisabled(lock);
+    }
+    if (window.customHtmlEditors && window.customHtmlEditors[cf.referenceName]) {
+      window.customHtmlEditors[cf.referenceName].setDisabled(lock);
+    }
   });
 
   const trigger = $('side-range-trigger');
@@ -114,17 +127,42 @@ function lockSidebarHeavy(lock, groupIds) {
     if (g === 'storypoints') { const el = $('s_storypoints'); if (el) el.disabled = lock; }
     if (g === 'remaining') { const el = $('s_remaining'); if (el) el.disabled = lock; }
     if (g === 'completed') { const el = $('s_completed'); if (el) el.disabled = lock; }
-    if (g === 'activity') { const el = $('s_activity_field'); if (el) el.disabled = lock; }
-    if (g === 'risk') { const el = $('s_risk'); if (el) el.disabled = lock; }
-    if (g === 'valuearea') { const el = $('s_valuearea'); if (el) el.disabled = lock; }
+    if (g === 'activity') {
+      const el = $('s_activity_field');
+      if (el) el.disabled = lock;
+      if (window.dynamicPickers && window.dynamicPickers['s_activity_field']) {
+        window.dynamicPickers['s_activity_field'].setDisabled(lock);
+      }
+    }
+    if (g === 'risk') {
+      const el = $('s_risk');
+      if (el) el.disabled = lock;
+      if (window.dynamicPickers && window.dynamicPickers['s_risk']) {
+        window.dynamicPickers['s_risk'].setDisabled(lock);
+      }
+    }
+    if (g === 'valuearea') {
+      const el = $('s_valuearea');
+      if (el) el.disabled = lock;
+      if (window.dynamicPickers && window.dynamicPickers['s_valuearea']) {
+        window.dynamicPickers['s_valuearea'].setDisabled(lock);
+      }
+    }
     if (g === 'attachments') { const el = $('s_atch_group'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
     if (g === 'deps') { const el = $('s_deps'); if (el) el.style.pointerEvents = lock ? 'none' : ''; }
     
     // Support custom fields locking
     if (g.startsWith('cust:')) {
       const refName = g.substring(5);
-      const el = $(getCustomFieldElementId(refName));
+      const elId = getCustomFieldElementId(refName);
+      const el = $(elId);
       if (el) el.disabled = !!lock;
+      if (window.dynamicPickers && window.dynamicPickers[elId]) {
+        window.dynamicPickers[elId].setDisabled(lock);
+      }
+      if (window.customHtmlEditors && window.customHtmlEditors[refName]) {
+        window.customHtmlEditors[refName].setDisabled(lock);
+      }
     }
   });
 }
@@ -223,20 +261,29 @@ async function ensureFieldLoaded(groupId) {
     }
     if (groupId === 'activity') {
       const el = $('s_activity_field');
-      if (el) el.value = d.activity || '';
-      orig.activity = d.activity || '';
+      const val = d.activity || '';
+      const picker = window.dynamicPickers && window.dynamicPickers['s_activity_field'];
+      if (picker) picker.set(val, true);
+      else if (el) el.value = val;
+      orig.activity = val;
       orig._loaded_activity = true;
     }
     if (groupId === 'risk') {
       const el = $('s_risk');
-      if (el) el.value = d.risk || '';
-      orig.risk = d.risk || '';
+      const val = d.risk || '';
+      const picker = window.dynamicPickers && window.dynamicPickers['s_risk'];
+      if (picker) picker.set(val, true);
+      else if (el) el.value = val;
+      orig.risk = val;
       orig._loaded_risk = true;
     }
     if (groupId === 'valuearea') {
       const el = $('s_valuearea');
-      if (el) el.value = d.valuearea || '';
-      orig.valuearea = d.valuearea || '';
+      const val = d.valuearea || '';
+      const picker = window.dynamicPickers && window.dynamicPickers['s_valuearea'];
+      if (picker) picker.set(val, true);
+      else if (el) el.value = val;
+      orig.valuearea = val;
       orig._loaded_valuearea = true;
     }
     if (groupId === 'attachments') {
@@ -447,40 +494,60 @@ const FILTERS=[
   {key:'iteration',label:'Sprint',values:()=>sprintPaths,fmt:p=>sprintNames[p]||p},
   {key:'tags',label:'Tags',values:()=>tagList},
 ];
-const fstate={};                          // key -> { value : 'in' | 'out' }
-function cycleChip(key,val){
-  const m=fstate[key]||(fstate[key]={});const v=String(val);
-  if(!m[v])m[v]='in'; else if(m[v]==='in')m[v]='out'; else delete m[v];
+function filterCount(){
+  if (!window.filterManager) return 0;
+  const ir = window.filterManager.getIR();
+  let count = 0;
+  const countRules = (rule) => {
+    if (!rule) return 0;
+    if (rule.kind === 'group') {
+      return (rule.rules || []).reduce((acc, r) => acc + countRules(r), 0);
+    }
+    if (rule.kind === 'condition') {
+      if (rule.value !== undefined && rule.value !== null) {
+        if (Array.isArray(rule.value)) {
+          return rule.value.length;
+        }
+        return String(rule.value).trim() !== '' ? 1 : 0;
+      }
+    }
+    return 0;
+  };
+  count += countRules(ir.where);
+  if (window.filterManager.isFollowed()) count++;
+  return count;
 }
-function filtersObj(){
-  const out={};
-  for(const f of FILTERS){const m=fstate[f.key]||{};const inc=[],exc=[];
-    for(const v in m)(m[v]==='in'?inc:exc).push(v);
-    if(inc.length||exc.length)out[f.key]={in:inc,not:exc};}
-  if (fstate.followed) {
-    const m = fstate.followed;
-    const inc = [], exc = [];
-    for (const v in m) (m[v] === 'in' ? inc : exc).push(v);
-    if (inc.length || exc.length) out.followed = { in: inc, not: exc };
-  }
-  return out;
-}
-function filterCount(){let n=0;for(const k in fstate)n+=Object.keys(fstate[k]).length;return n;}
 function updateFilterCount(){const n=filterCount();const el=$('filt_count');if(el)el.textContent=n?('('+n+')'):'';}
 function renderFilters(){
+  const chipsEl = $('filterchips');
+  const indEl = $('advanced-filter-indicator');
+  
+  if (!window.filterManager) return;
+  const isAdv = window.filterManager.isAdvanced();
+
+  if (isAdv) {
+    if (chipsEl) chipsEl.style.display = 'none';
+    if (indEl) indEl.style.display = 'flex';
+    const all=$('filt_clear_all');if(all)all.style.visibility='visible';
+    return;
+  }
+  
+  if (chipsEl) chipsEl.style.display = 'block';
+  if (indEl) indEl.style.display = 'none';
+
   const el=$('filterchips');el.innerHTML='';
   // toggle the static "✕ Clear all" in the Find row — visibility (not display)
   // keeps its slot reserved so the search input never shifts when filters appear
   const all=$('filt_clear_all');if(all)all.style.visibility=filterCount()>0?'visible':'hidden';
   FILTERS.forEach(f=>{
     const allVals=f.values()||[];
-    if(!allVals.length&&!Object.keys(fstate[f.key]||{}).length)return;   // skip empty rows (e.g. tags/sprints not loaded yet)
+    if(!allVals.length&&!window.filterManager.hasFieldFilters(f.key))return;   // skip empty rows (e.g. tags/sprints not loaded yet)
     
     const limit = 10;
     const isLarge = allVals.length > limit;
     let valsToShow = allVals;
     if(isLarge){
-      const selected=Object.keys(fstate[f.key]||{});
+      const selected = allVals.filter(v => window.filterManager.getChipState(f.key, v) === 'in');
       const popular=getContextPopular(f.key, allVals);
       const union=new Set([...selected,...popular]);
       if(f.key==='assigned')union.add('me');
@@ -494,15 +561,22 @@ function renderFilters(){
     // keeps the slot reserved when this filter has no selection.
     const x=document.createElement('button');
     x.className='fclear';x.title='clear this filter';x.textContent='✕';
-    if(Object.keys(fstate[f.key]||{}).length)
-      x.onclick=()=>{delete fstate[f.key];renderFilters();updateFilterCount();scheduleApply();};
+    if(window.filterManager.hasFieldFilters(f.key))
+      x.onclick=()=>{window.filterManager.clearField(f.key);};
     else{x.style.visibility='hidden';x.tabIndex=-1;}
     row.appendChild(x);
     valsToShow.forEach(v=>{
       const ch=document.createElement('span');ch.className='chip';
-      const st=(fstate[f.key]||{})[String(v)];if(st)ch.classList.add(st);
+      const st=window.filterManager.getChipState(f.key, v);if(st)ch.classList.add(st);
       ch.textContent=f.fmt?f.fmt(v):v;
-      ch.onclick=()=>{cycleChip(f.key,v);renderFilters();updateFilterCount();scheduleApply();};
+      ch.onclick=()=>{
+        const curSt = window.filterManager.getChipState(f.key, v);
+        if (curSt === 'out') {
+          window.filterManager.removeChip(f.key, v);
+        } else {
+          window.filterManager.toggleChip(f.key, v, !curSt ? 'in' : 'out');
+        }
+      };
       row.appendChild(ch);
     });
     if(isLarge){
@@ -552,15 +626,11 @@ function renderFilters(){
             item.textContent=f.fmt?f.fmt(val):val;
             item.onmousedown=(e)=>{
               e.preventDefault();
-              const m=fstate[f.key]||(fstate[f.key]={});
-              m[String(val)]='in';
+              window.filterManager.toggleChip(f.key, val, 'in');
               inp.value='';
               updateClearBtn();
               dropdown.style.display='none';
               if (window.LayerManager) window.LayerManager.close(dropdown);
-              renderFilters();
-              updateFilterCount();
-              scheduleApply();
             };
             dropdown.appendChild(item);
           });
@@ -630,8 +700,7 @@ function renderFilters(){
   buildBulkControls();                      // keep the bulk-bar dropdowns in sync with loaded data
 }
 let applyTimer=null;
-function saveFilters(){try{localStorage.setItem('ado.filters',JSON.stringify(fstate));}catch(e){}}
-function scheduleApply(){saveFilters();clearTimeout(applyTimer);applyTimer=setTimeout(refresh,500);}  // persist + debounce (long enough to click several chips)
+function scheduleApply(){clearTimeout(applyTimer);applyTimer=setTimeout(refresh,500);}  // debounce (long enough to click several chips)
 
 /* ---------- tree ---------- */
 function childrenUl(id){
@@ -708,7 +777,7 @@ async function toggle(li,n,tog){
 function activeText(){const t=$('search').value.trim();return (t && !/^\d+$/.test(t))?t:null;}
 async function currentItems(){
   // the single source of truth for BOTH views: filters (+ optional title search)
-  const order=$('f_sort').value||undefined,filters=filtersObj(),text=activeText()||undefined;
+  const order=$('f_sort').value||undefined,filters=window.filterManager.getIR(),text=activeText()||undefined;
   try{return text ? await api.search({text,order,filters}) : await api.roots({order,filters});}
   catch(e){setStatus('ERROR: '+e.message,true);return [];}
 }
@@ -2825,12 +2894,35 @@ async function toggleSidebarKids(id,btn){
 function optionsPickerProvider(optionsList, placeholder) {
   return {
     localRows(q) {
-      const query = (q || '').toLowerCase();
-      const filtered = optionsList.filter(opt => String(opt).toLowerCase().includes(query));
-      return filtered.map(opt => ({
-        value: String(opt),
-        html: `<span class="ptitle">${esc(opt || '—')}</span>`
-      }));
+      const query = (q || '').trim();
+      const queryLower = query.toLowerCase();
+      const out = [];
+
+      // Prepend blank option if query is empty
+      if (!query) {
+        out.push({
+          value: '',
+          html: `<span class="ptitle pcnone">—</span>`
+        });
+      }
+
+      const filtered = (optionsList || []).filter(opt => String(opt).toLowerCase().includes(queryLower));
+      filtered.forEach(opt => {
+        out.push({
+          value: String(opt),
+          html: `<span class="ptitle">${esc(opt || '—')}</span>`
+        });
+      });
+
+      // If there's a custom query that isn't an exact match to any option, add a custom option
+      if (query && !filtered.some(opt => String(opt).toLowerCase() === queryLower)) {
+        out.push({
+          value: query,
+          html: `<span class="ptitle" style="font-style: italic;">Use custom: "${esc(query)}"</span>`
+        });
+      }
+
+      return out;
     },
     renderCard(v, card) {
       if (!v) {
@@ -2947,6 +3039,14 @@ function setupDynamicDatePicker(elId, referenceName, initialVal) {
   });
 }
 
+function renderSidebarHeader(d) {
+  const hdr = $('s_hdr');
+  if (!hdr) return;
+  hdr.innerHTML=`<i class="dot" style="background:${tyColor(d.type)}"></i>#${d.id} ${esc(d.type)}`+
+    ` <span class="sbadge" style="background:${stateColor(d.state)}">${esc(d.state)}</span>`+
+    `<span id="s_rev" style="color:var(--muted);font-weight:400;font-size:11px;margin-left:4px;">${d.rev ? 'rev' + d.rev : ''}</span>`;
+}
+
 async function openItem(id){
   const myToken=++openToken;
   // Always ask before clobbering edits — including reopening the SAME dirty
@@ -3030,9 +3130,9 @@ async function openItem(id){
       badge.style.display = cs.length > 0 ? 'inline-block' : 'none';
     }
   });
-  $('s_hdr').innerHTML=`<i class="dot" style="background:${tyColor(d.type)}"></i>#${d.id} ${esc(d.type)}`+
-    ` <span class="sbadge" style="background:${stateColor(d.state)}">${esc(d.state)}</span>`+
-    ` <span style="color:var(--muted);font-weight:400;font-size:11px">rev${d.rev}</span>`;
+  
+  renderSidebarHeader(d);
+
   renderItemContext(d);
   $('s_link').href=d.url;$('s_title').value=d.title;assignedEditor.set(d.assigned||'',/*silent*/true);
   descBase=(d.url||'').replace(/\/\d+$/,'');     // e.g. ".../_workitems/edit" for #N autolinks in the preview
@@ -3207,21 +3307,29 @@ async function openItem(id){
       const div = document.createElement('div');
       div.className = 'sgroup';
       div.dataset.sg = 'activity';
+      const elId = 's_activity_field';
+      
       div.innerHTML = `
         <label>Activity</label>
-        <select id="s_activity_field" style="width:100%">
-          <option value="">—</option>
-          <option>Development</option>
-          <option>Testing</option>
-          <option>Requirements</option>
-          <option>Design</option>
-          <option>Documentation</option>
-          <option>Deployment</option>
-        </select>
+        <div style="position:relative; width:100%">
+          <input type="hidden" id="${elId}">
+          <div class="prow-field">
+            <button type="button" class="btn pcard" id="${elId}_card" title="click to change value"></button>
+          </div>
+          <div id="${elId}_pick" class="ppick" style="display:none">
+            <input id="${elId}_search" class="psearch" placeholder="search options…  (Esc to cancel)" autocomplete="off">
+            <div id="${elId}_results" class="presults"></div>
+          </div>
+        </div>
       `;
-      const sel = div.querySelector('select');
-      sel.addEventListener('change', () => quickSave('activity'));
+      
+      const hidden = div.querySelector('input[type="hidden"]');
+      hidden.addEventListener('input', refreshDirty);
+      hidden.addEventListener('change', () => quickSave('activity'));
       side.appendChild(div);
+      
+      const allowedVals = api.FIELD_REGISTRY.activity && api.FIELD_REGISTRY.activity.allowedValues ? api.FIELD_REGISTRY.activity.allowedValues : [];
+      createDynamicCombobox(elId, 'microsoft.vsts.common.activity', allowedVals, 'Activity', '');
     }
 
     // 8. Risk Group
@@ -3229,18 +3337,29 @@ async function openItem(id){
       const div = document.createElement('div');
       div.className = 'sgroup';
       div.dataset.sg = 'risk';
+      const elId = 's_risk';
+      
       div.innerHTML = `
         <label>Risk</label>
-        <select id="s_risk" style="width:100%">
-          <option value="">—</option>
-          <option>High</option>
-          <option>Medium</option>
-          <option>Low</option>
-        </select>
+        <div style="position:relative; width:100%">
+          <input type="hidden" id="${elId}">
+          <div class="prow-field">
+            <button type="button" class="btn pcard" id="${elId}_card" title="click to change value"></button>
+          </div>
+          <div id="${elId}_pick" class="ppick" style="display:none">
+            <input id="${elId}_search" class="psearch" placeholder="search options…  (Esc to cancel)" autocomplete="off">
+            <div id="${elId}_results" class="presults"></div>
+          </div>
+        </div>
       `;
-      const sel = div.querySelector('select');
-      sel.addEventListener('change', () => quickSave('risk'));
+      
+      const hidden = div.querySelector('input[type="hidden"]');
+      hidden.addEventListener('input', refreshDirty);
+      hidden.addEventListener('change', () => quickSave('risk'));
       side.appendChild(div);
+      
+      const allowedVals = api.FIELD_REGISTRY.risk && api.FIELD_REGISTRY.risk.allowedValues ? api.FIELD_REGISTRY.risk.allowedValues : [];
+      createDynamicCombobox(elId, 'microsoft.vsts.common.risk', allowedVals, 'Risk', '');
     }
 
     // 9. Value Area Group
@@ -3248,17 +3367,29 @@ async function openItem(id){
       const div = document.createElement('div');
       div.className = 'sgroup';
       div.dataset.sg = 'valuearea';
+      const elId = 's_valuearea';
+      
       div.innerHTML = `
         <label>Value Area</label>
-        <select id="s_valuearea" style="width:100%">
-          <option value="">—</option>
-          <option>Business</option>
-          <option>Architectural</option>
-        </select>
+        <div style="position:relative; width:100%">
+          <input type="hidden" id="${elId}">
+          <div class="prow-field">
+            <button type="button" class="btn pcard" id="${elId}_card" title="click to change value"></button>
+          </div>
+          <div id="${elId}_pick" class="ppick" style="display:none">
+            <input id="${elId}_search" class="psearch" placeholder="search options…  (Esc to cancel)" autocomplete="off">
+            <div id="${elId}_results" class="presults"></div>
+          </div>
+        </div>
       `;
-      const sel = div.querySelector('select');
-      sel.addEventListener('change', () => quickSave('valuearea'));
+      
+      const hidden = div.querySelector('input[type="hidden"]');
+      hidden.addEventListener('input', refreshDirty);
+      hidden.addEventListener('change', () => quickSave('valuearea'));
       side.appendChild(div);
+      
+      const allowedVals = api.FIELD_REGISTRY.valuearea && api.FIELD_REGISTRY.valuearea.allowedValues ? api.FIELD_REGISTRY.valuearea.allowedValues : [];
+      createDynamicCombobox(elId, 'microsoft.vsts.common.valuearea', allowedVals, 'Value Area', '');
     }
 
     // 10. Start — Target Date Group
@@ -3353,15 +3484,17 @@ async function openItem(id){
     }
 
     // 8. Custom Fields
-    const stdRefs = new Set();
-    for (const val of Object.values(api.FIELD_REGISTRY)) {
-      stdRefs.add(val.ref);
-      if (val.fallbackRefs) {
-        val.fallbackRefs.forEach(f => stdRefs.add(f));
-      }
-    }
-    const customFields = fields.filter(f => !stdRefs.has(f.referenceName));
+    const customFields = fields.filter(f => !api.isCoreField(f.referenceName));
     customFields.forEach(cf => {
+      // Inject fallbacks if ADO didn't provide allowed values
+      if ((!cf.allowedValues || cf.allowedValues.length === 0) && window.api && window.api.FIELD_REGISTRY) {
+        const regField = Object.values(window.api.FIELD_REGISTRY).find(r => r.ref && r.ref.toLowerCase() === cf.referenceName.toLowerCase());
+        if (regField && regField.allowedValues && regField.allowedValues.length > 0) {
+          cf.allowedValues = regField.allowedValues;
+          cf.hasAllowedValues = true;
+        }
+      }
+
       const elId = getCustomFieldElementId(cf.referenceName);
       const sgId = 'cust:' + cf.referenceName;
       const div = document.createElement('div');
@@ -3372,14 +3505,18 @@ async function openItem(id){
       const type = (cf.type || '').toLowerCase();
       let input;
       if (type === 'html' || type === 'plaintext') {
-        input = document.createElement('textarea');
-        input.style.height = '60px';
-        input.id = elId;
-        if (cf.readOnly) input.disabled = true;
-        input.addEventListener('input', refreshDirty);
-        input.addEventListener('change', () => quickSave('cust:' + cf.referenceName));
-        div.appendChild(input);
+        const wrapper = document.createElement('div');
+        wrapper.id = elId + '_editor_container';
+        div.appendChild(wrapper);
         side.appendChild(div);
+
+        if (!window.customHtmlEditors) window.customHtmlEditors = {};
+        const editor = new MarkdownEditor(wrapper.id, {
+          placeholder: 'Add ' + cf.name + '...',
+          onInput: () => { refreshDirty(); }
+        });
+        if (cf.readOnly) editor.setDisabled(true);
+        window.customHtmlEditors[cf.referenceName] = editor;
       } else if (type === 'datetime') {
         const wrapper = document.createElement('div');
         wrapper.className = 'drp-wrapper';
@@ -3486,15 +3623,8 @@ async function openItem(id){
   }
 
   activeWType = d.type;
-  const stdRefs = new Set();
-  for (const val of Object.values(api.FIELD_REGISTRY)) {
-    stdRefs.add(val.ref);
-    if (val.fallbackRefs) {
-      val.fallbackRefs.forEach(f => stdRefs.add(f));
-    }
-  }
   const customFieldIds = fields
-    .filter(cf => !stdRefs.has(cf.referenceName) && cf.isOnForm)
+    .filter(cf => !api.isCoreField(cf.referenceName) && cf.isOnForm)
     .map(cf => ({ id: 'cust:' + cf.referenceName, formGroup: cf.formGroup, fieldType: cf.type }));
 
   const offFormFields = fields.filter(f => !f.isOnForm).map(f => 'cust:' + f.referenceName);
@@ -3561,6 +3691,13 @@ async function openItem(id){
       api.item(id, { fields: fieldsToFetch.length > 0 ? fieldsToFetch : undefined, expandRelations: needRelations, signal }).then(fullD => {
         if (cur !== id || phase2Token !== openToken) return; // switched items — discard stale data
 
+        if (fullD && fullD.rev) {
+          if (store.nodes[id]) {
+            store.nodes[id].rev = fullD.rev;
+            renderSidebarHeader(store.nodes[id]);
+          }
+        }
+
         if (activeLazyGroups.includes('desc') && descEditor) {
           descEditor.value = fullD.desc || '';
           descEditor.togglePreview(true);
@@ -3601,16 +3738,32 @@ async function openItem(id){
           orig._loaded_completed = true;
         }
         if (activeLazyGroups.includes('activity') && $('s_activity_field')) {
-          $('s_activity_field').value = fullD.activity || '';
+          const picker = window.dynamicPickers && window.dynamicPickers['s_activity_field'];
+          if (picker) {
+            picker.set(fullD.activity || '', true);
+          } else {
+            $('s_activity_field').value = fullD.activity || '';
+          }
           orig.activity = fullD.activity || '';
           orig._loaded_activity = true;
         }
         if (activeLazyGroups.includes('classification')) {
-          if ($('s_risk')) $('s_risk').value = fullD.risk || '';
-          if ($('s_valuearea')) $('s_valuearea').value = fullD.valuearea || '';
+          const rPicker = window.dynamicPickers && window.dynamicPickers['s_risk'];
+          if (rPicker) {
+            rPicker.set(fullD.risk || '', true);
+          } else {
+            if ($('s_risk')) $('s_risk').value = fullD.risk || '';
+          }
           orig.risk = fullD.risk || '';
-          orig.valuearea = fullD.valuearea || '';
           orig._loaded_risk = true;
+
+          const vaPicker = window.dynamicPickers && window.dynamicPickers['s_valuearea'];
+          if (vaPicker) {
+            vaPicker.set(fullD.valuearea || '', true);
+          } else {
+            if ($('s_valuearea')) $('s_valuearea').value = fullD.valuearea || '';
+          }
+          orig.valuearea = fullD.valuearea || '';
           orig._loaded_valuearea = true;
         }
         if (activeLazyGroups.includes('attachments')) {
@@ -3630,10 +3783,17 @@ async function openItem(id){
           if (val && typeof val === 'object') {
             val = val.displayName || val.uniqueName || '';
           }
+          const isHtml = cf.type && (cf.type.toLowerCase() === 'html' || cf.type.toLowerCase() === 'plaintext');
+          const editor = isHtml ? (window.customHtmlEditors && window.customHtmlEditors[cf.referenceName]) : null;
           const el = $(cf.elementId);
-          if (el) {
+          
+          if (el || editor) {
             const isDateTime = cf.type && cf.type.toLowerCase() === 'datetime';
-            if (isDateTime) {
+            if (isHtml && editor) {
+              const mdVal = AdoLib.htmlToMarkdown(val || '');
+              editor.set(mdVal, true);
+              editor.togglePreview(true);
+            } else if (isDateTime) {
               const picker = window.dynamicDatePickers && window.dynamicDatePickers[cf.elementId];
               if (picker) {
                 const dateStr = val ? val.slice(0, 10) : '';
@@ -3647,14 +3807,18 @@ async function openItem(id){
               const picker = window.dynamicPickers && window.dynamicPickers[cf.elementId];
               if (picker) {
                 picker.set(val, true);
-              } else {
+              } else if (el) {
                 el.value = val;
               }
-            } else {
+            } else if (el) {
               el.value = val;
             }
           }
-          orig[cf.referenceName] = val;
+          if (isHtml) {
+            orig[cf.referenceName] = AdoLib.htmlToMarkdown(val || '');
+          } else {
+            orig[cf.referenceName] = val;
+          }
           orig['_loaded_' + cf.referenceName] = true;
         });
 
@@ -3773,17 +3937,47 @@ function discardChanges(){
   if ($('s_storypoints')) $('s_storypoints').value=orig.storypoints!=null?orig.storypoints:'';
   if ($('s_remaining')) $('s_remaining').value=orig.remaining!=null?orig.remaining:'';
   if ($('s_completed')) $('s_completed').value=orig.completed!=null?orig.completed:'';
-  if ($('s_activity_field')) $('s_activity_field').value=orig.activity||'';
-  if ($('s_risk')) $('s_risk').value=orig.risk||'';
-  if ($('s_valuearea')) $('s_valuearea').value=orig.valuearea||'';
+
+  const fieldsToSync = [
+    { elId: 's_activity_field', val: orig.activity },
+    { elId: 's_risk', val: orig.risk },
+    { elId: 's_valuearea', val: orig.valuearea }
+  ];
+  fieldsToSync.forEach(f => {
+    if ($(f.elId)) {
+      const p = window.dynamicPickers && window.dynamicPickers[f.elId];
+      if (p) p.set(f.val || '', true);
+      else $(f.elId).value = f.val || '';
+    }
+  });
 
   // Restore custom fields
   customFieldsState.forEach(cf => {
+    const origVal = orig[cf.referenceName] || '';
+    const isHtml = cf.type && (cf.type.toLowerCase() === 'html' || cf.type.toLowerCase() === 'plaintext');
+    const editor = isHtml ? (window.customHtmlEditors && window.customHtmlEditors[cf.referenceName]) : null;
     const el = $(cf.elementId);
-    if (el) {
-      const origVal = orig[cf.referenceName];
+
+    if (el || editor) {
       const isDateTime = cf.type && cf.type.toLowerCase() === 'datetime';
-      el.value = (isDateTime && origVal) ? origVal.slice(0, 10) : (origVal != null ? origVal : '');
+      if (isHtml && editor) {
+        editor.value = origVal;
+        editor.togglePreview(true);
+      } else if (isDateTime) {
+        const dateStr = origVal ? origVal.slice(0, 10) : '';
+        el.value = dateStr;
+        const picker = window.dynamicDatePickers && window.dynamicDatePickers[cf.elementId];
+        if (picker) picker.setRange(dateStr, dateStr);
+        const trigger = $(cf.elementId + '_trigger');
+        if (trigger) trigger.value = dateStr ? formatDisplayDate(dateStr) : '';
+      } else {
+        const picker = window.dynamicPickers && window.dynamicPickers[cf.elementId];
+        if (picker) {
+          picker.set(origVal, true);
+        } else if (el) {
+          el.value = origVal;
+        }
+      }
     }
   });
 
@@ -3815,6 +4009,16 @@ function editorValues(){
   
   // Collect dynamic custom fields values
   customFieldsState.forEach(cf => {
+    const isHtml = cf.type && (cf.type.toLowerCase() === 'html' || cf.type.toLowerCase() === 'plaintext');
+    if (isHtml) {
+      if (window.customHtmlEditors && window.customHtmlEditors[cf.referenceName]) {
+        values[cf.referenceName] = window.customHtmlEditors[cf.referenceName].value;
+      } else {
+        values[cf.referenceName] = '';
+      }
+      return;
+    }
+
     const el = $(cf.elementId);
     if (el) {
       if (cf.type === 'double' || cf.type === 'integer') {
@@ -4307,7 +4511,10 @@ async function quickSave(field){
     }
   });
 
-  if(r&&r.rev)SubscriptionManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
+  if(r&&r.rev) {
+    SubscriptionManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
+    if(store.nodes[id]) store.nodes[id].rev = r.rev;
+  }
   refreshDirty();setSaveChip('saved');
   setStatus(`#${id} ${field} saved`+(r?` → rev ${r.rev}`:''));
   postSaveRefresh(body,parentChanged);
@@ -4319,6 +4526,12 @@ async function save(){
   if(v.title!==orig.title)body.title=v.title;
   if(v.desc!==orig.desc)body.desc=v.desc;
   if(orig.has_ac&&v.ac!==orig.ac)body.ac=v.ac;
+  customFieldsState.forEach(cf => {
+    const isHtml = cf.type && (cf.type.toLowerCase() === 'html' || cf.type.toLowerCase() === 'plaintext');
+    if (isHtml && v[cf.referenceName] !== orig[cf.referenceName]) {
+      body[cf.referenceName] = v[cf.referenceName];
+    }
+  });
   if(!Object.keys(body).length){setStatus('no changes');return;}
   const before={...orig};
   const sv=$('s_save');sv.disabled=true;sv.textContent='Saving…';setSaveChip('saving');loadStart('saving…');
@@ -4332,7 +4545,15 @@ async function save(){
   if('title'in body)orig.title=v.title;
   if('desc'in body)orig.desc=v.desc;
   if('ac'in body)orig.ac=v.ac;
-  if(r&&r.rev)SubscriptionManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
+  customFieldsState.forEach(cf => {
+    if (cf.referenceName in body) {
+      orig[cf.referenceName] = v[cf.referenceName];
+    }
+  });
+  if(r&&r.rev) {
+    SubscriptionManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
+    if(store.nodes[id]) store.nodes[id].rev = r.rev;
+  }
   refreshDirty();setSaveChip('saved');setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
   postSaveRefresh(body,false);
 }
@@ -6835,15 +7056,8 @@ async function updateSideGroupsForType(wtype) {
       if (hasEstimate) czSupportedGroups.add('estimate');
       if (hasStartOrTarget || hasDue || hasEstimate) czSupportedGroups.add('time_in_state');
 
-      const stdRefs = new Set();
-      for (const val of Object.values(api.FIELD_REGISTRY)) {
-        stdRefs.add(val.ref);
-        if (val.fallbackRefs) {
-          val.fallbackRefs.forEach(f => stdRefs.add(f));
-        }
-      }
       fields.forEach(cf => {
-        if (!stdRefs.has(cf.referenceName)) {
+        if (!api.isCoreField(cf.referenceName)) {
           const sgId = 'cust:' + cf.referenceName;
           czSupportedGroups.add(sgId);
           let existingGroup = SIDE_GROUPS.find(g => g.id === sgId);
@@ -6901,15 +7115,8 @@ async function showCustomize(){
           try {
             const fields = await api.getWorkItemTypeFields(czWType);
             offFormFields = fields.filter(f => !f.isOnForm).map(f => 'cust:' + f.referenceName);
-            const stdRefs = new Set();
-            for (const val of Object.values(api.FIELD_REGISTRY)) {
-              stdRefs.add(val.ref);
-              if (val.fallbackRefs) {
-                val.fallbackRefs.forEach(f => stdRefs.add(f));
-              }
-            }
             customFieldIds = fields
-              .filter(cf => !stdRefs.has(cf.referenceName) && cf.isOnForm)
+              .filter(cf => !api.isCoreField(cf.referenceName) && cf.isOnForm)
               .map(cf => ({ id: 'cust:' + cf.referenceName, formGroup: cf.formGroup, fieldType: cf.type }));
           } catch (e) {}
         }
@@ -7799,9 +8006,16 @@ async function initialBoot(postSetup){
   if(_booted){                           // settings re-save: just reload data
     iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canEditSprint=true;canCreateItem=true;newSprints.clear();
     updateUndoButtons();updateCreateButtons();
+    if (window.FilterBuilderModal && typeof window.FilterBuilderModal.preLoad === 'function') {
+      window.FilterBuilderModal.preLoad(true);
+    }
     await loadIdentity();await refresh();warnIfPatExpiring();return;
   }
   _booted=true;
+
+  if (window.FilterBuilderModal && typeof window.FilterBuilderModal.preLoad === 'function') {
+    window.FilterBuilderModal.preLoad();
+  }
 
   fillTypeSelect('c_type','Task');fillTypeSelect('n_type','Task');   // seed with fallback now; loadTypes() refills from ADO
   // switching view is render-only (no API): graph draws from the store, tree DOM persists
@@ -7877,27 +8091,47 @@ async function initialBoot(postSetup){
   function updateFollowedBtnVisual() {
     const btn = $('followed_btn');
     if (!btn) return;
-    const active = !!(fstate.followed && fstate.followed['yes'] === 'in');
+    const active = window.filterManager ? window.filterManager.isFollowed() : false;
     btn.classList.toggle('on', active);
     btn.textContent = active ? '★' : '☆';
   }
   function toggleFollowedFilter(active) {
-    if (active) {
-      fstate.followed = { 'yes': 'in' };
-    } else {
-      delete fstate.followed;
+    if (window.filterManager) {
+      window.filterManager.toggleFollowed(active);
     }
-    updateFollowedBtnVisual();
-    renderFilters();
-    updateFilterCount();
-    scheduleApply();
   }
   $('followed_btn').onclick=()=>{
     const active = !$('followed_btn').classList.contains('on');
     toggleFollowedFilter(active);
   };
   $('filt_btn').onclick=()=>{const p=$('filterpanel');const show=p.style.display==='none';p.style.display=show?'flex':'none';$('filt_btn').classList.toggle('on',show);};
-  $('filt_clear_all').onclick=()=>{for(const k in fstate)delete fstate[k];updateFollowedBtnVisual();renderFilters();updateFilterCount();scheduleApply();};
+  
+  // Advanced Filter Buttons Wiring
+  if ($('advanced_filter_btn')) {
+    $('advanced_filter_btn').onclick = () => {
+      FilterBuilderModal.open(window.filterManager.getIR(), (newIR) => {
+        window.filterManager.setIR(newIR);
+      });
+    };
+  }
+
+  if ($('advanced_filter_edit_btn')) {
+    $('advanced_filter_edit_btn').onclick = () => {
+      FilterBuilderModal.open(window.filterManager.getIR(), (newIR) => {
+        window.filterManager.setIR(newIR);
+      });
+    };
+  }
+
+  if ($('advanced_filter_clear_btn')) {
+    $('advanced_filter_clear_btn').onclick = () => {
+      window.filterManager.clear();
+    };
+  }
+
+  $('filt_clear_all').onclick=()=>{
+    window.filterManager.clear();
+  };
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
   const moreP=$('morepanel'),moreB=$('morebtn');
   const closeMore=()=>{moreP.style.display='none';moreB.classList.remove('on');if (window.LayerManager) window.LayerManager.close(moreP);};
@@ -8327,7 +8561,19 @@ async function initialBoot(postSetup){
   loadBarLayout();applyBarLayout();              // apply the saved toolbar order / hidden set
   loadBulkLayout();applyBulkLayout();            // apply the saved bulk edit bar order / hidden set
   wireTreeDnD();                                  // drag tree rows to re-parent
-  try{const sf=localStorage.getItem('ado.filters');if(sf)Object.assign(fstate,JSON.parse(sf));updateFollowedBtnVisual();
+  try {
+    window.filterManager = new FilterManager();
+    window.filterManager.load();
+    renderFilters();
+    updateFilterCount();
+    window.filterManager.onChange(() => {
+      window.filterManager.save();
+      updateFollowedBtnVisual();
+      renderFilters();
+      updateFilterCount();
+      scheduleApply();
+    });
+    updateFollowedBtnVisual();
     chrome.storage.local.get(["followNotify", "mentionNotify", "notifyAge"]).then(({followNotify, mentionNotify, notifyAge})=>{
       applyFollowNotify(followNotify||'on');
       applyMentionNotify(mentionNotify||'on');
@@ -8387,6 +8633,7 @@ async function initialBoot(postSetup){
   refresh().then(warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
   try {
     const tm = new TutorialManager();
+    window.tutorialManagerInstance = tm;
     await tm.init();
   } catch (e) {
     console.error('Failed to initialize TutorialManager:', e);

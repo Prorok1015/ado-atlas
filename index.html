@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ADO Atlas</title>
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="components/filter-builder-modal.css">
 <script src="vendor/cytoscape.min.js"></script>
 <script src="vendor/dagre.min.js"></script>
 <script src="vendor/cytoscape-dagre.js"></script>
@@ -89,8 +90,14 @@
     <span class="fl fl-sort">Sort</span>
     <select id="f_sort" title="sort order"><option value="">id</option><option value="priority">priority</option></select>
     <button class="btn" id="refreshbtn" title="reload from server (drop caches)"><span class="ricon">⟳</span> Refresh</button>
+    <button class="btn" id="advanced_filter_btn" title="Open advanced visual filter builder">Advanced...</button>
   </div>
   <div id="filterchips"></div>
+  <div id="advanced-filter-indicator" style="display:none; align-items:center; gap:8px; padding:6px 12px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; margin-top:8px; font-size:0.923rem;">
+    <span style="font-weight:600; color:var(--accent);">Advanced Filter Active</span>
+    <button class="btn" id="advanced_filter_edit_btn" style="padding:2px 8px; font-size:0.8rem; height:auto; line-height:1.2;">Edit</button>
+    <button class="fclear" id="advanced_filter_clear_btn" style="visibility:visible; cursor:pointer;" title="clear advanced filter">✕</button>
+  </div>
 </div>
 <div id="bulkbar" style="display:none">
   <span id="bulk_count">0 selected</span>
@@ -637,6 +644,8 @@
 <script src="components/date-range-picker.js"></script>
 <script src="components/tutorial-manager.js"></script>
 <script src="components/subscription-manager.js"></script>
+<script src="components/filter-builder-modal.js"></script>
+<script src="components/filter-manager.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -146,9 +146,10 @@ class MarkdownEditor {
   }
 
   get value() { return this.textarea.value; }
-  set value(val) {
+  set value(val) { this.set(val, false); }
+  set(val, silent = false) {
     this.textarea.value = val || '';
-    if (this.options.onInput) this.options.onInput();
+    if (!silent && this.options.onInput) this.options.onInput();
     if (!this.isEditMode) {
       this.renderPreview();
     }

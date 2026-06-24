@@ -2,6 +2,7 @@
 // (or: node tests/lib.test.js). Exits non-zero if anything fails.
 const assert = require("node:assert");
 const lib = require("../lib.js");
+const FilterManager = require("../components/filter-manager.js");
 
 let pass = 0, fail = 0;
 function test(name, fn) {
@@ -23,32 +24,175 @@ const FF = {
   assigned: { ref: "System.AssignedTo", identity: true },
   tags:     { ref: "System.Tags", contains: true },
 };
-test("buildClauses: simple IN include", () => {
-  assert.deepStrictEqual(lib.buildClauses(FF, { state: { in: ["Active", "New"], not: [] } }),
-    ["([System.State] IN ('Active','New'))"]);
-});
-test("buildClauses: NOT IN exclude", () => {
-  assert.deepStrictEqual(lib.buildClauses(FF, { state: { in: [], not: ["Closed"] } }),
-    ["([System.State] NOT IN ('Closed'))"]);
-});
-test("buildClauses: numeric field is not quoted", () => {
-  assert.deepStrictEqual(lib.buildClauses(FF, { priority: { in: ["1", "2"], not: [] } }),
-    ["([Microsoft.VSTS.Common.Priority] IN (1,2))"]);
-});
-test("buildClauses: identity @me + named", () => {
-  assert.deepStrictEqual(lib.buildClauses(FF, { assigned: { in: ["me", "Bob"], not: [] } }),
-    ["([System.AssignedTo] = @me OR [System.AssignedTo] IN ('Bob'))"]);
-});
-test("buildClauses: tags use CONTAINS / NOT CONTAINS", () => {
-  assert.deepStrictEqual(lib.buildClauses(FF, { tags: { in: ["ux"], not: ["wip"] } }),
-    ["([System.Tags] CONTAINS 'ux')", "(NOT [System.Tags] CONTAINS 'wip')"]);
-});
-test("buildClauses: values are WIQL-escaped", () => {
-  assert.deepStrictEqual(lib.buildClauses(FF, { state: { in: ["O'Brien"], not: [] } }),
-    ["([System.State] IN ('O''Brien'))"]);
-});
-test("buildClauses: empty filters -> no clauses", () => {
+test("buildClauses: FilterIR empty / no group -> no clauses", () => {
   assert.deepStrictEqual(lib.buildClauses(FF, {}), []);
+});
+
+test("buildClauses: FilterIR ignores conditions with empty values", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "=", value: "" },
+        { kind: "condition", field: "priority", op: "IN", value: [] },
+        { kind: "condition", field: "assigned", op: "=", value: null },
+        { kind: "condition", field: "tags", op: "CONTAINS", value: undefined }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), []);
+});
+
+test("buildClauses: FilterIR simple condition with =", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "=", value: "Active" }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["[System.State] = 'Active'"]);
+});
+
+test("buildClauses: FilterIR simple condition with <>", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "<>", value: "Closed" }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["[System.State] <> 'Closed'"]);
+});
+
+test("buildClauses: FilterIR IN include", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "IN", value: ["Active", "New"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["[System.State] IN ('Active','New')"]);
+});
+
+test("buildClauses: FilterIR NOT IN exclude", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "NOT IN", value: ["Closed"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["[System.State] NOT IN ('Closed')"]);
+});
+
+test("buildClauses: FilterIR numeric field is not quoted", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "priority", op: "IN", value: ["1", "2"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["[Microsoft.VSTS.Common.Priority] IN (1,2)"]);
+});
+
+test("buildClauses: FilterIR identity @me + named", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "assigned", op: "IN", value: ["me", "Bob"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["([System.AssignedTo] = @me OR [System.AssignedTo] IN ('Bob'))"]);
+});
+
+test("buildClauses: FilterIR tags use CONTAINS / NOT CONTAINS", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "tags", op: "CONTAINS", value: ["ux"] },
+        { kind: "condition", field: "tags", op: "NOT CONTAINS", value: ["wip"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["([System.Tags] CONTAINS 'ux' AND NOT [System.Tags] CONTAINS 'wip')"]);
+});
+
+test("buildClauses: FilterIR UNDER / NOT UNDER", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "UNDER", value: "Area/Path" },
+        { kind: "condition", field: "state", op: "NOT UNDER", value: "Area/Path2" }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["([System.State] UNDER 'Area/Path' AND NOT [System.State] UNDER 'Area/Path2')"]);
+});
+
+test("buildClauses: FilterIR UNDER / NOT UNDER with arrays", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "UNDER", value: ["Area/Path", "Area/Path2"] },
+        { kind: "condition", field: "state", op: "NOT UNDER", value: ["Area/Path3", "Area/Path4"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["(([System.State] UNDER 'Area/Path' OR [System.State] UNDER 'Area/Path2') AND (NOT [System.State] UNDER 'Area/Path3' AND NOT [System.State] UNDER 'Area/Path4'))"]);
+});
+
+test("buildClauses: FilterIR operators >, <, >=, <=", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "priority", op: ">", value: "1" },
+        { kind: "condition", field: "priority", op: "<", value: "5" },
+        { kind: "condition", field: "priority", op: ">=", value: "2" },
+        { kind: "condition", field: "priority", op: "<=", value: "4" }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
+    "([Microsoft.VSTS.Common.Priority] > 1 AND [Microsoft.VSTS.Common.Priority] < 5 AND [Microsoft.VSTS.Common.Priority] >= 2 AND [Microsoft.VSTS.Common.Priority] <= 4)"
+  ]);
+});
+
+test("buildClauses: FilterIR values are WIQL-escaped", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "IN", value: ["O'Brien"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["[System.State] IN ('O''Brien')"]);
 });
 
 // ---- html <-> text ----
@@ -235,6 +379,263 @@ test("parseRedirectParams: extracts code/state/error", () => {
   const e = lib.parseRedirectParams("https://x.chromiumapp.org/?error=access_denied&error_description=nope");
   assert.strictEqual(e.error, "access_denied");
   assert.strictEqual(e.code, null);
+});
+
+// ---- new: parseOperatorValue ----
+test("parseOperatorValue extracts operators correctly", () => {
+  assert.deepStrictEqual(lib.parseOperatorValue("> 5"), { op: ">", value: "5" });
+  assert.deepStrictEqual(lib.parseOperatorValue(">= 10"), { op: ">=", value: "10" });
+  assert.deepStrictEqual(lib.parseOperatorValue("<> 0"), { op: "<>", value: "0" });
+  assert.deepStrictEqual(lib.parseOperatorValue("under Area/Path"), { op: "UNDER", value: "Area/Path" });
+  assert.deepStrictEqual(lib.parseOperatorValue("not under Area/Path"), { op: "NOT UNDER", value: "Area/Path" });
+  assert.deepStrictEqual(lib.parseOperatorValue("contains bug"), { op: "CONTAINS", value: "bug" });
+  assert.deepStrictEqual(lib.parseOperatorValue("not contains bug"), { op: "NOT CONTAINS", value: "bug" });
+  assert.deepStrictEqual(lib.parseOperatorValue("in (Active, New)"), { op: "IN", value: ["Active", "New"] });
+  assert.deepStrictEqual(lib.parseOperatorValue("in Active, New"), { op: "IN", value: ["Active", "New"] });
+  assert.deepStrictEqual(lib.parseOperatorValue("in Active"), { op: "IN", value: ["Active"] });
+  assert.deepStrictEqual(lib.parseOperatorValue("not in (Closed, Cut)"), { op: "NOT IN", value: ["Closed", "Cut"] });
+  assert.deepStrictEqual(lib.parseOperatorValue('in ("Area, Group A", "Tag 2")'), { op: "IN", value: ["Area, Group A", "Tag 2"] });
+  assert.deepStrictEqual(lib.parseOperatorValue("in ('Area, Group A', 'Tag 2')"), { op: "IN", value: ["Area, Group A", "Tag 2"] });
+  assert.deepStrictEqual(lib.parseOperatorValue('not in ("Area, Group A", "Tag 2")'), { op: "NOT IN", value: ["Area, Group A", "Tag 2"] });
+  assert.deepStrictEqual(lib.parseOperatorValue('in "Area, Group A", Tag 2'), { op: "IN", value: ["Area, Group A", "Tag 2"] });
+  assert.deepStrictEqual(lib.parseOperatorValue("simple value"), { op: "=", value: "simple value" });
+});
+
+// ---- new: buildClauses with FilterIR ----
+test("buildClauses: FilterIR simple group", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "IN", value: ["Active", "New"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["[System.State] IN ('Active','New')"]);
+});
+
+test("buildClauses: FilterIR complex DNF (A AND B) OR (C AND D)", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "OR",
+      rules: [
+        {
+          kind: "group",
+          logic: "AND",
+          rules: [
+            { kind: "condition", field: "state", op: "=", value: "Active" },
+            { kind: "condition", field: "priority", op: "=", value: "1" }
+          ]
+        },
+        {
+          kind: "group",
+          logic: "AND",
+          rules: [
+            { kind: "condition", field: "state", op: "=", value: "New" },
+            { kind: "condition", field: "priority", op: "=", value: "2" }
+          ]
+        }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
+    "(([System.State] = 'Active' AND [Microsoft.VSTS.Common.Priority] = 1) OR ([System.State] = 'New' AND [Microsoft.VSTS.Common.Priority] = 2))"
+  ]);
+});
+
+// ---- FilterManager ----
+test("FilterManager: initial state and clear", () => {
+  const fm = new FilterManager();
+  const ir = fm.getIR();
+  assert.strictEqual(ir.where.kind, "group");
+  assert.strictEqual(ir.where.logic, "OR");
+  assert.strictEqual(ir.where.rules.length, 1);
+  assert.strictEqual(ir.where.rules[0].kind, "group");
+  assert.strictEqual(ir.where.rules[0].logic, "AND");
+  assert.strictEqual(ir.where.rules[0].rules.length, 0);
+
+  fm.setIR({
+    where: {
+      kind: "group",
+      logic: "OR",
+      rules: [
+        {
+          kind: "group",
+          logic: "AND",
+          rules: [
+            { kind: "condition", field: "state", op: "=", value: "Active" }
+          ]
+        }
+      ]
+    }
+  });
+  assert.strictEqual(fm.getIR().where.rules.length, 1);
+  fm.clear();
+  assert.strictEqual(fm.getIR().where.rules[0].rules.length, 0);
+});
+
+test("FilterManager: toggleChip and getChipState for normal field", () => {
+  const fm = new FilterManager();
+  
+  // Initially null
+  assert.strictEqual(fm.getChipState("state", "Active"), null);
+  
+  // Toggle 'in'
+  fm.toggleChip("state", "Active", "in");
+  assert.strictEqual(fm.getChipState("state", "Active"), "in");
+  let ir = fm.getIR();
+  let cond = ir.where.rules[0].rules[0];
+  assert.deepStrictEqual(cond, { kind: "condition", field: "state", op: "=", value: "Active" });
+
+  // Toggle 'in' again (removes it)
+  fm.toggleChip("state", "Active", "in");
+  assert.strictEqual(fm.getChipState("state", "Active"), null);
+  assert.strictEqual(fm.getIR().where.rules[0].rules.length, 0);
+
+  // Toggle 'out'
+  fm.toggleChip("state", "Active", "out");
+  assert.strictEqual(fm.getChipState("state", "Active"), "out");
+  ir = fm.getIR();
+  cond = ir.where.rules[0].rules[0];
+  assert.deepStrictEqual(cond, { kind: "condition", field: "state", op: "<>", value: "Active" });
+
+  // Toggle 'in' while 'out' (switches to 'in')
+  fm.toggleChip("state", "Active", "in");
+  assert.strictEqual(fm.getChipState("state", "Active"), "in");
+  assert.strictEqual(fm.getChipState("state", "New"), null);
+
+  // Add another 'in' value to same field -> compiles to IN
+  fm.toggleChip("state", "New", "in");
+  assert.strictEqual(fm.getChipState("state", "Active"), "in");
+  assert.strictEqual(fm.getChipState("state", "New"), "in");
+  ir = fm.getIR();
+  assert.strictEqual(ir.where.rules[0].rules.length, 1);
+  assert.deepStrictEqual(ir.where.rules[0].rules[0], {
+    kind: "condition",
+    field: "state",
+    op: "IN",
+    value: ["Active", "New"]
+  });
+
+  // Explicit removeChip
+  fm.removeChip("state", "Active");
+  assert.strictEqual(fm.getChipState("state", "Active"), null);
+  assert.strictEqual(fm.getChipState("state", "New"), "in");
+  ir = fm.getIR();
+  assert.deepStrictEqual(ir.where.rules[0].rules[0], {
+    kind: "condition",
+    field: "state",
+    op: "=",
+    value: "New"
+  });
+});
+
+test("FilterManager: toggleChip and getChipState for tag field", () => {
+  // Mock fieldRegistry
+  const fm = new FilterManager({
+    fieldRegistry: {
+      tags: { ref: "System.Tags", type: "tags" }
+    }
+  });
+
+  fm.toggleChip("tags", "ux", "in");
+  assert.strictEqual(fm.getChipState("tags", "ux"), "in");
+  let ir = fm.getIR();
+  assert.deepStrictEqual(ir.where.rules[0].rules[0], {
+    kind: "condition",
+    field: "tags",
+    op: "CONTAINS",
+    value: ["ux"]
+  });
+
+  fm.toggleChip("tags", "wip", "out");
+  assert.strictEqual(fm.getChipState("tags", "wip"), "out");
+  ir = fm.getIR();
+  assert.strictEqual(ir.where.rules[0].rules.length, 2);
+  assert.deepStrictEqual(ir.where.rules[0].rules.find(r => r.op === "NOT CONTAINS"), {
+    kind: "condition",
+    field: "tags",
+    op: "NOT CONTAINS",
+    value: ["wip"]
+  });
+});
+
+test("FilterManager: load / save / migrate", () => {
+  const store = {};
+  globalThis.localStorage = {
+    getItem: (key) => store[key] || null,
+    setItem: (key, val) => { store[key] = String(val); },
+    removeItem: (key) => { delete store[key]; }
+  };
+
+  const fm = new FilterManager();
+  
+  // 1. Save and Load
+  fm.toggleChip("state", "Active", "in");
+  fm.save();
+  assert.ok(store["ado.filterIR"]);
+
+  const fm2 = new FilterManager();
+  fm2.load();
+  assert.strictEqual(fm2.getChipState("state", "Active"), "in");
+
+  // 2. Migrate from filtersAdvanced
+  delete store["ado.filterIR"];
+  store["ado.filtersAdvanced"] = JSON.stringify({
+    where: {
+      kind: "group",
+      logic: "OR",
+      rules: [
+        {
+          kind: "group",
+          logic: "AND",
+          rules: [{ kind: "condition", field: "state", op: "=", value: "Closed" }]
+        }
+      ]
+    }
+  });
+
+  const fm3 = new FilterManager();
+  fm3.load();
+  assert.strictEqual(fm3.getChipState("state", "Closed"), "in");
+  assert.ok(!store["ado.filtersAdvanced"]);
+  assert.ok(store["ado.filterIR"]);
+
+  // 3. Migrate from flat filters (filters)
+  delete store["ado.filterIR"];
+  store["ado.filters"] = JSON.stringify({
+    state: { in: ["Active", "New"], not: ["Closed"] }
+  });
+
+  const fm4 = new FilterManager();
+  fm4.load();
+  assert.strictEqual(fm4.getChipState("state", "Active"), "in");
+  assert.strictEqual(fm4.getChipState("state", "New"), "in");
+  assert.strictEqual(fm4.getChipState("state", "Closed"), "out");
+  assert.ok(!store["ado.filters"]);
+  assert.ok(store["ado.filterIR"]);
+
+  delete globalThis.localStorage;
+});
+
+test("FilterManager: onChange listener and unsubscribe", () => {
+  const fm = new FilterManager();
+  let count = 0;
+  let lastIR = null;
+  const unsubscribe = fm.onChange((ir) => {
+    count++;
+    lastIR = ir;
+  });
+
+  fm.toggleChip("state", "Active", "in");
+  assert.strictEqual(count, 1);
+  assert.ok(lastIR);
+
+  unsubscribe();
+  fm.toggleChip("state", "New", "in");
+  assert.strictEqual(count, 1); // should not have incremented
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

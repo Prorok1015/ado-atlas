@@ -12,30 +12,45 @@ const AdoLib = (typeof globalThis !== "undefined" ? globalThis : window).AdoLib;
 const { wiqlQuote, htmlEsc, htmlUnesc, htmlToText, htmlToMarkdown } = AdoLib;
 
 const FIELD_REGISTRY = {
-  id:          { ref: "System.Id", type: "integer" },
-  type:        { ref: "System.WorkItemType", type: "string" },
-  title:       { ref: "System.Title", type: "string" },
-  state:       { ref: "System.State", type: "string" },
-  assigned:    { ref: "System.AssignedTo", type: "identity", aliases: ["assignedto"] },
-  parent:      { ref: "System.Parent", type: "integer" },
-  priority:    { ref: "Microsoft.VSTS.Common.Priority", type: "integer" },
-  iteration:   { ref: "System.IterationPath", type: "string" },
-  start:       { ref: "Microsoft.VSTS.Scheduling.StartDate", type: "dateTime" },
-  target:      { ref: "Microsoft.VSTS.Scheduling.TargetDate", type: "dateTime" },
-  finish:      { ref: "Microsoft.VSTS.Scheduling.FinishDate", type: "dateTime" },
-  due:         { ref: "Microsoft.VSTS.Scheduling.DueDate", type: "dateTime" },
-  estimate:    { ref: "Microsoft.VSTS.Scheduling.OriginalEstimate", type: "double" },
-  tags:        { ref: "System.Tags", type: "tags" },
-  area:        { ref: "System.AreaPath", type: "string" },
-  desc:        { ref: "System.Description", type: "html", fallbackRefs: ["Microsoft.VSTS.TCM.ReproSteps"], aliases: ["description"] },
-  ac:          { ref: "Microsoft.VSTS.Common.AcceptanceCriteria", type: "html" },
-  storypoints: { ref: "Microsoft.VSTS.Scheduling.StoryPoints", type: "double" },
-  remaining:   { ref: "Microsoft.VSTS.Scheduling.RemainingWork", type: "double" },
-  completed:   { ref: "Microsoft.VSTS.Scheduling.CompletedWork", type: "double" },
-  activity:    { ref: "Microsoft.VSTS.Common.Activity", type: "string" },
-  risk:        { ref: "Microsoft.VSTS.Common.Risk", type: "string" },
-  valuearea:   { ref: "Microsoft.VSTS.Common.ValueArea", type: "string" }
+  id:          { ref: "System.Id", type: "integer", name: "ID" },
+  type:        { ref: "System.WorkItemType", type: "string", name: "Type" },
+  title:       { ref: "System.Title", type: "string", name: "Title" },
+  state:       { ref: "System.State", type: "string", name: "State" },
+  assigned:    { ref: "System.AssignedTo", type: "identity", name: "Assigned", aliases: ["assignedto"] },
+  parent:      { ref: "System.Parent", type: "integer", name: "Parent ID" },
+  priority:    { ref: "Microsoft.VSTS.Common.Priority", type: "integer", name: "Priority" },
+  iteration:   { ref: "System.IterationPath", type: "string", name: "Sprint" },
+  start:       { ref: "Microsoft.VSTS.Scheduling.StartDate", type: "dateTime", name: "Start Date" },
+  target:      { ref: "Microsoft.VSTS.Scheduling.TargetDate", type: "dateTime", name: "Target Date" },
+  finish:      { ref: "Microsoft.VSTS.Scheduling.FinishDate", type: "dateTime", name: "Finish Date" },
+  due:         { ref: "Microsoft.VSTS.Scheduling.DueDate", type: "dateTime", name: "Due Date" },
+  estimate:    { ref: "Microsoft.VSTS.Scheduling.OriginalEstimate", type: "double", name: "Original Estimate" },
+  tags:        { ref: "System.Tags", type: "tags", name: "Tags" },
+  area:        { ref: "System.AreaPath", type: "string", name: "Area Path" },
+  desc:        { ref: "System.Description", type: "html", name: "Description", fallbackRefs: ["Microsoft.VSTS.TCM.ReproSteps"], aliases: ["description"] },
+  ac:          { ref: "Microsoft.VSTS.Common.AcceptanceCriteria", type: "html", name: "Acceptance Criteria" },
+  storypoints: { ref: "Microsoft.VSTS.Scheduling.StoryPoints", type: "double", name: "Story Points" },
+  remaining:   { ref: "Microsoft.VSTS.Scheduling.RemainingWork", type: "double", name: "Remaining Work" },
+  completed:   { ref: "Microsoft.VSTS.Scheduling.CompletedWork", type: "double", name: "Completed Work" },
+  activity:    { ref: "Microsoft.VSTS.Common.Activity", type: "string", name: "Activity" },
+  risk:        { ref: "Microsoft.VSTS.Common.Risk", type: "string", name: "Risk" },
+  valuearea:   { ref: "Microsoft.VSTS.Common.ValueArea", type: "string", name: "Value Area" }
 };
+
+const CORE_FIELD_REFS = new Set();
+for (const val of Object.values(FIELD_REGISTRY)) {
+  if (val.ref) CORE_FIELD_REFS.add(val.ref.toLowerCase());
+  if (val.fallbackRefs) {
+    for (const fb of val.fallbackRefs) {
+      CORE_FIELD_REFS.add(fb.toLowerCase());
+    }
+  }
+}
+
+function isCoreField(refName) {
+  if (!refName) return false;
+  return CORE_FIELD_REFS.has(refName.toLowerCase());
+}
 
 const FIELD_ALIASES = {};
 for (const [key, val] of Object.entries(FIELD_REGISTRY)) {
@@ -62,6 +77,7 @@ const DEFAULT_FIELDS = [
   FIELD_REGISTRY.due.ref,
   FIELD_REGISTRY.estimate.ref,
   FIELD_REGISTRY.tags.ref,
+  "System.Rev",
 ];
 
 let detectedTargetField = null;
@@ -116,10 +132,14 @@ async function getConfig() {
 }
 async function setConfig(patch) {
   teamRosterCache = null;
+  globalFieldsCache = null;
+  populatePromise = null;
   await chrome.storage.local.set(patch);
 }
 async function clearConfig() {
   teamRosterCache = null;
+  globalFieldsCache = null;
+  populatePromise = null;
   await chrome.storage.local.remove(STORE_KEYS);
   try { const all = await chrome.storage.local.get(null); const snaps = Object.keys(all).filter(k => k.startsWith("snap:")); if (snaps.length) await chrome.storage.local.remove(snaps); } catch (_) {}
 }
@@ -292,33 +312,88 @@ function personName(v) {
   return v || "";
 }
 
-// Project-side _node() helper (mirrors the Flask version).
-function nodeOf(w) {
-  const f = w.fields || {};
+// Project-side work item entity adapter.
+// NOTE: descField is optional and used for overriding the default description field.
+// For batch queries (e.g. inside list() and batchFetch()), descField is not passed,
+// meaning standard System.Description is always used, and type-specific description overrides 
+// (like Microsoft.VSTS.TCM.ReproSteps) are not supported. This is an intentional design choice
+// to match the original system behavior and avoid per-item database overhead.
+function mapWorkItem(rawItem, descField) {
+  if (!rawItem) return null;
+  const f = rawItem.fields || {};
+  
   if (FIELD_REGISTRY.finish.ref in f) {
     detectedTargetField = FIELD_REGISTRY.finish.ref;
   } else if (FIELD_REGISTRY.target.ref in f) {
     detectedTargetField = FIELD_REGISTRY.target.ref;
   }
-  return {
-    id: w.id,
-    type: f[FIELD_REGISTRY.type.ref],
-    title: f[FIELD_REGISTRY.title.ref] || "",
-    state: f[FIELD_REGISTRY.state.ref] || "",
-    assigned: personName(f[FIELD_REGISTRY.assigned.ref]),
-    priority: f[FIELD_REGISTRY.priority.ref],
-    parent: f[FIELD_REGISTRY.parent.ref],
-    iteration: f[FIELD_REGISTRY.iteration.ref],
-    start: f[FIELD_REGISTRY.start.ref],
-    est: f[FIELD_REGISTRY.estimate.ref],
-    target: f[FIELD_REGISTRY.target.ref] || f[FIELD_REGISTRY.finish.ref] || f[FIELD_REGISTRY.due.ref],
-    tags: f[FIELD_REGISTRY.tags.ref] || "",
+
+  const mapped = {
+    id: rawItem.id,
+    rev: rawItem.rev ?? (f["System.Rev"] ?? ""),
   };
+
+  // Map fields dynamically based on FIELD_REGISTRY
+  for (const [key, val] of Object.entries(FIELD_REGISTRY)) {
+    if (!val || !val.ref) continue;
+    const refName = val.ref;
+    
+    // Default fallback value check
+    let v = f[refName];
+    if (key === 'desc' && descField && f[descField] !== undefined) {
+      v = f[descField];
+    } else if (v === undefined && val.fallbackRefs) {
+      for (const fallback of val.fallbackRefs) {
+        if (f[fallback] !== undefined) {
+          v = f[fallback];
+          break;
+        }
+      }
+    }
+    
+    // Type specific processing
+    if (key === 'assigned') {
+      mapped[key] = personName(v);
+    } else if (key === 'estimate') {
+      mapped.est = v;
+      mapped.estimate = v;
+    } else if (key === 'target') {
+      mapped.target = v || f[FIELD_REGISTRY.finish.ref] || f[FIELD_REGISTRY.target.ref] || f[FIELD_REGISTRY.due.ref] || "";
+    } else if (key === 'desc' || key === 'ac' || val.type === 'html' || val.type === 'plaintext') {
+      mapped[key] = htmlToMarkdown(v || "");
+    } else {
+      mapped[key] = v !== undefined ? v : (val.type === 'string' || val.type === 'html' || val.type === 'tags' ? "" : null);
+    }
+  }
+
+  // Relations and extra properties
+  const wtype = mapped.type;
+  mapped.has_ac = AC_TYPES.has(wtype) || FIELD_REGISTRY.ac.ref in f;
+  
+  if (rawItem.relations) {
+    mapped.relations = rawItem.relations;
+    mapped.deps = depsFromRelations(rawItem.relations);
+    mapped.attachments = attachmentsFromRelations(rawItem.relations);
+  }
+  mapped.fields = f;
+
+  return mapped;
 }
 
 // ---------- WIQL filter builder ----------
-// Pure logic lives in lib.js; bind it to this module's FILTER_FIELDS registry.
-function buildClauses(filters) { return AdoLib.buildClauses(FILTER_FIELDS, filters); }
+// Pure logic lives in lib.js; bind it to this module's FIELD_REGISTRY.
+function buildClauses(filters) {
+  const fields = {};
+  for (const [key, val] of Object.entries(FIELD_REGISTRY)) {
+    fields[key] = {
+      ref: val.ref,
+      num: val.type === "integer" || val.type === "double",
+      identity: val.type === "identity",
+      contains: val.type === "tags"
+    };
+  }
+  return AdoLib.buildClauses(fields, filters);
+}
 
 // ---------- core ADO reads ----------
 async function wiqlIds(wiql, top) {
@@ -370,7 +445,7 @@ async function list({ wtype, parent, text, order, filters } = {}) {
   const wiql = `SELECT [${FIELD_REGISTRY.id.ref}] FROM WorkItems WHERE ` + where.join(" AND ") + " ORDER BY " + orderBy;
   const ids = await wiqlIds(wiql, LIST_CAP);
   const items = await batchFetch(ids);
-  const out = items.map(nodeOf);
+  const out = items.map(x => mapWorkItem(x)); // NOTE: descField is not passed here, falling back to System.Description
   // Flag (don't hide) when the LIST_CAP guard kicked in so the UI can warn the
   // user that they're not seeing everything.
   out.truncated = ids.length >= LIST_CAP;
@@ -408,6 +483,24 @@ async function iterations() {
   }
   walk(root, "");
   out.sort((x, y) => (x.finish || x.start || "").localeCompare(y.finish || y.start || ""));
+  return out;
+}
+
+async function areas() {
+  const proj = await projUrl();
+  let root;
+  try {
+    root = await req("GET", `${proj}/_apis/wit/classificationnodes/areas?$depth=12&${API_VERSION}`);
+  } catch (_) { return []; }
+  const out = [];
+  function walk(node, prefix) {
+    const name = node.name || "";
+    const path = prefix ? prefix + "\\" + name : name;
+    out.push({ path, name });
+    for (const ch of (node.children || [])) walk(ch, path);
+  }
+  walk(root, "");
+  out.sort((x, y) => x.path.localeCompare(y.path));
   return out;
 }
 
@@ -502,7 +595,7 @@ async function getFieldsMap() {
   if (globalFieldsCache) return globalFieldsCache;
   const { org, project } = await getConfig();
   if (!org || !project) return {};
-  const cacheKey = `global_fields_map_v3:${org}:${project}`;
+  const cacheKey = `global_fields_map_v4:${org}:${project}`;
   
   try {
     const cached = await chrome.storage.local.get(cacheKey);
@@ -520,7 +613,8 @@ async function getFieldsMap() {
       fieldsMap[f.referenceName] = {
         type: f.type,
         readOnly: !!f.readOnly,
-        isIdentity: !!f.isIdentity
+        isIdentity: !!f.isIdentity,
+        name: f.name
       };
     });
     globalFieldsCache = fieldsMap;
@@ -532,6 +626,189 @@ async function getFieldsMap() {
     console.error("Failed to load global fields map", err);
     return {};
   }
+}
+
+let populatePromise = null;
+
+async function populateFieldRegistry() {
+  if (populatePromise) return populatePromise;
+  populatePromise = (async () => {
+    try {
+      const fieldsMap = await getFieldsMap();
+      if (!fieldsMap || Object.keys(fieldsMap).length === 0) {
+        throw new Error("Fields map is empty or failed to load");
+      }
+      
+      // 1. Fetch active work item types and extract allowed values
+      let types = [];
+      try {
+        types = await workItemTypes();
+      } catch (e) {
+        console.warn("Failed to load work item types for allowedValues extraction:", e);
+      }
+
+      const allowedValuesMap = {}; // referenceName (lowercased) -> Set of allowed values
+      const FALLBACK_ALLOWED_VALUES = {
+        'microsoft.vsts.common.priority': ['1', '2', '3', '4'],
+        'microsoft.vsts.common.severity': ['1 - Critical', '2 - High', '3 - Medium', '4 - Low'],
+        'microsoft.vsts.common.risk': ['1 - High', '2 - Medium', '3 - Low'],
+        'microsoft.vsts.common.valuearea': ['Business', 'Architectural'],
+        'microsoft.vsts.common.activity': ['Development', 'Testing', 'Requirements', 'Design', 'Documentation', 'Deployment'],
+        'microsoft.vsts.common.resolvedreason': ['As Designed', 'Cannot Reproduce', 'Duplicate', 'Fixed', 'Obsolete'],
+        'microsoft.vsts.common.discipline': ['Analysis', 'Development', 'Test', 'User Experience', 'User Education'],
+        'microsoft.vsts.common.triage': ['Pending', 'More Info', 'Info Received', 'Triaged']
+      };
+      if (types && types.length) {
+        try {
+          const allTypesFields = await Promise.all(
+            types.map(t => getWorkItemTypeFields(t.name).catch(() => []))
+          );
+          for (const fieldsList of allTypesFields) {
+            for (const f of (fieldsList || [])) {
+              if (f.allowedValues && f.allowedValues.length) {
+                const refLower = f.referenceName.toLowerCase();
+                if (!allowedValuesMap[refLower]) {
+                  allowedValuesMap[refLower] = new Set();
+                }
+                for (const val of f.allowedValues) {
+                  if (val != null && val !== "") {
+                    allowedValuesMap[refLower].add(val);
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to merge work item type allowedValues:", e);
+        }
+      }
+
+      // Force populate work item types
+      if (types && types.length) {
+        if (!allowedValuesMap['system.workitemtype']) allowedValuesMap['system.workitemtype'] = new Set();
+        types.forEach(t => allowedValuesMap['system.workitemtype'].add(t.name));
+        
+        // Force collect all states from all work item types
+        if (!allowedValuesMap['system.state']) allowedValuesMap['system.state'] = new Set();
+        try {
+          const allStatesPromises = types.map(t => states(t.name).catch(() => []));
+          const allStatesArrays = await Promise.all(allStatesPromises);
+          allStatesArrays.flat().forEach(s => {
+            const val = (s && typeof s === 'object') ? s.name : s;
+            if (val) allowedValuesMap['system.state'].add(val);
+          });
+        } catch (e) {
+          console.warn("Failed to fetch states for registry:", e);
+        }
+      }
+
+      // Populate boolean fields with default values
+      for (const [refName, fieldInfo] of Object.entries(fieldsMap)) {
+        if (fieldInfo && fieldInfo.type && fieldInfo.type.toLowerCase() === 'boolean') {
+          const refLower = refName.toLowerCase();
+          if (!allowedValuesMap[refLower]) {
+            allowedValuesMap[refLower] = new Set();
+          }
+          allowedValuesMap[refLower].add('True');
+          allowedValuesMap[refLower].add('False');
+        }
+      }
+
+      // Apply fallbacks for fields if ADO returned empty values
+      for (const [refName, vals] of Object.entries(FALLBACK_ALLOWED_VALUES)) {
+        const refLower = refName.toLowerCase();
+        const hasField = fieldsMap[refName] || Object.keys(fieldsMap).some(k => k.toLowerCase() === refLower);
+        if (hasField) {
+          if (!allowedValuesMap[refLower] || allowedValuesMap[refLower].size === 0) {
+            allowedValuesMap[refLower] = new Set(vals);
+          }
+        }
+      }
+
+      // 2. Create reverse lookup map for already registered fields
+      const refToKey = {};
+      for (const [key, val] of Object.entries(FIELD_REGISTRY)) {
+        if (val && val.ref) {
+          refToKey[val.ref.toLowerCase()] = key;
+        }
+      }
+
+      // Helper to map ADO types to registry types
+      const mapAdoTypeToRegistryType = (adoType) => {
+        if (!adoType) return 'string';
+        const t = adoType.toLowerCase();
+        if (t === 'integer') return 'integer';
+        if (t === 'double') return 'double';
+        if (t === 'datetime') return 'dateTime';
+        if (t === 'boolean') return 'boolean';
+        if (t === 'html' || t === 'plaintext') return 'html';
+        if (t === 'identity') return 'identity';
+        if (t === 'tags') return 'tags';
+        return 'string';
+      };
+
+      // 3. Add fields to FIELD_REGISTRY
+      for (const [refName, fieldInfo] of Object.entries(fieldsMap)) {
+        const refLower = refName.toLowerCase();
+        
+        // Update allowed values if present
+        const allowedSet = allowedValuesMap[refLower];
+        const allowedArr = allowedSet && allowedSet.size ? Array.from(allowedSet) : null;
+
+        if (refToKey[refLower]) {
+          // Already registered, just update name & allowedValues if present
+          const key = refToKey[refLower];
+          if (fieldInfo.name && !FIELD_REGISTRY[key].name) {
+            FIELD_REGISTRY[key].name = fieldInfo.name;
+          }
+          if (allowedArr) {
+            FIELD_REGISTRY[key].allowedValues = allowedArr;
+          }
+          continue;
+        }
+
+        // Generate abstract key
+        const parts = refName.split('.');
+        let base = parts[parts.length - 1];
+        base = base.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!base) continue;
+
+        let key = base;
+        if (FIELD_REGISTRY[key] && FIELD_REGISTRY[key].ref !== refName) {
+          // Collision! Use namespace prefix
+          const namespace = parts.slice(0, -1).join('_').toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (namespace) {
+            key = `${namespace}_${key}`;
+          }
+          // If still collides, append a number
+          let suffix = 2;
+          let candidate = key;
+          while (FIELD_REGISTRY[candidate] && FIELD_REGISTRY[candidate].ref !== refName) {
+            candidate = `${key}_${suffix}`;
+            suffix++;
+          }
+          key = candidate;
+        }
+
+        // Register in FIELD_REGISTRY
+        FIELD_REGISTRY[key] = {
+          ref: refName,
+          type: mapAdoTypeToRegistryType(fieldInfo.type),
+          name: fieldInfo.name || parts[parts.length - 1]
+        };
+        if (allowedArr) {
+          FIELD_REGISTRY[key].allowedValues = allowedArr;
+        }
+        
+        // Add to FIELD_ALIASES
+        FIELD_ALIASES[key] = refName;
+      }
+    } catch (err) {
+      populatePromise = null;
+      throw err;
+    }
+  })();
+  return populatePromise;
 }
 
 async function getWorkItemTypeFields(wtype) {
@@ -903,6 +1180,9 @@ async function item(wid, options) {
       // Replace with both so we get whichever is defined
       fieldsToFetch.splice(descIdx, 1, FIELD_REGISTRY.desc.ref, ...FIELD_REGISTRY.desc.fallbackRefs);
     }
+    if (!fieldsToFetch.includes("System.Rev")) {
+      fieldsToFetch.push("System.Rev");
+    }
   }
 
   const expandRelations = (options && options.expandRelations !== undefined) ? !!options.expandRelations : (hasFields ? false : true);
@@ -913,51 +1193,17 @@ async function item(wid, options) {
   }
   const d = await req("GET", url, undefined, undefined, options);
   const f = d.fields || {};
-  if ("Microsoft.VSTS.Scheduling.FinishDate" in f) {
-    detectedTargetField = "Microsoft.VSTS.Scheduling.FinishDate";
-  } else if ("Microsoft.VSTS.Scheduling.TargetDate" in f) {
-    detectedTargetField = "Microsoft.VSTS.Scheduling.TargetDate";
-  }
   const wtype = f["System.WorkItemType"];
-  const a = f["System.AssignedTo"];
   
   // Resolve which description field to use
-  let descVal = "";
+  let descField = "System.Description";
   if (wtype) {
-    const descField = await getDescriptionFieldForType(wtype);
-    descVal = f[descField] || f[FIELD_REGISTRY.desc.ref] || f[FIELD_REGISTRY.desc.fallbackRefs[0]] || "";
-  } else {
-    descVal = f[FIELD_REGISTRY.desc.ref] || f[FIELD_REGISTRY.desc.fallbackRefs[0]] || "";
+    descField = await getDescriptionFieldForType(wtype);
   }
 
-  return {
-    id: d.id, rev: d.rev, type: wtype,
-    title: f[FIELD_REGISTRY.title.ref] || "",
-    state: f[FIELD_REGISTRY.state.ref] || "",
-    assigned: (a && typeof a === "object") ? (a.displayName || "") : (a || ""),
-    priority: f[FIELD_REGISTRY.priority.ref],
-    desc: htmlToMarkdown(descVal),
-    ac: htmlToMarkdown(f[FIELD_REGISTRY.ac.ref]),
-    has_ac: AC_TYPES.has(wtype) || FIELD_REGISTRY.ac.ref in f,
-    parent: f[FIELD_REGISTRY.parent.ref],
-    iteration: f[FIELD_REGISTRY.iteration.ref],
-    start: f[FIELD_REGISTRY.start.ref],
-    est: f[FIELD_REGISTRY.estimate.ref],
-    target: f[FIELD_REGISTRY.target.ref] || f[FIELD_REGISTRY.finish.ref],
-    due: f[FIELD_REGISTRY.due.ref],
-    tags: f[FIELD_REGISTRY.tags.ref] || "",
-    area: f[FIELD_REGISTRY.area.ref] || "",
-    storypoints: f[FIELD_REGISTRY.storypoints.ref],
-    remaining: f[FIELD_REGISTRY.remaining.ref],
-    completed: f[FIELD_REGISTRY.completed.ref],
-    activity: f[FIELD_REGISTRY.activity.ref] || "",
-    risk: f[FIELD_REGISTRY.risk.ref] || "",
-    valuearea: f[FIELD_REGISTRY.valuearea.ref] || "",
-    deps: depsFromRelations(d.relations),
-    attachments: attachmentsFromRelations(d.relations),
-    url: await browserUrl(d.id),
-    fields: f,
-  };
+  const mapped = mapWorkItem(d, descField);
+  mapped.url = await browserUrl(d.id);
+  return mapped;
 }
 
 // Standalone Dependency lookup for one item. Same shape as item().deps, used
@@ -1136,7 +1382,12 @@ async function updateItem(wid, body) {
   ]);
   for (const [k, v] of Object.entries(body)) {
     if (!handled.has(k)) {
-      fields[k] = v;
+      const regField = Object.values(FIELD_REGISTRY).find(r => r.ref === k);
+      if (regField && (regField.type === 'html' || regField.type === 'plaintext')) {
+        fields[k] = AdoLib.mdToHtml(v || "", mdOpts);
+      } else {
+        fields[k] = v;
+      }
     }
   }
   if (fields.assigned === "me") {
@@ -1360,7 +1611,7 @@ async function createItem({ type, title, parent, assigned, priority, iteration }
   const proj = await projUrl();
   const url = `${proj}/_apis/wit/workitems/${encodeURIComponent("$" + type)}?${API_VERSION}`;
   const d = await req("POST", url, ops, "application/json-patch+json");
-  return nodeOf(d);
+  return mapWorkItem(d);
 }
 
 // Delete a work item (the inverse of createItem, for undo). ADO moves it to the
@@ -1498,6 +1749,53 @@ async function batchUpdate(operations) {
   return await req("POST", url, operations, "application/json");
 }
 
+function getFilterFields() {
+  const fields = [];
+  for (const [key, val] of Object.entries(FIELD_REGISTRY)) {
+    if (!val) continue;
+    const ref = val.ref || "";
+    const refLower = ref.toLowerCase();
+    
+    // Determine neutral type
+    let neutralType = 'string';
+    let operators = [];
+    
+    const isTree = key === 'iteration' || key === 'area' || refLower.endsWith('iterationpath') || refLower.endsWith('areapath') || val.type === 'treePath';
+    
+    if (isTree) {
+      neutralType = 'tree';
+      operators = ['=', '<>', 'UNDER', 'NOT UNDER'];
+    } else if (val.type === 'boolean') {
+      neutralType = 'boolean';
+      operators = ['=', '<>'];
+    } else if (val.type === 'integer' || val.type === 'double') {
+      neutralType = 'number';
+      operators = ['=', '<>', '>', '<', '>=', '<=', 'IN', 'NOT IN'];
+    } else if (val.type === 'dateTime') {
+      neutralType = 'date';
+      operators = ['=', '<>', '>', '<', '>=', '<='];
+    } else if (val.type === 'identity') {
+      neutralType = 'user';
+      operators = ['=', '<>', 'IN', 'NOT IN'];
+    } else if (val.type === 'tags') {
+      neutralType = 'tags';
+      operators = ['CONTAINS', 'NOT CONTAINS'];
+    } else {
+      neutralType = 'string';
+      operators = ['=', '<>', 'CONTAINS', 'NOT CONTAINS', 'IN', 'NOT IN'];
+    }
+    
+    fields.push({
+      id: key,
+      displayName: val.name || key,
+      type: neutralType,
+      allowedValues: val.allowedValues || null,
+      operators: operators
+    });
+  }
+  return fields;
+}
+
 // ---------- exported facade (everything app.js needs) ----------
 (typeof window !== "undefined" ? window : self).api = {
   batchUpdate,
@@ -1509,7 +1807,7 @@ async function batchUpdate(operations) {
   orgs, projects,
   // primitives
   // primitives
-  me, iterations, states, workItemTypes, getWorkItemTypeFields, getDescriptionFieldForType, createSprint, updateSprintDates, assignees: getAssignees, tags, browserUrl,
+  me, iterations, areas, states, workItemTypes, getWorkItemTypeFields, getDescriptionFieldForType, createSprint, updateSprintDates, assignees: getAssignees, tags, browserUrl,
   // work-hours config (active-time window)
   setWorkHours, getWorkHours,
   // list / search / children / parents
@@ -1531,4 +1829,8 @@ async function batchUpdate(operations) {
   pool, chunk200, req, projUrl, batchFetch,
   // registry
   FIELD_REGISTRY,
+  populateFieldRegistry,
+  getFilterFields,
+  mapWorkItem,
+  isCoreField,
 };
