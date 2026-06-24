@@ -133,31 +133,15 @@
     return '=';
   }
 
-  const ADO_MACROS = ['@today', '@me', '@currentiteration', '@project', '@empty'];
-
-  function isMacroAllowed(field, macro) {
-    if (!field) return true;
-    const m = macro.toLowerCase();
-    if (m === '@empty') return true;
-
-    const type = getFieldType(field);
-    const rawType = (window.api && window.api.FIELD_REGISTRY && window.api.FIELD_REGISTRY[field]) 
-      ? window.api.FIELD_REGISTRY[field].type : null;
-
-    if (m === '@today') return type === 'datetime';
-    if (m === '@me') return type === 'user' || rawType === 'identity' || field === 'assigned';
-    if (m === '@currentiteration') return field === 'iteration' || rawType === 'tree';
-    if (m === '@project') return field === 'area' || field === 'iteration' || rawType === 'tree';
-    
-    return false;
-  }
 
   function validateInput(strategy, val, field) {
     if (!val || typeof val !== 'string') return false;
     if (val.startsWith('@')) {
-      const match = ADO_MACROS.find(m => val.toLowerCase().startsWith(m));
-      if (!match) return false;
-      return isMacroAllowed(field, match);
+      const filterFields = window.api ? window.api.FIELD_REGISTRY : null;
+      if (window.FilterCompiler) {
+        return window.FilterCompiler.validateToken(val, field, filterFields);
+      }
+      return true; // Fallback if not loaded
     }
 
     if (strategy === InputStrategies.dateTime) {
@@ -343,15 +327,7 @@
         addCondition(cardIdx, cond.field, scalarTargetOp, val);
       }
     } else {
-      const field = cond.field;
-      const value = cond.value;
-      
-      const idx = card.rules.indexOf(cond);
-      if (idx !== -1) {
-        card.rules.splice(idx, 1);
-      }
-      
-      addCondition(cardIdx, field, targetOp, value);
+      cond.op = targetOp;
     }
   }
 
@@ -916,13 +892,29 @@
   }
 
   function getTooltipHtml(field) {
+    const filterFields = (window.api && window.api.FIELD_REGISTRY) || {};
+    let ops = [];
+    let macros = [];
+    if (window.FilterCompiler) {
+      ops = window.FilterCompiler.getSupportedOperators(field, filterFields);
+      macros = window.FilterCompiler.getSupportedMacros(field, filterFields);
+    }
+
+    let html = 'Values within a field are joined by <b>OR</b>.<br>';
+    if (ops.length > 0) {
+      const opsFormatted = ops.map(op => op.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+      html += '<br><b>Supported Operators:</b><br><code>' + opsFormatted.join(', ') + '</code>';
+    }
+    if (macros.length > 0) {
+      html += '<br><br><b>Supported Macros:</b><br><code>' + macros.join(', ') + '</code>';
+    }
+
     const strategy = getInputStrategy(field);
-    const title = 'Values within a field are joined by <b>OR</b>.<br>For empty values, use <code>@empty</code> or <code>""</code>.<br><br><b>Supported Operators:</b><br>';
-    if (strategy === InputStrategies.dateTime) return title + '<code>=, &lt;&gt;, &gt;, &lt;, &gt;=, &lt;=, RANGE</code>';
-    if (strategy === InputStrategies.numeric) return title + '<code>=, &lt;&gt;, &gt;, &lt;, &gt;=, &lt;=</code>';
-    if (strategy === InputStrategies.timeMath) return title + '<code>=, &lt;&gt;, &gt;, &lt;, &gt;=, &lt;=</code><br><br><i>Supports math: 1d 4h</i>';
-    if (strategy === InputStrategies.picker) return title + '<code>=, &lt;&gt;, UNDER, NOT UNDER</code>';
-    return title + '<code>=, &lt;&gt;, CONTAINS, NOT CONTAINS</code>';
+    if (strategy === InputStrategies.timeMath) {
+      html += '<br><br><i>Supports math: 1d 4h</i>';
+    }
+
+    return html;
   }
 
   // --- Rendering Helpers ---
@@ -1160,8 +1152,6 @@
           fieldsInCard.push(r.field);
         }
       });
-      fieldsInCard.sort((a, b) => getFieldLabel(a).localeCompare(getFieldLabel(b)));
-
       let rowsHtml = '';
       fieldsInCard.forEach(field => {
         const conds = card.rules

@@ -19,14 +19,14 @@ const FIELD_REGISTRY = {
   assigned:    { ref: "System.AssignedTo", type: "identity", name: "Assigned", aliases: ["assignedto"] },
   parent:      { ref: "System.Parent", type: "integer", name: "Parent ID" },
   priority:    { ref: "Microsoft.VSTS.Common.Priority", type: "integer", name: "Priority" },
-  iteration:   { ref: "System.IterationPath", type: "string", name: "Sprint" },
+  iteration:   { ref: "System.IterationPath", type: "treePath", name: "Sprint", aliases: ["iteration"] },
+  area:        { ref: "System.AreaPath", type: "treePath", name: "Area Path", aliases: ["area"] },
   start:       { ref: "Microsoft.VSTS.Scheduling.StartDate", type: "dateTime", name: "Start Date" },
   target:      { ref: "Microsoft.VSTS.Scheduling.TargetDate", type: "dateTime", name: "Target Date" },
   finish:      { ref: "Microsoft.VSTS.Scheduling.FinishDate", type: "dateTime", name: "Finish Date" },
   due:         { ref: "Microsoft.VSTS.Scheduling.DueDate", type: "dateTime", name: "Due Date" },
   estimate:    { ref: "Microsoft.VSTS.Scheduling.OriginalEstimate", type: "double", name: "Original Estimate" },
   tags:        { ref: "System.Tags", type: "tags", name: "Tags" },
-  area:        { ref: "System.AreaPath", type: "string", name: "Area Path" },
   desc:        { ref: "System.Description", type: "html", name: "Description", fallbackRefs: ["Microsoft.VSTS.TCM.ReproSteps"], aliases: ["description"] },
   ac:          { ref: "Microsoft.VSTS.Common.AcceptanceCriteria", type: "html", name: "Acceptance Criteria" },
   storypoints: { ref: "Microsoft.VSTS.Scheduling.StoryPoints", type: "double", name: "Story Points" },
@@ -383,16 +383,7 @@ function mapWorkItem(rawItem, descField) {
 // ---------- WIQL filter builder ----------
 // Pure logic lives in lib.js; bind it to this module's FIELD_REGISTRY.
 function buildClauses(filters) {
-  const fields = {};
-  for (const [key, val] of Object.entries(FIELD_REGISTRY)) {
-    fields[key] = {
-      ref: val.ref,
-      num: val.type === "integer" || val.type === "double",
-      identity: val.type === "identity",
-      contains: val.type === "tags"
-    };
-  }
-  return AdoLib.buildClauses(fields, filters);
+  return AdoLib.buildClauses(FIELD_REGISTRY, filters);
 }
 
 // ---------- core ADO reads ----------
@@ -1760,7 +1751,7 @@ function getFilterFields() {
     let neutralType = 'string';
     let operators = [];
     
-    const isTree = key === 'iteration' || key === 'area' || refLower.endsWith('iterationpath') || refLower.endsWith('areapath') || val.type === 'treePath';
+    const isTree = val.type === 'treePath' || val.type === 'tree';
     
     if (isTree) {
       neutralType = 'tree';

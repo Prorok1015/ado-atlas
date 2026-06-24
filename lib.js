@@ -90,166 +90,18 @@
     return { op: "=", value: s };
   }
 
-  // Build WHERE clauses from a filter registry + a FilterIR object.
-  // Mirrors the chip UI. Tag-style fields (spec.contains) use CONTAINS instead
   // of IN; identity fields support the @me sentinel; numeric fields coerce.
   function buildClauses(filterFields, filters) {
-    filters = filters || {};
-
-    const compileCondition = (cond, fields) => {
-      const field = cond.field;
-      const spec = (fields && fields[field]) || { ref: field };
-      const ref = spec.ref || field;
-      const num = spec.num || spec.type === 'integer' || spec.type === 'double';
-      const identity = spec.identity || spec.type === 'identity';
-
-      const op = (cond.op || '=').toUpperCase();
-      let rawVal = cond.value;
-
-      if (rawVal === '""' || rawVal === "''" || rawVal === "@empty") {
-        rawVal = "";
-      } else if (rawVal === "" || rawVal === null || rawVal === undefined || (Array.isArray(rawVal) && rawVal.length === 0)) {
-        return "";
-      }
-
-      const lit = v => {
-        if (identity && v === "me") return "@me";
-        if (num) {
-          const n = Number(v);
-          return Number.isFinite(n) ? String(n) : "null";
-        }
-        return "'" + wiqlQuote(v) + "'";
-      };
-
-      if (op === 'IN' || op === 'NOT IN') {
-        let arr = Array.isArray(rawVal) ? rawVal : [rawVal];
-        arr = arr.map(v => (v === '""' || v === "''" || v === "@empty") ? "" : v);
-        const hasEmpty = arr.includes("");
-        const hasMe = identity && arr.includes("me");
-        const normalVals = arr.filter(v => v !== "" && !(identity && v === "me"));
-        
-        const parts = [];
-        if (hasEmpty) {
-          parts.push(`[${ref}] ${op === 'NOT IN' ? '<>' : '='} ''`);
-        }
-        if (hasMe) {
-          parts.push(`[${ref}] ${op === 'NOT IN' ? '<>' : '='} @me`);
-        }
-        const vals = normalVals.map(lit).filter(x => x !== null);
-        if (vals.length) {
-          parts.push(`[${ref}] ${op} (${vals.join(",")})`);
-        }
-        if (parts.length === 0) return "";
-        if (parts.length === 1) return parts[0];
-        return "(" + parts.join(op === 'NOT IN' ? ' AND ' : ' OR ') + ")";
-      }
-
-      if (op === 'CONTAINS' || op === 'NOT CONTAINS') {
-        let arr = Array.isArray(rawVal) ? rawVal : [rawVal];
-        arr = arr.map(v => (v === '""' || v === "''" || v === "@empty") ? "" : v);
-        const clauses = arr.map(v => {
-          if (v === "") {
-            return `[${ref}] ${op === 'NOT CONTAINS' ? '<>' : '='} ''`;
-          }
-          const formatted = lit(v);
-          if (op === 'NOT CONTAINS') {
-            return `NOT [${ref}] CONTAINS ${formatted}`;
-          } else {
-            return `[${ref}] CONTAINS ${formatted}`;
-          }
-        });
-        if (clauses.length === 0) return "";
-        if (clauses.length === 1) return clauses[0];
-        return "(" + clauses.join(op === 'NOT CONTAINS' ? ' AND ' : ' OR ') + ")";
-      }
-
-      if (op === 'UNDER' || op === 'NOT UNDER') {
-        let arr = Array.isArray(rawVal) ? rawVal : [rawVal];
-        arr = arr.map(v => (v === '""' || v === "''" || v === "@empty") ? "" : v);
-        const clauses = arr.map(v => {
-          if (v === "") {
-            return `[${ref}] ${op === 'NOT UNDER' ? '<>' : '='} ''`;
-          }
-          const formatted = lit(v);
-          if (op === 'NOT UNDER') {
-            return `([${ref}] <> ${formatted} AND [${ref}] NOT UNDER ${formatted})`;
-          }
-          return `([${ref}] = ${formatted} OR [${ref}] UNDER ${formatted})`;
-        });
-        return clauses.length > 1 ? `(${clauses.join(op === 'NOT UNDER' ? ' AND ' : ' OR ')})` : clauses[0];
-      }
-
-      if (op === 'RANGE') {
-        const parts = String(rawVal).split('...');
-        if (parts.length === 2) {
-          return `([${ref}] >= ${lit(parts[0])} AND [${ref}] <= ${lit(parts[1])})`;
-        }
-        // Fallback if formatting was weird
-        return `[${ref}] = ${lit(rawVal)}`;
-      }
-
-      if (rawVal === "") {
-        return `[${ref}] ${['<>', '!=', 'NOT IN'].includes(op) ? '<>' : '='} ''`;
-      }
-      
-      return `[${ref}] ${op} ${lit(rawVal)}`;
-
-      const formatted = Array.isArray(rawVal) ? rawVal.map(lit).join(', ') : lit(rawVal);
-      return `[${ref}] ${op} ${formatted}`;
-    };
-
-    if (filters.where && filters.where.kind === 'group') {
-      const compileRule = (rule) => {
-        if (!rule) return "";
-        if (rule.kind === 'group') {
-          const logic = rule.logic || 'AND';
-          const groupedByField = {};
-          const standardChildren = [];
-          
-          (rule.rules || []).forEach(r => {
-            if (r.kind === 'condition') {
-              if (!groupedByField[r.field]) groupedByField[r.field] = [];
-              groupedByField[r.field].push(r);
-            } else {
-              standardChildren.push(compileRule(r));
-            }
-          });
-
-          const fieldGroups = Object.values(groupedByField).map(conds => {
-            if (conds.length === 1) return compileCondition(conds[0], filterFields);
-            
-            const positiveOps = ['=', 'IN', 'CONTAINS', 'UNDER', 'RANGE', '>', '<', '>=', '<='];
-            const negativeOps = ['<>', 'NOT IN', 'NOT CONTAINS', 'NOT UNDER'];
-            
-            const posCompiled = conds.filter(c => positiveOps.includes(c.op)).map(c => compileCondition(c, filterFields)).filter(Boolean);
-            const negCompiled = conds.filter(c => negativeOps.includes(c.op)).map(c => compileCondition(c, filterFields)).filter(Boolean);
-            const otherCompiled = conds.filter(c => !positiveOps.includes(c.op) && !negativeOps.includes(c.op)).map(c => compileCondition(c, filterFields)).filter(Boolean);
-            
-            const parts = [];
-            if (posCompiled.length > 0) parts.push(posCompiled.length > 1 ? `(${posCompiled.join(' OR ')})` : posCompiled[0]);
-            if (negCompiled.length > 0) parts.push(negCompiled.length > 1 ? `(${negCompiled.join(' AND ')})` : negCompiled[0]);
-            if (otherCompiled.length > 0) parts.push(...otherCompiled);
-            
-            if (parts.length === 0) return "";
-            if (parts.length === 1) return parts[0];
-            return "(" + parts.join(' AND ') + ")";
-          }).filter(Boolean);
-
-          const allChildren = [...fieldGroups, ...standardChildren].filter(Boolean);
-          if (allChildren.length === 0) return "";
-          if (allChildren.length === 1) return allChildren[0];
-          return "(" + allChildren.join(` ${logic} `) + ")";
-        }
-        if (rule.kind === 'condition') {
-          return compileCondition(rule, filterFields);
-        }
-        return "";
-      };
-      const compiled = compileRule(filters.where);
-      return compiled ? [compiled] : [];
+    let FC;
+    if (typeof window !== 'undefined' && window.FilterCompiler) {
+      FC = window.FilterCompiler;
+    } else if (typeof globalThis !== 'undefined' && globalThis.FilterCompiler) {
+      FC = globalThis.FilterCompiler;
+    } else if (typeof module !== 'undefined' && module.exports && typeof require === 'function') {
+      FC = require('./filter-compiler.js');
     }
-
-    return [];
+    if (!FC) throw new Error("FilterCompiler is not loaded");
+    return FC.compile(filters, filterFields);
   }
 
   // ---- markdown-lite <-> HTML ----

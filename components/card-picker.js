@@ -116,11 +116,11 @@ function createCardPicker(base,opts){
           if (isOpen() && rows[idx]) {
             const exactMatch = rows[idx].value.toLowerCase() === vEl.value.trim().toLowerCase();
             if (hasMoved || exactMatch) {
-              e.preventDefault(); e.stopPropagation(); pick();
+              e.preventDefault(); e.stopImmediatePropagation(); pick();
             }
           }
         }
-        else if(e.key==='Escape'){e.preventDefault(); e.stopPropagation(); close(); if(!opts.keepTextOnClose)vEl.value = ''; vEl.blur();}
+        else if(e.key==='Escape'){e.preventDefault(); e.stopImmediatePropagation(); close(); if(!opts.keepTextOnClose)vEl.value = ''; vEl.blur();}
       });
     }
 

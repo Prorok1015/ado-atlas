@@ -44,6 +44,22 @@ test("buildClauses: FilterIR ignores conditions with empty values", () => {
   assert.deepStrictEqual(lib.buildClauses(FF, ir), []);
 });
 
+test("buildClauses: FilterIR generates '' for @empty in dates/identity and doesn't drop them", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "state", op: "=", value: "@empty" },
+        { kind: "condition", field: "assigned", op: "<>", value: "@empty" }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
+    "([System.State] = '' AND [System.AssignedTo] <> '')"
+  ]);
+});
+
 test("buildClauses: FilterIR simple condition with =", () => {
   const ir = {
     where: {
