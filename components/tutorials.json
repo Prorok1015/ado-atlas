@@ -184,7 +184,7 @@
       {
         "element": "#fb-tab-list-btn",
         "title": "<ui-icon name=\"folder\"></ui-icon> Saved Filters Tab",
-        "text": "Organize your preset library!<hr/><div class='tut-section'><div class='tut-section-title'>Available Actions</div><div>• Click a saved filter name to apply it instantly.<br/>• Click <ui-icon name=\"copy\"></ui-icon> to copy it to the clipboard.<br/>• Click <ui-icon name=\"share\"></ui-icon> to share or download the config.<br/>• Click trash to delete obsolete configurations.</div></div>",
+        "text": "Organize your preset library!<hr/><div class='tut-section'><div class='tut-section-title'>Available Actions</div><div>• Click a saved filter name to apply it instantly.<br/>• Click <ui-icon name=\"copy\"></ui-icon> to copy it to the clipboard.<br/>• Click <ui-icon name=\"share\"></ui-icon> to share or download the config.<br/>• Click trash to delete obsolete configurations.</div></div><div class='tut-section'><div class='tut-section-title'>Cloud Sync</div><div>All saved filters are synchronized to your account storage. They are shared across all your devices and browser sessions under this account.</div></div>",
         "position": "bottom"
       },
       {
