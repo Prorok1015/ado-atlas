@@ -1679,7 +1679,11 @@
               } catch (e) {}
               flashCopySuccess(iePasteBtn, '<ui-icon name="copy"></ui-icon> Paste', true);
             } catch (err) {
-              alert('Could not read clipboard. Please paste manually (Ctrl+V).');
+              if (window.customAlert) {
+                window.customAlert('Could not read clipboard. Please paste manually (Ctrl+V).', 'Clipboard Error');
+              } else {
+                alert('Could not read clipboard. Please paste manually (Ctrl+V).');
+              }
             }
           };
         }
@@ -1707,7 +1711,11 @@
                 };
                 reader.readAsText(file);
               } else {
-                alert('Please select a valid .json file.');
+                if (window.customAlert) {
+                  window.customAlert('Please select a valid .json file.', 'Import Error');
+                } else {
+                  alert('Please select a valid .json file.');
+                }
               }
             }
             ieFileInput.value = '';
@@ -1723,7 +1731,11 @@
               validateJsonInput(ieText.value);
               flashCopySuccess(ieFormatBtn, '<ui-icon name="ruler"></ui-icon>', false);
             } catch (err) {
-              alert('Cannot format invalid JSON.');
+              if (window.customAlert) {
+                window.customAlert('Cannot format invalid JSON.', 'Format Error');
+              } else {
+                alert('Cannot format invalid JSON.');
+              }
             }
           };
         }
@@ -1767,7 +1779,11 @@
             };
             reader.readAsText(file);
           } else {
-            alert('Please drop a valid .json file.');
+            if (window.customAlert) {
+              window.customAlert('Please drop a valid .json file.', 'Import Error');
+            } else {
+              alert('Please drop a valid .json file.');
+            }
           }
         });
         

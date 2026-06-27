@@ -7,31 +7,31 @@
       {
         "element": "#mode",
         "title": "<ui-icon name=\"map\"></ui-icon> View Switcher & Gestures",
-        "text": "Toggle between Tree, Graph, Board, and Timeline views. <span class='tut-key'>Pro-Tips:</span> Drag and drop rows in the <span class='tut-key'>Tree view</span> to easily change parent-child relationships! Also, Ctrl/Cmd+click items in Tree or Timeline for <span class='tut-key'>Bulk Edit</span>.",
+        "text": "Toggle layout views dynamically!<hr/><div class='tut-section'><div class='tut-section-title'>Layout Types</div><div>• <span class='tut-badge'>Tree</span> - Parent-child hierarchy.<br/>• <span class='tut-badge'>Graph</span> - Visual dependency map.<br/>• <span class='tut-badge'>Board</span> - Column stages workflow.<br/>• <span class='tut-badge'>Timeline</span> - Sprints & Gantt roadmaps.</div></div><div class='tut-section'><div class='tut-section-title'>Pro-Tip</div><div>Drag and drop rows in the Tree view to quickly change parent-child hierarchies, or use <kbd>Ctrl/Cmd</kbd>+click for Bulk Edit.</div></div>",
         "position": "bottom"
       },
       {
         "element": "#filt_btn",
         "title": "<ui-icon name=\"search\"></ui-icon> Advanced Filters",
-        "text": "Search work items by text or ID, sort rows, or instantly filter the entire layout by Sprints, States, Assignees, and Tags.",
+        "text": "Narrow down your workspace instantly!<hr/><div class='tut-section'><div class='tut-section-title'>Search & Filter Options</div><div>• Search items by text, title, or ID.<br/>• Filter by <span class='tut-badge'>Sprint</span>, <span class='tut-badge'>State</span>, <span class='tut-badge'>Assignee</span>, or <span class='tut-badge'>Tags</span>.<br/>• Cycle sort order by priority or ID.</div></div>",
         "position": "bottom"
       },
       {
         "element": "#followed_btn",
         "title": "<ui-icon name=\"star\"></ui-icon> Filter Followed Items",
-        "text": "Click the star icon in the split filter button to instantly filter the tree, graph, board, or timeline to show only the items you are currently following.",
+        "text": "Focus on items you are tracking!<hr/><div class='tut-section'><div class='tut-section-title'>Toggle Star Filter</div><div>Click the star button to instantly filter the active view to show only work items you have subscribed to.</div></div>",
         "position": "bottom"
       },
       {
         "element": "#undobtn",
         "title": "<ui-icon name=\"undo\"></ui-icon> Undo & Redo",
-        "text": "Easily revert (Ctrl+Z) or redo (Ctrl+Y) layout adjustments, re-parenting, or status updates with a click.",
+        "text": "Revert mistakes in one click!<hr/><div class='tut-section'><div class='tut-section-title'>Keyboard Shortcuts</div><div>• <kbd>Ctrl + Z</kbd> - Reverts parent-child shifts, status changes, or description edits.<br/>• <kbd>Ctrl + Y</kbd> - Redoes the last undone action.</div></div>",
         "position": "bottom"
       },
       {
         "element": "#morebtn",
         "title": "<ui-icon name=\"settings\"></ui-icon> Display & Settings",
-        "text": "Access settings to adjust UI scale, cycle themes, set timezones, configure emojis, or update your Azure DevOps connection.",
+        "text": "Manage application display and connections!<hr/><div class='tut-section'><div class='tut-section-title'>Settings Options</div><div>Configure theme switching, timezone contexts, auto-refresh intervals, custom reaction emojis, or DevOps connections.</div></div>",
         "position": "bottom"
       }
     ]
@@ -42,57 +42,33 @@
     "context": "settings",
     "steps": [
       {
-        "element": "#theme",
-        "title": "<ui-icon name=\"moon\"></ui-icon> Theme Switcher",
-        "text": "Cycle between Light, Dark, or System Sync theme options.",
-        "position": "bottom"
-      },
-      {
-        "element": "#f_scale",
-        "title": "<ui-icon name=\"search\"></ui-icon> UI Scaling",
-        "text": "Adjust the overall font and interface scaling factor for high-resolution displays.",
-        "position": "bottom"
-      },
-      {
-        "element": "#f_auto",
-        "title": "<ui-icon name=\"clock\"></ui-icon> Auto-Refresh",
-        "text": "Set the interval for automatic background updates from Azure DevOps, or turn it off.",
-        "position": "bottom"
-      },
-      {
-        "element": "#f_tz",
-        "title": "<ui-icon name=\"globe\"></ui-icon> Timezone Config",
-        "text": "Configure the timezone used for active-time calculations and work-hours constraints.",
-        "position": "bottom"
-      },
-      {
-        "element": "#f_wh_start",
-        "title": "<ui-icon name=\"clock\"></ui-icon> Work Hours",
-        "text": "Define your active working hours window used for calculating business seconds and timespans.",
-        "position": "bottom"
-      },
-      {
-        "element": "#f_follow_notify",
-        "title": "<ui-icon name=\"bell\"></ui-icon> Notifications & Mentions",
-        "text": "Toggle desktop alerts for <span class='tut-key'>Followed Items</span> and <span class='tut-key'>User Mentions</span>, and define the maximum age threshold (e.g. 2 days) to filter out older historic changes.",
-        "position": "bottom"
+        "element": "#morepanel",
+        "title": "<ui-icon name=\"settings\"></ui-icon> General Settings",
+        "text": "Control settings and preferences!<hr/><div class='tut-section'><div class='tut-section-title'>Available Settings</div><div>Theme, UI Scaling, Auto-refresh rates, Timezone offset, and active Work Hours.</div></div><div class='tut-section'><div class='tut-section-title'>Settings Help</div><div>Hover over the <ui-icon name=\"help\"></ui-icon> icon next to any setting label to read detailed tooltip popovers!</div></div>",
+        "position": "left"
       },
       {
         "element": "#cz_open",
         "title": "<ui-icon name=\"layout\"></ui-icon> Customize Layout",
-        "text": "Reorder, pin, or show/hide toolbar buttons, columns, and work item detail fields.",
+        "text": "Tailor the layout to your project!<hr/><div class='tut-section'><div class='tut-section-title'>Layout Customization</div><div>• Reorder or toggle visibility of toolbar buttons.<br/>• Pick columns for Tree, Board, and Timeline views.<br/>• Select which fields are displayed on cards.</div></div>",
         "position": "bottom"
       },
       {
         "element": "#emojis_open",
         "title": "<ui-icon name=\"smile\"></ui-icon> Custom Reactions",
-        "text": "Customize the emojis, icons, or images used for comments and work item activity reactions.",
+        "text": "Personalize comment reactions!<hr/><div class='tut-section'><div class='tut-section-title'>Reaction Assets</div><div>Select custom emojis or upload images to use as activity comment reactions instead of the defaults.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#tutorialbtn",
+        "title": "<ui-icon name=\"book\"></ui-icon> Interactive Tours",
+        "text": "Refresh your knowledge anytime!<hr/><div class='tut-section'><div class='tut-section-title'>Feature Tours</div><div>Open this list to replay any tutorial, check your completion progress, or reset the seen history entirely.</div></div>",
         "position": "bottom"
       },
       {
         "element": "#settingsbtn",
         "title": "<ui-icon name=\"key\"></ui-icon> DevOps Connection",
-        "text": "Manage your organization URL, project name, PAT token, or OAuth credentials.",
+        "text": "Configure your project context!<hr/><div class='tut-section'><div class='tut-section-title'>Connection details</div><div>Manage organization URLs, project names, PAT tokens, or OAuth credentials to establish a secure link with Azure DevOps.</div></div>",
         "position": "bottom"
       }
     ]
@@ -103,57 +79,51 @@
     "context": "sidebar",
     "steps": [
       {
-        "element": "#s_parent_open",
-        "title": "<ui-icon name=\"arrow-up\"></ui-icon> Parent Navigation",
-        "text": "Click this arrow to navigate directly to the <span class='tut-key'>Parent Work Item</span> without leaving your current board view.",
-        "position": "left"
-      },
-      {
         "element": "#s_desc_attach",
         "title": "<ui-icon name=\"paperclip\"></ui-icon> File Attachments",
-        "text": "Quickly upload attachments! Drop or paste screenshots directly into descriptions, or use this <span class='tut-key'>clip button</span>.",
+        "text": "Upload files and logs instantly!<hr/><div class='tut-section'><div class='tut-section-title'>How to attach</div><div>• Click this clip icon to choose files.<br/>• Paste images from your clipboard directly into descriptions.<br/>• Drag and drop files from explorer anywhere on the panel.</div></div>",
         "position": "left"
       },
       {
         "element": "#s_customize",
         "title": "<ui-icon name=\"settings\"></ui-icon> Customize Panel",
-        "text": "Reorder or hide detail fields on this panel. Custom layouts are saved <span class='tut-key'>per work item type</span>.",
+        "text": "Hide or reorder detail fields!<hr/><div class='tut-section'><div class='tut-section-title'>Sidebar Layouts</div><div>Customize which fields are visible on this panel. The layout configuration is automatically saved <span class='tut-key'>per work item type</span> (e.g. Bug layout vs Epic layout).</div></div>",
         "position": "left"
       },
       {
         "element": "#s_link_split",
         "title": "<ui-icon name=\"link\"></ui-icon> ADO Link & Navigation",
-        "text": "Copy the item's direct URL to your clipboard, or jump straight to the <span class='tut-key'>Azure DevOps webpage</span>.",
+        "text": "Jump straight to the cloud portal!<hr/><div class='tut-section'><div class='tut-section-title'>Link Options</div><div>• Left Click: Jump directly to the Azure DevOps web page for this item.<br/>• Right/Split click: Copy the direct ADO item link to your clipboard.</div></div>",
         "position": "left"
       },
       {
         "element": "#s_desc_full",
         "title": "<ui-icon name=\"maximize\"></ui-icon> Fullscreen Editor",
-        "text": "Need space? Toggle <span class='tut-key'>Fullscreen Mode</span> for distraction-free description writing and reading.",
+        "text": "Write documentation comfortably!<hr/><div class='tut-section'><div class='tut-section-title'>Fullscreen Mode</div><div>Toggle fullscreen editor mode to write description documentation, edit markdown text, or read long descriptions.</div></div>",
         "position": "left"
       },
       {
         "element": "#s_follow",
         "title": "<ui-icon name=\"star\"></ui-icon> Local Subscriptions (Follow)",
-        "text": "Subscribe to this work item to track its updates. <span class='tut-key'>Note:</span> This is a local feature of ADO Atlas. It monitors revisions and triggers desktop notifications, but does <i>not</i> register you as a follower on the ADO server and will not trigger ADO email notifications.",
+        "text": "Stay updated on key work items!<hr/><div class='tut-section'><div class='tut-section-title'>Local Alerts</div><div>Atlas monitors subscribed items in the background and sends desktop alerts on changes. It <span class='tut-key'>does not</span> register you on the ADO server, avoiding spam emails!</div></div>",
         "position": "left"
       },
       {
         "element": "[data-sg='title']",
         "title": "<ui-icon name=\"copy\"></ui-icon> Dynamic Fields",
-        "text": "Title, State, Assigned, and custom fields are fetched <span class='tut-key'>directly from ADO</span> and adapt per item type.",
+        "text": "Fields adapt to your work item type!<hr/><div class='tut-section'><div class='tut-section-title'>Data Sync</div><div>Title, State, Assignee, and other detail fields sync immediately with Azure DevOps and change dynamically based on the current item.</div></div>",
         "position": "left"
       },
       {
         "element": "#activity_toggle_btn",
         "title": "<ui-icon name=\"trending-up\"></ui-icon> Activity & Time-in-State",
-        "text": "Expand this section to analyze duration metrics, <span class='tut-key'>state transition times</span>, and comments.",
+        "text": "Track transition times and comments!<hr/><div class='tut-section'><div class='tut-section-title'>State Transitions</div><div>Analyze how long work items spend in each state (e.g., Active, Resolved) to identify bottlenecks.</div></div>",
         "position": "left"
       },
       {
         "element": ".ah-actions",
         "title": "<ui-icon name=\"message-square\"></ui-icon> Activity Actions",
-        "text": "Create a <span class='tut-key'>Child task</span>, post markdown-formatted <span class='tut-key'>comments</span>, or toggle fullscreen discussion view.",
+        "text": "Take actions directly from the sidebar!<hr/><div class='tut-section'><div class='tut-section-title'>Quick Actions</div><div>• Create child items in one click.<br/>• Post markdown comments.<br/>• Toggle full discussion history pane.</div></div>",
         "position": "left"
       }
     ]
@@ -165,21 +135,63 @@
     "steps": [
       {
         "element": ".fb-add-field-container",
-        "title": "<ui-icon name=\"plus\"></ui-icon> Adding Fields & Groups",
-        "text": "Click <span class='tut-key'>Add Field</span> to build your query. Add fields to the current group (AND / OR logic) or add nested groups for complex conditions.",
+        "title": "<ui-icon name=\"plus\"></ui-icon> Nested Logical Groups",
+        "text": "Click <span class='tut-key'>Add Field</span> to append rule rows.<hr/><div class='tut-section'><div class='tut-section-title'>Nesting Logic</div><div>You can nest groups! Combine multiple conditions with <span class='tut-badge'>AND</span> or <span class='tut-badge'>OR</span> selectors to construct complex, multi-level logic queries.</div></div>",
         "position": "right"
       },
       {
         "element": ".fb-field-row",
-        "title": "<ui-icon name=\"settings\"></ui-icon> Operators & Values",
-        "text": "Click the <span class='tut-key'>operator chip</span> (e.g. <code>=</code>) to flip it (to <code>&lt;&gt;</code>, <code>CONTAINS</code>, <code>UNDER</code>, etc.). Then, select or type your value in the input field.",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Flip Operators",
+        "text": "Click the <span class='tut-key'>operator chip</span> (e.g. <code>=</code>) to flip it directly!<hr/><div class='tut-section'><div class='tut-section-title'>Hierarchical Filtering</div><div>Use the <span class='tut-badge'>UNDER</span> operator to search Area Path sub-trees or check recursive parent-child hierarchies (e.g., matching all descendants of Epic 123).</div></div>",
         "position": "right"
       },
       {
         "element": ".fb-field-row",
-        "title": "<ui-icon name=\"sparkles\"></ui-icon> Special Macros",
-        "text": "Use macros to create dynamic filters! <div class='tut-examples' style='margin-top:8px;'><div class='tut-ex'><code class='tut-ex-code'>@me</code> <span class='tut-ex-desc'>Matches your currently logged-in user</span></div><div class='tut-ex'><code class='tut-ex-code'>@empty</code> <span class='tut-ex-desc'>Matches items where the field is blank</span></div></div>",
+        "title": "<ui-icon name=\"sparkles\"></ui-icon> Identity & Value Macros",
+        "text": "Avoid hardcoding values using smart macros!<hr/><div class='tut-section'><div class='tut-section-title'>Common Macros</div><div>• <span class='tut-code-inline'>@me</span> - Matches the active user (ideal for Assignee field).<br/>• <span class='tut-code-inline'>@empty</span> - Matches items with blank or empty fields.</div></div>",
         "position": "right"
+      },
+      {
+        "element": ".fb-field-row",
+        "title": "<ui-icon name=\"calendar\"></ui-icon> Date & System Macros",
+        "text": "Filter by timeframes or project scope dynamically!<hr/><div class='tut-section'><div class='tut-section-title'>Advanced Macros</div><div>• <span class='tut-code-inline'>@today</span> - Matches current date. Supports offsets like <span class='tut-code-inline'>@today - 7</span>.<br/>• <span class='tut-code-inline'>@currentiteration</span> - Points to the current sprint.<br/>• <span class='tut-code-inline'>@project</span> - Refers to the current project context.</div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-preview-panel",
+        "title": "<ui-icon name=\"eye\"></ui-icon> Live Results Preview",
+        "text": "Verify your filter instantly!<hr/><div class='tut-section'><div class='tut-section-title'>Live Sidebar</div><div>The sidebar runs your query in the background, rendering matching work items and showing the match count in real-time as you type!</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#fb-show-followed",
+        "title": "<ui-icon name=\"star\"></ui-icon> Only Followed Items",
+        "text": "Focus only on what matters to you!<hr/><div class='tut-section'><div class='tut-section-title'>Quick Toggle</div><div>Toggle this switch to quickly restrict the entire advanced query results to only items you are currently following.</div></div>",
+        "position": "top"
+      },
+      {
+        "element": "#fb-save-btn",
+        "title": "<ui-icon name=\"save\"></ui-icon> Saved Presets",
+        "text": "Save your complex queries!<hr/><div class='tut-section'><div class='tut-section-title'>Preserving Rules</div><div>Click <span class='tut-key'>Save</span> to store the entire configuration under a custom name, keeping it reusable for future sessions.</div></div>",
+        "position": "top"
+      },
+      {
+        "element": "#fb-manage-btn",
+        "title": "<ui-icon name=\"folder\"></ui-icon> Filter Manager",
+        "text": "Click <span class='tut-key'>Manage</span> to open the control window. From there you can delete, share, or import/export configurations.",
+        "position": "top"
+      },
+      {
+        "element": "#fb-tab-list-btn",
+        "title": "<ui-icon name=\"folder\"></ui-icon> Saved Filters Tab",
+        "text": "Organize your preset library!<hr/><div class='tut-section'><div class='tut-section-title'>Available Actions</div><div>• Click a saved filter name to apply it instantly.<br/>• Click <ui-icon name=\"copy\"></ui-icon> to copy it to the clipboard.<br/>• Click <ui-icon name=\"share\"></ui-icon> to share or download the config.<br/>• Click trash to delete obsolete configurations.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#fb-tab-ie-btn",
+        "title": "<ui-icon name=\"copy\"></ui-icon> Import / Export Tab",
+        "text": "Share filters easily!<hr/><div class='tut-section'><div class='tut-section-title'>JSON Import/Export</div><div>• Paste JSON directly or upload a <code>.json</code> file.<br/>• Click <span class='tut-key'>Apply & Execute</span> to run a pasted filter immediately without saving it to your presets!</div></div>",
+        "position": "bottom"
       }
     ]
   }

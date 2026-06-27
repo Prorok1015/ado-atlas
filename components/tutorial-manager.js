@@ -39,6 +39,7 @@ class TutorialManager {
     this.backdrop = null;
     this.popover = null;
     this.highlightedElement = null;
+    this.highlightedElementOriginalPosition = null;
     this.waitTimeout = null;
     this.elevatedAncestors = [];
   }
@@ -92,14 +93,14 @@ class TutorialManager {
     overlay.innerHTML = `
       <div class="tut-prompt-box">
         <h2><ui-icon name="smile"></ui-icon> Welcome to ADO Atlas!</h2>
-        <p>You have uncompleted feature tours. Would you like to start the guide or skip them for now?</p>
-        <p class="tut-prompt-hint"><ui-icon name="lightbulb"></ui-icon> You can always replay tours later from <strong>Settings → Interactive Tours</strong></p>
+        <p>Would you like to keep interactive tutorials enabled to guide you through the features, or skip them all?</p>
+        <p class="tut-prompt-hint"><ui-icon name="lightbulb"></ui-icon> You can always manage and replay tours from <strong>Settings → Interactive Tours</strong></p>
         <div class="tut-prompt-list">
           ${listHtml}
         </div>
         <div class="tut-prompt-buttons">
           <button class="tut-btn tut-prompt-skip">Skip All</button>
-          <button class="tut-btn tut-btn-primary tut-prompt-start">Start Tour</button>
+          <button class="tut-btn tut-btn-primary tut-prompt-start">Keep Tutorials</button>
         </div>
       </div>
     `;
@@ -196,7 +197,18 @@ class TutorialManager {
         if (id === 'v1.2.0_sidebar_features') {
           const side = document.querySelector('#side');
           if (side && side.classList.contains('hidden')) {
-            alert('Please click on any work item to open the sidebar and start the sidebar tour.');
+            if (window.customAlert) {
+              window.customAlert('Please click on any work item to open the sidebar and start the sidebar tour.', 'Sidebar Tour');
+            } else {
+              alert('Please click on any work item to open the sidebar and start the sidebar tour.');
+            }
+          }
+        }
+
+        if (id === 'v1.2.0_advanced_filter_syntax') {
+          const advBtn = document.querySelector('#advanced_filter_btn');
+          if (advBtn) {
+            advBtn.click();
           }
         }
 
@@ -243,6 +255,19 @@ class TutorialManager {
 
     const step = this.currentTutorial.steps[this.currentStepIndex];
     
+    if (step.element === '#fb-tab-list-btn' || step.element === '#fb-tab-ie-btn') {
+      const dialog = document.getElementById('fb-manage-dialog');
+      if (dialog && dialog.style.display === 'none') {
+        const manageBtn = document.getElementById('fb-manage-btn');
+        if (manageBtn) manageBtn.click();
+      }
+      const tabBtn = document.getElementById(step.element.substring(1));
+      if (tabBtn) {
+        // Wait a tiny fraction to allow the click handler to register
+        setTimeout(() => tabBtn.click(), 20);
+      }
+    }
+    
     const checkAndShow = () => {
       const target = document.querySelector(step.element);
       if (!target) {
@@ -278,6 +303,13 @@ class TutorialManager {
 
       // Elevate target element
       this.highlightedElement = target;
+      const compPos = window.getComputedStyle(target).position;
+      if (compPos === 'static') {
+        this.highlightedElementOriginalPosition = target.style.position;
+        target.style.position = 'relative';
+      } else {
+        this.highlightedElementOriginalPosition = null;
+      }
       target.classList.add('tut-highlighted');
 
       // Elevate ancestors to solve stacking context issues
@@ -351,7 +383,11 @@ class TutorialManager {
     }
     if (this.highlightedElement) {
       this.highlightedElement.classList.remove('tut-highlighted');
+      if (this.highlightedElementOriginalPosition !== null && this.highlightedElementOriginalPosition !== undefined) {
+        this.highlightedElement.style.position = this.highlightedElementOriginalPosition;
+      }
       this.highlightedElement = null;
+      this.highlightedElementOriginalPosition = null;
     }
     if (this.elevatedAncestors) {
       this.elevatedAncestors.forEach(el => el.classList.remove('tut-ancestor-elevated'));
@@ -364,6 +400,16 @@ class TutorialManager {
     if (this.popover) {
       this.popover.remove();
       this.popover = null;
+    }
+    
+    // Close manage dialog if next step is not pointing to it
+    const manageDialog = document.getElementById('fb-manage-dialog');
+    if (manageDialog && manageDialog.style.display !== 'none') {
+      const nextStep = this.currentTutorial && this.currentStepIndex < this.currentTutorial.steps.length ? this.currentTutorial.steps[this.currentStepIndex] : null;
+      const nextElement = nextStep ? nextStep.element : '';
+      if (nextElement !== '.fb-manage-dialog-card' && !nextElement.includes('fb-manage-dialog')) {
+        manageDialog.style.display = 'none';
+      }
     }
   }
 

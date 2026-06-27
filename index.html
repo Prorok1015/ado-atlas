@@ -37,9 +37,9 @@
   <span class="popwrap" id="settings-wrap">
     <button class="btn" id="morebtn" title="settings &amp; display options"><ui-icon name="settings"></ui-icon></button>
     <div id="morepanel" style="display:none">
-      <div class="mrow"><span class="ml">Theme</span>
+      <div class="mrow"><span class="ml">Theme<span class="logic-hint" data-tooltip-html="<b>Theme Switcher</b><br/>Cycle between Light, Dark, or System Sync theme options."><ui-icon name="help"></ui-icon></span></span>
         <button class="btn" id="theme" title="cycle dark / light / auto"><ui-icon name="moon"></ui-icon> <span id="theme_label">dark</span></button></div>
-      <div class="mrow"><span class="ml">UI Scale</span>
+      <div class="mrow"><span class="ml">UI Scale<span class="logic-hint" data-tooltip-html="<b>UI Scaling</b><br/>Adjust the overall font and interface scaling factor for high-resolution displays."><ui-icon name="help"></ui-icon></span></span>
         <select id="f_scale" title="UI scaling factor">
           <option value="0.8">80%</option>
           <option value="0.9">90%</option>
@@ -50,17 +50,17 @@
           <option value="1.4">140%</option>
           <option value="1.5">150%</option>
         </select></div>
-      <div class="mrow"><span class="ml">Auto-refresh</span>
+      <div class="mrow"><span class="ml">Auto-refresh<span class="logic-hint" data-tooltip-html="<b>Auto-Refresh</b><br/>Set the interval for automatic background updates from Azure DevOps, or turn it off."><ui-icon name="help"></ui-icon></span></span>
         <select id="f_auto" title="auto-refresh interval"><option value="0">off</option><option value="60">1 min</option><option value="300">5 min</option><option value="900">15 min</option></select></div>
-      <div class="mrow"><span class="ml">Timezone</span>
+      <div class="mrow"><span class="ml">Timezone<span class="logic-hint" data-tooltip-html="<b>Timezone Config</b><br/>Configure the timezone used for active-time calculations and work-hours constraints."><ui-icon name="help"></ui-icon></span></span>
         <select id="f_tz" title="timezone for work-hours / active-time"></select></div>
-      <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours</span>
+      <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours<span class="logic-hint" data-tooltip-html="<b>Work Hours</b><br/>Define your active working hours window used for calculating business seconds and timespans."><ui-icon name="help"></ui-icon></span></span>
         <span class="whrs"><input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span></div>
-      <div class="mrow"><span>Notifications</span>
+      <div class="mrow"><span>Notifications<span class="logic-hint" data-tooltip-html="<b>Notifications</b><br/>Toggle desktop alerts for Followed Items."><ui-icon name="help"></ui-icon></span></span>
         <button class="btn" id="f_follow_notify" title="toggle desktop notifications"><ui-icon name="bell"></ui-icon> <span id="f_follow_notify_label">on</span></button></div>
-      <div class="mrow"><span>Mentions</span>
+      <div class="mrow"><span>Mentions<span class="logic-hint" data-tooltip-html="<b>Mentions</b><br/>Toggle desktop alerts for User Mentions."><ui-icon name="help"></ui-icon></span></span>
         <button class="btn" id="f_mention_notify" title="toggle mention notifications"><ui-icon name="bell"></ui-icon> <span id="f_mention_notify_label">on</span></button></div>
-      <div class="mrow"><span>Notify age</span>
+      <div class="mrow"><span>Notify age<span class="logic-hint" data-tooltip-html="<b>Notification Age</b><br/>Define the maximum age threshold (e.g. 2 days) to filter out older historic changes and prevent excessive notifications."><ui-icon name="help"></ui-icon></span></span>
         <select id="f_notify_age" title="maximum age of changes to notify about">
           <option value="1800">30 min</option>
           <option value="3600">1 hour</option>

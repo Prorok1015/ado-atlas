@@ -384,6 +384,35 @@ function customConfirm(message, title = 'Confirm Action') {
     ok.focus();
   });
 }
+function customAlert(message, title = 'Alert') {
+  return new Promise((resolve) => {
+    $('confirm-title').textContent = title;
+    $('confirm-message').innerHTML = message;
+    const overlay = $('confirm-overlay');
+    overlay.style.display = 'flex';
+    overlay.classList.add('show');
+    if (window.LayerManager) window.LayerManager.open(overlay, null, { isPopover: true });
+    const ok = $('confirm-ok');
+    const cancel = $('confirm-cancel');
+    cancel.style.display = 'none';
+    const cleanup = () => {
+      overlay.style.display = 'none';
+      overlay.classList.remove('show');
+      cancel.style.display = '';
+      if (window.LayerManager) window.LayerManager.close(overlay);
+      ok.onclick = null;
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = e => {
+      if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); cleanup(); resolve(true); }
+    };
+    ok.onclick = () => { cleanup(); resolve(true); };
+    document.addEventListener('keydown', onKey);
+    ok.focus();
+  });
+}
+window.customAlert = customAlert;
+
 function customLinkPrompt(defaultText) {
   return new Promise((resolve) => {
     const overlay = $('link-overlay');
@@ -8570,6 +8599,41 @@ async function initialBoot(postSetup){
     await tm.init();
   } catch (e) {
     console.error('Failed to initialize TutorialManager:', e);
+  }
+  setupSettingsTooltips();
+}
+
+function setupSettingsTooltips() {
+  let globalTooltip = document.getElementById('fb-global-logic-tooltip');
+  if (!globalTooltip) {
+    globalTooltip = document.createElement('div');
+    globalTooltip.id = 'fb-global-logic-tooltip';
+    globalTooltip.className = 'logic-tooltip';
+    globalTooltip.style.display = 'none';
+    document.body.appendChild(globalTooltip);
+  }
+
+  const panel = document.getElementById('morepanel');
+  if (panel) {
+    panel.querySelectorAll('.logic-hint').forEach(hint => {
+      hint.onmouseenter = () => {
+        if (window.LayerManager) {
+          globalTooltip.innerHTML = hint.getAttribute('data-tooltip-html');
+          const rect = hint.getBoundingClientRect();
+          globalTooltip.style.position = 'absolute';
+          globalTooltip.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+          globalTooltip.style.left = (rect.left + window.scrollX - 10) + 'px';
+          globalTooltip.style.display = 'block';
+          window.LayerManager.open(globalTooltip, hint, { isPopover: true, direction: 'bottom' });
+        }
+      };
+      hint.onmouseleave = () => {
+        if (window.LayerManager) {
+          globalTooltip.style.display = 'none';
+          window.LayerManager.close(globalTooltip);
+        }
+      };
+    });
   }
 }
 
