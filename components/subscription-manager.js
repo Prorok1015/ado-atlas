@@ -18,7 +18,7 @@ window.SubscriptionManager = {
     const { followedItems } = await chrome.storage.local.get("followedItems");
     const isFollowed = !!(followedItems && followedItems[itemId]);
     btn.classList.toggle('active', isFollowed);
-    btn.textContent = isFollowed ? '★' : '☆';
+    btn.innerHTML = isFollowed ? '<ui-icon name="star-filled"></ui-icon>' : '<ui-icon name="star"></ui-icon>';
     btn.title = isFollowed ? 'Unfollow this item' : 'Follow this item';
   },
 
@@ -30,7 +30,7 @@ window.SubscriptionManager = {
       delete followedItems[itemId];
       if (btn) {
         btn.classList.remove('active');
-        btn.textContent = '☆';
+        btn.innerHTML = '<ui-icon name="star"></ui-icon>';
         btn.title = 'Follow this item';
       }
     } else {
@@ -47,7 +47,7 @@ window.SubscriptionManager = {
       };
       if (btn) {
         btn.classList.add('active');
-        btn.textContent = '★';
+        btn.innerHTML = '<ui-icon name="star-filled"></ui-icon>';
         btn.title = 'Unfollow this item';
       }
     }

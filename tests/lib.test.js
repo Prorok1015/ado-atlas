@@ -60,6 +60,51 @@ test("buildClauses: FilterIR generates '' for @empty in dates/identity and doesn
   ]);
 });
 
+test("buildClauses: FilterIR generates correct WIQL for @empty and @me together", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "assigned", op: "IN", value: ["@empty", "@me"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
+    "([System.AssignedTo] = @me OR [System.AssignedTo] IN (''))"
+  ]);
+});
+
+test("buildClauses: FilterIR generates correct WIQL for numeric field with @empty and value together", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "priority", op: "IN", value: ["@empty", "2"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
+    "([Microsoft.VSTS.Common.Priority] = '' OR [Microsoft.VSTS.Common.Priority] IN (2))"
+  ]);
+});
+
+test("buildClauses: FilterIR generates correct WIQL for numeric field with NOT IN and @empty", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "priority", op: "NOT IN", value: ["@empty", "2"] }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
+    "([Microsoft.VSTS.Common.Priority] <> '' AND [Microsoft.VSTS.Common.Priority] NOT IN (2))"
+  ]);
+});
+
 test("buildClauses: FilterIR simple condition with =", () => {
   const ir = {
     where: {
@@ -181,6 +226,36 @@ test("buildClauses: FilterIR UNDER / NOT UNDER with arrays", () => {
   };
   assert.deepStrictEqual(lib.buildClauses(FF, ir), [
     "((([System.State] = 'Area/Path' OR [System.State] UNDER 'Area/Path') OR ([System.State] = 'Area/Path2' OR [System.State] UNDER 'Area/Path2')) AND (([System.State] <> 'Area/Path3' AND [System.State] NOT UNDER 'Area/Path3') AND ([System.State] <> 'Area/Path4' AND [System.State] NOT UNDER 'Area/Path4')))"
+  ]);
+});
+
+test("buildClauses: FilterIR multi-group OR / AND logic", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "OR",
+      rules: [
+        {
+          kind: "group",
+          logic: "AND",
+          rules: [
+            { kind: "condition", field: "state", op: "=", value: "Active" },
+            { kind: "condition", field: "priority", op: "IN", value: ["1", "2"] }
+          ]
+        },
+        {
+          kind: "group",
+          logic: "AND",
+          rules: [
+            { kind: "condition", field: "state", op: "=", value: "Closed" },
+            { kind: "condition", field: "assigned", op: "=", value: "@me" }
+          ]
+        }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), [
+    "(([System.State] = 'Active' AND [Microsoft.VSTS.Common.Priority] IN (1,2)) OR ([System.State] = 'Closed' AND [System.AssignedTo] = @me))"
   ]);
 });
 

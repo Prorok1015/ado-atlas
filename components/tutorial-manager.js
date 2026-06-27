@@ -91,9 +91,9 @@ class TutorialManager {
 
     overlay.innerHTML = `
       <div class="tut-prompt-box">
-        <h2>👋 Welcome to ADO Atlas!</h2>
+        <h2><ui-icon name="smile"></ui-icon> Welcome to ADO Atlas!</h2>
         <p>You have uncompleted feature tours. Would you like to start the guide or skip them for now?</p>
-        <p class="tut-prompt-hint">💡 You can always replay tours later from <strong>Settings → Interactive Tours</strong></p>
+        <p class="tut-prompt-hint"><ui-icon name="lightbulb"></ui-icon> You can always replay tours later from <strong>Settings → Interactive Tours</strong></p>
         <div class="tut-prompt-list">
           ${listHtml}
         </div>
@@ -143,7 +143,7 @@ class TutorialManager {
     const itemsHtml = Object.keys(this.registry).map(id => {
       const name = this.registry[id]?.title || id;
       const isCompleted = !!this.seen[id];
-      const statusText = isCompleted ? '✅ Completed' : '⏳ New';
+      const statusText = isCompleted ? '<ui-icon name="check-circle"></ui-icon> Completed' : '<ui-icon name="clock"></ui-icon> New';
       return `
         <div class="tut-replay-item" style="display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:0.846rem; border-bottom:1px solid var(--line); padding:8px 0;">
           <span>${name} <small style="color:var(--muted); font-size:0.75rem;">(${statusText})</small></span>
@@ -155,7 +155,7 @@ class TutorialManager {
     overlay.innerHTML = `
       <div class="tut-prompt-box" style="width: 25rem;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h2 style="margin:0;">📖 Feature Tours</h2>
+          <h2 style="margin:0;"><ui-icon name="book"></ui-icon> Feature Tours</h2>
           <button class="tut-btn tut-close-replay" style="border:none; background:transparent; font-size:1.1rem; padding:0; cursor:pointer; color:var(--txt);">✕</button>
         </div>
         <p>Select any tour to replay it. Follow the highlights to explore the features.</p>

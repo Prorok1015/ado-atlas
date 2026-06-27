@@ -15,30 +15,30 @@
 <div id="bar">
   <h1><img src="icons/icon-48.png" style="display:block;width:22px;height:22px;object-fit:contain" alt="ADO Atlas" title="ADO Atlas"></h1>
   <button class="projbadge" id="projbadge" title="current project — click to switch" style="display:none"></button>
-  <button class="btn save" id="newbtn" title="create a new work item (N)">✚ New</button>
-  <button class="btn" id="undobtn" title="undo (Ctrl/Cmd+Z)" disabled>↶</button>
-  <button class="btn" id="redobtn" title="redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)" disabled>↷</button>
+  <button class="btn save" id="newbtn" title="create a new work item (N)"><ui-icon name="plus"></ui-icon> New</button>
+  <button class="btn" id="undobtn" title="undo (Ctrl/Cmd+Z)" disabled><ui-icon name="undo"></ui-icon></button>
+  <button class="btn" id="redobtn" title="redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)" disabled><ui-icon name="redo"></ui-icon></button>
   <div class="seg" id="mode"><button data-m="tree" class="on">Tree</button><button data-m="graph">Graph</button><button data-m="board">Board</button><button data-m="timeline">Timeline</button></div>
   <div class="seg" id="emode" style="display:none"><button data-e="hierarchy" class="on" title="just hierarchy (compound boxes)">Hier</button><button data-e="dep" title="add dependency arrows">+ Deps</button></div>
-  <div class="seg" id="dir" style="display:none"><button data-d="TB">↕ V</button><button data-d="LR" class="on">↔ H</button></div>
+  <div class="seg" id="dir" style="display:none"><button data-d="TB"><ui-icon name="arrow-up-down"></ui-icon> V</button><button data-d="LR" class="on"><ui-icon name="arrow-left-right"></ui-icon> H</button></div>
   <div class="seg" id="grp" style="display:none"><button data-g="sprint" class="on">by Sprint</button><button data-g="state">by State</button><button data-g="assignee">by Assignee</button></div>
   <div class="seg" id="tlzoom" style="display:none" title="timeline zoom"><button data-z="day">Day</button><button data-z="week" class="on">Week</button><button data-z="month">Month</button></div>
   <select id="tl_group" title="group timeline rows" style="display:none"><option value="none">group: none</option><option value="sprint">by Sprint</option><option value="state">by State</option><option value="assignee">by Assignee</option><option value="type">by Type</option></select>
-  <button class="btn" id="empty_btn" title="show empty columns (sprints / states / assignees)" style="display:none">∅ empty</button>
+  <button class="btn" id="empty_btn" title="show empty columns (sprints / states / assignees)" style="display:none"><ui-icon name="slash"></ui-icon> empty</button>
   <div class="split-btn" id="filter-split">
     <button class="btn" id="filt_btn" title="filters, search &amp; sort">Filters <span id="filt_count"></span></button>
-    <button class="btn icon" id="followed_btn" title="Filter by followed items">☆</button>
+    <button class="btn icon" id="followed_btn" title="Filter by followed items"><ui-icon name="star"></ui-icon></button>
   </div>
   <button class="btn" id="fit" title="fit graph" style="display:none">Fit</button>
   <span class="barspacer" id="bar-spacer"></span>
-  <div class="seg" id="export" title="export the current (filtered) view"><button data-x="csv">⬇ CSV</button><button data-x="json">JSON</button></div>
+  <div class="seg" id="export" title="export the current (filtered) view"><button data-x="csv"><ui-icon name="download"></ui-icon> CSV</button><button data-x="json">JSON</button></div>
   <span class="patbadge" id="patbadge" title="PAT validity"></span>
   <span class="legend" id="legend"></span>
   <span class="popwrap" id="settings-wrap">
-    <button class="btn" id="morebtn" title="settings &amp; display options">⚙</button>
+    <button class="btn" id="morebtn" title="settings &amp; display options"><ui-icon name="settings"></ui-icon></button>
     <div id="morepanel" style="display:none">
       <div class="mrow"><span class="ml">Theme</span>
-        <button class="btn" id="theme" title="cycle dark / light / auto">◐ <span id="theme_label">dark</span></button></div>
+        <button class="btn" id="theme" title="cycle dark / light / auto"><ui-icon name="moon"></ui-icon> <span id="theme_label">dark</span></button></div>
       <div class="mrow"><span class="ml">UI Scale</span>
         <select id="f_scale" title="UI scaling factor">
           <option value="0.8">80%</option>
@@ -57,9 +57,9 @@
       <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours</span>
         <span class="whrs"><input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span></div>
       <div class="mrow"><span>Notifications</span>
-        <button class="btn" id="f_follow_notify" title="toggle desktop notifications">🔔 <span id="f_follow_notify_label">on</span></button></div>
+        <button class="btn" id="f_follow_notify" title="toggle desktop notifications"><ui-icon name="bell"></ui-icon> <span id="f_follow_notify_label">on</span></button></div>
       <div class="mrow"><span>Mentions</span>
-        <button class="btn" id="f_mention_notify" title="toggle mention notifications">🔔 <span id="f_mention_notify_label">on</span></button></div>
+        <button class="btn" id="f_mention_notify" title="toggle mention notifications"><ui-icon name="bell"></ui-icon> <span id="f_mention_notify_label">on</span></button></div>
       <div class="mrow"><span>Notify age</span>
         <select id="f_notify_age" title="maximum age of changes to notify about">
           <option value="1800">30 min</option>
@@ -69,11 +69,11 @@
           <option value="604800">1 week</option>
         </select></div>
       <div class="mrow mrow-full" style="display:flex;gap:6px;align-items:stretch">
-        <button class="btn" id="cz_open" style="flex:1" title="reorder / show-hide toolbar buttons and work-item panel fields">⠿ Customize layout…</button>
-        <button class="btn" id="emojis_open" style="width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Customize reactions emojis or images">☺</button>
+        <button class="btn" id="cz_open" style="flex:1" title="reorder / show-hide toolbar buttons and work-item panel fields"><ui-icon name="layout"></ui-icon> Customize layout…</button>
+        <button class="btn" id="emojis_open" style="width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Customize reactions emojis or images"><ui-icon name="smile"></ui-icon></button>
       </div>
-      <div class="mrow mrow-full"><button class="btn" id="tutorialbtn" title="Replay interactive feature tours">📖 Interactive Tours…</button></div>
-      <div class="mrow mrow-full"><button class="btn" id="settingsbtn" title="Azure DevOps connection (PAT / org / project)">⚙ Connection (PAT / org / project)…</button></div>
+      <div class="mrow mrow-full"><button class="btn" id="tutorialbtn" title="Replay interactive feature tours"><ui-icon name="book"></ui-icon> Interactive Tours…</button></div>
+      <div class="mrow mrow-full"><button class="btn" id="settingsbtn" title="Azure DevOps connection (PAT / org / project)"><ui-icon name="settings"></ui-icon> Connection (PAT / org / project)…</button></div>
     </div>
   </span>
 </div>
@@ -81,22 +81,22 @@
 <div id="filterpanel" style="display:none">
   <div class="frow" id="filter-query">
     <span class="fl">Find</span>
-    <button class="fclear" id="filt_clear_all" title="clear all filters" style="visibility:hidden">✕</button>
+    <button class="fclear" id="filt_clear_all" title="clear all filters" style="visibility:hidden"><ui-icon name="x"></ui-icon></button>
     <div class="fsearch-container">
       <input id="search" class="fsearch" placeholder="id or text…">
-      <button type="button" class="search-clear-btn" id="search-clear" style="display:none">✕</button>
+      <button type="button" class="search-clear-btn" id="search-clear" style="display:none"><ui-icon name="x"></ui-icon></button>
     </div>
     <button class="btn" id="searchbtn">Search</button>
     <span class="fl fl-sort">Sort</span>
     <select id="f_sort" title="sort order"><option value="">id</option><option value="priority">priority</option></select>
-    <button class="btn" id="refreshbtn" title="reload from server (drop caches)"><span class="ricon">⟳</span> Refresh</button>
+    <button class="btn" id="refreshbtn" title="reload from server (drop caches)"><span class="ricon"><ui-icon name="refresh-cw"></ui-icon></span> Refresh</button>
     <button class="btn" id="advanced_filter_btn" title="Open advanced visual filter builder">Advanced...</button>
   </div>
   <div id="filterchips"></div>
   <div id="advanced-filter-indicator" style="display:none; align-items:center; gap:8px; padding:6px 12px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; margin-top:8px; font-size:0.923rem;">
     <span style="font-weight:600; color:var(--accent);">Advanced Filter Active</span>
     <button class="btn" id="advanced_filter_edit_btn" style="padding:2px 8px; font-size:0.8rem; height:auto; line-height:1.2;">Edit</button>
-    <button class="fclear" id="advanced_filter_clear_btn" style="visibility:visible; cursor:pointer;" title="clear advanced filter">✕</button>
+    <button class="fclear" id="advanced_filter_clear_btn" style="visibility:visible; cursor:pointer;" title="clear advanced filter"><ui-icon name="x"></ui-icon></button>
   </div>
 </div>
 <div id="bulkbar" style="display:none">
@@ -173,12 +173,12 @@
 
   <!-- Followed Actions -->
   <div class="bulk-group" id="bulk_g_followed" style="display:inline-flex;gap:4px;align-items:center;">
-    <button class="btn" id="bulk_follow_btn" title="Follow all selected items" style="padding: 6px 9px;">★</button>
-    <button class="btn" id="bulk_unfollow_btn" title="Unfollow all selected items" style="padding: 6px 9px;">☆</button>
+    <button class="btn" id="bulk_follow_btn" title="Follow all selected items" style="padding: 6px 9px;"><ui-icon name="star-filled"></ui-icon></button>
+    <button class="btn" id="bulk_unfollow_btn" title="Unfollow all selected items" style="padding: 6px 9px;"><ui-icon name="star"></ui-icon></button>
   </div>
 
-  <button class="btn" id="bulk_clear" title="clear selection">✕ clear</button>
-  <button class="btn" id="bulk_cust_btn" title="customize bulk bar" style="padding: 2px 8px;">⋮</button>
+  <button class="btn" id="bulk_clear" title="clear selection"><ui-icon name="x"></ui-icon> clear</button>
+  <button class="btn" id="bulk_cust_btn" title="customize bulk bar" style="padding: 2px 8px;"><ui-icon name="more-vertical"></ui-icon></button>
 </div>
 <datalist id="assignees"></datalist>
 <div id="main">
@@ -204,15 +204,15 @@
         <button type="button" class="btn save" id="s_save" title="Save changes (Ctrl+S)">Save</button>
         <button type="button" class="btn discard" id="s_discard" title="Discard changes">Discard</button>
       </div>
-      <button class="btn icon" id="s_desc_attach" title="attach a file (or paste / drop into the description)">📎</button>
-      <button class="btn icon" id="s_customize" title="customize this panel (reorder / show-hide fields)">⚙</button>
+      <button class="btn icon" id="s_desc_attach" title="attach a file (or paste / drop into the description)"><ui-icon name="paperclip"></ui-icon></button>
+      <button class="btn icon" id="s_customize" title="customize this panel (reorder / show-hide fields)"><ui-icon name="settings"></ui-icon></button>
       <div class="split-btn" id="s_link_split">
-        <button class="btn icon" id="s_copy_link" title="Copy link to Azure DevOps">🔗</button>
-        <a class="btn icon" id="s_link" target="_blank" title="open in Azure DevOps">↗</a>
+        <button class="btn icon" id="s_copy_link" title="Copy link to Azure DevOps"><ui-icon name="link"></ui-icon></button>
+        <a class="btn icon" id="s_link" target="_blank" title="open in Azure DevOps"><ui-icon name="external-link"></ui-icon></a>
       </div>
-      <button class="btn icon" id="s_desc_full" title="toggle full-screen editor (Esc to exit)">⛶</button>
-      <button class="btn icon" id="s_follow" title="Follow / Unfollow this item">☆</button>
-      <button class="btn icon" id="s_close" title="close (Esc)">✕</button>
+      <button class="btn icon" id="s_desc_full" title="toggle full-screen editor (Esc to exit)"><ui-icon name="maximize"></ui-icon></button>
+      <button class="btn icon" id="s_follow" title="Follow / Unfollow this item"><ui-icon name="star"></ui-icon></button>
+      <button class="btn icon" id="s_close" title="close (Esc)"><ui-icon name="x"></ui-icon></button>
     </div>
     <div class="sgroup" data-sg="nav">
       <div id="s_ctx"></div>
@@ -300,19 +300,19 @@
       <label>Attachments</label>
       <div class="atch-wrap">
         <div id="s_atch" class="atchlist"></div>
-        <div class="atch-dropzone"><div class="ddz-inner">📎 Drop to attach</div></div>
+        <div class="atch-dropzone"><div class="ddz-inner"><ui-icon name="paperclip"></ui-icon> Drop to attach</div></div>
       </div>
     </div>
     <div class="sgroup" data-sg="actions">
       <div id="activity-resizer" class="activity-resizer" title="Drag to resize activity list"></div>
       <div class="activity-header">
         <h2 id="activity_toggle_btn" style="cursor:pointer; user-select:none;">
-          Activity <span class="toggle-arrow">▶</span> <span class="acount-badge" id="s_activity_count" style="display:none">0</span>
+          Activity <span class="toggle-arrow"><ui-icon name="chevron-right"></ui-icon></span> <span class="acount-badge" id="s_activity_count" style="display:none">0</span>
         </h2>
         <div class="ah-actions">
           <button type="button" class="btn btn-sm" id="s_childbtn">＋ Child</button>
-          <button type="button" class="btn btn-sm" id="s_comment">✒ Comment</button>
-          <button type="button" class="btn btn-sm" id="s_act_full" title="Toggle fullscreen activity">⛶</button>
+          <button type="button" class="btn btn-sm" id="s_comment"><ui-icon name="message-square"></ui-icon> Comment</button>
+          <button type="button" class="btn btn-sm" id="s_act_full" title="Toggle fullscreen activity"><ui-icon name="maximize"></ui-icon></button>
         </div>
       </div>
       <div id="activity-content" class="hidden">
@@ -434,11 +434,11 @@
       <div class="cz-toolbox">
         <h3>Structure</h3>
         <div class="cz-toolbox-section" id="cz_toolbox_structures">
-          <div class="cz-toolbox-item" draggable="true" data-type="group"><span class="grip">📁</span> Collapsible Group</div>
+          <div class="cz-toolbox-item" draggable="true" data-type="group"><span class="grip"><ui-icon name="folder"></ui-icon></span> Collapsible Group</div>
           <div class="cz-toolbox-item" draggable="true" data-type="row"><span class="grip">◫</span> 2-Column Row</div>
           <div class="cz-toolbox-item" draggable="true" data-type="row3"><span class="grip">⧟</span> 3-Column Row</div>
-          <div class="cz-toolbox-item" draggable="true" data-type="label"><span class="grip">📝</span> Custom Text Block</div>
-          <div class="cz-toolbox-item" draggable="true" data-type="separator"><span class="grip">➖</span> Separator Line</div>
+          <div class="cz-toolbox-item" draggable="true" data-type="label"><span class="grip"><ui-icon name="file-text"></ui-icon></span> Custom Text Block</div>
+          <div class="cz-toolbox-item" draggable="true" data-type="separator"><span class="grip"><ui-icon name="minus"></ui-icon></span> Separator Line</div>
         </div>
         <h3>Available Fields</h3>
         <div class="cz-toolbox-section" id="cz_toolbox_fields"></div>
@@ -469,7 +469,7 @@
         <span class="ml emoji-label">Like</span>
         <input id="emoji_override_like" placeholder="Paste URL or type emoji" autocomplete="off">
         <label class="btn file-upload-btn" title="Upload custom image file">
-          📁
+          <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="like" style="display:none">
         </label>
       </div>
@@ -478,7 +478,7 @@
         <span class="ml emoji-label">Dislike</span>
         <input id="emoji_override_dislike" placeholder="Paste URL or type emoji" autocomplete="off">
         <label class="btn file-upload-btn" title="Upload custom image file">
-          📁
+          <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="dislike" style="display:none">
         </label>
       </div>
@@ -487,7 +487,7 @@
         <span class="ml emoji-label">Heart</span>
         <input id="emoji_override_heart" placeholder="Paste URL or type emoji" autocomplete="off">
         <label class="btn file-upload-btn" title="Upload custom image file">
-          📁
+          <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="heart" style="display:none">
         </label>
       </div>
@@ -496,7 +496,7 @@
         <span class="ml emoji-label">Hooray</span>
         <input id="emoji_override_hooray" placeholder="Paste URL or type emoji" autocomplete="off">
         <label class="btn file-upload-btn" title="Upload custom image file">
-          📁
+          <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="hooray" style="display:none">
         </label>
       </div>
@@ -505,7 +505,7 @@
         <span class="ml emoji-label">Smile</span>
         <input id="emoji_override_smile" placeholder="Paste URL or type emoji" autocomplete="off">
         <label class="btn file-upload-btn" title="Upload custom image file">
-          📁
+          <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="smile" style="display:none">
         </label>
       </div>
@@ -514,7 +514,7 @@
         <span class="ml emoji-label">Confused</span>
         <input id="emoji_override_confused" placeholder="Paste URL or type emoji" autocomplete="off">
         <label class="btn file-upload-btn" title="Upload custom image file">
-          📁
+          <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="confused" style="display:none">
         </label>
       </div>
@@ -569,11 +569,11 @@
         <option value="custom">Specific tenant ID…</option>
       </select>
       <input id="oauth-tenant-id" placeholder="tenant ID (GUID)" autocomplete="off" style="display:none">
-      <p class="hint"><b>⚠ Work/school (Microsoft Entra) accounts only.</b> Personal Microsoft accounts (outlook/hotmail/live), including a personal account that owns an Azure DevOps org, <b>cannot</b> use OAuth — Azure DevOps has no OAuth resource for them. Use the <b>Token</b> tab (PAT) instead; it works with any account.</p>
+      <p class="hint"><b><ui-icon name="alert-triangle"></ui-icon> Work/school (Microsoft Entra) accounts only.</b> Personal Microsoft accounts (outlook/hotmail/live), including a personal account that owns an Azure DevOps org, <b>cannot</b> use OAuth — Azure DevOps has no OAuth resource for them. Use the <b>Token</b> tab (PAT) instead; it works with any account.</p>
       <label>Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact value in your Entra app)</span></label>
       <div style="display:flex;gap:6px">
         <input id="oauth-redirect" readonly style="flex:1">
-        <button class="btn" id="oauth-copy" title="copy">copy</button>
+        <button class="btn" id="oauth-copy" title="Copy to clipboard"><ui-icon name="copy"></ui-icon> Copy</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
         <button class="btn save" id="oauth-signin">Sign in with Microsoft</button>
@@ -635,6 +635,7 @@
   </div>
 </div>
 
+<script src="components/icons.js"></script>
 <script src="components/layer-manager.js"></script>
 <script src="filter-compiler.js"></script>
 <script src="lib.js"></script>

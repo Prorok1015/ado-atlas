@@ -13,6 +13,8 @@
       this.fieldRegistry = options.fieldRegistry || null;
       this.listeners = [];
       this.activeIR = null;
+      /** @type {Set<string>} Field keys that the quick-filter UI can represent (e.g. 'type','state'). */
+      this.quickFilterFields = new Set(options.quickFilterFields || []);
       this.clear();
     }
 
@@ -170,12 +172,15 @@
         return true;
       }
 
-      // If any child is not a condition or has non-simple operators
+      // Every condition must use a field known to the quick-filter UI and a simple operator.
+      // quickFilterFields is populated by the app layer — no backend-specific names here.
+      const qf = this.quickFilterFields;
       for (const r of andGroup.rules) {
         if (!r || r.kind !== 'condition') return true;
         const op = (r.op || '=').toUpperCase();
         const simpleOps = ['=', '<>', 'IN', 'NOT IN', 'CONTAINS', 'NOT CONTAINS'];
         if (!simpleOps.includes(op)) return true;
+        if (!qf.has(r.field)) return true;
       }
 
       return false;

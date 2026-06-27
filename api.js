@@ -285,8 +285,19 @@ async function req(method, url, body, ctype, options) {
   const binary = isBinaryBody(body);
   if (body !== undefined) headers["Content-Type"] = ctype || (binary ? "application/octet-stream" : "application/json");
   const payload = body === undefined ? undefined : (binary ? body : JSON.stringify(body));
-  for (let attempt = 0; ; attempt++) {
-    const resp = await fetch(url, { method, headers, body: payload, signal: options && options.signal });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let resp;
+    try {
+      resp = await fetch(url, { method, headers, body: payload, signal: options && options.signal });
+    } catch (err) {
+      if (err.name === 'AbortError') throw err; // Don't retry user aborts
+      if (attempt < MAX_RETRIES) {
+        await sleep(Math.min(500 * Math.pow(2, attempt), 8000) + Math.floor(Math.random() * 250));
+        continue;
+      }
+      throw err;
+    }
+
     if (resp.ok) {
       const text = await resp.text();
       if (!text) return {};
@@ -387,24 +398,25 @@ function buildClauses(filters) {
 }
 
 // ---------- core ADO reads ----------
-async function wiqlIds(wiql, top) {
+async function wiqlIds(wiql, top, signal) {
   const proj = await projUrl();
   const url = `${proj}/_apis/wit/wiql?${API_VERSION}` + (top ? `&$top=${top|0}` : "");
-  const res = await req("POST", url, { query: wiql });
+  const res = await req("POST", url, { query: wiql }, null, { signal });
   return (res.workItems || []).map(w => w.id);
 }
 
 function chunk200(ids) { const out = []; for (let i = 0; i < ids.length; i += 200) out.push(ids.slice(i, i + 200)); return out; }
 
-async function batchFetch(ids, fields) {
+async function batchFetch(ids, fields, signal) {
   if (!ids.length) return [];
   fields = fields || DEFAULT_FIELDS;
   const proj = await projUrl();
-  // Fetch the 200-id chunks concurrently (6-wide) instead of one at a time.
+  // Fetch the 200-id chunks concurrently (3-wide to avoid HTTP/2 protocol errors).
   const results = await pool(chunk200(ids).map(chunk => async () => {
-    const url = `${proj}/_apis/wit/workitems?ids=${chunk.join(",")}&fields=${fields.join(",")}&${API_VERSION}`;
-    return (await req("GET", url)).value || [];
-  }), 6);
+    const url = `${proj}/_apis/wit/workitemsbatch?${API_VERSION}`;
+    const payload = { ids: chunk, fields: fields, errorPolicy: "omit" };
+    return (await req("POST", url, payload, undefined, { signal })).value || [];
+  }), 3);
   const byId = {};
   for (const arr of results) for (const w of arr) byId[w.id] = w;
   // preserve caller's id order (which carries the WIQL ORDER BY)
@@ -412,7 +424,7 @@ async function batchFetch(ids, fields) {
 }
 
 // Generic list (mirrors AdoClient.list). Returns an array of nodeOf() shapes.
-async function list({ wtype, parent, text, order, filters } = {}) {
+async function list({ wtype, parent, text, order, filters, signal } = {}) {
   const where = ["[System.TeamProject] = @project"];
   for (const c of buildClauses(filters || {})) where.push(c);
   if (filters && filters.followed && filters.followed.in && filters.followed.in.includes('yes')) {
@@ -434,8 +446,8 @@ async function list({ wtype, parent, text, order, filters } = {}) {
     ? `[${FIELD_REGISTRY.priority.ref}], [${FIELD_REGISTRY.id.ref}]`
     : `[${FIELD_REGISTRY.id.ref}]`;
   const wiql = `SELECT [${FIELD_REGISTRY.id.ref}] FROM WorkItems WHERE ` + where.join(" AND ") + " ORDER BY " + orderBy;
-  const ids = await wiqlIds(wiql, LIST_CAP);
-  const items = await batchFetch(ids);
+  const ids = await wiqlIds(wiql, LIST_CAP, signal);
+  const items = await batchFetch(ids, null, signal);
   const out = items.map(x => mapWorkItem(x)); // NOTE: descField is not passed here, falling back to System.Description
   // Flag (don't hide) when the LIST_CAP guard kicked in so the UI can warn the
   // user that they're not seeing everything.
@@ -682,8 +694,13 @@ async function populateFieldRegistry() {
         // Force collect all states from all work item types
         if (!allowedValuesMap['system.state']) allowedValuesMap['system.state'] = new Set();
         try {
-          const allStatesPromises = types.map(t => states(t.name).catch(() => []));
-          const allStatesArrays = await Promise.all(allStatesPromises);
+          const allStatesArrays = [];
+          for (let i = 0; i < types.length; i += 4) {
+            const chunk = types.slice(i, i + 4);
+            const chunkPromises = chunk.map(t => states(t.name).catch(() => []));
+            const chunkResults = await Promise.all(chunkPromises);
+            allStatesArrays.push(...chunkResults);
+          }
           allStatesArrays.flat().forEach(s => {
             const val = (s && typeof s === 'object') ? s.name : s;
             if (val) allowedValuesMap['system.state'].add(val);
@@ -1702,7 +1719,7 @@ async function times(ids, offset) {
       if (ACTIVE_STATES.has(st)) sec += businessSeconds(at, end, off);
     }
     return [wid, sec];
-  }), 8);
+  }), 3);
   const out = {};
   for (const [wid, sec] of results) out[wid] = sec;
   return out;
@@ -1803,7 +1820,7 @@ function getFilterFields() {
   setWorkHours, getWorkHours,
   // list / search / children / parents
   roots: ({ text, order, filters } = {}) => list({ text, order, filters }),
-  search: ({ text, order, filters } = {}) => list({ text, order, filters }),
+  search: ({ text, order, filters, signal } = {}) => list({ text, order, filters, signal }),
   children: (wid, order) => list({ parent: wid, order }),
   parents, childCounts,
   // graph

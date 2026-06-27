@@ -30,16 +30,16 @@ class MarkdownEditor {
           <button type="button" class="dbtn dbtn-i-only" data-fmt="ul"     title="Bulleted list">•</button>
           <button type="button" class="dbtn dbtn-i-only" data-fmt="ol"     title="Numbered list">1.</button>
           <button type="button" class="dbtn dbtn-i-only" data-fmt="quote"  title="Quote">❝</button>
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="link"   title="Insert link">🔗</button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="link"   title="Insert link"><ui-icon name="link"></ui-icon></button>
         </div>
         <div class="dtspacer"></div>
-        <button type="button" class="dbtn icon dbtn-toggle" title="Toggle preview / edit">👁</button>
-        <button type="button" class="dbtn icon dbtn-full" title="Toggle fullscreen mode (Esc to exit)">⛶</button>
+        <button type="button" class="dbtn icon dbtn-toggle" title="Toggle preview / edit"><ui-icon name="eye"></ui-icon></button>
+        <button type="button" class="dbtn icon dbtn-full" title="Toggle fullscreen mode (Esc to exit)"><ui-icon name="maximize"></ui-icon></button>
       </div>
       <div class="desc-wrap">
         <textarea placeholder="${htmlEsc(this.options.placeholder)}"></textarea>
         <div class="mdview" style="display:none"></div>
-        ${this.options.allowAttachments ? '<div class="desc-dropzone"><div class="ddz-inner">📎 Drop to attach & insert into description</div></div>' : ''}
+        ${this.options.allowAttachments ? '<div class="desc-dropzone"><div class="ddz-inner"><ui-icon name="paperclip"></ui-icon> Drop to attach & insert into description</div></div>' : ''}
       </div>
       ${this.options.allowAttachments ? '<input type="file" multiple style="display:none">' : ''}
     `;
@@ -165,14 +165,14 @@ class MarkdownEditor {
       this.renderPreview();
       this.textarea.style.display = 'none';
       this.previewDiv.style.display = 'block';
-      this.toggleBtn.textContent = '✎';
+      this.toggleBtn.innerHTML = '<ui-icon name="edit"></ui-icon>';
       this.toggleBtn.title = 'switch to edit mode';
       this.toggleBtn.classList.add('on');
       this.container.classList.add('preview-mode');
     } else {
       this.previewDiv.style.display = 'none';
       this.textarea.style.display = 'block';
-      this.toggleBtn.textContent = '👁';
+      this.toggleBtn.innerHTML = '<ui-icon name="eye"></ui-icon>';
       this.toggleBtn.title = 'toggle preview / edit';
       this.toggleBtn.classList.remove('on');
       this.container.classList.remove('preview-mode');

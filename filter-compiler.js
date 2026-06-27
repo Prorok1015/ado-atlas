@@ -93,8 +93,10 @@
             node.values.splice(emptyIdx, 1);
           } else {
             node.values[emptyIdx] = { type: 'literal', value: '', isExplicitEmpty: true };
-            if (op === 'CONTAINS' || op === 'UNDER' || op === 'IN') node.op = '=';
-            if (op === 'NOT CONTAINS' || op === 'NOT UNDER' || op === 'NOT IN') node.op = '<>';
+            if (node.values.length === 1) {
+              if (op === 'CONTAINS' || op === 'UNDER' || op === 'IN') node.op = '=';
+              if (op === 'NOT CONTAINS' || op === 'NOT UNDER' || op === 'NOT IN') node.op = '<>';
+            }
           }
         }
         return node;
@@ -241,10 +243,21 @@
 
       if (op === 'IN' || op === 'NOT IN') {
         const hasMe = values.some(v => v.type === 'macro' && v.name === 'ME');
-        const normalVals = values.filter(v => v.type !== 'macro' || v.name !== 'ME').map(lit).filter(x => x !== null);
+        const hasEmpty = values.some(v => v.type === 'literal' && v.isExplicitEmpty);
+        
+        const splitEmpty = hasEmpty && num;
+        
+        const filteredVals = values.filter(v => {
+          if (v.type === 'macro' && v.name === 'ME') return false;
+          if (splitEmpty && v.type === 'literal' && v.isExplicitEmpty) return false;
+          return true;
+        });
+        
+        const normalVals = filteredVals.map(lit).filter(x => x !== null);
         
         const parts = [];
         if (hasMe) parts.push(`[${ref}] ${op === 'NOT IN' ? '<>' : '='} @me`);
+        if (splitEmpty) parts.push(`[${ref}] ${op === 'NOT IN' ? '<>' : '='} ''`);
         if (normalVals.length) parts.push(`[${ref}] ${op} (${normalVals.join(",")})`);
         
         if (parts.length === 0) return "";

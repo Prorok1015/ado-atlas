@@ -355,7 +355,7 @@ async function ensureKids(id){            // load children once, cache in the st
   return store.kids[id];
 }
 
-function setStatus(t,err){const s=$('status');if(!s)return;s.textContent=t;s.style.color=err?'#e06c75':'var(--muted)';}
+function setStatus(t,err){const s=$('status');if(!s)return;if(t.includes('<ui-icon')){s.innerHTML=t;}else{s.textContent=t;}s.style.color=err?'#e06c75':'var(--muted)';}
 function customConfirm(message, title = 'Confirm Action') {
   return new Promise((resolve) => {
     $('confirm-title').textContent = title;
@@ -560,7 +560,7 @@ function renderFilters(){
     // alignment doesn't jump when it appears/disappears; visibility:hidden
     // keeps the slot reserved when this filter has no selection.
     const x=document.createElement('button');
-    x.className='fclear';x.title='clear this filter';x.textContent='✕';
+    x.className='fclear';x.title='clear this filter';x.innerHTML='<ui-icon name="x"></ui-icon>';
     if(window.filterManager.hasFieldFilters(f.key))
       x.onclick=()=>{window.filterManager.clearField(f.key);};
     else{x.style.visibility='hidden';x.tabIndex=-1;}
@@ -593,7 +593,7 @@ function renderFilters(){
       const clearBtn=document.createElement('button');
       clearBtn.type='button';
       clearBtn.className='search-clear-btn';
-      clearBtn.textContent='✕';
+      clearBtn.innerHTML='<ui-icon name="x"></ui-icon>';
       clearBtn.style.display='none';
       wrap.appendChild(clearBtn);
 
@@ -723,11 +723,11 @@ function treeNode(n){
   // a positive child count, or an as-yet-unknown count (undefined → keep the caret).
   const hasKids=(store.kids[n.id]||[]).length>0||n.childCount===undefined||n.childCount>0;
   const tog=document.createElement('span');tog.className='tog';
-  if(hasKids){tog.textContent=open?'▾':'▸';tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};}
+  if(hasKids){tog.innerHTML=open?'<ui-icon name="chevron-down"></ui-icon>':'<ui-icon name="chevron-right"></ui-icon>';tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};}
   else{tog.classList.add('leaf');}     // childless → blank spacer keeps labels aligned
   const dot=document.createElement('i');dot.className='dot';dot.style.background=tyColor(n.type);
   const lab=document.createElement('span');lab.className='lab';lab.textContent=`#${n.id} ${n.title}`;
-  if(n.via&&n.via.length){const m=document.createElement('span');m.className='skip';m.textContent=' ↗';
+  if(n.via&&n.via.length){const m=document.createElement('span');m.className='skip';m.innerHTML=' <ui-icon name="external-link"></ui-icon>';
     m.title='via '+n.via.map(i=>'#'+i).join(' → ')+' (not in filter)';lab.appendChild(m);}
   // Priority sits to the RIGHT of the title (between the label and the spacer),
   // so it stays close to the task name and never visually merges with the
@@ -766,13 +766,13 @@ function treeNode(n){
 async function toggle(li,n,tog){
   if(store.expanded.has(n.id)){            // collapse (cached data stays)
     store.expanded.delete(n.id);
-    const u=li.querySelector('ul');if(u)u.remove();tog.textContent='▸';return;
+    const u=li.querySelector('ul');if(u)u.remove();tog.innerHTML='<ui-icon name="chevron-right"></ui-icon>';return;
   }
-  tog.textContent='⌛';tog.classList.add('busy');loadStart();
+  tog.innerHTML='<ui-icon name="clock"></ui-icon>';tog.classList.add('busy');loadStart();
   try{await ensureKids(n.id);
     store.expanded.add(n.id);
     li.appendChild(childrenUl(n.id));
-  }finally{tog.classList.remove('busy');tog.textContent='▾';loadEnd();}
+  }finally{tog.classList.remove('busy');tog.innerHTML='<ui-icon name="chevron-down"></ui-icon>';loadEnd();}
 }
 function activeText(){const t=$('search').value.trim();return (t && !/^\d+$/.test(t))?t:null;}
 async function currentItems(){
@@ -1736,10 +1736,10 @@ async function annotateBoardTimes(){      // fill actual (active wall-clock) tim
   const ids=cards.map(c=>+c.dataset.id);
   const setCard=(c,act)=>{                 // act = hours or null
     const est=c.dataset.est?+c.dataset.est:null,lab=c.querySelector('.tlabel'),fill=c.querySelector('.tfill');
-    if(act==null){if(lab)lab.textContent=est!=null?('est '+est+'h'):'⏱ —';return;}
+    if(act==null){if(lab)lab.innerHTML=est!=null?('est '+est+'h'):'<ui-icon name="clock"></ui-icon> —';return;}
     if(est!=null&&fill){const r=act/est;fill.style.width=Math.min(r,1)*100+'%';fill.style.background=r>1?'#e74c3c':'var(--accent)';
       if(lab)lab.textContent=`${Math.round(act)}/${est}h`;c.querySelector('.tbar').classList.toggle('over',r>1);}
-    else if(lab)lab.textContent='⏱ '+hh(act);
+    else if(lab)lab.innerHTML='<ui-icon name="clock"></ui-icon> '+hh(act);
   };
   if(ids.length>BOARD_TIME_CAP){setStatus(cards.length+' cards — filter to ≤'+BOARD_TIME_CAP+' to load actual time');
     cards.forEach(c=>setCard(c,null));return;}
@@ -1752,7 +1752,7 @@ async function annotateBoardTimes(){      // fill actual (active wall-clock) tim
     if(se>0&&fill){const r=ah/se;fill.style.width=Math.min(r,1)*100+'%';fill.style.background=r>1?'#e74c3c':'var(--accent)';
       const cb=col.querySelector('.cbar');if(cb)cb.classList.toggle('over',r>1);
       if(lab)lab.textContent=`Σ ${Math.round(ah)}/${Math.round(se)}h`;}
-    else if(lab&&sa>0)lab.textContent='Σ⏱ '+hh(ah);});
+    else if(lab&&sa>0)lab.innerHTML='Σ<ui-icon name="clock"></ui-icon> '+hh(ah);});
 }
 async function renderBoard(){
   const token=++boardToken;
@@ -1786,7 +1786,7 @@ async function renderBoard(){
         ?''
         :`<small>${(it.start||'').slice(0,10)}→${(fin||'').slice(0,10)}</small>`)
       :'';
-    const pinBtn=k!=='__none__'?`<button class="pin-btn${isPinned?' pinned':''}" data-path="${htmlEsc(k)}" title="${isPinned?'Unpin column':'Pin column'}">📌</button>`:'';
+    const pinBtn=k!=='__none__'?`<button class="pin-btn${isPinned?' pinned':''}" data-path="${htmlEsc(k)}" title="${isPinned?'Unpin column':'Pin column'}"><ui-icon name="pin"></ui-icon></button>`:'';
     h.innerHTML=(k==='__none__'?'No sprint':`${htmlEsc(it.name)} ${dateBadge} ${pinBtn}`)+'<br>'+colMeta(colItems);
     if(k!=='__none__'){
       h.style.cursor='pointer';h.title='open sprint timeline';
@@ -1885,7 +1885,7 @@ function boardCard(n,finish,today){
     (showState?`<span>${htmlEsc(n.state)}</span>`:'')+(overdue?'<span class="od">overdue</span>':'')+`</div>`+
     tagsHtml+
     (showEst?`<div class="bfoot">`+(n.est!=null?`<div class="tbar"><div class="tfill"></div></div>`:'')+
-      `<span class="tlabel">${n.est!=null?'est '+(+n.est)+'h':'⏱ …'}</span></div>`:'');
+      `<span class="tlabel">${n.est!=null?'est '+(+n.est)+'h':'<ui-icon name="clock"></ui-icon> …'}</span></div>`:'');
   c.addEventListener('mousedown',e=>{if(e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey)startCardDrag(e,n.id,c);});   // modifier = select, not drag
   c.onclick=(e)=>{if(suppressClick)return;
     if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(n.id);return;}        // Ctrl/Cmd: toggle in selection
@@ -1987,7 +1987,7 @@ function renderSprint(path){
   const curMark=isCurrentSprint(it)?`<span class="curdot" title="current sprint"></span>`:'';
   top.innerHTML=`<button class="btn" id="g_back" title="back to board">←</button>`+
     `<span style="display:inline-flex;align-items:center;gap:6px">${curMark}<b>${htmlEsc(it.name)}</b></span> <span style="color:var(--muted)">${it.start.slice(0,10)} → ${it.finish.slice(0,10)} · ${items.length} items`+
-    `${se?' · Σest '+(Math.round(se*10)/10)+'h':''} · <span id="g_act">Σ⏱ …</span></span>`+
+    `${se?' · Σest '+(Math.round(se*10)/10)+'h':''} · <span id="g_act">Σ<ui-icon name="clock"></ui-icon> …</span></span>`+
     (canEditSprint?`<button class="btn" id="g_editdates" title="edit sprint dates">✎ dates</button>`:'')+
     `<button class="btn${sprintGroup==='assignee'?' on':''}" id="g_group" title="group rows by assignee" style="margin-left:auto">by assignee</button>`;
   el.appendChild(top);
@@ -1996,7 +1996,7 @@ function renderSprint(path){
   const gd=document.createElement('div');gd.className='gdays';
   for(let i=0;i<N;i++){const d=new Date(s0+i*DAY),c=document.createElement('div');c.textContent=d.getUTCDate();if(i===todayIdx)c.classList.add('gtodaycol');gd.appendChild(c);}
   head.appendChild(gd);
-  const hr=document.createElement('div');hr.className='gright';hr.innerHTML='<small>est · ⏱</small>';head.appendChild(hr);
+  const hr=document.createElement('div');hr.className='gright';hr.innerHTML='<small>est · <ui-icon name="clock"></ui-icon></small>';head.appendChild(hr);
   el.appendChild(head);
   const mkRow=(n)=>{
     const row=document.createElement('div');row.className='grow';row.dataset.id=n.id;
@@ -2017,7 +2017,7 @@ function renderSprint(path){
     track.appendChild(bar);
     if(showToday){const tl=document.createElement('div');tl.className='gtoday';tl.style.left=todayLeft+'%';track.appendChild(tl);}
     const right=document.createElement('div');right.className='gright';
-    right.innerHTML=`<span>${n.est!=null?'est '+(+n.est)+'h':''}</span> <span class="gact">⏱ …</span>`;
+    right.innerHTML=`<span>${n.est!=null?'est '+(+n.est)+'h':''}</span> <span class="gact"><ui-icon name="clock"></ui-icon> …</span>`;
     row.append(lab,track,right);return row;
   };
   if(!items.length){const e=document.createElement('div');e.className='empty';e.style.padding='12px';e.textContent='no items match the current filters';el.appendChild(e);}
@@ -2028,7 +2028,7 @@ function renderSprint(path){
       const arr=groups.get(k).sort(cmpBySort);
       const ge=arr.reduce((s,n)=>s+(n.est||0),0);
       const gh=document.createElement('div');gh.className='ggroup';gh.dataset.group=k;
-      gh.innerHTML=`<span>${k?htmlEsc(k):'Unassigned'} · ${arr.length}${ge?' · Σest '+(Math.round(ge*10)/10)+'h':''}</span><span class="gact">⏱ …</span>`;
+      gh.innerHTML=`<span>${k?htmlEsc(k):'Unassigned'} · ${arr.length}${ge?' · Σest '+(Math.round(ge*10)/10)+'h':''}</span><span class="gact"><ui-icon name="clock"></ui-icon> …</span>`;
       el.appendChild(gh);
       arr.forEach(n=>{const r=mkRow(n);r.dataset.group=k;el.appendChild(r);});
     });
@@ -2041,19 +2041,19 @@ function renderSprint(path){
   return true;
 }
 async function annotateSprintTimes(ids,path){
-  if(!ids.length||ids.length>BOARD_TIME_CAP){const t=$('g_act');if(t)t.textContent='Σ⏱ —';return;}
+  if(!ids.length||ids.length>BOARD_TIME_CAP){const t=$('g_act');if(t)t.innerHTML='Σ<ui-icon name="clock"></ui-icon> —';return;}
   let t;try{t=await api.times(ids,tzOffset);}catch(e){return;}
   if(path!==openSprintPath)return;         // the open sprint changed — don't write stale times
   let tot=0;const byGroup={};
   document.querySelectorAll('#sprintview .grow[data-id]').forEach(r=>{
     const sec=t[r.dataset.id],g=r.querySelector('.gact');
-    if(sec!=null){tot+=sec;if(g)g.textContent='⏱ '+hh(sec/3600);
+    if(sec!=null){tot+=sec;if(g)g.innerHTML='<ui-icon name="clock"></ui-icon> '+hh(sec/3600);
       if(r.dataset.group!=null)byGroup[r.dataset.group]=(byGroup[r.dataset.group]||0)+sec;}
-    else if(g)g.textContent='⏱ —';
+    else if(g)g.innerHTML='<ui-icon name="clock"></ui-icon> —';
   });
   document.querySelectorAll('#sprintview .ggroup[data-group]').forEach(h=>{
-    const g=h.querySelector('.gact');if(g)g.textContent='⏱ '+hh((byGroup[h.dataset.group]||0)/3600);});
-  const top=$('g_act');if(top)top.textContent='Σ⏱ '+hh(tot/3600);
+    const g=h.querySelector('.gact');if(g)g.innerHTML='<ui-icon name="clock"></ui-icon> '+hh((byGroup[h.dataset.group]||0)/3600);});
+  const top=$('g_act');if(top)top.innerHTML='Σ<ui-icon name="clock"></ui-icon> '+hh(tot/3600);
 }
 function openSprint(path){
   if(!_sprint(path))return;
@@ -2222,10 +2222,10 @@ function setMode(m){
 // non-obvious interactions (modifier-click to bulk-select, drag semantics, …);
 // this surfaces them. Collapsible, with the state remembered across sessions.
 const VIEW_HELP={
-  tree:[['🖱️','Click','open item'],['▸','Click ▸','expand / collapse'],['☑️','Ctrl-click','toggle select'],['↕️','Shift-click','select range'],['✋','Drag','re-parent onto a row']],
-  graph:[['🖱️','Click','open item'],['👆','Double-click','expand / collapse children'],['☑️','Ctrl / Shift-click','toggle select'],['✋','Drag node','move · background pans'],['🔍','Scroll','zoom'],['→','+Deps: drag handle','create dependency link'],['🗑️','+Deps: click edge','delete dependency']],
-  board:[['🖱️','Click','open item'],['☑️','Ctrl / Shift-click','toggle / range select'],['✋','Drag','move to another column'],['➕','Drag → ＋','new sprint from cards']],
-  timeline:[['🖱️','Click','open item'],['☑️','Ctrl-click','toggle select'],['↕️','Shift-click','select range']],
+  tree:[['<ui-icon name="mouse-pointer"></ui-icon>','Click','open item'],['▸','Click ▸','expand / collapse'],['<ui-icon name="check-square"></ui-icon>','Ctrl-click','toggle select'],['<ui-icon name="arrow-up-down"></ui-icon>','Shift-click','select range'],['<ui-icon name="move"></ui-icon>','Drag','re-parent onto a row']],
+  graph:[['<ui-icon name="mouse-pointer"></ui-icon>','Click','open item'],['<ui-icon name="mouse-pointer"></ui-icon>','Double-click','expand / collapse children'],['<ui-icon name="check-square"></ui-icon>','Ctrl / Shift-click','toggle select'],['<ui-icon name="move"></ui-icon>','Drag node','move · background pans'],['<ui-icon name="search"></ui-icon>','Scroll','zoom'],['→','+Deps: drag handle','create dependency link'],['<ui-icon name="trash"></ui-icon>','+Deps: click edge','delete dependency']],
+  board:[['<ui-icon name="mouse-pointer"></ui-icon>','Click','open item'],['<ui-icon name="check-square"></ui-icon>','Ctrl / Shift-click','toggle / range select'],['<ui-icon name="move"></ui-icon>','Drag','move to another column'],['<ui-icon name="plus"></ui-icon>','Drag → ＋','new sprint from cards']],
+  timeline:[['<ui-icon name="mouse-pointer"></ui-icon>','Click','open item'],['<ui-icon name="check-square"></ui-icon>','Ctrl-click','toggle select'],['<ui-icon name="arrow-up-down"></ui-icon>','Shift-click','select range']],
 };
 function viewHelpCollapsed(){try{return localStorage.getItem('ado.viewhelp')==='0';}catch(e){return false;}}
 function renderViewHelp(){
@@ -2242,9 +2242,12 @@ function renderViewHelp(){
   // The ⚙ gear in the Controls header is per-view: every view that defines a
   // BADGE_FIELDS_BY_VIEW entry gets a popover ("Show on nodes / cards / rows / bars").
   const hasFields=!!(BADGE_FIELDS_BY_VIEW[mode]&&BADGE_FIELDS_BY_VIEW[mode].length);
-  const gear=hasFields?`<button class="vhbadge" id="vhbadge" title="show / hide fields on this view">⚙</button>`:'';
-  box.innerHTML=`<div class="vhh" id="vhh">${gear}<span class="vhctrl">${collapsed?'▸':'▾'} Controls</span></div>`+
-    `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${htmlEsc(r[0])}</span><span class="vk">${htmlEsc(r[1])}</span><span class="vd">${htmlEsc(r[2])}</span></div>`).join('')+
+  const gear=hasFields?`<button class="vhbadge" id="vhbadge" title="show / hide fields on this view"><ui-icon name="settings"></ui-icon></button>`:'';
+  const bugBtn=`<a class="icon-btn" href="https://github.com/Prorok1015/ado-atlas/issues" target="_blank" title="Report a Bug">
+    <ui-icon name="bug"></ui-icon>
+  </a>`;
+  box.innerHTML=`<div class="vhh" id="vhh">${bugBtn}${gear}<span class="vhctrl">${collapsed?'▸':'▾'} Controls</span></div>`+
+    `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${r[0]}</span><span class="vk">${htmlEsc(r[1])}</span><span class="vd">${htmlEsc(r[2])}</span></div>`).join('')+
     `<div class="vhnote">selecting items opens the bulk-edit bar</div></div>`;
   // Clicking the "Controls" label collapses/expands; the gear is its own button.
   $('vhh').querySelector('.vhctrl').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
@@ -2497,14 +2500,14 @@ function renderAttachments(){
   const head=`<div class="atchhead"><span class="acount">${arr.length}</span> file(s)`+
     (atchState.uploading?` · <span class="spin"></span> uploading ${atchState.uploading}…`:'')+`</div>`;
   const rows=arr.map((a,i)=>{
-    const icon=isImageName(a.name)?'🖼':'📄';
+    const icon=isImageName(a.name)?'<ui-icon name="image"></ui-icon>':'<ui-icon name="file-text"></ui-icon>';
     const size=a.size!=null?fmtBytes(a.size):'';
     return `<div class="atchrow" data-i="${i}">`+
       `<span class="aico">${icon}</span>`+
       `<a class="aname" href="#" title="${htmlEsc(a.url)}">${htmlEsc(a.name)}</a>`+
       (size?`<span class="asize">${size}</span>`:'')+
-      `<button class="ains" title="insert ${isImageName(a.name)?'image':'link'} into the description">↩ insert</button>`+
-      `<button class="axdel" title="remove attachment">✕</button>`+
+      `<button class="ains" title="insert ${isImageName(a.name)?'image':'link'} into the description"><ui-icon name="corner-down-left"></ui-icon> insert</button>`+
+      `<button class="axdel" title="remove attachment"><ui-icon name="x"></ui-icon></button>`+
       `</div>`;
   }).join('');
   box.innerHTML=head+rows;
@@ -2778,7 +2781,7 @@ async function loadTimeline(id){
   if (id === currentTimelineId && currentTimelineData) {
     t = currentTimelineData;
   } else {
-    el.innerHTML = '<span style="font-size:0.846rem; color:var(--muted);">⏱ loading timeline…</span>';
+    el.innerHTML = '<span style="font-size:0.846rem; color:var(--muted);"><ui-icon name="clock"></ui-icon> loading timeline…</span>';
     try {
       t = await api.timeline(id, tzOffset);
       if (cur !== id) return;
@@ -2804,8 +2807,8 @@ async function loadTimeline(id){
   hdr.style.alignItems = 'center';
   hdr.style.width = '100%';
   
-  hdr.innerHTML = `<span style="font-weight:500; font-size:0.846rem; color:var(--muted); display:flex; align-items:center; gap:4px;">⏱ time in state</span>` +
-    `<button class="stime-toggle-btn" title="Toggle view">${currentView === 'bar' ? '☰ List' : '📊 Bar'}</button>`;
+  hdr.innerHTML = `<span style="font-weight:500; font-size:0.846rem; color:var(--muted); display:flex; align-items:center; gap:4px;"><ui-icon name="clock"></ui-icon> time in state</span>` +
+    `<button class="stime-toggle-btn" title="Toggle view">${currentView === 'bar' ? '☰ List' : '<ui-icon name="bar-chart"></ui-icon> Bar'}</button>`;
   
   hdr.querySelector('.stime-toggle-btn').onclick = () => {
     localStorage.setItem('ado.timelineView', currentView === 'bar' ? 'list' : 'bar');
@@ -3249,7 +3252,7 @@ async function openItem(id){
         <label>Remaining</label>
         <div class="time-input-wrap">
           <input id="s_remaining" type="text" placeholder="e.g. 4h">
-          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h"><ui-icon name="clock"></ui-icon></span>
           <div id="s_remaining_preview" class="time-preview-text"></div>
         </div>
       `;
@@ -3280,7 +3283,7 @@ async function openItem(id){
         <label>Completed</label>
         <div class="time-input-wrap">
           <input id="s_completed" type="text" placeholder="e.g. 2d">
-          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h"><ui-icon name="clock"></ui-icon></span>
           <div id="s_completed_preview" class="time-preview-text"></div>
         </div>
       `;
@@ -3449,7 +3452,7 @@ async function openItem(id){
         <label>Est h</label>
         <div class="time-input-wrap">
           <input id="s_est" type="text" placeholder="e.g. 1d + 2h">
-          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h">⏱</span>
+          <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h"><ui-icon name="clock"></ui-icon></span>
           <div id="s_est_preview" class="time-preview-text"></div>
         </div>
       `;
@@ -3912,7 +3915,7 @@ function setSaveChip(state,msg){
   else if(state==='error'){
     if(btns)btns.classList.add('hidden');
     chip.className='schip error';
-    chip.innerHTML='⚠ Save failed';
+    chip.innerHTML='<ui-icon name="alert-triangle"></ui-icon> Save failed';
   }
 }
 function refreshDirty(){
@@ -4303,7 +4306,7 @@ function formatTimePreview(str) {
     .replace(/\s*\(\s*/g, '(')
     .replace(/\s*\)\s*/g, ')');
     
-  return `⏱ = ${parseFloat(total.toFixed(2))}h [${breakdown}]`;
+  return `<ui-icon name="clock"></ui-icon> = ${parseFloat(total.toFixed(2))}h [${breakdown}]`;
 }
 
 function parseTimeExpr(str) {
@@ -4657,7 +4660,7 @@ function toggleActivityExpand(forceState) {
     const alreadyExpanded = !content.classList.contains('hidden');
     content.classList.remove('hidden');
     if (arrow) {
-      arrow.textContent = isFullscreen ? '↻' : '▼';
+      arrow.innerHTML = isFullscreen ? '<ui-icon name="refresh-cw"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>';
       if (isFullscreen) arrow.title = 'Reload activity content';
       else arrow.title = '';
     }
@@ -4668,7 +4671,7 @@ function toggleActivityExpand(forceState) {
   } else {
     content.classList.add('hidden');
     if (arrow) {
-      arrow.textContent = isFullscreen ? '↻' : '▶';
+      arrow.innerHTML = isFullscreen ? '<ui-icon name="refresh-cw"></ui-icon>' : '<ui-icon name="chevron-right"></ui-icon>';
       if (isFullscreen) arrow.title = 'Reload activity content';
       else arrow.title = '';
     }
@@ -4692,7 +4695,7 @@ function toggleActivityFullscreen(forceOn) {
     toggleActivityExpand(true);
     if (btn) btn.classList.add('on');
     if (arrow) {
-      arrow.textContent = '↻';
+      arrow.innerHTML = '<ui-icon name="refresh-cw"></ui-icon>';
       arrow.title = 'Reload activity content';
     }
     if (atb) {
@@ -4801,7 +4804,11 @@ function initActivityResizer() {
 
 let activeEmojiPicker = null;
 function showEmojiPicker(btn, commentId) {
+  const isAlreadyOpen = activeEmojiPicker && activeEmojiPicker.parentElement === btn.parentElement;
   closeEmojiPicker();
+  if (isAlreadyOpen) {
+    return;
+  }
   
   const pop = document.createElement('div');
   pop.className = 'reactions-popover';
@@ -4979,11 +4986,11 @@ async function copyCommentLink(commentId, btn) {
     await navigator.clipboard.writeText(url);
     setStatus('Comment link copied');
     if (btn) {
-      const oldText = btn.textContent;
-      btn.textContent = '✓';
+      const oldHtml = btn.innerHTML;
+      btn.innerHTML = '<ui-icon name="check"></ui-icon>';
       btn.classList.add('copied');
       setTimeout(() => {
-        btn.textContent = oldText;
+        btn.innerHTML = oldHtml;
         btn.classList.remove('copied');
       }, 1000);
     }
@@ -5092,7 +5099,7 @@ function renderActivity(cs,hs){
   let h = `
     <div class="asec" id="activity_comments_header" style="cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center;">
       <span>Comments (${cs.length})</span>
-      <span class="toggle-arrow" style="font-size:10px; color:var(--muted); transition:transform 0.1s ease">${commentsCollapsed ? '▶' : '▼'}</span>
+      <span class="toggle-arrow" style="font-size:10px; color:var(--muted); transition:transform 0.1s ease">${commentsCollapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>'}</span>
     </div>
     <div id="activity_comments_list" class="${commentsCollapsed ? 'hidden' : ''}" style="display:${commentsCollapsed ? 'none' : 'flex'}; flex-direction:column; gap:8px;">
   `;
@@ -5115,8 +5122,8 @@ function renderActivity(cs,hs){
     
     const isAuthor = currentUser && c.by && (c.by.trim().toLowerCase() === currentUser.trim().toLowerCase());
     const actionsHtml = isAuthor ? `
-              <button type="button" class="c-action-btn edit-btn" title="Edit comment" data-cid="${c.id}">✎</button>
-              <button type="button" class="c-action-btn delete-btn" title="Delete comment" data-cid="${c.id}">🗑</button>
+              <button type="button" class="c-action-btn edit-btn" title="Edit comment" data-cid="${c.id}"><ui-icon name="edit"></ui-icon></button>
+              <button type="button" class="c-action-btn delete-btn" title="Delete comment" data-cid="${c.id}"><ui-icon name="trash"></ui-icon></button>
     ` : '';
     
     h += `
@@ -5127,8 +5134,8 @@ function renderActivity(cs,hs){
             <span class="comment-author">${htmlEsc(c.by)}</span>
             <span class="comment-time">${fd(c.date)}</span>
             <div class="comment-actions">
-              <button type="button" class="c-action-btn copylink-btn" title="Copy link to comment" data-cid="${c.id}">🔗</button>
-              <button type="button" class="c-action-btn react-btn" title="Add reaction" data-cid="${c.id}">☺</button>
+              <button type="button" class="c-action-btn copylink-btn" title="Copy link to comment" data-cid="${c.id}"><ui-icon name="link"></ui-icon></button>
+              <button type="button" class="c-action-btn react-btn" title="Add reaction" data-cid="${c.id}"><ui-icon name="smile"></ui-icon></button>
               ${actionsHtml}
             </div>
           </div>
@@ -5143,7 +5150,7 @@ function renderActivity(cs,hs){
   h += `
     <div class="asec" id="activity_history_header" style="cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
       <span>History (${hs.length})</span>
-      <span class="toggle-arrow" style="font-size:10px; color:var(--muted); transition:transform 0.1s ease">${historyCollapsed ? '▶' : '▼'}</span>
+      <span class="toggle-arrow" style="font-size:10px; color:var(--muted); transition:transform 0.1s ease">${historyCollapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>'}</span>
     </div>
     <div id="activity_history_list" class="${historyCollapsed ? 'hidden' : ''}" style="display:${historyCollapsed ? 'none' : 'flex'}; flex-direction:column; gap:6px;">
   `;
@@ -5161,7 +5168,7 @@ function renderActivity(cs,hs){
     
     h += `
       <div class="history-item">
-        <div class="history-avatar">🔧</div>
+        <div class="history-avatar"><ui-icon name="tool"></ui-icon></div>
         <div class="history-main">
           <div class="history-header">
             <span class="history-author">${htmlEsc(u.by)}</span>
@@ -5193,7 +5200,7 @@ function renderActivity(cs,hs){
       const collapsed = !list.classList.contains('hidden');
       list.classList.toggle('hidden', collapsed);
       list.style.display = collapsed ? 'none' : 'flex';
-      arrow.textContent = collapsed ? '▶' : '▼';
+      arrow.innerHTML = collapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>';
       localStorage.setItem('ado.activityCommentsCollapsed', collapsed);
     };
   }
@@ -5205,7 +5212,7 @@ function renderActivity(cs,hs){
       const collapsed = !list.classList.contains('hidden');
       list.classList.toggle('hidden', collapsed);
       list.style.display = collapsed ? 'none' : 'flex';
-      arrow.textContent = collapsed ? '▶' : '▼';
+      arrow.innerHTML = collapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>';
       localStorage.setItem('ado.activityHistoryCollapsed', collapsed);
     };
   }
@@ -5866,7 +5873,18 @@ function systemDark(){try{return !window.matchMedia||window.matchMedia('(prefers
 function applyTheme(mode){
   const light=mode==='light'||(mode==='auto'&&!systemDark());
   document.body.classList.toggle('light',light);
-  $('theme').title='theme: '+mode+(mode==='auto'?' (follows system)':'')+' — click to change';
+  const btn=$('theme');
+  if(btn){
+    btn.title='theme: '+mode+(mode==='auto'?' (follows system)':'')+' — click to change';
+    const iconEl=btn.querySelector('ui-icon');
+    if(iconEl){
+      const iconName=light?'sun':'moon';
+      iconEl.setAttribute('name',iconName);
+      if(window.ICONS&&window.ICONS[iconName]){
+        iconEl.innerHTML=window.ICONS[iconName];
+      }
+    }
+  }
   const tl=$('theme_label');if(tl)tl.textContent=mode;
   if(cy)cy.style().update();                        // re-evaluate theme-aware graph styles (parent label colour)
 }
@@ -5880,7 +5898,7 @@ function applyFollowNotify(status) {
   const btn = $('f_follow_notify');
   if (!btn) return;
   btn.title = 'notifications: ' + status + ' — click to change';
-  btn.innerHTML = (status === 'on' ? '🔔 ' : '🔕 ') + `<span id="f_follow_notify_label">${status}</span>`;
+  btn.innerHTML = (status === 'on' ? '<ui-icon name="bell"></ui-icon> ' : '<ui-icon name="bell-off"></ui-icon> ') + `<span id="f_follow_notify_label">${status}</span>`;
 }
 async function cycleFollowNotify() {
   const { followNotify = 'on' } = await chrome.storage.local.get("followNotify");
@@ -5892,7 +5910,7 @@ function applyMentionNotify(status) {
   const btn = $('f_mention_notify');
   if (!btn) return;
   btn.title = 'mention notifications: ' + status + ' — click to change';
-  btn.innerHTML = (status === 'on' ? '🔔 ' : '🔕 ') + `<span id="f_mention_notify_label">${status}</span>`;
+  btn.innerHTML = (status === 'on' ? '<ui-icon name="bell"></ui-icon> ' : '<ui-icon name="bell-off"></ui-icon> ') + `<span id="f_mention_notify_label">${status}</span>`;
 }
 async function cycleMentionNotify() {
   const { mentionNotify = 'on' } = await chrome.storage.local.get("mentionNotify");
@@ -6065,8 +6083,8 @@ async function warnIfPatExpiring(){
   let exp='';try{exp=(await api.getConfig()).patExpiry||'';}catch(e){}
   const n=patDaysLeft(exp);
   if(n===null||n>3)return;
-  setStatus(n<0?`⚠ PAT expired ${-n} day(s) ago — update it via ⚙`
-               :(n===0?'⚠ PAT expires today — update it via ⚙':`⚠ PAT expires in ${n} day(s) — update it via ⚙`),true);
+  setStatus(n<0?`<ui-icon name="alert-triangle"></ui-icon> PAT expired ${-n} day(s) ago — update it via <ui-icon name="settings"></ui-icon>`
+               :(n===0?'<ui-icon name="alert-triangle"></ui-icon> PAT expires today — update it via <ui-icon name="settings"></ui-icon>':`<ui-icon name="alert-triangle"></ui-icon> PAT expires in ${n} day(s) — update it via <ui-icon name="settings"></ui-icon>`),true);
 }
 
 /* ---------- setup picker: list the orgs / projects a PAT can access ----------
@@ -6236,7 +6254,22 @@ function wireSetup(){
   $('auth-mode').querySelectorAll('button').forEach(b=>b.onclick=()=>setAuthPane(b.dataset.am));
   $('oauth-signin').onclick=doOauthSignIn;
   $('oauth-tenant-mode').onchange=updateTenantField;
-  $('oauth-copy').onclick=()=>{const i=$('oauth-redirect');try{navigator.clipboard.writeText(i.value);$('oauth-copy').textContent='copied';setTimeout(()=>{$('oauth-copy').textContent='copy';},1200);}catch(e){if(i.select)i.select();}};
+  $('oauth-copy').onclick=()=>{
+    const i=$('oauth-redirect');
+    try{
+      navigator.clipboard.writeText(i.value);
+      const btn = $('oauth-copy');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<ui-icon name="check"></ui-icon> Copied';
+      btn.classList.add('copied');
+      setTimeout(()=>{
+        btn.innerHTML = orig;
+        btn.classList.remove('copied');
+      }, 1200);
+    }catch(e){
+      if(i.select)i.select();
+    }
+  };
   $('setup-cancel').onclick=hideSetup;
   $('settingsbtn').onclick=()=>{const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}showSetup(true);};
   $('patbadge').onclick=()=>showSetup(true);
@@ -6258,11 +6291,11 @@ const BAR_ITEMS=[
   {id:'empty_btn',label:'Empty-columns toggle (∅)'},
   {id:'filter-split',label:'Filters & Followed'},
   {id:'fit',label:'Fit graph'},
-  {id:'bar-spacer',label:'↔ Right-align spacer (flexible gap)'},
+  {id:'bar-spacer',label:'<ui-icon name="arrow-left-right"></ui-icon> Right-align spacer (flexible gap)'},
   {id:'export',label:'Export (CSV / JSON)'},
   {id:'patbadge',label:'PAT badge'},
   {id:'legend',label:'Type legend'},
-  {id:'settings-wrap',label:'Settings menu (⚙)'},
+  {id:'settings-wrap',label:'Settings menu (<ui-icon name="settings"></ui-icon>)'},
 ];
 const BAR_LOCKED=new Set(['settings-wrap','bar-spacer']);   // never hidden (settings = entry point; spacer = right-align anchor)
 let barOrder=BAR_ITEMS.map(i=>i.id), barHidden=new Set();
@@ -6758,7 +6791,7 @@ function applySideLayout(wtype) {
       
       const hdrEl = document.createElement('div');
       hdrEl.className = 'sg-group-hdr';
-      hdrEl.innerHTML = `<span class="toggle-arrow">▼</span> <span class="title-text">${htmlEsc(node.title)}</span>`;
+      hdrEl.innerHTML = `<span class="toggle-arrow"><ui-icon name="chevron-down"></ui-icon></span> <span class="title-text">${htmlEsc(node.title)}</span>`;
       groupEl.appendChild(hdrEl);
       
       const bodyEl = document.createElement('div');
@@ -6770,12 +6803,12 @@ function applySideLayout(wtype) {
         const isCollapsed = localStorage.getItem(collapsedKey) === 'true' || (node.defaultCollapsed && localStorage.getItem(collapsedKey) === null);
         if (isCollapsed) {
           groupEl.classList.add('collapsed');
-          hdrEl.querySelector('.toggle-arrow').textContent = '▶';
+          hdrEl.querySelector('.toggle-arrow').innerHTML = '<ui-icon name="chevron-right"></ui-icon>';
         }
         hdrEl.onclick = () => {
           const nowCollapsed = groupEl.classList.toggle('collapsed');
           localStorage.setItem(collapsedKey, nowCollapsed ? 'true' : 'false');
-          hdrEl.querySelector('.toggle-arrow').textContent = nowCollapsed ? '▶' : '▼';
+          hdrEl.querySelector('.toggle-arrow').innerHTML = nowCollapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>';
         };
       }
       
@@ -7065,37 +7098,37 @@ function getIconForField(g) {
   if (!g) return '⠿';
   const id = g.id;
   if (id.startsWith('cust:')) {
-    if (g.isIdentity) return '👤';
-    if (g.customType === 'dateTime') return '📅';
+    if (g.isIdentity) return '<ui-icon name="user"></ui-icon>';
+    if (g.customType === 'dateTime') return '<ui-icon name="calendar"></ui-icon>';
     if (g.customType === 'allowedValues' || g.allowedValues) return '▼';
-    if (g.customType === 'html') return '📝';
-    if (g.customType === 'plain') return '🔤';
-    return '⚙️';
+    if (g.customType === 'html') return '<ui-icon name="file-text"></ui-icon>';
+    if (g.customType === 'plain') return '<ui-icon name="type"></ui-icon>';
+    return '<ui-icon name="settings"></ui-icon>';
   }
   const mapping = {
-    nav: '🧭',
-    title: '📛',
-    state: '🔄',
-    priority: '⚡',
-    assigned: '👤',
-    storypoints: '🔢',
-    remaining: '⏳',
-    completed: '✅',
-    risk: '⚠️',
-    valuearea: '💎',
-    sprint: '🏃',
-    parent: '⬆',
-    deps: '🔗',
-    start_target: '📅',
-    due: '⏰',
-    estimate: '📐',
-    time_in_state: '🕒',
-    tags: '🏷️',
-    attachments: '📎',
-    desc: '📝',
-    ac: '📋',
-    area: '📍',
-    activity: '⚙️'
+    nav: '<ui-icon name="compass"></ui-icon>',
+    title: '<ui-icon name="tag"></ui-icon>',
+    state: '<ui-icon name="refresh-cw"></ui-icon>',
+    priority: '<ui-icon name="zap"></ui-icon>',
+    assigned: '<ui-icon name="user"></ui-icon>',
+    storypoints: '<ui-icon name="hash"></ui-icon>',
+    remaining: '<ui-icon name="clock"></ui-icon>',
+    completed: '<ui-icon name="check-circle"></ui-icon>',
+    risk: '<ui-icon name="alert-triangle"></ui-icon>',
+    valuearea: '<ui-icon name="gem"></ui-icon>',
+    sprint: '<ui-icon name="milestone"></ui-icon>',
+    parent: '<ui-icon name="arrow-up"></ui-icon>',
+    deps: '<ui-icon name="link"></ui-icon>',
+    start_target: '<ui-icon name="calendar"></ui-icon>',
+    due: '<ui-icon name="clock"></ui-icon>',
+    estimate: '<ui-icon name="ruler"></ui-icon>',
+    time_in_state: '<ui-icon name="clock"></ui-icon>',
+    tags: '<ui-icon name="tag"></ui-icon>',
+    attachments: '<ui-icon name="paperclip"></ui-icon>',
+    desc: '<ui-icon name="file-text"></ui-icon>',
+    ac: '<ui-icon name="copy"></ui-icon>',
+    area: '<ui-icon name="map-pin"></ui-icon>',
+    activity: '<ui-icon name="settings"></ui-icon>'
   };
   return mapping[id] || '⠿';
 }
@@ -7166,7 +7199,7 @@ function getMockFieldHtml(fieldId, label) {
   }
   if (fieldId === 'sprint') {
     return `<div class="btn pcard" style="width:100%; pointer-events:none; border:1px solid var(--line); background:var(--panel2); height:2.462rem; margin:0; display:flex; align-items:center; padding:0.385rem 0.692rem;">
-      <span style="color:var(--muted); margin-right:4px; font-size:0.923rem;">🏃</span>
+      <span style="color:var(--muted); margin-right:4px; font-size:0.923rem; display:inline-flex;"><ui-icon name="milestone"></ui-icon></span>
       <div class="pctitle" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.923rem; color:var(--txt);">Sprint 24</div>
     </div>`;
   }
@@ -7176,7 +7209,7 @@ function getMockFieldHtml(fieldId, label) {
         <span class="pcid" style="color:var(--muted); font-size:0.923rem; flex:none;">#1024</span>
         <div class="pctitle" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-left:6px; font-size:0.923rem; color:var(--txt);">Epic: User Profile</div>
       </div>
-      <button class="btn" disabled style="padding:6px 9px; height:2.462rem; background:var(--panel2); border:1px solid var(--line); border-radius:4px; font-size:0.923rem; margin:0; color:var(--txt);">↗</button>
+      <button class="btn" disabled style="padding:6px 9px; height:2.462rem; background:var(--panel2); border:1px solid var(--line); border-radius:4px; font-size:0.923rem; margin:0; color:var(--txt); display:inline-flex; align-items:center; justify-content:center;"><ui-icon name="external-link"></ui-icon></button>
     </div>`;
   }
   if (fieldId === 'storypoints') {
@@ -7243,7 +7276,7 @@ function getMockFieldHtml(fieldId, label) {
   }
   if (fieldId === 'attachments') {
     return `<div style="font-size:0.846rem; color:var(--muted); display:flex; align-items:center; gap:6px; width:100%;">
-      <span>📎 screenshot.png (240 KB)</span>
+      <span><ui-icon name="paperclip"></ui-icon> screenshot.png (240 KB)</span>
     </div>`;
   }
   if (fieldId === 'desc') {
@@ -7331,7 +7364,7 @@ function renderCanvas() {
       
       el.innerHTML = `<div class="field-lbl">${grip} ${htmlEsc(label)}</div>` +
         `<div class="field-mock-wrapper" style="margin-top:0.385rem; width:100%;">${getMockFieldHtml(fieldId, label)}</div>` +
-        (locked ? '' : `<button class="cz-del-btn" title="Remove field">✕</button>`);
+        (locked ? '' : `<button class="cz-del-btn" title="Remove field"><ui-icon name="x"></ui-icon></button>`);
       
       if (!locked) {
         el.querySelector('.cz-del-btn').onclick = (e) => {
@@ -7361,11 +7394,11 @@ function renderCanvas() {
       el.setAttribute('draggable', 'true');
       
       el.innerHTML = `<div class="sg-group-hdr">` +
-        `<span class="toggle-arrow">▼</span>` +
+        `<span class="toggle-arrow"><ui-icon name="chevron-down"></ui-icon></span>` +
         `<span class="title-text" contenteditable="true" style="outline:none; border-bottom:1px dashed var(--muted);">${htmlEsc(node.title)}</span>` +
         `</div>` +
         `<div class="sg-group-body cz-preview-col" data-col-parent-id="${node.id}"></div>` +
-        `<button class="cz-del-btn" title="Delete group">✕</button>`;
+        `<button class="cz-del-btn" title="Delete group"><ui-icon name="x"></ui-icon></button>`;
       
       // In the layout editor preview, we keep all groups expanded so the user can see their contents and drag/drop elements into them.
       
@@ -7414,7 +7447,7 @@ function renderCanvas() {
       el.dataset.layoutId = node.id;
       el.setAttribute('draggable', 'true');
       
-      el.innerHTML = `<button class="cz-del-btn" title="Delete row">✕</button>`;
+      el.innerHTML = `<button class="cz-del-btn" title="Delete row"><ui-icon name="x"></ui-icon></button>`;
       
       el.querySelector('.cz-del-btn').onclick = (e) => {
         e.stopPropagation();
@@ -7457,7 +7490,7 @@ function renderCanvas() {
       el.dataset.layoutId = node.id;
       el.setAttribute('draggable', 'true');
       
-      el.innerHTML = `<span class="sep-line"></span><button class="cz-del-btn" title="Remove separator">✕</button>`;
+      el.innerHTML = `<span class="sep-line"></span><button class="cz-del-btn" title="Remove separator"><ui-icon name="x"></ui-icon></button>`;
       
       el.querySelector('.cz-del-btn').onclick = (e) => {
         e.stopPropagation();
@@ -7485,7 +7518,7 @@ function renderCanvas() {
       el.setAttribute('draggable', 'true');
       
       el.innerHTML = `<span class="lbl-txt" contenteditable="true" style="outline:none; border-bottom:1px dashed var(--muted);">${htmlEsc(node.text || 'Custom Text')}</span>` +
-        `<button class="cz-del-btn" title="Remove block">✕</button>`;
+        `<button class="cz-del-btn" title="Remove block"><ui-icon name="x"></ui-icon></button>`;
       
       const txtSpan = el.querySelector('.lbl-txt');
       txtSpan.onblur = () => {
@@ -7862,9 +7895,9 @@ function renderCustomizeList(){
   const byId=Object.fromEntries(cfg.items.map(i=>[i.id,i.label]));
   list.innerHTML=cfg.orderedIds().filter(id=>id!=='actions' && (czTab !== 'side' || !czWType || czSupportedGroups.has(id))).map(id=>{
     const locked=cfg.locked.has(id),checked=!cfg.isHidden(id);
-    const grip=locked?'<span class="czgrip disabled" title="locked field">🔒</span>':'<span class="czgrip" title="drag to reorder">⠿</span>';
+    const grip=locked?'<span class="czgrip disabled" title="locked field"><ui-icon name="lock"></ui-icon></span>':'<span class="czgrip" title="drag to reorder">⠿</span>';
     return `<div class="czrow${locked?' locked':''}" draggable="${!locked}" data-id="${id}">${grip}`+
-      `<label class="czlab"><input type="checkbox" ${checked?'checked':''} ${locked?'disabled':''} data-id="${id}">${htmlEsc(byId[id] || id)}</label></div>`;
+      `<label class="czlab"><input type="checkbox" ${checked?'checked':''} ${locked?'disabled':''} data-id="${id}">${byId[id] || id}</label></div>`;
   }).join('');
   
   list.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
@@ -7989,7 +8022,7 @@ async function initialBoot(postSetup){
     if (!btn) return;
     const active = window.filterManager ? window.filterManager.isFollowed() : false;
     btn.classList.toggle('on', active);
-    btn.textContent = active ? '★' : '☆';
+    btn.innerHTML = active ? '<ui-icon name="star-filled"></ui-icon>' : '<ui-icon name="star"></ui-icon>';
   }
   function toggleFollowedFilter(active) {
     if (window.filterManager) {
@@ -8037,7 +8070,7 @@ async function initialBoot(postSetup){
       else window.LayerManager.close(moreP);
     }
   };
-  document.addEventListener('mousedown',e=>{if(moreP.style.display!=='none'&&!moreP.contains(e.target)&&e.target!==moreB)closeMore();});
+  document.addEventListener('mousedown',e=>{if(moreP.style.display!=='none'&&!moreP.contains(e.target)&&!moreB.contains(e.target))closeMore();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&moreP.style.display!=='none')closeMore();});
   const updateSearchClear=()=>{
     const btn=$('search-clear');
@@ -8208,9 +8241,13 @@ async function initialBoot(postSetup){
     try {
       await navigator.clipboard.writeText(url);
       const btn = $('s_copy_link');
-      const orig = btn.textContent;
-      btn.textContent = '✓';
-      setTimeout(() => { btn.textContent = orig; }, 1500);
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<ui-icon name="check"></ui-icon>';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.classList.remove('copied');
+      }, 1500);
     } catch (err) {
       console.error('Failed to copy: ', err);
     }
@@ -8458,7 +8495,7 @@ async function initialBoot(postSetup){
   loadBulkLayout();applyBulkLayout();            // apply the saved bulk edit bar order / hidden set
   wireTreeDnD();                                  // drag tree rows to re-parent
   try {
-    window.filterManager = new FilterManager();
+    window.filterManager = new FilterManager({ quickFilterFields: FILTERS.map(f => f.key) });
     window.filterManager.load();
     renderFilters();
     updateFilterCount();
@@ -8553,7 +8590,13 @@ async function loadFilterData(){
   await loadTypes();                          // real work-item types first (drives the lines below + create dropdowns)
   await Promise.all([
     (async()=>{try{
-      const per=await Promise.all(typeNames().map(t=>api.states(t).catch(()=>[])));
+      const allTypes = typeNames();
+      const per = [];
+      for (let i = 0; i < allTypes.length; i += 4) {
+        const chunk = allTypes.slice(i, i + 4);
+        const results = await Promise.all(chunk.map(t => api.states(t).catch(() => [])));
+        per.push(...results);
+      }
       const all=[];per.forEach(arr=>arr.forEach(s=>{if(!all.includes(s))all.push(s);}));
       projectStates=all.length?orderStates(all):[];
     }catch(e){projectStates=[];}})(),
@@ -8597,3 +8640,61 @@ window.debugForceNotificationCheck = function() {
     console.error("Chrome extension runtime is not available.");
   }
 };
+
+// --- Global Smart Paste Dispatcher ---
+document.addEventListener('paste', async (e) => {
+  // If the user is typing in an input or textarea, let the default behavior happen 
+  // unless it's a massive JSON filter payload that they didn't mean to paste as text.
+  const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+  const inInput = activeTag === 'input' || activeTag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable);
+  
+  // 1. Check for text data (Filter JSON)
+  const clipboardData = e.clipboardData || window.clipboardData;
+  if (!clipboardData) return;
+  
+  const pastedText = clipboardData.getData('text');
+  if (pastedText && pastedText.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(pastedText);
+      // Heuristic for our Filter IR schema
+      if (parsed && typeof parsed === 'object' && (parsed.where || parsed.cards)) {
+        // If pasting directly into the import textarea, let it happen naturally
+        if (inInput && document.activeElement.id === 'fb-ie-text') {
+          return;
+        }
+        
+        e.preventDefault(); // Intercept!
+        
+        if (window.FilterBuilderModal && typeof window.FilterBuilderModal.open === 'function') {
+          // Open builder with current config to initialize it
+          window.FilterBuilderModal.open(window.filterManager ? window.filterManager.getIR() : null, (newIR) => {
+            if (window.filterManager) window.filterManager.setIR(newIR);
+          });
+          
+          // Immediately show the import dialog with the pasted text
+          if (typeof window.FilterBuilderModal.showImport === 'function') {
+             setTimeout(() => {
+               window.FilterBuilderModal.showImport(pastedText);
+             }, 50);
+          }
+        }
+        return; // Handled
+      }
+    } catch(err) {
+      // Not valid JSON, ignore
+    }
+  }
+
+  // 2. Check for image data (Screenshots) - Future proofing
+  /*
+  const items = clipboardData.items;
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      // const blob = items[i].getAsFile();
+      // Handle screenshot paste...
+      // e.preventDefault();
+      // return;
+    }
+  }
+  */
+});

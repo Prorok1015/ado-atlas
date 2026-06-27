@@ -6,6 +6,19 @@ body.light{--bg:#f5f7fa;--panel:#fff;--panel2:#eef2f7;--line:#d6dee8;--txt:#1b23
   --cy-bg:#fdfcfa;--cy-dot:#dad6cd;color-scheme:light}
 *{box-sizing:border-box}
 html{margin:0;height:100%;font-size:1rem}
+ui-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.077em;
+  height: 1.077em;
+  vertical-align: -0.12em;
+}
+ui-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
 body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-size:1rem;line-height:1.4;font-family:-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
 *{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 ::-webkit-scrollbar{width:0.615rem;height:0.615rem}
@@ -71,6 +84,8 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 /* ⚙ Badges trigger embedded in the Controls header (graph mode only) — flush-left of the ▸ caret */
 .vhh .vhbadge{flex:none;display:inline-flex;align-items:center;justify-content:center;width:1.692rem;height:1.692rem;padding:0;border:1px solid var(--line);border-radius:0.462rem;background:var(--panel2);color:var(--txt);font:inherit;font-size:1rem;cursor:pointer;line-height:1}
 .vhh .vhbadge:hover{border-color:var(--accent);color:var(--accent)}
+.icon-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:1.692rem;height:1.692rem;padding:0;background:transparent;text-decoration:none;font-size:1.1rem;cursor:pointer;filter:grayscale(100%);opacity:0.7;transition:all 0.2s}
+.icon-btn:hover{filter:grayscale(0%);opacity:1;color:var(--accent)}
 .vhb{padding:0.308rem 0.923rem 0.769rem;display:flex;flex-direction:column;gap:0.385rem}
 #viewhelp.collapsed .vhb{display:none}
 .vhrow{display:flex;gap:0.615rem;align-items:center}
@@ -336,7 +351,7 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .shead #s_desc_full.on,.shead #s_desc_full.btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #side.fullscreen .shead #s_desc_full{background:var(--accent);color:#fff;border-color:var(--accent)}
 #s_follow.active{color:#ffb703;background:rgba(255,183,3,0.1);border-color:#ffb703}
-#followed_btn.on{color:#ffb703;background:rgba(255,183,3,0.1);border-color:#ffb703}
+#followed_btn.on{color:#ffb703;background:rgba(255,183,3,0.1);border-color:#ffb703;z-index:1}
 .btn.icon{padding:2px 0.615rem;line-height:1;text-decoration:none;display:inline-flex;align-items:center}
 .split-btn {
   display: inline-flex;
@@ -345,25 +360,20 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .split-btn .btn {
   border-radius: 0;
   margin: 0;
+  position: relative;
 }
 .split-btn .btn:first-child {
   border-top-left-radius: 0.462rem;
   border-bottom-left-radius: 0.462rem;
-  border-right: none;
 }
 .split-btn .btn:last-child {
   border-top-right-radius: 0.462rem;
   border-bottom-right-radius: 0.462rem;
-}
-.split-btn .btn:first-child:hover {
-  border-right: 1px solid var(--accent);
-  margin-right: -1px;
-  z-index: 1;
-}
-.split-btn .btn:last-child:hover {
-  border-left: 1px solid var(--accent);
   margin-left: -1px;
-  z-index: 1;
+}
+.split-btn .btn:hover,
+#followed_btn.on:hover {
+  z-index: 2;
 }
 #s_copy_link {
   font-size: 0.77rem;
@@ -423,12 +433,23 @@ body.light .comment-card,body.light #child_form,body.light #comment_editor_conta
 .comment-time{font-size:0.769rem;color:var(--muted)}
 .comment-actions{display:flex;gap:0.154rem;position:absolute;right:0;top:-0.154rem;opacity:0;transition:opacity 0.15s ease;background:var(--panel2);padding-left:0.462rem}
 body.light .comment-actions{background:var(--panel)}
-.c-action-btn{background:transparent;border:0;cursor:pointer;width:1.615rem;height:1.615rem;display:inline-flex;align-items:center;justify-content:center;font-size:0.846rem;border-radius:50%;transition:background 0.1s ease,opacity 0.1s ease;color:var(--txt);opacity:0.6;filter:grayscale(1);padding:0}
-.c-action-btn.edit-btn,.c-action-btn.delete-btn{font-size:1.077rem}
-.c-action-btn.react-btn{font-size:1.385rem}
-.c-action-btn:hover{background:rgba(127,127,127,0.18);opacity:1}
+.c-action-btn{background:transparent;border:0;cursor:pointer;width:1.615rem;height:1.615rem;display:inline-flex;align-items:center;justify-content:center;font-size:0.923rem;border-radius:50%;transition:background 0.1s ease,opacity 0.1s ease,color 0.1s ease,filter 0.1s ease;color:var(--txt);opacity:0.6;filter:grayscale(1);padding:0}
+.c-action-btn:hover{background:rgba(127,127,127,0.18);opacity:1;filter:none}
+.c-action-btn.delete-btn:hover{color:#e06c75!important;background:rgba(224,108,117,0.15)!important}
+button:hover ui-icon[name="trash"],
+.fb-icon-btn:hover ui-icon[name="trash"] {
+  color: #e06c75 !important;
+}
 @keyframes copySuccess{0%{transform:scale(1)}50%{transform:scale(1.3);background:rgba(46,160,67,0.25)}100%{transform:scale(1)}}
 .c-action-btn.copied{animation:copySuccess 0.4s ease;color:#2da44e!important;opacity:1!important;filter:none!important}
+.copied {
+  animation: copySuccess 0.4s ease;
+  color: #2da44e !important;
+  border-color: #2da44e !important;
+}
+.copied ui-icon {
+  color: #2da44e !important;
+}
 .comment-reactions{display:flex;flex-wrap:wrap;gap:0.308rem;margin-top:0.462rem}
 .reaction-chip{display:inline-flex;align-items:center;gap:0.308rem;padding:2px 0.462rem;background:var(--field);border:1px solid var(--line);border-radius:0.923rem;font-size:0.769rem;cursor:pointer;user-select:none;transition:all 0.1s ease}
 .reaction-chip:hover{border-color:var(--muted);background:var(--line)}
@@ -597,14 +618,19 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
   display: flex;
   align-items: center;
   gap: 0.308rem;
-  margin: 0;
+  margin: 0 0 0.385rem 0;
   padding: 0.462rem 0 0.308rem;
   flex-wrap: wrap;
-  background: var(--panel);
+  background: transparent;
+  position: static;
+  z-index: 10;
+}
+#editor_desc_container .desc-tools,
+#editor_ac_container .desc-tools {
   position: -webkit-sticky;
   position: sticky;
   top: 1.538rem;
-  z-index: 10;
+  background: var(--panel);
 }
 #side.fullscreen .desc-tools {
   top: 1.846rem;
@@ -1552,7 +1578,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 /* Live Preview elements on Canvas */
 .cz-preview-field {
   background: var(--panel2);
-  border: 1px dashed var(--line);
+  border: 1px dashed var(--muted);
   border-radius: 0.462rem;
   padding: 0.615rem 0.769rem;
   position: relative;
@@ -1565,20 +1591,25 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   position: absolute;
   top: 0.385rem;
   right: 0.385rem;
-  background: rgba(0,0,0,0.3);
-  color: var(--muted);
-  border: none;
-  width: 1.231rem;
-  height: 1.231rem;
+  background: var(--panel2);
+  color: var(--txt);
+  border: 1px solid var(--line);
+  width: 1.385rem;
+  height: 1.385rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 0.692rem;
+  font-size: 0.923rem;
   z-index: 10;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  transition: opacity 0.15s, color 0.15s, background 0.15s, border-color 0.15s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.cz-del-btn ui-icon, .cz-del-btn svg {
+  width: 0.846rem !important;
+  height: 0.846rem !important;
 }
 .cz-preview-field:hover .cz-del-btn, .cz-preview-group:hover > .cz-del-btn, .cz-preview-row:hover > .cz-del-btn, .cz-preview-separator:hover .cz-del-btn, .cz-preview-label:hover .cz-del-btn {
   opacity: 1;
@@ -1586,6 +1617,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 .cz-preview-field .cz-del-btn:hover, .cz-preview-group .cz-del-btn:hover, .cz-preview-row .cz-del-btn:hover, .cz-preview-separator .cz-del-btn:hover, .cz-preview-label .cz-del-btn:hover {
   color: #fff;
   background: #e06c75;
+  border-color: #e06c75;
 }
 .cz-preview-field .field-lbl {
   font-size: 0.769rem;
@@ -1629,7 +1661,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 }
 .cz-preview-row {
   position: relative;
-  border: 1px dashed transparent;
+  border: 1px dashed var(--line);
   padding: 4px;
   border-radius: 0.308rem;
   cursor: grab;
@@ -1640,13 +1672,17 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 }
 .cz-preview-separator {
   position: relative;
-  padding: 6px 0;
+  padding: 6px 4px;
   cursor: grab;
+  border: 1px dashed transparent;
+  border-radius: 0.308rem;
 }
 .cz-preview-label {
   position: relative;
   cursor: grab;
-  padding: 4px 0;
+  padding: 4px;
+  border: 1px dashed transparent;
+  border-radius: 0.308rem;
 }
 .cz-preview-label .lbl-txt {
   outline: none;
@@ -1658,7 +1694,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 
 .cz-preview-col:empty {
   min-height: 3.077rem;
-  border: 1.5px dashed var(--line);
+  border: 1.5px dashed var(--muted);
   background: rgba(100, 150, 255, 0.05);
   display: flex;
   align-items: center;

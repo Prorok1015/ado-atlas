@@ -133,7 +133,7 @@ class DateRangePicker {
     const prevBtn = document.createElement('button');
     prevBtn.type = 'button';
     prevBtn.className = 'btn btn-sm drp-prev';
-    prevBtn.textContent = '◀';
+    prevBtn.innerHTML = '<ui-icon name="chevron-left"></ui-icon>';
     prevBtn.onclick = () => this.prevMonth();
 
     const title = document.createElement('span');
@@ -164,7 +164,7 @@ class DateRangePicker {
     const nextBtn = document.createElement('button');
     nextBtn.type = 'button';
     nextBtn.className = 'btn btn-sm drp-next';
-    nextBtn.textContent = '▶';
+    nextBtn.innerHTML = '<ui-icon name="chevron-right"></ui-icon>';
     nextBtn.onclick = () => this.nextMonth();
 
     header.append(prevBtn, title, nextBtn);
