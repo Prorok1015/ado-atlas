@@ -7,7 +7,7 @@
   "description": "ADO Atlas Chrome extension — dev tooling (unit tests for lib.js).",
   "scripts": {
     "check": "node tools/check-globals.js",
-    "test": "node tools/check-globals.js && node tests/lib.test.js",
+    "test": "node tools/check-globals.js && node tests/lib.test.js && node tests/ai.test.js",
     "build": "powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1"
   }
 }

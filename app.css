@@ -1971,3 +1971,76 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   color: #72a9df;
 }
 
+.fsearch-group {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 12.308rem;
+  max-width: 26.154rem;
+  background: var(--field, #121212);
+  border: 1px solid var(--line, #333);
+  border-radius: 0.462rem;
+  overflow: hidden;
+  height: 26px;
+  box-sizing: border-box;
+}
+
+.fsearch-group .fsearch-container {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.fsearch-group .fsearch {
+  width: 100%;
+  height: 100%;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 10px;
+  box-sizing: border-box;
+  color: var(--txt, #f5f5f5);
+  font-size: 0.923rem;
+  outline: none;
+}
+
+.fsearch-group-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  border-left: 1px solid var(--line, #333);
+  color: var(--muted, #888);
+  cursor: pointer;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.fsearch-group-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--txt, #f5f5f5);
+}
+
+.fsearch-group-btn-ai {
+  background: linear-gradient(135deg, rgba(114, 9, 183, 0.15), rgba(63, 55, 201, 0.15));
+  color: #a855f7;
+}
+
+.fsearch-group-btn-ai:hover {
+  background: linear-gradient(135deg, rgba(114, 9, 183, 0.25), rgba(63, 55, 201, 0.25));
+  color: #c084fc;
+}
+
+.fsearch-group-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: var(--muted, #555) !important;
+}
+
+

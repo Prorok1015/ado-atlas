@@ -8064,6 +8064,69 @@ async function initialBoot(postSetup){
   };
   $('filt_btn').onclick=()=>{const p=$('filterpanel');const show=p.style.display==='none';p.style.display=show?'flex':'none';$('filt_btn').classList.toggle('on',show);};
   
+  // AI Filter Button Wiring
+  if ($('ai_filter_btn')) {
+    $('ai_filter_btn').onclick = () => {
+      if (window.AISearchDialog) {
+        if (window.AISearchDialog.hasPendingResult && window.AISearchDialog.hasPendingResult()) {
+          window.AISearchDialog.applyPendingResult();
+        } else {
+          const searchInput = $('search');
+          const queryText = searchInput ? searchInput.value.trim() : '';
+          window.AISearchDialog.open(queryText);
+        }
+      }
+    };
+  }
+
+  async function updateAIFilterButtonState() {
+    const btn = $('ai_filter_btn');
+    if (!btn) return;
+
+    if (!window.aiProviderRegistry) {
+      btn.setAttribute('disabled', 'true');
+      btn.title = "AI Service Layer is not initialized.";
+      return;
+    }
+
+    try {
+      const provider = await window.aiProviderRegistry.getActive();
+      if (!provider) {
+        btn.setAttribute('disabled', 'true');
+        btn.title = "Built-in AI is not supported or enabled in this browser.";
+        return;
+      }
+
+      const avail = await provider.getAvailability();
+      if (avail === 'unsupported') {
+        btn.setAttribute('disabled', 'true');
+        btn.title = "Built-in AI is unsupported on this device.";
+      } else if (avail === 'downloadable') {
+        btn.removeAttribute('disabled');
+        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7;">⬇</span>`;
+        btn.title = "Download AI model and search.";
+      } else if (avail === 'downloading') {
+        btn.removeAttribute('disabled');
+        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7;">⏳</span>`;
+        btn.title = "Downloading model... Click to view progress.";
+      } else {
+        btn.removeAttribute('disabled');
+        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
+        btn.title = "AI Search over work items.";
+      }
+    } catch (e) {
+      btn.setAttribute('disabled', 'true');
+      btn.title = "Failed checking AI status: " + e.message;
+    }
+  }
+
+  if (window.aiProviderRegistry) {
+    window.aiProviderRegistry.onAvailabilityChange(() => {
+      updateAIFilterButtonState();
+    });
+  }
+  updateAIFilterButtonState();
+
   // Advanced Filter Buttons Wiring
   if ($('advanced_filter_btn')) {
     $('advanced_filter_btn').onclick = () => {

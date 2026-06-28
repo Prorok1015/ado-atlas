@@ -1026,6 +1026,13 @@
             <div><strong>Draft Restored</strong> — You have unapplied changes.</div>
             <button id="fb-discard-draft-btn" style="background:transparent; border:1px solid #e67e22; color:#e67e22; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;">Discard Draft</button>
           </div>
+          <div id="fb-ai-banner" style="display:none; background:rgba(114, 9, 183, 0.1); color:#a855f7; padding:8px 16px; border-bottom:1px solid rgba(114, 9, 183, 0.3); align-items:center; justify-content:space-between; font-size:0.85rem;">
+            <div style="display:flex; align-items:center; gap:6px;"><span style="color:#a855f7; display:flex;"><ui-icon name="sparkles"></ui-icon></span> <strong>AI Search result is ready!</strong> — Click apply to load the generated filters.</div>
+            <div style="display:flex; gap:6px;">
+              <button id="fb-discard-ai-btn" style="background:transparent; border:1px solid rgba(114, 9, 183, 0.4); color:#a855f7; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;">Dismiss</button>
+              <button id="fb-apply-ai-btn" style="background:#7209b7; border:none; color:#fff; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;">Apply AI Filter</button>
+            </div>
+          </div>
           <div class="fb-main-content">
             <div class="fb-body" id="fb-cards-container">
               <!-- Group cards rendered here -->
@@ -1053,10 +1060,14 @@
             </div>
           </div>
           <div class="fb-footer">
-            <div class="fb-footer-left">
+            <div class="fb-footer-left" style="display:flex; align-items:center; gap:8px;">
               <button class="fb-ie-btn fb-ie-btn--outline" id="fb-show-followed" style="display:flex; align-items:center; gap:6px;">
                 <span class="fb-toggle-icon"><ui-icon name="star"></ui-icon></span>
                 Only followed items
+              </button>
+              <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ai-search-btn" style="display:flex; align-items:center; gap:6px; background: linear-gradient(135deg, rgba(114,9,183,0.1), rgba(63,55,201,0.1)); border-color: rgba(99,102,241,0.3);" title="AI Search over work items">
+                <span style="color:#a855f7; display: flex; align-items: center;"><ui-icon name="sparkles"></ui-icon></span>
+                AI Search...
               </button>
             </div>
             <div class="fb-actions" style="display:flex; gap:8px;">
@@ -1916,6 +1927,15 @@
         };
       }
 
+      const fbAiSearchBtn = document.getElementById('fb-ai-search-btn');
+      if (fbAiSearchBtn) {
+        fbAiSearchBtn.onclick = () => {
+          if (window.AISearchDialog) {
+            window.AISearchDialog.open();
+          }
+        };
+      }
+
       const helpBtn = document.getElementById('fb-help-btn');
       if (helpBtn) {
         helpBtn.onclick = (e) => {
@@ -2402,6 +2422,42 @@
       };
     }
 
+    // Show AI result banner if there is a pending AI search result
+    const aiBanner = document.getElementById('fb-ai-banner');
+    if (aiBanner) {
+      if (window.AISearchDialog && window.AISearchDialog.hasPendingResult && window.AISearchDialog.hasPendingResult()) {
+        aiBanner.style.display = 'flex';
+        
+        document.getElementById('fb-apply-ai-btn').onclick = async () => {
+          const hasRules = currentIR && currentIR.where && currentIR.where.rules && currentIR.where.rules.some(r => r.rules && r.rules.length > 0);
+          if (hasRules && window.customConfirm) {
+            const confirm = await window.customConfirm(
+              "Discard active edits and apply the AI search filters?",
+              "Apply AI Filter"
+            );
+            if (!confirm) return;
+          }
+          aiBanner.style.display = 'none';
+          if (window.AISearchDialog && window.AISearchDialog.getPendingResult) {
+            const ir = window.AISearchDialog.getPendingResult();
+            if (ir) {
+              setIR(ir);
+              window.AISearchDialog.clearPendingResult();
+            }
+          }
+        };
+        
+        document.getElementById('fb-discard-ai-btn').onclick = () => {
+          aiBanner.style.display = 'none';
+          if (window.AISearchDialog && window.AISearchDialog.clearPendingResult) {
+            window.AISearchDialog.clearPendingResult();
+          }
+        };
+      } else {
+        aiBanner.style.display = 'none';
+      }
+    }
+
     const hasFollowed = !!(currentIR.followed && currentIR.followed.in && currentIR.followed.in.includes('yes'));
     const showFollowedEl = document.getElementById('fb-show-followed');
     if (showFollowedEl) {
@@ -2481,10 +2537,20 @@
     close();
   }
 
+  function setIR(ir) {
+    localStorage.removeItem('fbDraftFilter');
+    const draftBanner = document.getElementById('fb-draft-banner');
+    if (draftBanner) draftBanner.style.display = 'none';
+
+    currentIR = normalizeIRForComparison(ir);
+    updateState();
+  }
+
   // Export module functions
   root.FilterBuilderModal = {
     open,
     close,
+    setIR,
     preLoad: loadSchemaData
   };
 

@@ -25,6 +25,8 @@ const FIELD_REGISTRY = {
   target:      { ref: "Microsoft.VSTS.Scheduling.TargetDate", type: "dateTime", name: "Target Date" },
   finish:      { ref: "Microsoft.VSTS.Scheduling.FinishDate", type: "dateTime", name: "Finish Date" },
   due:         { ref: "Microsoft.VSTS.Scheduling.DueDate", type: "dateTime", name: "Due Date" },
+  createddate: { ref: "System.CreatedDate", type: "dateTime", name: "Created Date", aliases: ["created_date", "created"] },
+  changeddate: { ref: "System.ChangedDate", type: "dateTime", name: "Changed Date", aliases: ["changed_date", "changed"] },
   estimate:    { ref: "Microsoft.VSTS.Scheduling.OriginalEstimate", type: "double", name: "Original Estimate" },
   tags:        { ref: "System.Tags", type: "tags", name: "Tags" },
   desc:        { ref: "System.Description", type: "html", name: "Description", fallbackRefs: ["Microsoft.VSTS.TCM.ReproSteps"], aliases: ["description"] },
@@ -394,7 +396,10 @@ function mapWorkItem(rawItem, descField) {
 // ---------- WIQL filter builder ----------
 // Pure logic lives in lib.js; bind it to this module's FIELD_REGISTRY.
 function buildClauses(filters) {
-  return AdoLib.buildClauses(FIELD_REGISTRY, filters);
+  console.log("[WIQL Compiler] Input FilterIR:", JSON.stringify(filters));
+  const res = AdoLib.buildClauses(FIELD_REGISTRY, filters);
+  console.log("[WIQL Compiler] Output WIQL clauses:", JSON.stringify(res));
+  return res;
 }
 
 // ---------- core ADO reads ----------
@@ -446,6 +451,7 @@ async function list({ wtype, parent, text, order, filters, signal } = {}) {
     ? `[${FIELD_REGISTRY.priority.ref}], [${FIELD_REGISTRY.id.ref}]`
     : `[${FIELD_REGISTRY.id.ref}]`;
   const wiql = `SELECT [${FIELD_REGISTRY.id.ref}] FROM WorkItems WHERE ` + where.join(" AND ") + " ORDER BY " + orderBy;
+  console.log("Constructed WIQL:", wiql);
   const ids = await wiqlIds(wiql, LIST_CAP, signal);
   const items = await batchFetch(ids, null, signal);
   const out = items.map(x => mapWorkItem(x)); // NOTE: descField is not passed here, falling back to System.Description
@@ -1772,7 +1778,7 @@ function getFilterFields() {
     
     if (isTree) {
       neutralType = 'tree';
-      operators = ['=', '<>', 'UNDER', 'NOT UNDER'];
+      operators = ['=', '<>', 'UNDER', 'NOT UNDER', 'IN', 'NOT IN'];
     } else if (val.type === 'boolean') {
       neutralType = 'boolean';
       operators = ['=', '<>'];
@@ -1781,12 +1787,15 @@ function getFilterFields() {
       operators = ['=', '<>', '>', '<', '>=', '<=', 'IN', 'NOT IN'];
     } else if (val.type === 'dateTime') {
       neutralType = 'date';
-      operators = ['=', '<>', '>', '<', '>=', '<='];
+      operators = ['=', '<>', '>', '<', '>=', '<=', 'IN', 'NOT IN'];
     } else if (val.type === 'identity') {
       neutralType = 'user';
       operators = ['=', '<>', 'IN', 'NOT IN'];
     } else if (val.type === 'tags') {
       neutralType = 'tags';
+      operators = ['CONTAINS', 'NOT CONTAINS'];
+    } else if (key === 'title' || val.type === 'html') {
+      neutralType = 'string';
       operators = ['CONTAINS', 'NOT CONTAINS'];
     } else {
       neutralType = 'string';

@@ -41,8 +41,81 @@
         return node;
       }
       if (node.kind === 'condition') {
-        const spec = (fields && fields[node.field]) || {};
+        const spec = (fields && fields[String(node.field).toLowerCase()]) || {};
         const isIdentity = spec.identity || spec.type === 'identity' || spec.type === 'user';
+        
+        // Resolve iteration macros and offsets using allowedValues annotations
+        if (spec.id === 'iteration' && spec.allowedValues && spec.allowedValues.length > 0) {
+          const allowed = spec.allowedValues;
+          const resolveMacro = (v) => {
+            if (typeof v !== 'string') return v;
+            const cleanMacro = v.trim().toLowerCase();
+            if (cleanMacro.startsWith('@currentiteration')) {
+              const currentIdx = allowed.findIndex(val => val.toLowerCase().includes('(current)'));
+              if (currentIdx === -1) return v;
+              
+              let targetIdx = currentIdx;
+              if (cleanMacro !== '@currentiteration') {
+                const match = cleanMacro.match(/^@currentiteration\s*([+-])\s*(\d+)$/);
+                if (match) {
+                  const op = match[1];
+                  const offset = parseInt(match[2], 10);
+                  targetIdx = op === '+' ? currentIdx + offset : currentIdx - offset;
+                }
+              }
+              
+              if (targetIdx >= 0 && targetIdx < allowed.length) {
+                return allowed[targetIdx].replace(/\s*\((current|past|future|current[+-]\d+)\)$/i, '').trim();
+              }
+            }
+            return v;
+          };
+
+          if (node.op === 'RANGE' && typeof node.value === 'string') {
+            const parts = node.value.split('...');
+            if (parts.length === 2) {
+              const startVal = resolveMacro(parts[0]);
+              const endVal = resolveMacro(parts[1]);
+              const getCleanPath = (valWithLabel) => valWithLabel.replace(/\s*\((current|past|future|current[+-]\d+)\)$/i, '').trim();
+              const allowedClean = allowed.map(getCleanPath);
+              const startIdx = allowedClean.indexOf(getCleanPath(startVal));
+              const endIdx = allowedClean.indexOf(getCleanPath(endVal));
+              
+              if (startIdx !== -1 && endIdx !== -1) {
+                const min = Math.min(startIdx, endIdx);
+                const max = Math.max(startIdx, endIdx);
+                const paths = [];
+                for (let i = min; i <= max; i++) {
+                  paths.push(allowedClean[i]);
+                }
+                if (paths.length > 0) {
+                  node.op = 'IN';
+                  node.value = paths;
+                }
+              }
+            }
+          } else {
+            if (Array.isArray(node.value)) {
+              node.value = node.value.map(resolveMacro);
+            } else {
+              node.value = resolveMacro(node.value);
+            }
+          }
+        }
+
+        // Clean any residual annotations from iteration/area values
+        const getClean = (v) => {
+          if (typeof v === 'string') {
+            return v.replace(/\s*\((current|past|future|current[+-]\d+)\)$/i, '').trim();
+          }
+          if (Array.isArray(v)) {
+            return v.map(getClean);
+          }
+          return v;
+        };
+        if (spec.id === 'iteration' || spec.id === 'area') {
+          node.value = getClean(node.value);
+        }
         
         let values = Array.isArray(node.value) ? node.value : [node.value];
         values = values.map(v => {
@@ -77,7 +150,7 @@
         return node;
       }
       if (node.kind === 'condition') {
-        const spec = (fields && fields[node.field]) || {};
+        const spec = (fields && fields[String(node.field).toLowerCase()]) || {};
         const isTree = spec.type === 'tree' || spec.type === 'treePath';
         const isLongText = spec.type === 'html' || spec.type === 'plaintext';
         let op = (node.op || '=').toUpperCase();
@@ -205,10 +278,15 @@
 
     _compileCondition(cond, fields) {
       const field = cond.field;
-      const spec = (fields && fields[field]) || { ref: field };
+      const spec = (fields && fields[String(field).toLowerCase()]) || { ref: field };
       const ref = spec.ref || field;
       const num = spec.num || spec.type === 'integer' || spec.type === 'double';
-      const op = (cond.op || '=').toUpperCase();
+      let op = (cond.op || '=').toUpperCase();
+      const isTags = spec.type === 'tags';
+      if (isTags) {
+        const negativeOps = ['<>', 'NOT IN', 'NOT CONTAINS'];
+        op = negativeOps.includes(op) ? 'NOT CONTAINS' : 'CONTAINS';
+      }
       
       // Helper to format a single AST value node
       const lit = (vNode) => {
@@ -242,6 +320,22 @@
       if (validVals.length === 0 && op !== 'ISEMPTY' && op !== 'ISNOTEMPTY') return "";
 
       if (op === 'IN' || op === 'NOT IN') {
+        const isTree = spec.type === 'tree' || spec.type === 'treePath';
+        const isDate = spec.type === 'date' || spec.type === 'dateTime' || spec.type === 'datetime';
+        const needsExpansion = isTree || isDate;
+        
+        if (needsExpansion) {
+          const clauses = values.map(v => {
+            const formatted = lit(v);
+            if (!formatted) return null;
+            return `[${ref}] ${op === 'NOT IN' ? '<>' : '='} ${formatted}`;
+          }).filter(Boolean);
+          
+          if (clauses.length === 0) return "";
+          if (clauses.length === 1) return clauses[0];
+          return "(" + clauses.join(op === 'NOT IN' ? ' AND ' : ' OR ') + ")";
+        }
+
         const hasMe = values.some(v => v.type === 'macro' && v.name === 'ME');
         const hasEmpty = values.some(v => v.type === 'literal' && v.isExplicitEmpty);
         
@@ -293,12 +387,15 @@
       }
 
       if (op === 'RANGE') {
-        // Range expects exactly 2 literals in a single string, e.g. "A...B"
-        // In the AST it should be a single literal
-        if (values.length === 1 && values[0].type === 'literal') {
-          const parts = String(values[0].value).split('...');
+        // Range expects exactly 2 literals/macros in a single string, e.g. "A...B"
+        // In the AST it should be a single literal or macro
+        if (values.length === 1) {
+          const rawVal = values[0].type === 'macro' ? values[0].raw : values[0].value;
+          const parts = String(rawVal).split('...');
           if (parts.length === 2) {
-            return `([${ref}] >= ${lit({type: 'literal', value: parts[0]})} AND [${ref}] <= ${lit({type: 'literal', value: parts[1]})})`;
+            const lit0 = parts[0].startsWith('@') ? { type: 'macro', name: 'TODAY', raw: parts[0] } : { type: 'literal', value: parts[0] };
+            const lit1 = parts[1].startsWith('@') ? { type: 'macro', name: 'TODAY', raw: parts[1] } : { type: 'literal', value: parts[1] };
+            return `([${ref}] >= ${lit(lit0)} AND [${ref}] <= ${lit(lit1)})`;
           }
         }
         return `[${ref}] = ${validVals[0]}`;
@@ -319,7 +416,7 @@
   
   // --- Tooltip API ---
   function getSupportedOperators(field, filterFields) {
-    const spec = (filterFields && filterFields[field]) || {};
+    const spec = (filterFields && filterFields[String(field).toLowerCase()]) || {};
     const type = spec.type;
     
     // Core operators supported by almost everyone
@@ -343,7 +440,7 @@
   }
 
   function getSupportedMacros(field, filterFields) {
-    const spec = (filterFields && filterFields[field]) || {};
+    const spec = (filterFields && filterFields[String(field).toLowerCase()]) || {};
     const type = spec.type;
     const identity = spec.identity || type === 'identity' || type === 'user';
     const isTree = type === 'tree' || type === 'treePath';
@@ -368,14 +465,34 @@
     compile(ast, fields, backendType = 'WIQL') {
       if (!ast || !ast.where) return [];
       
+      // Index fields by both key/id and reference name / aliases for absolute lookup robustness
+      const fieldsMap = {};
+      const registerField = (key, f) => {
+        if (!key || !f) return;
+        const normalized = { ...f, id: key };
+        fieldsMap[key.toLowerCase()] = normalized;
+        if (f.ref) fieldsMap[f.ref.toLowerCase()] = normalized;
+        if (f.aliases) {
+          f.aliases.forEach(a => { fieldsMap[a.toLowerCase()] = normalized; });
+        }
+      };
+
+      if (Array.isArray(fields)) {
+        fields.forEach(f => { registerField(f.id, f); });
+      } else if (fields && typeof fields === 'object') {
+        for (const [key, val] of Object.entries(fields)) {
+          registerField(key, val);
+        }
+      }
+      
       // Middle-end Passes
-      let ir = MacroNormalizationPass(ast.where, fields);
-      ir = EmptyValuePass(ir, fields);
-      ir = ValidationPass(ir, fields);
+      let ir = MacroNormalizationPass(ast.where, fieldsMap);
+      ir = EmptyValuePass(ir, fieldsMap);
+      ir = ValidationPass(ir, fieldsMap);
       
       // Backend Generation
       if (backendType === 'WIQL') {
-        return WiqlBackend.generate(ir, fields);
+        return WiqlBackend.generate(ir, fieldsMap);
       }
       
       throw new Error(`FilterCompiler: Unsupported backend type '${backendType}'`);

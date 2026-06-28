@@ -6,6 +6,7 @@
 <title>ADO Atlas</title>
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="components/filter-builder-modal.css">
+<link rel="stylesheet" href="components/ai-search-dialog.css">
 <script src="vendor/cytoscape.min.js"></script>
 <script src="vendor/dagre.min.js"></script>
 <script src="vendor/cytoscape-dagre.js"></script>
@@ -82,11 +83,14 @@
   <div class="frow" id="filter-query">
     <span class="fl">Find</span>
     <button class="fclear" id="filt_clear_all" title="clear all filters" style="visibility:hidden"><ui-icon name="x"></ui-icon></button>
-    <div class="fsearch-container">
-      <input id="search" class="fsearch" placeholder="id or text…">
-      <button type="button" class="search-clear-btn" id="search-clear" style="display:none"><ui-icon name="x"></ui-icon></button>
+    <div class="fsearch-group">
+      <div class="fsearch-container">
+        <input id="search" class="fsearch" placeholder="id or text…">
+        <button type="button" class="search-clear-btn" id="search-clear" style="display:none"><ui-icon name="x"></ui-icon></button>
+      </div>
+      <button class="fsearch-group-btn" id="searchbtn" title="Search by ID or text"><ui-icon name="search"></ui-icon></button>
+      <button class="fsearch-group-btn fsearch-group-btn-ai" id="ai_filter_btn" title="AI Search over work items"><span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span></button>
     </div>
-    <button class="btn" id="searchbtn">Search</button>
     <span class="fl fl-sort">Sort</span>
     <select id="f_sort" title="sort order"><option value="">id</option><option value="priority">priority</option></select>
     <button class="btn" id="refreshbtn" title="reload from server (drop caches)"><span class="ricon"><ui-icon name="refresh-cw"></ui-icon></span> Refresh</button>
@@ -648,6 +652,11 @@
 <script src="components/subscription-manager.js"></script>
 <script src="components/filter-builder-modal.js"></script>
 <script src="components/filter-manager.js"></script>
+<script src="ai/ai-provider.js"></script>
+<script src="ai/chrome-prompt-provider.js"></script>
+<script src="ai/prompts/search-prompt.js"></script>
+<script src="ai/ai-search-service.js"></script>
+<script src="components/ai-search-dialog.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

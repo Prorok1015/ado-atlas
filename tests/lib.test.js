@@ -23,9 +23,36 @@ const FF = {
   priority: { ref: "Microsoft.VSTS.Common.Priority", num: true },
   assigned: { ref: "System.AssignedTo", identity: true },
   tags:     { ref: "System.Tags", contains: true },
+  createddate: { ref: "System.CreatedDate", type: "dateTime" }
 };
 test("buildClauses: FilterIR empty / no group -> no clauses", () => {
   assert.deepStrictEqual(lib.buildClauses(FF, {}), []);
+});
+
+test("buildClauses: FilterIR compiles @today-30 macro on date fields", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "createddate", op: ">", value: "@today-30" }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["[System.CreatedDate] > @today-30"]);
+});
+
+test("buildClauses: FilterIR compiles RANGE operator on date macros", () => {
+  const ir = {
+    where: {
+      kind: "group",
+      logic: "AND",
+      rules: [
+        { kind: "condition", field: "createddate", op: "RANGE", value: "@today-90...@today" }
+      ]
+    }
+  };
+  assert.deepStrictEqual(lib.buildClauses(FF, ir), ["([System.CreatedDate] >= @today-90 AND [System.CreatedDate] <= @today)"]);
 });
 
 test("buildClauses: FilterIR ignores conditions with empty values", () => {
@@ -536,6 +563,54 @@ test("buildClauses: FilterIR complex DNF (A AND B) OR (C AND D)", () => {
   assert.deepStrictEqual(lib.buildClauses(FF, ir), [
     "(([System.State] = 'Active' AND [Microsoft.VSTS.Common.Priority] = 1) OR ([System.State] = 'New' AND [Microsoft.VSTS.Common.Priority] = 2))"
   ]);
+});
+
+test("buildClauses: Comprehensive validation of IN / NOT IN across all field types and argument counts", () => {
+  const customFF = {
+    state:    { ref: "System.State", type: "string" },
+    priority: { ref: "Microsoft.VSTS.Common.Priority", num: true, type: "integer" },
+    assigned: { ref: "System.AssignedTo", identity: true, type: "identity" },
+    iteration:{ ref: "System.IterationPath", type: "treePath" },
+    created:  { ref: "System.CreatedDate", type: "dateTime" },
+    tags:     { ref: "System.Tags", type: "tags" }
+  };
+
+  const compileSingle = (field, op, value) => {
+    const ir = {
+      where: {
+        kind: "group",
+        logic: "AND",
+        rules: [{ kind: "condition", field, op, value }]
+      }
+    };
+    const res = lib.buildClauses(customFF, ir);
+    return res[0] || "";
+  };
+
+  // 1. Native types (string, integer, identity)
+  assert.strictEqual(compileSingle("state", "IN", ["Active"]), "[System.State] IN ('Active')");
+  assert.strictEqual(compileSingle("priority", "IN", ["1", "2"]), "[Microsoft.VSTS.Common.Priority] IN (1,2)");
+  assert.strictEqual(compileSingle("assigned", "NOT IN", ["Alex", "Bob", "Charlie"]), "[System.AssignedTo] NOT IN ('Alex','Bob','Charlie')");
+
+  // 2. TreePath fields (1 and 2 arguments)
+  assert.strictEqual(compileSingle("iteration", "IN", ["Sprint 1"]), "[System.IterationPath] = 'Sprint 1'");
+  assert.strictEqual(compileSingle("iteration", "IN", ["Sprint 2", "Sprint 3"]), "([System.IterationPath] = 'Sprint 2' OR [System.IterationPath] = 'Sprint 3')");
+  assert.strictEqual(compileSingle("iteration", "NOT IN", ["Sprint 4", "Sprint 5"]), "([System.IterationPath] <> 'Sprint 4' AND [System.IterationPath] <> 'Sprint 5')");
+
+  // 3. Date fields (1 and 2 arguments)
+  assert.strictEqual(compileSingle("created", "IN", ["2026-06-25"]), "[System.CreatedDate] = '2026-06-25'");
+  assert.strictEqual(compileSingle("created", "IN", ["2026-06-26", "2026-06-27"]), "([System.CreatedDate] = '2026-06-26' OR [System.CreatedDate] = '2026-06-27')");
+  assert.strictEqual(compileSingle("created", "NOT IN", ["2026-06-28", "2026-06-29"]), "([System.CreatedDate] <> '2026-06-28' AND [System.CreatedDate] <> '2026-06-29')");
+
+  // 4. Tags fields (1 and 2 arguments)
+  assert.strictEqual(compileSingle("tags", "IN", ["ux"]), "[System.Tags] CONTAINS 'ux'");
+  assert.strictEqual(compileSingle("tags", "IN", ["bug", "wip"]), "([System.Tags] CONTAINS 'bug' OR [System.Tags] CONTAINS 'wip')");
+  assert.strictEqual(compileSingle("tags", "NOT IN", ["done"]), "NOT [System.Tags] CONTAINS 'done'");
+  assert.strictEqual(compileSingle("tags", "NOT IN", ["blocked", "hold"]), "(NOT [System.Tags] CONTAINS 'blocked' AND NOT [System.Tags] CONTAINS 'hold')");
+
+  // 5. Case-insensitivity and reference-name lookup tests
+  assert.strictEqual(compileSingle("System.IterationPath", "IN", ["Sprint 1", "Sprint 2"]), "([System.IterationPath] = 'Sprint 1' OR [System.IterationPath] = 'Sprint 2')");
+  assert.strictEqual(compileSingle("SYSTEM.STATE", "IN", ["Active"]), "[System.State] IN ('Active')");
 });
 
 // ---- FilterManager ----
