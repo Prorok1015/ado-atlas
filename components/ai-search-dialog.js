@@ -47,7 +47,7 @@
         <div id="ai-modal-tabs-container" class="ai-modal-tabs-container"></div>
 
         <div class="ai-modal-card">
-          <div class="ai-modal-header">
+          <div class="ai-modal-header" style="display: flex; justify-content: space-between; align-items: center;">
             <h3 class="ai-modal-title">
               <span class="ai-sparkles-icon" style="color:#a855f7; display:flex; align-items:center;"><ui-icon name="sparkles"></ui-icon></span> AI Search
               <span class="ai-beta-badge-text">BETA</span>
@@ -55,7 +55,12 @@
                 <ui-icon name="help"></ui-icon>
               </span>
             </h3>
-            <button class="ai-modal-close" id="ai-search-close-btn">&times;</button>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button id="ai-search-toggle-help-btn" style="background: transparent; border: 1px solid var(--line, #333); border-radius: 4px; color: var(--muted, #aaa); padding: 4px 8px; font-size: 0.72rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                <span style="display:flex; align-items:center;"><ui-icon name="book"></ui-icon></span> <span id="ai-search-toggle-help-text">Hide Help</span>
+              </button>
+              <button class="ai-modal-close" id="ai-search-close-btn">&times;</button>
+            </div>
           </div>
           <div class="ai-modal-body" style="display:flex; flex-direction:row; gap:20px; padding:20px; align-items:stretch;">
             <div class="ai-main-content" style="flex:1; display:flex; flex-direction:column; gap:16px;">
@@ -248,6 +253,46 @@
           window.LayerManager.close(globalTooltip);
         }
       };
+    }
+
+    // Setup help sidebar toggle preference
+    let hideHelp = localStorage.getItem('aiSearchHideHelp') === 'true';
+
+    function updateHelpLayout() {
+      const sidebar = modalEl.querySelector('.ai-tutorial-sidebar');
+      const card = modalEl.querySelector('.ai-modal-card');
+      const toggleText = document.getElementById('ai-search-toggle-help-text');
+      const toggleBtn = document.getElementById('ai-search-toggle-help-btn');
+      
+      if (hideHelp) {
+        if (sidebar) sidebar.style.display = 'none';
+        if (card) card.style.width = '480px';
+        if (toggleText) toggleText.textContent = 'Show Help';
+        if (toggleBtn) {
+          toggleBtn.style.borderColor = 'var(--line, #333)';
+          toggleBtn.style.color = 'var(--muted, #aaa)';
+        }
+      } else {
+        if (sidebar) sidebar.style.display = 'flex';
+        if (card) card.style.width = '720px';
+        if (toggleText) toggleText.textContent = 'Hide Help';
+        if (toggleBtn) {
+          toggleBtn.style.borderColor = 'var(--accent, #a855f7)';
+          toggleBtn.style.color = 'var(--accent, #a855f7)';
+        }
+      }
+    }
+
+    // Apply layout on load
+    updateHelpLayout();
+
+    const toggleHelpBtn = document.getElementById('ai-search-toggle-help-btn');
+    if (toggleHelpBtn) {
+      toggleHelpBtn.addEventListener('click', () => {
+        hideHelp = !hideHelp;
+        localStorage.setItem('aiSearchHideHelp', hideHelp ? 'true' : 'false');
+        updateHelpLayout();
+      });
     }
 
     backgroundCloseBtn.onclick = () => {
