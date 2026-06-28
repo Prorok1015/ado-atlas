@@ -75,6 +75,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
     return true; // Keep channel open for async response
   }
+  if (msg.action === "fetchCloudAI") {
+    const { url, method, headers, body } = msg;
+    console.log("[Background] Proxying fetchCloudAI request to:", url);
+    fetch(url, { method, headers, body })
+      .then(async (res) => {
+        const text = await res.text();
+        if (sendResponse) sendResponse({ status: res.status, statusText: res.statusText, text });
+      })
+      .catch((err) => {
+        if (sendResponse) sendResponse({ error: err.message });
+      });
+    return true; // Keep channel open for async response
+  }
 });
 
 async function runAllNotificationChecks() {

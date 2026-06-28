@@ -21,6 +21,7 @@ const files = [
   "components/filter-manager.js",
   "ai/ai-provider.js",
   "ai/chrome-prompt-provider.js",
+  "ai/custom-cloud-provider.js",
   "ai/prompts/search-prompt.js",
   "ai/ai-search-service.js",
   "components/ai-search-dialog.js",

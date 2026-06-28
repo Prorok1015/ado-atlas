@@ -6301,6 +6301,7 @@ function wireSetup(){
   };
   $('setup-cancel').onclick=hideSetup;
   $('settingsbtn').onclick=()=>{const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}showSetup(true);};
+  $('ai_settings_btn').onclick=()=>{const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}if(window.AISettingsDialog){window.AISettingsDialog.open();}};
   $('patbadge').onclick=()=>showSetup(true);
   $('projbadge').onclick=()=>showSetup(true);
 }
@@ -8083,42 +8084,49 @@ async function initialBoot(postSetup){
     const btn = $('ai_filter_btn');
     if (!btn) return;
 
+    const wrapper = btn.closest('.fsearch-group-wrapper');
+    const badge = wrapper ? wrapper.querySelector('.ai-beta-badge-tiny') : null;
+
     if (!window.aiProviderRegistry) {
       btn.setAttribute('disabled', 'true');
       btn.title = "AI Service Layer is not initialized.";
+      if (badge) badge.style.display = 'none';
       return;
     }
 
     try {
+      btn.removeAttribute('disabled');
+      if (badge) badge.style.display = 'inline-block';
+
       const provider = await window.aiProviderRegistry.getActive();
       if (!provider) {
-        btn.setAttribute('disabled', 'true');
-        btn.title = "Built-in AI is not supported or enabled in this browser.";
+        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
+        btn.title = "Configure AI Search settings.";
         return;
       }
 
       const avail = await provider.getAvailability();
+
       if (avail === 'unsupported') {
-        btn.setAttribute('disabled', 'true');
-        btn.title = "Built-in AI is unsupported on this device.";
+        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
+        btn.title = "Built-in AI is unsupported on this device. Click to configure cloud models.";
       } else if (avail === 'downloadable') {
-        btn.removeAttribute('disabled');
-        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7;">⬇</span>`;
-        btn.title = "Download AI model and search.";
+        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;">⬇</span>`;
+        btn.title = provider.id === 'chrome-prompt-api' ? "Download AI model and search." : "Configure API Key and search.";
       } else if (avail === 'downloading') {
-        btn.removeAttribute('disabled');
-        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7;">⏳</span>`;
+        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;">⏳</span>`;
         btn.title = "Downloading model... Click to view progress.";
       } else {
-        btn.removeAttribute('disabled');
         btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
         btn.title = "AI Search over work items.";
       }
     } catch (e) {
       btn.setAttribute('disabled', 'true');
       btn.title = "Failed checking AI status: " + e.message;
+      if (badge) badge.style.display = 'none';
     }
   }
+  window.updateAIFilterButtonState = updateAIFilterButtonState;
 
   if (window.aiProviderRegistry) {
     window.aiProviderRegistry.onAvailabilityChange(() => {

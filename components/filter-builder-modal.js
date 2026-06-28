@@ -1065,9 +1065,10 @@
                 <span class="fb-toggle-icon"><ui-icon name="star"></ui-icon></span>
                 Only followed items
               </button>
-              <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ai-search-btn" style="display:flex; align-items:center; gap:6px; background: linear-gradient(135deg, rgba(114,9,183,0.1), rgba(63,55,201,0.1)); border-color: rgba(99,102,241,0.3);" title="AI Search over work items">
+              <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ai-search-btn" style="position:relative; display:flex; align-items:center; gap:6px; background: linear-gradient(135deg, rgba(114,9,183,0.1), rgba(63,55,201,0.1)); border-color: rgba(99,102,241,0.3);" title="AI Search over work items (BETA)">
                 <span style="color:#a855f7; display: flex; align-items: center;"><ui-icon name="sparkles"></ui-icon></span>
                 AI Search...
+                <span class="ai-beta-badge-tiny" style="position: absolute; top: -0.385rem; right: -0.385rem; font-size: 0.615rem; padding: 0 0.231rem;">BETA</span>
               </button>
             </div>
             <div class="fb-actions" style="display:flex; gap:8px;">

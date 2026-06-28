@@ -74,6 +74,7 @@
         <button class="btn" id="emojis_open" style="width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Customize reactions emojis or images"><ui-icon name="smile"></ui-icon></button>
       </div>
       <div class="mrow mrow-full"><button class="btn" id="tutorialbtn" title="Replay interactive feature tours"><ui-icon name="book"></ui-icon> Interactive Tours…</button></div>
+      <div class="mrow mrow-full"><button class="btn btn-ai" id="ai_settings_btn" style="position: relative;" title="Configure on-device or cloud AI models"><ui-icon name="sparkles"></ui-icon> AI Models & Connections… <span class="ai-beta-badge-tiny" style="position: absolute; top: -0.385rem; right: -0.385rem; font-size: 0.615rem; padding: 0.077rem 0.308rem; pointer-events: none; z-index: 5;">BETA</span></button></div>
       <div class="mrow mrow-full"><button class="btn" id="settingsbtn" title="Azure DevOps connection (PAT / org / project)"><ui-icon name="settings"></ui-icon> Connection (PAT / org / project)…</button></div>
     </div>
   </span>
@@ -83,13 +84,18 @@
   <div class="frow" id="filter-query">
     <span class="fl">Find</span>
     <button class="fclear" id="filt_clear_all" title="clear all filters" style="visibility:hidden"><ui-icon name="x"></ui-icon></button>
-    <div class="fsearch-group">
-      <div class="fsearch-container">
-        <input id="search" class="fsearch" placeholder="id or text…">
-        <button type="button" class="search-clear-btn" id="search-clear" style="display:none"><ui-icon name="x"></ui-icon></button>
+    <div class="fsearch-group-wrapper" style="position: relative; display: inline-flex; flex: 1; min-width: 12.308rem; max-width: 26.154rem; height: 2rem;">
+      <div class="fsearch-group" style="width: 100%; margin: 0;">
+        <div class="fsearch-container">
+          <input id="search" class="fsearch" placeholder="id or text…">
+          <button type="button" class="search-clear-btn" id="search-clear" style="display:none"><ui-icon name="x"></ui-icon></button>
+        </div>
+        <button class="fsearch-group-btn" id="searchbtn" title="Search by ID or text"><ui-icon name="search"></ui-icon></button>
+        <button class="fsearch-group-btn fsearch-group-btn-ai" id="ai_filter_btn" title="AI Search over work items (BETA)">
+          <span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>
+        </button>
       </div>
-      <button class="fsearch-group-btn" id="searchbtn" title="Search by ID or text"><ui-icon name="search"></ui-icon></button>
-      <button class="fsearch-group-btn fsearch-group-btn-ai" id="ai_filter_btn" title="AI Search over work items"><span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span></button>
+      <span class="ai-beta-badge-tiny" style="position: absolute; top: -0.462rem; right: -0.462rem; font-size: 0.615rem; padding: 0.077rem 0.308rem; pointer-events: none; z-index: 5;">BETA</span>
     </div>
     <span class="fl fl-sort">Sort</span>
     <select id="f_sort" title="sort order"><option value="">id</option><option value="priority">priority</option></select>
@@ -654,6 +660,7 @@
 <script src="components/filter-manager.js"></script>
 <script src="ai/ai-provider.js"></script>
 <script src="ai/chrome-prompt-provider.js"></script>
+<script src="ai/custom-cloud-provider.js"></script>
 <script src="ai/prompts/search-prompt.js"></script>
 <script src="ai/ai-search-service.js"></script>
 <script src="components/ai-search-dialog.js"></script>

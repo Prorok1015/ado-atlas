@@ -72,6 +72,7 @@ const ICONS = {
   sparkles: `<svg ${SVG_DEFAULTS}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5 5 3Z"/><path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1 1-2.5Z"/></svg>`,
   minus: `<svg ${SVG_DEFAULTS}><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
   share: `<svg ${SVG_DEFAULTS}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`,
+  cloud: `<svg ${SVG_DEFAULTS}><path d="M18 10h-.79A7 7 0 0 0 5.455 14H5a4 4 0 0 0 0 8h13.09a5 5 0 0 0 .91-9.91A6.995 6.995 0 0 0 18 10z"/></svg>`,
   upload: `<svg ${SVG_DEFAULTS}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`
 };
 

@@ -13,11 +13,13 @@
 }
 
 .ai-modal-card {
+  position: relative;
+  z-index: 1;
   background: var(--panel, #1e1e1e);
   color: var(--txt, #f5f5f5);
   border: 1px solid var(--line, #333);
   border-radius: 14px;
-  width: 480px;
+  width: 720px;
   max-width: 90vw;
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
   display: flex;
@@ -345,4 +347,219 @@
   background: linear-gradient(135deg, #7209b7, #3f37c9);
   box-shadow: 0 2px 8px rgba(114, 9, 183, 0.35);
 }
+
+/* BETA badges for AI features */
+.ai-beta-badge-tiny {
+  font-size: 0.55rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  color: #fff;
+  padding: 0.077rem 0.308rem;
+  border-radius: 0.308rem;
+  text-transform: uppercase;
+  letter-spacing: 0.038rem;
+  display: inline-block;
+  line-height: 1.2;
+}
+
+.ai-beta-badge-text {
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  color: #fff;
+  padding: 0.077rem 0.385rem;
+  border-radius: 0.308rem;
+  text-transform: uppercase;
+  letter-spacing: 0.038rem;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.462rem;
+  vertical-align: middle;
+  line-height: 1.2;
+}
+
+/* AI Settings Section styling */
+.ai-settings-toggle {
+  align-self: flex-start;
+  font-size: 0.8rem;
+  color: #a855f7;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-settings-toggle:hover {
+  color: #c084fc;
+}
+
+.ai-settings-panel {
+  border-top: 1px dashed var(--line, #333);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-settings-row label {
+  font-size: 0.77rem;
+  font-weight: 500;
+  color: var(--muted, #888);
+}
+
+.ai-settings-row input, .ai-settings-row select {
+  background: var(--bg, #121212);
+  border: 1px solid var(--line, #333);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--txt, #f5f5f5);
+  font-size: 0.8125rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-settings-row input:focus, .ai-settings-row select:focus {
+  border-color: #a855f7;
+  outline: none;
+}
+
+/* Sidebar AI Provider Tabs Styles (Hanging off the left side of the modal) */
+.ai-modal-tabs-container {
+  position: absolute;
+  right: 100%;
+  top: 4.615rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.308rem; /* tighter spacing between tabs */
+  align-items: flex-end;
+  z-index: 2; /* higher than .ai-modal-card */
+}
+
+.ai-modal-tab {
+  background: var(--panel, #1e1e1e);
+  border: 1px solid var(--line, #333);
+  border-right: none;
+  border-radius: 0.923rem 0 0 0.923rem;
+  width: 3.385rem;
+  height: 3.385rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-sizing: border-box;
+  color: var(--muted, #888);
+  box-shadow: -4px 4px 10px rgba(0, 0, 0, 0.2);
+  transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s, border-color 0.15s;
+}
+
+.ai-modal-tab:hover {
+  color: var(--txt, #fff);
+  background: var(--panel3, rgba(255, 255, 255, 0.05));
+  width: 3.692rem; /* expands to the left smoothly! */
+}
+
+.ai-modal-tab.active {
+  background: var(--panel, #1e1e1e) !important;
+  border-color: #a855f7;
+  border-right: 1px solid var(--panel, #1e1e1e) !important;
+  margin-right: -1px;
+  color: var(--txt, #fff);
+  width: 3.462rem; /* overlaps card border, keeping right edge anchored flush! */
+  box-shadow: -6px 4px 15px rgba(168, 85, 247, 0.15);
+}
+
+.ai-modal-tab.active:hover {
+  width: 3.769rem; /* expands slightly more on hover when active */
+}
+
+/* Redesigned Add/Config Tab button */
+.ai-modal-tab.add-tab {
+  border: 1px dashed var(--muted, #666);
+  border-right: none !important; /* no right border so it attaches flush! */
+  border-radius: 0.923rem 0 0 0.923rem !important; /* rounded only on the left */
+  background: transparent;
+  width: 3.385rem;
+  margin-right: -1px; /* overlap the card border! */
+  box-shadow: -4px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.ai-modal-tab.add-tab ui-icon {
+  transition: transform 0.25s ease-in-out;
+}
+
+.ai-modal-tab.add-tab:hover {
+  border-color: #a855f7;
+  border-right-color: transparent !important;
+  border-right: none !important;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.05);
+  width: 3.692rem;
+}
+
+.ai-modal-tab.add-tab:hover ui-icon {
+  transform: rotate(90deg);
+}
+
+/* Override global logic-tooltip styles for bookmarks to prevent positioning errors */
+.logic-tooltip.right-tooltip {
+  transform: none !important;
+  margin-top: 0 !important;
+  box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.logic-tooltip.right-tooltip::before {
+  display: none !important;
+}
+
+/* Redesigned AI Settings Modal Styles */
+.ai-settings-modal-card {
+  width: 760px;
+  max-width: 95vw;
+}
+
+.ai-settings-item {
+  border: 1px solid transparent !important;
+  background: transparent;
+  transition: all 0.15s ease-in-out;
+}
+
+.ai-settings-item:hover {
+  background: var(--panel2, rgba(255, 255, 255, 0.03)) !important;
+  border-color: var(--line, #333) !important;
+}
+
+.ai-settings-item.active {
+  background: rgba(168, 85, 247, 0.08) !important;
+  border-color: #a855f7 !important;
+}
+
+/* Custom Scrollbar for connection list */
+#ai-settings-connections-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+#ai-settings-connections-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#ai-settings-connections-list::-webkit-scrollbar-thumb {
+  background: var(--line, #333);
+  border-radius: 2px;
+}
+
+#ai-settings-connections-list::-webkit-scrollbar-thumb:hover {
+  background: var(--muted, #666);
+}
+
 

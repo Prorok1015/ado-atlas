@@ -1981,7 +1981,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   border: 1px solid var(--line, #333);
   border-radius: 0.462rem;
   overflow: hidden;
-  height: 26px;
+  height: 2rem;
   box-sizing: border-box;
 }
 
@@ -2019,6 +2019,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   transition: background 0.15s, color 0.15s;
   box-sizing: border-box;
   height: 100%;
+  font-size: inherit;
 }
 
 .fsearch-group-btn:hover {
@@ -2041,6 +2042,21 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   cursor: not-allowed;
   background: rgba(255, 255, 255, 0.02) !important;
   color: var(--muted, #555) !important;
+}
+
+.btn-ai {
+  background: linear-gradient(135deg, rgba(114, 9, 183, 0.15), rgba(63, 55, 201, 0.15)) !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  color: #c084fc !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-ai:hover {
+  background: linear-gradient(135deg, rgba(114, 9, 183, 0.25), rgba(63, 55, 201, 0.25)) !important;
+  border-color: rgba(168, 85, 247, 0.6) !important;
+  color: #d8b4fe !important;
 }
 
 

@@ -194,5 +194,42 @@
         "position": "bottom"
       }
     ]
+  },
+  "v1.2.0_ai_search": {
+    "title": "<ui-icon name=\"sparkles\"></ui-icon> AI Search & Natural Language Tour",
+    "version": "1.2.0",
+    "context": "board",
+    "steps": [
+      {
+        "element": "#ai_filter_btn",
+        "title": "<ui-icon name=\"sparkles\"></ui-icon> AI Search Trigger",
+        "text": "Click this sparkles button to open the interactive AI Search dialog.<hr/><div class='tut-section'><div class='tut-section-title'>Privacy-First On-Device AI</div><div>Runs 100% locally on your machine using Google Chrome's built-in Gemini Nano model. No data ever leaves your browser!</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#ai-search-text-input",
+        "title": "<ui-icon name=\"message-square\"></ui-icon> Natural Language Query",
+        "text": "Describe what you're looking for in plain language (e.g. English or Russian).<hr/><div class='tut-section'><div class='tut-section-title'>Examples to try</div><div>• <i>\"active bugs assigned to me created in the last 2 weeks\"</i><br/>• <i>\"resolved tasks in Sprint 15 or 16\"</i></div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": ".ai-reasoning-container",
+        "title": "<ui-icon name=\"trending-up\"></ui-icon> Reasoning Depth Options",
+        "text": "Choose the level of AI processing depth:<hr/><div class='tut-section'><div>• <span class='tut-badge'>Auto</span> - Automatically choose best depth.<br/>• <span class='tut-badge'>Fast</span> - Quick 1-pass execution.<br/>• <span class='tut-badge'>Balanced</span> - 2-pass schema-filtered parser (recommended).<br/>• <span class='tut-badge'>Thorough</span> - 3-pass reasoning with self-correction.</div></div>",
+        "position": "top"
+      },
+      {
+        "element": "#ai-provider-tab-settings",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Cloud & Model Connections",
+        "text": "Click the <span class='tut-key'>+</span> tab to configure external connections!<hr/><div class='tut-section'><div class='tut-section-title'>Custom Provider Support</div><div>Connect your Google Gemini API (using a free key from AI Studio) or OpenAI API. You can select custom models directly from the tag-like dropdown menu!</div></div>",
+        "position": "right"
+      },
+      {
+        "element": "#ai-search-submit-btn",
+        "title": "<ui-icon name=\"search\"></ui-icon> Run & Review Filters",
+        "text": "Click <span class='tut-key'>Search</span> to let the AI process your query. You will be able to review the constructed visual filters and fine-tune them in the Advanced Filter Builder before applying them to your active workspace view.",
+        "position": "top"
+      }
+    ]
   }
 }

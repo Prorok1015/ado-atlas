@@ -400,6 +400,232 @@ test("AISearchService.enrichIR distributes nested OR groups into separate AND ca
   assert.strictEqual(enriched.rules[1].rules[1].field, "tags");
 });
 
+test("AISearchService.enrichIR resolves short sprint/area path to full path", async () => {
+  const service = global.aiSearchService;
+  const filterFields = [
+    {
+      id: "iteration",
+      displayName: "Sprint",
+      type: "tree",
+      allowedValues: ["MyProject\\Sprint 1 (current)", "MyProject\\Sprint 2", "MyProject\\Milestone 3\\Sprint A"]
+    },
+    {
+      id: "area",
+      displayName: "Area",
+      type: "tree",
+      allowedValues: ["MyProject\\Area 1", "MyProject\\SubTeam\\API"]
+    }
+  ];
+  
+  const rawIR = {
+    where: {
+      logic: "AND",
+      rules: [
+        { field: "iteration", op: "=", value: "Sprint 2" },
+        { field: "area", op: "=", value: "API" }
+      ]
+    }
+  };
+  
+  const enriched = await service.enrichIR(rawIR, filterFields, []);
+  const card = enriched.rules[0];
+  
+  assert.strictEqual(card.rules[0].field, "iteration");
+  assert.strictEqual(card.rules[0].value, "MyProject\\Sprint 2");
+  
+  assert.strictEqual(card.rules[1].field, "area");
+  assert.strictEqual(card.rules[1].value, "MyProject\\SubTeam\\API");
+});
+
+test("AISearchService.enrichIR fuzzy matches closed list values (type, state)", async () => {
+  const service = global.aiSearchService;
+  const filterFields = [
+    { id: "type", displayName: "Type", type: "string", allowedValues: ["Bug", "Task", "User Story"] },
+    { id: "state", displayName: "State", type: "string", allowedValues: ["New", "Active", "Closed"] }
+  ];
+  
+  const rawIR = {
+    where: {
+      logic: "AND",
+      rules: [
+        { field: "type", op: "=", value: "bug" },     // lowercase
+        { field: "type", op: "=", value: "task" },    // lowercase
+        { field: "state", op: "=", value: "active" }  // lowercase
+      ]
+    }
+  };
+  
+  const enriched = await service.enrichIR(rawIR, filterFields, []);
+  const card = enriched.rules[0];
+  
+  assert.strictEqual(card.rules[0].value, "Bug");
+  assert.strictEqual(card.rules[1].value, "Task");
+  assert.strictEqual(card.rules[2].value, "Active");
+});
+
+test("AISearchService.enrichIR normalizes arrays and single items for IN operator", async () => {
+  const service = global.aiSearchService;
+  const filterFields = [
+    { id: "type", displayName: "Type", type: "string", operators: ["=", "IN"] }
+  ];
+  
+  // Case 1: IN with single value should simplify to =
+  const rawIR1 = {
+    where: {
+      logic: "AND",
+      rules: [{ field: "type", op: "IN", value: ["Bug"] }]
+    }
+  };
+  const enriched1 = await service.enrichIR(rawIR1, filterFields, []);
+  assert.strictEqual(enriched1.rules[0].rules[0].op, "=");
+  assert.strictEqual(enriched1.rules[0].rules[0].value, "Bug");
+
+  // Case 2: = with array value should convert to IN
+  const rawIR2 = {
+    where: {
+      logic: "AND",
+      rules: [{ field: "type", op: "=", value: ["Bug", "Task"] }]
+    }
+  };
+  const enriched2 = await service.enrichIR(rawIR2, filterFields, []);
+  assert.strictEqual(enriched2.rules[0].rules[0].op, "IN");
+  assert.deepStrictEqual(enriched2.rules[0].rules[0].value, ["Bug", "Task"]);
+
+  // Case 3: IN with string value should convert to array
+  const rawIR3 = {
+    where: {
+      logic: "AND",
+      rules: [{ field: "type", op: "IN", value: "Bug" }]
+    }
+  };
+  const enriched3 = await service.enrichIR(rawIR3, filterFields, []);
+  assert.strictEqual(enriched3.rules[0].rules[0].op, "=");
+  assert.strictEqual(enriched3.rules[0].rules[0].value, "Bug");
+});
+
+test("AISearchService.enrichIR handles hallucinated filters array format and normalizes dates", async () => {
+  const service = global.aiSearchService;
+  const filterFields = [
+    { id: "type", displayName: "Type", type: "string", allowedValues: ["Bug", "Task"] },
+    { id: "state", displayName: "State", type: "string", allowedValues: ["New", "Resolved", "Closed"] },
+    { id: "assigned", displayName: "Assigned", type: "user" },
+    { id: "createddate", displayName: "Created Date", type: "date", operators: ["=", "<>", ">", "<", "RANGE"] }
+  ];
+
+  // The exact hallucinated structure returned by the model
+  const rawIR = {
+    filters: [
+      { type: "Bug", operator: "=", value: "Bug" },
+      { state: "Resolved", operator: "=", value: "Resolved" },
+      { assigned: ["@me", "Aleksei Bezruk"] },
+      { createddate: { operator: "<", value: "@today-2mo" } }
+    ]
+  };
+
+  const enriched = await service.enrichIR(rawIR, filterFields, []);
+
+  assert.strictEqual(enriched.logic, "OR");
+  assert.strictEqual(enriched.rules.length, 1);
+  const card = enriched.rules[0];
+  assert.strictEqual(card.logic, "AND");
+  assert.strictEqual(card.rules.length, 4);
+
+  // Rule 0: type
+  assert.strictEqual(card.rules[0].field, "type");
+  assert.strictEqual(card.rules[0].op, "=");
+  assert.strictEqual(card.rules[0].value, "Bug");
+
+  // Rule 1: state
+  assert.strictEqual(card.rules[1].field, "state");
+  assert.strictEqual(card.rules[1].op, "=");
+  assert.strictEqual(card.rules[1].value, "Resolved");
+
+  // Rule 2: assigned (should retain array and keep IN operator since it's an array of length > 1)
+  assert.strictEqual(card.rules[2].field, "assigned");
+  assert.strictEqual(card.rules[2].op, "IN");
+  assert.deepStrictEqual(card.rules[2].value, ["@me", "Aleksei Bezruk"]);
+
+  // Rule 3: createddate (operator translated, value date macro normalized from @today-2mo to @today-60)
+  assert.strictEqual(card.rules[3].field, "createddate");
+  assert.strictEqual(card.rules[3].op, "<");
+  assert.strictEqual(card.rules[3].value, "@today-60");
+});
+
+test("AISearchService.enrichIR resolves transliterated assignee names and merges matchedDates", async () => {
+  const service = global.aiSearchService;
+  const filterFields = [
+    { id: "type", type: "string", allowedValues: ["Bug", "Task"] },
+    { id: "state", type: "string", allowedValues: ["New", "Resolved"] },
+    { id: "assigned", type: "user" },
+    { id: "due", type: "date", operators: ["=", "<>", ">", "<", "RANGE"] }
+  ];
+
+  // Raw IR with Russian nickname and split date rules (the exact case from user)
+  const rawIR = {
+    where: {
+      logic: "AND",
+      rules: [
+        { field: "type", op: "=", value: "Bug" },
+        { field: "state", op: "=", value: "Resolved" },
+        { field: "assigned", op: "IN", value: ["@me", "Леху Б"] },
+        { field: "due", op: "<=", value: "@today-60...@today" },
+        { field: "due", op: ">=", value: "@today-30...@today-60" }
+      ]
+    }
+  };
+
+  const matchedAssignees = { "меня": "@me", "Леху Б": "Aleksei Bezruk" };
+  const matchedDates = { due: "@today-60...@today-30" };
+
+  const enriched = await service.enrichIR(rawIR, filterFields, [], { matchedAssignees, matchedDates });
+
+  assert.strictEqual(enriched.logic, "OR");
+  const card = enriched.rules[0];
+  assert.strictEqual(card.logic, "AND");
+  assert.strictEqual(card.rules.length, 4); // type, state, assigned, due (duplicates consolidated)
+
+  // Assigned should be resolved to Aleksei Bezruk
+  assert.strictEqual(card.rules[2].field, "assigned");
+  assert.strictEqual(card.rules[2].op, "IN");
+  assert.deepStrictEqual(card.rules[2].value, ["@me", "Aleksei Bezruk"]);
+
+  // Due should be consolidated into one RANGE rule with correct matched range value
+  assert.strictEqual(card.rules[3].field, "due");
+  assert.strictEqual(card.rules[3].op, "RANGE");
+  assert.strictEqual(card.rules[3].value, "@today-60...@today-30");
+});
+
+test("AISearchService.enrichIR handles identity keys mapping to multiple assignees (arrays)", async () => {
+  const service = global.aiSearchService;
+  const filterFields = [
+    { id: "type", type: "string" },
+    { id: "assigned", type: "user" }
+  ];
+
+  // Raw IR with single mention of "Alex"
+  const rawIR = {
+    where: {
+      logic: "AND",
+      rules: [
+        { field: "type", op: "=", value: "Bug" },
+        { field: "assigned", op: "=", value: "Alex" }
+      ]
+    }
+  };
+
+  const matchedAssignees = { "Alex": ["Alexander Ivanov", "Alexander Smith"] };
+
+  const enriched = await service.enrichIR(rawIR, filterFields, [], { matchedAssignees });
+
+  const card = enriched.rules[0];
+  assert.strictEqual(card.rules.length, 2);
+
+  // Assigned should be expanded to both names, and operator resolved to IN
+  assert.strictEqual(card.rules[1].field, "assigned");
+  assert.strictEqual(card.rules[1].op, "IN");
+  assert.deepStrictEqual(card.rules[1].value, ["Alexander Ivanov", "Alexander Smith"]);
+});
+
 (async () => {
   // Wait a short time for any async tests to print their output
   setTimeout(() => {

@@ -212,6 +212,13 @@ class TutorialManager {
           }
         }
 
+        if (id === 'v1.2.0_ai_search') {
+          const aiBtn = document.querySelector('#ai_filter_btn');
+          if (aiBtn) {
+            aiBtn.click();
+          }
+        }
+
         this.start(id, this.registry[id]);
       };
     });

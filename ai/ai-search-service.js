@@ -140,18 +140,23 @@
         required: ["where"]
       };
 
+      let pipelineResult;
       if (targetLevel === 'fast') {
-        rawIR = await this.executeFastPipeline(provider, userQuery, filterFields, assignees, responseSchema, options);
+        const raw = await this.executeFastPipeline(provider, userQuery, filterFields, assignees, responseSchema, options);
+        pipelineResult = { rawIR: raw, matchedAssignees: [], matchedDates: {} };
       } else if (targetLevel === 'balanced') {
-        rawIR = await this.executeBalancedPipeline(provider, userQuery, filterFields, assignees, responseSchema, options);
+        pipelineResult = await this.executeBalancedPipeline(provider, userQuery, filterFields, assignees, responseSchema, options);
       } else {
-        rawIR = await this.executeThoroughPipeline(provider, userQuery, filterFields, assignees, responseSchema, warnings, options);
+        pipelineResult = await this.executeThoroughPipeline(provider, userQuery, filterFields, assignees, responseSchema, warnings, options);
       }
 
-      console.log("[AI Search] Raw AI response:", JSON.stringify(rawIR));
+      console.log("[AI Search] Raw AI response:", JSON.stringify(pipelineResult.rawIR));
 
       // 5. Enrich and normalize
-      const enrichedIR = await this.enrichIR(rawIR, filterFields, warnings);
+      const enrichedIR = await this.enrichIR(pipelineResult.rawIR, filterFields, warnings, {
+        matchedAssignees: pipelineResult.matchedAssignees,
+        matchedDates: pipelineResult.matchedDates
+      });
 
       console.log("[AI Search] Enriched IR:", JSON.stringify(enrichedIR));
 
@@ -210,11 +215,7 @@
         const queryLower = query.toLowerCase();
         tagsField.allowedValues = tagsField.allowedValues.filter(tag => {
           const tagLower = tag.toLowerCase();
-          if (queryLower.includes(tagLower)) return true;
-          if (tagLower === 'backend' && (queryLower.includes('бэкенд') || queryLower.includes('бекэнд'))) return true;
-          if (tagLower === 'frontend' && (queryLower.includes('фронтенд') || queryLower.includes('фронтэнд'))) return true;
-          if (tagLower === 'database' && (queryLower.includes('база') || queryLower.includes('бд'))) return true;
-          return false;
+          return queryLower.includes(tagLower);
         });
       }
 
@@ -266,17 +267,50 @@
         const selectPrompt = global.SEARCH_SELECT_FIELDS_PROMPT.replace('${fields_list}', compactFields) + `\n\nQuery: "${query}"\nOutput:`;
         
         const fieldsCSV = await promptSession(selectPrompt);
-        
-        onProgress("Generating JSON filter...", 0.6);
-        // Turn 2: Generate JSON directly from matched schema
         const selectedIds = fieldsCSV.split(',').map(s => s.trim().toLowerCase());
         
-        // Semantic tag matching step
+        // Resolving entities (tags/names/dates) in parallel
+        onProgress("Resolving entities (tags/names/dates)...", 0.35);
+
+        const parallelTasks = [];
         const tagsField = filterFields.find(f => f.id === 'tags');
+        
         if (selectedIds.includes('tags') && tagsField) {
-          onProgress("Matching project tags semantically...", 0.35);
-          await this._matchTagsSemantically(provider, query, tagsField, options);
+          parallelTasks.push(this._matchTagsSemantically(provider, query, tagsField, options));
         }
+
+        let matchedAssignees = [];
+        const identityFields = ['assigned', 'createdby', 'resolvedby', 'closedby'];
+        const needsAssignees = selectedIds.some(id => identityFields.includes(id));
+        if (needsAssignees && assignees && assignees.length > 0) {
+          parallelTasks.push(
+            this._matchAssigneesSemantically(provider, query, assignees, options)
+              .then(res => matchedAssignees = res)
+          );
+        }
+
+        let matchedDates = {};
+        const dateFields = filterFields.filter(f => f.type === 'date' || f.type === 'dateTime').map(f => f.id);
+        if (dateFields.length > 0) {
+          parallelTasks.push(
+            this._matchDatesSemantically(provider, query, dateFields, options)
+              .then(res => matchedDates = res)
+          );
+        }
+
+        // Run matching tasks simultaneously to save time
+        if (parallelTasks.length > 0) {
+          await Promise.all(parallelTasks);
+        }
+
+        // Add any dynamically resolved date fields to selectedIds
+        for (const key of Object.keys(matchedDates)) {
+          if (!selectedIds.includes(key)) {
+            selectedIds.push(key);
+          }
+        }
+
+        onProgress("Generating JSON filter...", 0.6);
 
         const coreFields = ['type', 'state', 'tags', 'title', 'desc'];
         const matchedFields = filterFields.filter(f => selectedIds.includes(f.id.toLowerCase()) || coreFields.includes(f.id.toLowerCase()));
@@ -292,19 +326,25 @@
           return line;
         }).join('\n');
 
+        // Provide resolved context to JSON builder
         let assigneesContext = "";
-        if (assignees && assignees.length > 0) {
-          assigneesContext = "\n\nTeam members available for assignment:\n" + 
-            assignees.map(a => `- ${a}`).join('\n');
+        const matchedAssigneesList = Object.values(matchedAssignees);
+        if (matchedAssigneesList.length > 0) {
+          assigneesContext = `\n\nResolved Assignees Context: The user's query references these exact team members: ${JSON.stringify(matchedAssigneesList)}. Use exactly these values in the JSON.`;
         }
 
-        const directJSONPrompt = global.SEARCH_DIRECT_JSON_PROMPT.replace('${selectedFieldsSchema}', selectedSchemaStr) + assigneesContext + `\n\nUser Query: "${query}"\n\nJSON Filter Response:`;
+        let datesContext = "";
+        if (Object.keys(matchedDates).length > 0) {
+          datesContext = `\n\nResolved Dates Context: The user's query references these exact date ranges: ${JSON.stringify(matchedDates)}. Use exactly these values in the JSON.`;
+        }
+
+        const directJSONPrompt = global.SEARCH_DIRECT_JSON_PROMPT.replace('${selectedFieldsSchema}', selectedSchemaStr) + assigneesContext + datesContext + `\n\nUser Query: "${query}"\n\nJSON Filter Response:`;
         const rawJSON = await promptSession(directJSONPrompt);
 
         const extracted = this.extractJSON(rawJSON);
         const parsed = JSON.parse(extracted);
         onProgress("Applying filters...", 1.0);
-        return parsed;
+        return { rawIR: parsed, matchedAssignees, matchedDates };
       } finally {
         if (selectSession) selectSession.destroy();
       }
@@ -339,11 +379,45 @@
 
       const selectedIds = fieldsCSV.split(',').map(s => s.trim().toLowerCase());
 
-      // Semantic tag matching step
+      // Resolving entities (tags/names/dates) in parallel
+      onProgress("Resolving entities (tags/names/dates)...", 0.25);
+
+      const parallelTasks = [];
       const tagsField = filterFields.find(f => f.id === 'tags');
+      
       if (selectedIds.includes('tags') && tagsField) {
-        onProgress("Matching project tags semantically...", 0.25);
-        await this._matchTagsSemantically(provider, query, tagsField, options);
+        parallelTasks.push(this._matchTagsSemantically(provider, query, tagsField, options));
+      }
+
+      let matchedAssignees = [];
+      const identityFields = ['assigned', 'createdby', 'resolvedby', 'closedby'];
+      const needsAssignees = selectedIds.some(id => identityFields.includes(id));
+      if (needsAssignees && assignees && assignees.length > 0) {
+        parallelTasks.push(
+          this._matchAssigneesSemantically(provider, query, assignees, options)
+            .then(res => matchedAssignees = res)
+        );
+      }
+
+      let matchedDates = {};
+      const dateFields = filterFields.filter(f => f.type === 'date' || f.type === 'dateTime').map(f => f.id);
+      if (dateFields.length > 0) {
+        parallelTasks.push(
+          this._matchDatesSemantically(provider, query, dateFields, options)
+            .then(res => matchedDates = res)
+        );
+      }
+
+      // Run matching tasks simultaneously to save time
+      if (parallelTasks.length > 0) {
+        await Promise.all(parallelTasks);
+      }
+
+      // Add any dynamically resolved date fields to selectedIds
+      for (const key of Object.keys(matchedDates)) {
+        if (!selectedIds.includes(key)) {
+          selectedIds.push(key);
+        }
       }
 
       // 2. Stage 2: Intent & Value Enrichment
@@ -362,10 +436,22 @@
         return line;
       }).join('\n');
 
-      const enrichPrompt = global.SEARCH_ENRICH_INTENT_PROMPT.replace('${selectedFieldsSchema}', selectedSchemaStr) + `\n\nUser Query: "${query}"\nOutput:`;
+      // Provide resolved context to JSON builder
+      let assigneesContext = "";
+      const matchedAssigneesList = Object.values(matchedAssignees);
+      if (matchedAssigneesList.length > 0) {
+        assigneesContext = `\n\nResolved Assignees Context: The user's query references these exact team members: ${JSON.stringify(matchedAssigneesList)}. Use exactly these values in the JSON.`;
+      }
+
+      let datesContext = "";
+      if (Object.keys(matchedDates).length > 0) {
+        datesContext = `\n\nResolved Dates Context: The user's query references these exact date ranges: ${JSON.stringify(matchedDates)}. Use exactly these values in the JSON.`;
+      }
+
+      const enrichPrompt = global.SEARCH_ENRICH_INTENT_PROMPT.replace('${selectedFieldsSchema}', selectedSchemaStr) + assigneesContext + datesContext + `\n\nUser Query: "${query}"\nOutput:`;
       
       const session2 = typeof provider.createSession === 'function'
-        ? await provider.createSession("You are a search query enricher. Translate constraints and generate synonyms.", { temperature: 0.4 })
+        ? await provider.createSession("You are a search query enricher. Translate constraints and generate synonyms." + assigneesContext, { temperature: 0.4 })
         : null;
 
       let enrichedIntent = "";
@@ -373,7 +459,7 @@
         if (session2) {
           enrichedIntent = await session2.prompt(enrichPrompt);
         } else {
-          enrichedIntent = await provider.prompt("You are a search query enricher. Translate constraints and generate synonyms.", enrichPrompt, options);
+          enrichedIntent = await provider.prompt("You are a search query enricher. Translate constraints and generate synonyms." + assigneesContext, enrichPrompt, options);
         }
       } finally {
         if (session2) session2.destroy();
@@ -433,7 +519,7 @@
       }
 
       onProgress("Applying filters...", 1.0);
-      return parsed;
+      return { rawIR: parsed, matchedAssignees, matchedDates };
     }
 
     /**
@@ -450,25 +536,50 @@
         json = match[1].trim();
       }
 
-      // 2. Find first '{'
+      // 2. Find first '{' or '['
       const firstBrace = json.indexOf('{');
-      if (firstBrace === -1) return "";
+      const firstBracket = json.indexOf('[');
+      let startIndex = -1;
       
-      // Parse from firstBrace onwards, balancing brackets and stopping if stack becomes empty
+      if (firstBrace !== -1 && firstBracket !== -1) {
+          startIndex = Math.min(firstBrace, firstBracket);
+      } else if (firstBrace !== -1) {
+          startIndex = firstBrace;
+      } else if (firstBracket !== -1) {
+          startIndex = firstBracket;
+      }
+
+      if (startIndex === -1) {
+          // Fallback: If no brackets exist, return the sanitized string safely.
+          return json; 
+      }
+      
+      // 3. Parse from startIndex onwards, balancing brackets and closing truncated strings
       let parsedJson = "";
       let stack = [];
       let inQuote = false;
       let quoteChar = "";
+      let isEscaped = false;
       
-      for (let i = firstBrace; i < json.length; i++) {
+      for (let i = startIndex; i < json.length; i++) {
         const char = json[i];
         parsedJson += char;
+        
+        if (isEscaped) {
+            isEscaped = false;
+            continue;
+        }
+        
+        if (char === '\\') {
+            isEscaped = true;
+            continue;
+        }
         
         if (char === '"' || char === "'") {
           if (!inQuote) {
             inQuote = true;
             quoteChar = char;
-          } else if (char === quoteChar && json[i - 1] !== '\\') {
+          } else if (char === quoteChar) {
             inQuote = false;
           }
           continue;
@@ -487,12 +598,17 @@
               }
             }
             
-            // If the root '{' has been closed, we are done! Stop parsing to ignore any suffix.
+            // If the root '{' or '[' has been closed, we are done!
             if (stack.length === 0) {
               break;
             }
           }
         }
+      }
+
+      // [FIX]: If AI truncated the response while inside a string, close the quote first!
+      if (inQuote) {
+        parsedJson += quoteChar;
       }
 
       // If the loop finished but the stack isn't empty, it was truncated. Append missing closes.
@@ -502,17 +618,30 @@
       
       json = parsedJson;
 
-      // 3. Strip comments (quote-aware)
+      // 4. Strip comments (quote-aware)
       let noComments = "";
       let inStr = false;
       quoteChar = "";
+      isEscaped = false;
       for (let i = 0; i < json.length; i++) {
         const char = json[i];
+        
+        if (isEscaped) {
+            noComments += char;
+            isEscaped = false;
+            continue;
+        }
+        if (char === '\\') {
+            noComments += char;
+            isEscaped = true;
+            continue;
+        }
+
         if (char === '"' || char === "'") {
           if (!inStr) {
             inStr = true;
             quoteChar = char;
-          } else if (char === quoteChar && json[i - 1] !== '\\') {
+          } else if (char === quoteChar) {
             inStr = false;
           }
           noComments += char;
@@ -534,12 +663,25 @@
       }
       json = noComments;
 
-      // 4. Normalize single quotes to double quotes
+      // 5. Normalize single quotes to double quotes
       let normalizedQuotes = "";
       let inDoubleQuote = false;
       let inSingleQuote = false;
+      isEscaped = false;
       for (let i = 0; i < json.length; i++) {
         const char = json[i];
+        
+        if (isEscaped) {
+            normalizedQuotes += char;
+            isEscaped = false;
+            continue;
+        }
+        if (char === '\\') {
+            normalizedQuotes += char;
+            isEscaped = true;
+            continue;
+        }
+
         if (char === '"' && !inSingleQuote) {
           inDoubleQuote = !inDoubleQuote;
           normalizedQuotes += char;
@@ -554,42 +696,25 @@
       }
       json = normalizedQuotes;
 
-      // 5. Auto-escape invalid single backslashes in double-quoted string values (e.g. "Project\Sprint 1")
-      let repairedBackslashes = "";
-      inQuote = false;
-      for (let i = 0; i < json.length; i++) {
-        const char = json[i];
-        if (char === '"' && (i === 0 || json[i - 1] !== '\\')) {
-          inQuote = !inQuote;
-          repairedBackslashes += char;
-          continue;
-        }
-        if (inQuote && char === '\\') {
-          const next = json[i + 1] || "";
-          const isEscapedBackslash = next === '\\';
-          const isStandardEscape = '"/bfnrt'.includes(next);
-          const isUnicodeEscape = next === 'u' && /^[0-9a-fA-F]{4}$/.test(json.substring(i + 2, i + 6));
-          
-          if (isEscapedBackslash) {
-            repairedBackslashes += '\\\\';
-            i++;
-          } else if (isStandardEscape || isUnicodeEscape) {
-            repairedBackslashes += '\\';
-          } else {
-            repairedBackslashes += '\\\\';
-          }
-        } else {
-          repairedBackslashes += char;
-        }
-      }
-      json = repairedBackslashes;
-
       // 6. Remove trailing commas
       let noTrailingCommas = "";
       inQuote = false;
+      isEscaped = false;
       for (let i = 0; i < json.length; i++) {
         const char = json[i];
-        if (char === '"' && json[i - 1] !== '\\') {
+        
+        if (isEscaped) {
+            noTrailingCommas += char;
+            isEscaped = false;
+            continue;
+        }
+        if (char === '\\') {
+            noTrailingCommas += char;
+            isEscaped = true;
+            continue;
+        }
+
+        if (char === '"') {
           inQuote = !inQuote;
         }
         if (!inQuote && char === ',') {
@@ -608,19 +733,45 @@
       return json.trim();
     }
 
-
     /**
      * Enriches and normalizes the parsed FilterIR.
      * Maps field aliases, validates operators, fuzzy-resolves identity names,
      * and sets required fields like 'kind' and 'id'.
      */
-    async enrichIR(rawIR, filterFields, warnings) {
+    async enrichIR(rawIR, filterFields, warnings, options = {}) {
       if (!rawIR || typeof rawIR !== 'object') {
         rawIR = {};
       }
 
       // Normalize root structure
       let rootGroup = rawIR.where;
+      if (!rootGroup && Array.isArray(rawIR.filters)) {
+        // Fallback for hallucinated "filters" array format from SLMs (like Gemini Nano)
+        rootGroup = {
+          logic: 'AND',
+          rules: rawIR.filters.map(f => {
+            if (!f || typeof f !== 'object') return null;
+            const keys = Object.keys(f);
+            const fieldKey = keys.find(k => k !== 'operator' && k !== 'op' && k !== 'value');
+            if (fieldKey) {
+              const valObj = f[fieldKey];
+              if (valObj && typeof valObj === 'object' && !Array.isArray(valObj)) {
+                return {
+                  field: fieldKey,
+                  op: valObj.operator || valObj.op || '=',
+                  value: valObj.value
+                };
+              }
+              return {
+                field: fieldKey,
+                op: f.operator || f.op || '=',
+                value: f.value !== undefined ? f.value : f[fieldKey]
+              };
+            }
+            return null;
+          }).filter(Boolean)
+        };
+      }
       if (!rootGroup || typeof rootGroup !== 'object') {
         rootGroup = { logic: 'AND', rules: [] };
       }
@@ -633,18 +784,41 @@
         rootGroup.logic = 'AND';
       }
 
+      const matchedAssignees = options.matchedAssignees || [];
+      const matchedDates = options.matchedDates || {};
+      let rules = Array.isArray(rootGroup.rules) ? rootGroup.rules : [];
+
+      // Apply matched dates from context if available (forces 100% accurate date values and RANGE operator)
+      if (matchedDates && Object.keys(matchedDates).length > 0) {
+        for (const key of Object.keys(matchedDates)) {
+          const dateVal = matchedDates[key];
+          const dateRules = rules.filter(r => r.field && r.field.toLowerCase() === key.toLowerCase());
+          if (dateRules.length > 0) {
+            const firstRule = dateRules[0];
+            firstRule.op = dateVal.includes('...') ? 'RANGE' : '=';
+            firstRule.value = dateVal;
+            for (let i = 1; i < dateRules.length; i++) {
+              dateRules[i]._remove = true;
+            }
+          } else {
+            rules.push({
+              field: key,
+              op: dateVal.includes('...') ? 'RANGE' : '=',
+              value: dateVal
+            });
+          }
+        }
+        rules = rules.filter(r => !r._remove);
+        rootGroup.rules = rules;
+      }
+
       const normalizedRules = [];
 
       // Helper to generate a unique card ID
       const generateId = () => this.generateId();
 
       // Process rule list
-      const rules = Array.isArray(rootGroup.rules) ? rootGroup.rules : [];
 
-      // We need to format rules into cards (nesting depth 2: Root (OR) -> Card (AND) -> Conditions)
-      // Standard Filter Builder structure:
-      // where: { kind: 'group', logic: 'OR', rules: [ { kind: 'group', logic: 'AND', rules: [conditions] } ] }
-      
       const processCondition = async (cond) => {
         if (!cond || typeof cond !== 'object' || !cond.field) return null;
 
@@ -652,8 +826,8 @@
         
         // Match field
         let matchedField = filterFields.find(f => 
-          f.id.toLowerCase() === fieldLower || 
-          f.displayName.toLowerCase() === fieldLower
+          (f.id && f.id.toLowerCase() === fieldLower) || 
+          (f.displayName && f.displayName.toLowerCase() === fieldLower)
         );
 
         if (!matchedField) {
@@ -702,6 +876,22 @@
           op = 'RANGE';
         }
 
+        // Force IN operator if value is an array, prevent syntax errors in UI
+        if (Array.isArray(val) && op !== 'IN' && op !== 'NOT IN' && op !== 'CONTAINS' && op !== 'NOT CONTAINS') {
+            op = 'IN'; 
+        }
+
+        // Enforce array format for IN / NOT IN operators
+        if ((op === 'IN' || op === 'NOT IN') && !Array.isArray(val)) {
+            val = [val];
+        }
+
+        // Simplify single-item array in IN to EQUAL operator
+        if (Array.isArray(val) && val.length === 1 && op === 'IN') {
+            op = '=';
+            val = val[0];
+        }
+
         if (matchedField.operators && matchedField.operators.length > 0) {
           const isDateField = matchedField.type === 'date' || matchedField.type === 'dateTime';
           if (op === 'RANGE' && isDateField) {
@@ -723,16 +913,94 @@
           return v;
         };
 
-        if (matchedField.id === 'iteration' || matchedField.id === 'area') {
+        const resolveFullPath = (shortVal, fullPaths) => {
+          if (typeof shortVal !== 'string' || !fullPaths || fullPaths.length === 0) return shortVal;
+          const valLower = shortVal.toLowerCase().trim();
+          if (valLower.includes('\\')) return shortVal;
+          
+          const matched = fullPaths.find(p => p.toLowerCase().endsWith('\\' + valLower) || p.toLowerCase() === valLower);
+          return matched ? matched : shortVal;
+        };
+
+        const resolveAllowedValue = (v, allowed) => {
+          if (typeof v !== 'string' || !allowed || allowed.length === 0) return v;
+          const cleanVal = v.toLowerCase().trim();
+          
+          let matched = allowed.find(a => a.toLowerCase() === cleanVal);
+          if (matched) return matched;
+          
+          matched = allowed.find(a => a.toLowerCase().includes(cleanVal) || cleanVal.includes(a.toLowerCase()));
+          if (matched) return matched;
+          
+          return v;
+        };
+
+        if (matchedField.id === 'iteration') {
           val = cleanAnnotation(val);
+          if (matchedField.allowedValues) {
+            if (Array.isArray(val)) {
+              val = val.map(v => resolveFullPath(v, matchedField.allowedValues));
+            } else {
+              val = resolveFullPath(val, matchedField.allowedValues);
+            }
+          }
+        } else if (matchedField.id === 'area') {
+          val = cleanAnnotation(val);
+          if (matchedField.allowedValues) {
+            if (Array.isArray(val)) {
+              val = val.map(v => resolveFullPath(v, matchedField.allowedValues));
+            } else {
+              val = resolveFullPath(val, matchedField.allowedValues);
+            }
+          }
+        }
+
+        // Fuzzy resolve values for closed lists (e.g. type, state)
+        if (matchedField.allowedValues && matchedField.allowedValues.length > 0 && 
+            matchedField.id !== 'iteration' && matchedField.id !== 'area' && 
+            matchedField.id !== 'tags' && matchedField.id !== 'assigned') {
+          if (Array.isArray(val)) {
+            val = val.map(v => resolveAllowedValue(v, matchedField.allowedValues));
+          } else {
+            val = resolveAllowedValue(val, matchedField.allowedValues);
+          }
         }
 
         // Fuzzy resolve identities
         if (matchedField.type === 'user' || matchedField.id === 'assigned') {
-          if (Array.isArray(val)) {
-            val = await Promise.all(val.map(v => this.resolveIdentity(v)));
+          const valArray = Array.isArray(val) ? val : [val];
+          
+          let resolvedArray = (await Promise.all(valArray.map(v => this.resolveIdentity(v, matchedAssignees)))).flat();
+          
+          // Identify unresolved items (i.e. those that are not @me and not in matchedAssignees list)
+          const matchedAssigneesList = Object.values(matchedAssignees).flat();
+          const unresolvedIdxs = [];
+          for (let i = 0; i < resolvedArray.length; i++) {
+            const item = resolvedArray[i];
+            if (item !== '@me' && !matchedAssigneesList.includes(item)) {
+              unresolvedIdxs.push(i);
+            }
+          }
+          
+          // Find matchedAssignees that were NOT matched by any of the resolved items
+          const unmatchedAssignees = matchedAssigneesList.filter(u => !resolvedArray.includes(u));
+          
+          // Map unresolved values to unmatched assignees by relative order of appearance (index-based)
+          for (let k = 0; k < Math.min(unresolvedIdxs.length, unmatchedAssignees.length); k++) {
+            resolvedArray[unresolvedIdxs[k]] = unmatchedAssignees[k];
+          }
+          
+           const finalResolved = resolvedArray.filter(Boolean);
+          if (finalResolved.length > 1) {
+            val = finalResolved;
+            op = 'IN';
+          } else if (finalResolved.length === 1) {
+            val = finalResolved[0];
+            if (op === 'IN') {
+              op = '='; // Simplify back to equals if only one matched
+            }
           } else {
-            val = await this.resolveIdentity(val);
+            val = cond.value;
           }
         }
 
@@ -748,8 +1016,6 @@
 
       // Transform raw input rules into standard groups (cards)
       if (rootGroup.logic === 'AND') {
-        // Flatten simple AND queries into a single group card under a root OR.
-        // If there is a nested OR group, distribute it to multiple AND cards to fit the UI's 2-level nesting limit.
         const conditions = [];
         const nestedOrGroups = [];
         
@@ -779,7 +1045,6 @@
 
         if (nestedOrGroups.length > 0) {
           const cards = [];
-          // Distribute the first nested OR group across the base conditions
           const orGroup = nestedOrGroups[0];
           for (const orCond of orGroup) {
             const cardConditions = [
@@ -816,7 +1081,6 @@
         };
         return rootOR;
       } else {
-        // Root is OR - process as separate AND cards
         const cards = [];
         for (const rule of rules) {
           if (rule && rule.logic && Array.isArray(rule.rules)) {
@@ -832,7 +1096,6 @@
               rules: cardConditions
             });
           } else if (rule && rule.field) {
-            // Individual rule directly under OR root - wrap in its own AND card
             const cond = await processCondition(rule);
             if (cond) {
               cards.push({
@@ -866,12 +1129,25 @@
     /**
      * Resolves the user identity string against the roster.
      */
-    async resolveIdentity(value) {
+    async resolveIdentity(value, matchedAssignees = {}) {
       if (!value || typeof value !== 'string') return value;
       
       const cleanVal = value.trim();
-      if (cleanVal.toLowerCase() === 'me' || cleanVal === '@me') {
+      const lval = cleanVal.toLowerCase();
+      if (lval === 'me' || lval === '@me') {
         return '@me';
+      }
+
+      // 1. Try matching against matchedAssignees keys (case-insensitive)
+      if (matchedAssignees && typeof matchedAssignees === 'object') {
+        const matchedKey = Object.keys(matchedAssignees).find(k => 
+          k.toLowerCase() === lval || 
+          lval.includes(k.toLowerCase()) || 
+          k.toLowerCase().includes(lval)
+        );
+        if (matchedKey) {
+          return matchedAssignees[matchedKey];
+        }
       }
 
       try {
@@ -880,7 +1156,6 @@
           : [];
         
         if (assignees && assignees.length > 0) {
-          const lval = cleanVal.toLowerCase();
           // 1. Exact match
           let matched = assignees.find(u => u.toLowerCase() === lval);
           if (matched) return matched;
@@ -894,12 +1169,16 @@
       }
       return cleanVal;
     }
+
+    /**
+     * Extracts exact matching tags from the query using AI.
+     */
     async _matchTagsSemantically(provider, query, tagsField, options) {
       if (!tagsField || !tagsField.allowedValues || tagsField.allowedValues.length === 0) {
         return;
       }
       const tagSession = typeof provider.createSession === 'function'
-        ? await provider.createSession("You are a tag selection assistant. Select up to 8 relevant tags.", { temperature: 0.1 })
+        ? await provider.createSession("You are a tag selection assistant. Select up to 15 relevant tags and output JSON array.", { temperature: 0.1 })
         : null;
       let matchedTagsText = "";
       try {
@@ -909,7 +1188,7 @@
         if (tagSession) {
           matchedTagsText = await tagSession.prompt(matchPrompt);
         } else {
-          matchedTagsText = await provider.prompt("You are a tag selection assistant. Select up to 8 relevant tags.", matchPrompt, options);
+          matchedTagsText = await provider.prompt("You are a tag selection assistant. Select up to 15 relevant tags and output JSON array.", matchPrompt, options);
         }
       } catch (e) {
         console.warn("Semantic tag matching failed:", e);
@@ -918,12 +1197,128 @@
       }
       
       let semanticMatchedTags = [];
-      if (matchedTagsText && !matchedTagsText.toLowerCase().includes('none')) {
-        const names = matchedTagsText.split(',').map(s => s.trim().toLowerCase());
-        semanticMatchedTags = tagsField.allowedValues.filter(tag => names.includes(tag.toLowerCase()));
+      if (matchedTagsText) {
+          try {
+              // Re-use robust extractJSON method to get the array
+              const jsonStr = this.extractJSON(matchedTagsText);
+              const names = JSON.parse(jsonStr);
+              if (Array.isArray(names)) {
+                 const lowerNames = names.map(s => String(s).trim().toLowerCase());
+                 semanticMatchedTags = tagsField.allowedValues.filter(tag => lowerNames.includes(tag.toLowerCase()));
+              }
+          } catch(err) {
+              console.warn("Failed to parse tags JSON, falling back to string matching", err);
+              // Fallback to old comma logic if model failed to output JSON
+              const names = matchedTagsText.split(',').map(s => s.trim().toLowerCase());
+              semanticMatchedTags = tagsField.allowedValues.filter(tag => names.includes(tag.toLowerCase()));
+          }
       }
       console.log("[AI Search] Semantic matched tags:", semanticMatchedTags);
-      tagsField.allowedValues = semanticMatchedTags;
+      if (semanticMatchedTags.length > 0) {
+        tagsField.allowedValues = semanticMatchedTags;
+      }
+    }
+
+    /**
+     * Extracts exact matching assignee names from the query using AI.
+     */
+    async _matchAssigneesSemantically(provider, query, assignees, options) {
+      if (!assignees || assignees.length === 0) {
+        return {};
+      }
+      
+      const session = typeof provider.createSession === 'function'
+        ? await provider.createSession("You are an entity resolution assistant. Output ONLY a valid JSON object mapping query references to roster names.", { temperature: 0.1 })
+        : null;
+        
+      let matchedText = "";
+      try {
+        const matchPrompt = global.SEARCH_MATCH_ASSIGNEES_PROMPT
+          .replace(/\${assigneesList}/g, assignees.join(', '))
+          .replace(/\${query}/g, query);
+        
+        if (session) {
+          matchedText = await session.prompt(matchPrompt);
+        } else {
+          matchedText = await provider.prompt("You are an entity resolution assistant. Output ONLY a valid JSON object mapping query references to roster names.", matchPrompt, options);
+        }
+      } catch (e) {
+        console.warn("Semantic assignees matching failed:", e);
+      } finally {
+        if (session) session.destroy();
+      }
+      
+      let matchedAssigneesMap = {};
+      if (matchedText) {
+        try {
+          const jsonStr = this.extractJSON(matchedText);
+          const parsed = JSON.parse(jsonStr);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const lowerRoster = assignees.map(a => a.toLowerCase());
+            for (const key of Object.keys(parsed)) {
+              const val = parsed[key];
+              if (val === '@me' || lowerRoster.includes(String(val).toLowerCase().trim())) {
+                const exact = val === '@me' ? val : assignees.find(a => a.toLowerCase() === String(val).toLowerCase().trim());
+                matchedAssigneesMap[key] = exact || val;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("Failed to parse assignees JSON object", err);
+        }
+      }
+      console.log("[AI Search] Semantic matched assignees map:", JSON.stringify(matchedAssigneesMap));
+      return matchedAssigneesMap;
+    }
+
+    /**
+     * Extracts exact matching date ranges from the query using AI.
+     */
+    async _matchDatesSemantically(provider, query, dateFields, options) {
+      if (!dateFields || dateFields.length === 0) {
+        return {};
+      }
+      
+      const session = typeof provider.createSession === 'function'
+        ? await provider.createSession("You are a date extraction assistant. Output ONLY a valid JSON object.", { temperature: 0.1 })
+        : null;
+        
+      let matchedText = "";
+      try {
+        const matchPrompt = global.SEARCH_MATCH_DATES_PROMPT
+          .replace(/\${dateFields}/g, dateFields.join(', '))
+          .replace(/\${query}/g, query);
+        
+        if (session) {
+          matchedText = await session.prompt(matchPrompt);
+        } else {
+          matchedText = await provider.prompt("You are a date extraction assistant. Output ONLY a valid JSON object.", matchPrompt, options);
+        }
+      } catch (e) {
+        console.warn("Semantic dates matching failed:", e);
+      } finally {
+        if (session) session.destroy();
+      }
+      
+      let matchedDates = {};
+      if (matchedText) {
+        try {
+          const jsonStr = this.extractJSON(matchedText);
+          const parsed = JSON.parse(jsonStr);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+             const dateFieldsLower = dateFields.map(f => f.toLowerCase());
+             for (const key of Object.keys(parsed)) {
+               if (dateFieldsLower.includes(key.toLowerCase())) {
+                 matchedDates[key.toLowerCase()] = parsed[key];
+               }
+             }
+          }
+        } catch (err) {
+          console.warn("Failed to parse dates JSON", err);
+        }
+      }
+      console.log("[AI Search] Semantic matched dates:", matchedDates);
+      return matchedDates;
     }
 
     normalizeValueDateMacros(val) {
@@ -987,7 +1382,6 @@
       return Math.random().toString(36).substring(2, 9);
     }
   }
-
   // Export
   global.AISearchService = AISearchService;
   global.aiSearchService = new AISearchService();

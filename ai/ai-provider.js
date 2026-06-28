@@ -111,6 +111,7 @@
     constructor() {
       this.providers = [];
       this.listeners = [];
+      this.initializedPromise = null;
     }
 
     /**
@@ -133,10 +134,122 @@
     }
 
     /**
+     * Ensures registry has loaded all custom providers from storage.
+     */
+    async ensureInitialized() {
+      if (this.initializedPromise) return this.initializedPromise;
+      this.initializedPromise = this._init();
+      return this.initializedPromise;
+    }
+
+    async _init() {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        // Filter out legacy custom-cloud provider registered by script tag
+        this.providers = this.providers.filter(p => p.id !== 'custom-cloud');
+
+        const data = await chrome.storage.local.get(['ai_custom_providers']);
+        let configs = data.ai_custom_providers || [];
+
+        if (configs.length === 0) {
+          // Perform legacy config migration
+          const legacyData = await chrome.storage.local.get(['ai_custom_config', 'ai_custom_config_gemini', 'ai_custom_config_openai']);
+          
+          let geminiKey = '';
+          let geminiEndpoint = '';
+          let geminiModel = 'gemini-3.1-flash-lite';
+          
+          let openaiKey = '';
+          let openaiEndpoint = '';
+          let openaiModel = 'gpt-4o-mini';
+          
+          if (legacyData.ai_custom_config_gemini) {
+            geminiKey = legacyData.ai_custom_config_gemini.apiKey || '';
+            geminiEndpoint = legacyData.ai_custom_config_gemini.endpoint || '';
+            geminiModel = legacyData.ai_custom_config_gemini.modelName || 'gemini-3.1-flash-lite';
+          }
+          if (legacyData.ai_custom_config_openai) {
+            openaiKey = legacyData.ai_custom_config_openai.apiKey || '';
+            openaiEndpoint = legacyData.ai_custom_config_openai.endpoint || '';
+            openaiModel = legacyData.ai_custom_config_openai.modelName || 'gpt-4o-mini';
+          }
+          if (legacyData.ai_custom_config) {
+            const lc = legacyData.ai_custom_config;
+            if (lc.providerType === 'gemini') {
+              geminiKey = lc.apiKey || geminiKey;
+              geminiEndpoint = lc.endpoint || geminiEndpoint;
+              geminiModel = lc.modelName || geminiModel;
+            } else if (lc.providerType === 'openai') {
+              openaiKey = lc.apiKey || openaiKey;
+              openaiEndpoint = lc.endpoint || openaiEndpoint;
+              openaiModel = lc.modelName || openaiModel;
+            }
+          }
+          
+          configs = [
+            {
+              id: 'custom-cloud-gemini',
+              displayName: 'Gemini Cloud',
+              providerType: 'gemini',
+              apiKey: geminiKey,
+              endpoint: geminiEndpoint,
+              modelName: geminiModel,
+              isEnabled: true
+            },
+            {
+              id: 'custom-cloud-openai',
+              displayName: 'OpenAI GPT',
+              providerType: 'openai',
+              apiKey: openaiKey,
+              endpoint: openaiEndpoint,
+              modelName: openaiModel,
+              isEnabled: true
+            }
+          ];
+          await chrome.storage.local.set({ ai_custom_providers: configs });
+        }
+
+        // Register each custom provider from storage
+        for (const config of configs) {
+          if (global.CustomCloudProvider) {
+            const provider = new global.CustomCloudProvider(config.id, config.displayName, config);
+            this.register(provider);
+          }
+        }
+      }
+    }
+
+    /**
+     * Reload custom providers from storage (e.g. after config changes).
+     */
+    async reloadCustomProviders() {
+      // Keep only built-in Chrome API
+      this.providers = this.providers.filter(p => p.id === 'chrome-prompt-api');
+      this.initializedPromise = null;
+      await this.ensureInitialized();
+    }
+
+    /**
      * Returns the active provider (the first supported one with status != 'unsupported').
      * @returns {Promise<AIProvider|null>}
      */
     async getActive() {
+      await this.ensureInitialized();
+      let preferredId = 'chrome-prompt-api';
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const data = await chrome.storage.local.get(['ai_selected_provider']);
+        if (data.ai_selected_provider) {
+          preferredId = data.ai_selected_provider;
+        }
+      }
+
+      const preferred = this.providers.find(p => p.id === preferredId);
+      if (preferred && preferred.isSupported()) {
+        const avail = await preferred.getAvailability();
+        if (avail !== 'unsupported') {
+          return preferred;
+        }
+      }
+
       for (const provider of this.providers) {
         if (provider.isSupported()) {
           const avail = await provider.getAvailability();
@@ -153,21 +266,12 @@
      * @returns {Promise<'unsupported'|'downloadable'|'downloading'|'available'>}
      */
     async getBestAvailability() {
-      let best = 'unsupported';
-      for (const provider of this.providers) {
-        if (provider.isSupported()) {
-          const avail = await provider.getAvailability();
-          if (avail === 'available') {
-            return 'available';
-          }
-          if (avail === 'downloading') {
-            best = 'downloading';
-          } else if (avail === 'downloadable' && best !== 'downloading') {
-            best = 'downloadable';
-          }
-        }
+      await this.ensureInitialized();
+      const active = await this.getActive();
+      if (active) {
+        return await active.getAvailability();
       }
-      return best;
+      return 'unsupported';
     }
 
     /**
