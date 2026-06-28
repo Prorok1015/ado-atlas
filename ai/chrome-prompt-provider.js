@@ -142,8 +142,6 @@
       // We create a fresh session for each search query with its custom prompt.
       try {
 
-        console.log(systemPrompt);
-
         const createOptions = {};
         if (options.signal) {
           createOptions.signal = options.signal;

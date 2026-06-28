@@ -100,6 +100,12 @@ Azure DevOps REST API directly with the user's Personal Access Token.
 - **Host permission `https://login.microsoftonline.com/*`** — Microsoft sign-in
   only: completes the OAuth (PKCE) sign-in and refreshes the access token. Not
   contacted when the user authenticates with a PAT.
+- **alarms** — Power background alarms to periodically trigger checks for notifications and subscription updates.
+- **notifications** — Displays rich OS-level desktop notifications when the user is mentioned in a work item or when updates occur on followed items.
+- **tabs** — Used to query and switch focus to existing Azure DevOps tabs when clicking the "Open" button in a notification, rather than opening redundant tabs.
+- **aiLanguageModelOriginTrial** — Enables Chrome's experimental built-in Gemini Nano API (`window.ai`) to run natural language search query parsing locally and offline on the user's device.
+- **Host permission `https://generativelanguage.googleapis.com/*`** — Connects directly to the Google Gemini API to run advanced semantic query parsing when cloud AI provider is selected.
+- **Host permission `https://api.openai.com/*`** — Connects directly to the OpenAI API to run advanced semantic query parsing when cloud AI provider is selected.
 
 ### Are you using remote code?
 **No.** All scripts (including the Cytoscape/dagre libraries) are bundled in the

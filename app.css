@@ -55,6 +55,10 @@ body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-size:1rem;l
 .btn:hover{border-color:var(--accent)}
 .btn:disabled{opacity:.4;cursor:default}
 .btn:disabled:hover{border-color:var(--line)}
+.btn-primary{background:var(--accent);color:#fff !important;border-color:var(--accent)}
+.btn-primary:hover:not(:disabled){filter:brightness(1.15)}
+.btn-secondary{background:var(--panel2);color:var(--txt);border-color:var(--line)}
+.btn-secondary:hover:not(:disabled){border-color:var(--accent)}
 select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:0.462rem;padding:0.308rem 0.538rem;font:inherit;font-size:0.923rem}
 /* Force all toolbar controls to the same outer height: line-height 18 + vertical pad 6 (+border 2 for .btn / select; +seg border 2 wraps inner 24) = 2rem */
 #bar > .btn, #bar > .popwrap > .btn, #bar > .projbadge, #bar > select{padding-top:0.231rem;padding-bottom:0.231rem;line-height:1.385rem;box-sizing:border-box}
@@ -2057,6 +2061,16 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   background: linear-gradient(135deg, rgba(114, 9, 183, 0.25), rgba(63, 55, 201, 0.25)) !important;
   border-color: rgba(168, 85, 247, 0.6) !important;
   color: #d8b4fe !important;
+}
+
+body.light .btn-ai {
+  color: #7209b7 !important;
+  border-color: rgba(114, 9, 183, 0.4) !important;
+}
+
+body.light .btn-ai:hover {
+  color: #560bad !important;
+  border-color: rgba(114, 9, 183, 0.6) !important;
 }
 
 

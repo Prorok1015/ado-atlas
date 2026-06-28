@@ -538,16 +538,16 @@
   transform: translateX(-50%);
   margin-top: 8px;
   width: 240px;
-  background: rgba(30, 30, 34, 0.95);
+  background: var(--panel);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: #f0f0f0;
+  color: var(--txt);
   padding: 12px;
   border-radius: 8px;
   font-size: 12px;
   line-height: 1.5;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 var(--line);
+  border: 1px solid var(--line);
   z-index: 1000;
   text-align: left;
   font-weight: normal;
@@ -559,21 +559,21 @@
 }
 
 .logic-tooltip b {
-  color: #fff;
+  color: var(--txt);
   font-weight: 600;
 }
 
 .logic-tooltip code {
-  background: rgba(255,255,255,0.1);
+  background: var(--panel2);
   padding: 2px 5px;
   border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 11px;
-  color: #72a9df;
+  color: var(--accent);
 }
 
 .logic-tooltip i {
-  color: #aaa;
+  color: var(--muted);
 }
 
 .logic-tooltip::before {
@@ -583,7 +583,7 @@
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-bottom-color: rgba(30, 30, 34, 0.95);
+  border-bottom-color: var(--panel);
 }
 
 @keyframes tooltipFadeIn {

@@ -150,15 +150,11 @@
         pipelineResult = await this.executeThoroughPipeline(provider, userQuery, filterFields, assignees, responseSchema, warnings, options);
       }
 
-      console.log("[AI Search] Raw AI response:", JSON.stringify(pipelineResult.rawIR));
-
       // 5. Enrich and normalize
       const enrichedIR = await this.enrichIR(pipelineResult.rawIR, filterFields, warnings, {
         matchedAssignees: pipelineResult.matchedAssignees,
         matchedDates: pipelineResult.matchedDates
       });
-
-      console.log("[AI Search] Enriched IR:", JSON.stringify(enrichedIR));
 
       return {
         ir: { where: enrichedIR },
@@ -1213,7 +1209,6 @@
               semanticMatchedTags = tagsField.allowedValues.filter(tag => names.includes(tag.toLowerCase()));
           }
       }
-      console.log("[AI Search] Semantic matched tags:", semanticMatchedTags);
       if (semanticMatchedTags.length > 0) {
         tagsField.allowedValues = semanticMatchedTags;
       }
@@ -1267,7 +1262,6 @@
           console.warn("Failed to parse assignees JSON object", err);
         }
       }
-      console.log("[AI Search] Semantic matched assignees map:", JSON.stringify(matchedAssigneesMap));
       return matchedAssigneesMap;
     }
 
@@ -1317,7 +1311,6 @@
           console.warn("Failed to parse dates JSON", err);
         }
       }
-      console.log("[AI Search] Semantic matched dates:", matchedDates);
       return matchedDates;
     }
 

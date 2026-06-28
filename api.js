@@ -396,9 +396,7 @@ function mapWorkItem(rawItem, descField) {
 // ---------- WIQL filter builder ----------
 // Pure logic lives in lib.js; bind it to this module's FIELD_REGISTRY.
 function buildClauses(filters) {
-  console.log("[WIQL Compiler] Input FilterIR:", JSON.stringify(filters));
   const res = AdoLib.buildClauses(FIELD_REGISTRY, filters);
-  console.log("[WIQL Compiler] Output WIQL clauses:", JSON.stringify(res));
   return res;
 }
 
@@ -451,7 +449,6 @@ async function list({ wtype, parent, text, order, filters, signal } = {}) {
     ? `[${FIELD_REGISTRY.priority.ref}], [${FIELD_REGISTRY.id.ref}]`
     : `[${FIELD_REGISTRY.id.ref}]`;
   const wiql = `SELECT [${FIELD_REGISTRY.id.ref}] FROM WorkItems WHERE ` + where.join(" AND ") + " ORDER BY " + orderBy;
-  console.log("Constructed WIQL:", wiql);
   const ids = await wiqlIds(wiql, LIST_CAP, signal);
   const items = await batchFetch(ids, null, signal);
   const out = items.map(x => mapWorkItem(x)); // NOTE: descField is not passed here, falling back to System.Description

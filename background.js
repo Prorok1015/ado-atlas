@@ -77,7 +77,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.action === "fetchCloudAI") {
     const { url, method, headers, body } = msg;
-    console.log("[Background] Proxying fetchCloudAI request to:", url);
     fetch(url, { method, headers, body })
       .then(async (res) => {
         const text = await res.text();
