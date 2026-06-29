@@ -3153,7 +3153,7 @@ async function openItem(id){
   // ── Populate the sidebar with fresh data ──
   cur=id;
   activeItemData=d;
-  SubscriptionManager.updateButtonState(id);
+  FollowManager.updateButtonState(id);
   api.comments(id).then(cs => {
     if (cur !== id) return;
     const badge = $('s_activity_count');
@@ -4440,7 +4440,7 @@ async function quickSave(field){
   });
 
   if(r&&r.rev) {
-    SubscriptionManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
+    FollowManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
     if(store.nodes[id]) store.nodes[id].rev = r.rev;
   }
   refreshDirty();setSaveChip('saved');
@@ -4479,7 +4479,7 @@ async function save(){
     }
   });
   if(r&&r.rev) {
-    SubscriptionManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
+    FollowManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
     if(store.nodes[id]) store.nodes[id].rev = r.rev;
   }
   refreshDirty();setSaveChip('saved');setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
@@ -6323,6 +6323,7 @@ const BAR_ITEMS=[
   {id:'fit',label:'Fit graph'},
   {id:'bar-spacer',label:'<ui-icon name="arrow-left-right"></ui-icon> Right-align spacer (flexible gap)'},
   {id:'export',label:'Export (CSV / JSON)'},
+  {id:'analytics_btn',label:'Analytics (Pro)'},
   {id:'patbadge',label:'PAT badge'},
   {id:'legend',label:'Type legend'},
   {id:'settings-wrap',label:'Settings menu (<ui-icon name="settings"></ui-icon>)'},
@@ -8212,7 +8213,9 @@ async function initialBoot(postSetup){
     const gb=$('vhbadge');if(!p.contains(e.target)&&e.target!==gb&&(!gb||!gb.contains(e.target)))p.style.display='none';});
   $('theme').onclick=cycleTheme;
   try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')applyTheme('auto');});}catch(e){}
-  $('export').querySelectorAll('button').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
+  // Only wire real export buttons (data-x). Pro placeholders (data-pro-feature)
+  // in the same segment are handled by the delegated premium handler.
+  $('export').querySelectorAll('button[data-x]').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
   $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}setAutoRefresh(s);};
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
   $('f_follow_notify').onclick=cycleFollowNotify;
@@ -8265,7 +8268,7 @@ async function initialBoot(postSetup){
       }
     });
     await chrome.storage.local.set({ followedItems });
-    if(cur!=null)SubscriptionManager.updateButtonState(cur);
+    if(cur!=null)FollowManager.updateButtonState(cur);
     updateFollowedBtnVisual();
     syncBulkBarValues();
   };
@@ -8277,7 +8280,7 @@ async function initialBoot(postSetup){
       delete followedItems[id];
     });
     await chrome.storage.local.set({ followedItems });
-    if(cur!=null)SubscriptionManager.updateButtonState(cur);
+    if(cur!=null)FollowManager.updateButtonState(cur);
     updateFollowedBtnVisual();
     syncBulkBarValues();
   };
@@ -8326,7 +8329,7 @@ async function initialBoot(postSetup){
   $('s_close').onclick=()=>closePanel();
   $('s_follow').onclick=async()=>{
     if(cur==null||!activeItemData)return;
-    await SubscriptionManager.toggleFollow(cur,activeItemData);
+    await FollowManager.toggleFollow(cur,activeItemData);
   };
   // Native "leave site?" guard for page reload / tab close / Cmd+W. Modern
   // browsers ignore custom text — assigning any non-empty returnValue is enough
@@ -8742,10 +8745,30 @@ async function loadFilterData(){
   ]);
 }
 
+// Delegated handler for any Pro feature entry point. Mark a clickable element
+// with `data-pro-feature="<key>"` (key must exist in PremiumPaywall.FEATURES) and
+// a click opens the paywall for Free users, or shows a "coming soon" placeholder
+// for Pro users until the real feature ships (Stage 3+).
+function wirePremiumPlaceholders(){
+  document.addEventListener('click',(e)=>{
+    const el=e.target.closest('[data-pro-feature]');
+    if(!el)return;
+    e.preventDefault();
+    const feature=el.dataset.proFeature;
+    if(window.EntitlementManager && !window.EntitlementManager.gate(feature))return; // Free → paywall shown
+    if(window.customAlert)window.customAlert('This Pro feature is coming soon.','Pro');
+  });
+  // "Explore ADO Atlas Pro" — opens the full premium feature catalog.
+  const explore=$('pro_explore_btn');
+  if(explore)explore.addEventListener('click',()=>{ if(window.ProFeaturesPanel)window.ProFeaturesPanel.open(); });
+}
+
 /* ---------- boot ---------- */
 window.addEventListener('DOMContentLoaded',async()=>{
   wireSetup();
-  SubscriptionManager.init(openItem);
+  FollowManager.init(openItem);
+  if (window.EntitlementManager) await window.EntitlementManager.init();
+  wirePremiumPlaceholders();
   const cfg=await api.getConfig();
   projectName=cfg.project;                  // "no sprint" root path fallback
   const hasAuth=cfg.authMode==='oauth'?(!!cfg.oauthAccess||!!cfg.oauthRefresh):(!!cfg.pat&&!!cfg.org&&!!cfg.project);

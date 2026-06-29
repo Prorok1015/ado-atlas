@@ -1061,8 +1061,46 @@
       container.appendChild(nanoTab);
     }
 
-    // 2. Render Custom Cloud Connections
-    const customProviders = allProviders.filter(p => p.id !== 'chrome-prompt-api' && p.id !== 'custom-cloud');
+    // 1b. ADO Atlas Cloud AI (Pro) placeholder tab — not yet live; opens the paywall.
+    {
+      const proTab = document.createElement('div');
+      proTab.className = 'ai-modal-tab';
+      proTab.id = 'ai-provider-tab-pro';
+      proTab.style.position = 'relative';
+      proTab.innerHTML = `<span style="display:flex; align-items:center; color:#f2a900;"><ui-icon name="cloud"></ui-icon></span><span class="pro-badge-tiny" style="position:absolute; top:-0.3rem; left:-0.3rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span>`;
+      proTab.onmouseenter = () => {
+        if (window.LayerManager) {
+          globalTooltip.innerHTML = `
+            <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">ADO Atlas Cloud AI</div>
+            <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">Cloud GPT / Claude via our proxy — no API key needed</div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: #f2a900;">PRO</div>
+          `;
+          globalTooltip.classList.add('right-tooltip');
+          globalTooltip.style.transform = 'none';
+          globalTooltip.style.display = 'block';
+          const rect = proTab.getBoundingClientRect();
+          const tooltipHeight = globalTooltip.offsetHeight || 60;
+          globalTooltip.style.position = 'absolute';
+          globalTooltip.style.top = (rect.top + window.scrollY + (rect.height - tooltipHeight) / 2) + 'px';
+          globalTooltip.style.left = (rect.right + window.scrollX + 8) + 'px';
+          window.LayerManager.open(globalTooltip, proTab, { isPopover: true, direction: 'right' });
+        }
+      };
+      proTab.onmouseleave = () => {
+        if (window.LayerManager) {
+          globalTooltip.classList.remove('right-tooltip');
+          globalTooltip.style.display = 'none';
+          window.LayerManager.close(globalTooltip);
+        }
+      };
+      proTab.addEventListener('click', () => { if (window.PremiumPaywall) window.PremiumPaywall.open('cloud_ai'); });
+      container.appendChild(proTab);
+    }
+
+    // 2. Render Custom Cloud Connections (BYOK only). The hosted 'ado-atlas-cloud'
+    // (Pro) provider holds no local config/key, so it is not a BYOK card — it gets
+    // its own dedicated card in Stage 2 and is excluded here.
+    const customProviders = allProviders.filter(p => p.id !== 'chrome-prompt-api' && p.id !== 'custom-cloud' && p.id !== 'ado-atlas-cloud');
     for (const provider of customProviders) {
       const isGemini = provider.config.providerType === 'gemini';
       const isConfigured = !!provider.config.apiKey;

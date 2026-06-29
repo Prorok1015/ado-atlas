@@ -48,19 +48,52 @@ async function openAppWindow(itemId) {
   }
 }
 
+// Ensure a stable per-install identifier exists (used for license device
+// binding — see PREMIUM_IMPLEMENTATION_DESIGN.md). Generated once and persisted.
+async function ensureInstallationId() {
+  try {
+    const { installation_id } = await chrome.storage.local.get("installation_id");
+    if (!installation_id) {
+      await chrome.storage.local.set({ installation_id: crypto.randomUUID() });
+    }
+  } catch (e) {
+    console.error("ensureInstallationId failed:", e);
+  }
+}
+
+// STUB (Stage 2): daily license validation against the Go backend.
+// POST { license_key, installation_id } to /api/license/validate; on success
+// persist { entitlement: { tier, status, expires_at, last_validated_at: Date.now() } }.
+// On network error DO NOT downgrade — the frontend EntitlementManager applies a
+// 7-day grace period based on last_validated_at.
+async function validateLicenseBackground() {
+  try {
+    const { license_key } = await chrome.storage.local.get("license_key");
+    if (!license_key) return; // Free user — nothing to validate.
+    // TODO(Stage 2): implement backend call once the Go API is live.
+  } catch (e) {
+    console.error("validateLicenseBackground failed:", e);
+  }
+}
+
 // Alarms to check for updates
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create("check-notifications", { periodInMinutes: 5 });
+  chrome.alarms.create("validate-license", { periodInMinutes: 1440 }); // daily
+  ensureInstallationId();
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === "check-notifications") {
     await runAllNotificationChecks();
+  } else if (alarm.name === "validate-license") {
+    await validateLicenseBackground();
   }
 });
 
 // Run check on startup/service worker load
 chrome.runtime.onStartup.addListener(async () => {
+  await ensureInstallationId();
   await runAllNotificationChecks();
 });
 
@@ -85,6 +118,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch((err) => {
         if (sendResponse) sendResponse({ error: err.message });
       });
+    return true; // Keep channel open for async response
+  }
+  if (msg.action === "fetchHostedAI") {
+    // STUB (Stage 2): forward { license_key, installation_id, prompt, context } to
+    // the Go backend /api/ai/prompt, which injects the server-side LLM key and
+    // enforces per-license rate limits. The backend is not live yet.
+    if (sendResponse) sendResponse({ error: "Hosted AI proxy is not available yet." });
     return true; // Keep channel open for async response
   }
 });

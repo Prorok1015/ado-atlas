@@ -6,6 +6,28 @@ body.light{--bg:#f5f7fa;--panel:#fff;--panel2:#eef2f7;--line:#d6dee8;--txt:#1b23
   --cy-bg:#fdfcfa;--cy-dot:#dad6cd;color-scheme:light}
 *{box-sizing:border-box}
 html{margin:0;height:100%;font-size:1rem}
+
+/* ---------- Premium / Pro badge (gold; mirrors the BETA badge geometry) ---------- */
+.pro-badge-tiny{
+  font-size:0.55rem;font-weight:700;
+  background:linear-gradient(135deg,#ffe07a,#f2a900);
+  color:#4a3500;
+  padding:0.077rem 0.308rem;border-radius:0.308rem;
+  text-transform:uppercase;letter-spacing:0.038rem;
+  display:inline-flex;align-items:center;gap:0.18em;line-height:1.2;
+}
+.pro-badge-text{
+  font-size:0.62rem;font-weight:700;
+  background:linear-gradient(135deg,#ffe07a,#f2a900);
+  color:#4a3500;
+  padding:0.077rem 0.385rem;border-radius:0.308rem;
+  text-transform:uppercase;letter-spacing:0.038rem;
+  display:inline-flex;align-items:center;gap:0.22em;margin-left:0.462rem;
+  vertical-align:middle;line-height:1.2;
+}
+/* The leading gem icon inherits the badge's dark text colour (currentColor). */
+.pro-badge-tiny ui-icon svg{width:0.85em;height:0.85em;}
+.pro-badge-text ui-icon svg{width:0.9em;height:0.9em;}
 ui-icon {
   display: inline-flex;
   align-items: center;

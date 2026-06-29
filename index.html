@@ -32,7 +32,8 @@
   </div>
   <button class="btn" id="fit" title="fit graph" style="display:none">Fit</button>
   <span class="barspacer" id="bar-spacer"></span>
-  <div class="seg" id="export" title="export the current (filtered) view"><button data-x="csv"><ui-icon name="download"></ui-icon> CSV</button><button data-x="json">JSON</button></div>
+  <div class="seg" id="export" title="export the current (filtered) view"><button data-x="csv"><ui-icon name="download"></ui-icon> CSV</button><button data-x="json">JSON</button><button data-pro-feature="export" title="High-resolution PDF / Excel export (Pro)">PDF <span class="pro-badge-text"><ui-icon name="gem"></ui-icon>PRO</span></button><button data-pro-feature="export" title="High-resolution PDF / Excel export (Pro)">Excel <span class="pro-badge-text"><ui-icon name="gem"></ui-icon>PRO</span></button></div>
+  <button class="btn" id="analytics_btn" style="position: relative;" data-pro-feature="analytics" title="Process analytics: Cycle Time, Flow Efficiency, WIP trends (Pro)"><ui-icon name="bar-chart"></ui-icon> Analytics <span class="pro-badge-tiny" style="position:absolute; top:-0.385rem; right:-0.385rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span></button>
   <span class="patbadge" id="patbadge" title="PAT validity"></span>
   <span class="legend" id="legend"></span>
   <span class="popwrap" id="settings-wrap">
@@ -76,6 +77,7 @@
       <div class="mrow mrow-full"><button class="btn" id="tutorialbtn" title="Replay interactive feature tours"><ui-icon name="book"></ui-icon> Interactive Tours…</button></div>
       <div class="mrow mrow-full"><button class="btn btn-ai" id="ai_settings_btn" style="position: relative;" title="Configure on-device or cloud AI models"><ui-icon name="sparkles"></ui-icon> AI Models & Connections… <span class="ai-beta-badge-tiny" style="position: absolute; top: -0.385rem; right: -0.385rem; font-size: 0.615rem; padding: 0.077rem 0.308rem; pointer-events: none; z-index: 5;">BETA</span></button></div>
       <div class="mrow mrow-full"><button class="btn" id="settingsbtn" title="Azure DevOps connection (PAT / org / project)"><ui-icon name="settings"></ui-icon> Connection (PAT / org / project)…</button></div>
+      <div class="mrow mrow-full"><button class="btn" id="pro_explore_btn" style="position:relative" title="See everything in ADO Atlas Pro"><ui-icon name="gem"></ui-icon> Explore ADO Atlas Pro <span class="pro-badge-tiny" style="position:absolute; top:-0.385rem; right:-0.385rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span></button></div>
     </div>
   </span>
 </div>
@@ -568,6 +570,8 @@
     </div>
 
     <div id="auth-oauth" style="display:none">
+      <button class="btn save" style="position:relative; width:100%; justify-content:center; margin-bottom:12px" data-pro-feature="hosted_oauth" title="Sign in with Microsoft in one click — no Entra app registration required (Pro)"><ui-icon name="key"></ui-icon> 1-Click Microsoft Sign-in <span class="pro-badge-tiny" style="position:absolute; top:-0.385rem; right:-0.385rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span></button>
+      <p style="text-align:center; color:var(--muted); font-size:12px; margin:0 0 12px">— or register your own app (free) —</p>
       <p>Sign in with your Microsoft (Entra ID) account — no token to copy, and it
          refreshes automatically. A one-time app registration is required; see
          <a href="https://prorok1015.github.io/ado-atlas/oauth-setup.html" target="_blank" rel="noopener noreferrer">the setup guide</a>.</p>
@@ -655,12 +659,16 @@
 <script src="components/tags-editor.js"></script>
 <script src="components/date-range-picker.js"></script>
 <script src="components/tutorial-manager.js"></script>
-<script src="components/subscription-manager.js"></script>
+<script src="components/follow-manager.js"></script>
+<script src="components/entitlement-manager.js"></script>
+<script src="components/premium-paywall.js"></script>
+<script src="components/pro-features.js"></script>
 <script src="components/filter-builder-modal.js"></script>
 <script src="components/filter-manager.js"></script>
 <script src="ai/ai-provider.js"></script>
 <script src="ai/chrome-prompt-provider.js"></script>
 <script src="ai/custom-cloud-provider.js"></script>
+<script src="ai/hosted-cloud-provider.js"></script>
 <script src="ai/prompts/search-prompt.js"></script>
 <script src="ai/ai-search-service.js"></script>
 <script src="components/ai-search-dialog.js"></script>

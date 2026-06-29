@@ -1,4 +1,7 @@
-window.SubscriptionManager = {
+// FollowManager: per-item "follow / watch" feature (the star button + revision
+// tracking for notifications). NOTE: this is NOT billing/premium — the paid-tier
+// entitlement logic lives in the (separate) EntitlementManager.
+window.FollowManager = {
   openItemCallback: null,
 
   init(openItemCallback) {
