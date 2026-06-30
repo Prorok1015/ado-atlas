@@ -37,6 +37,7 @@ const files = [
   "app/export.js",
   "app/types.js",
   "app/timeline.js",
+  "app/item-create.js",
   "app.js"
 ];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
