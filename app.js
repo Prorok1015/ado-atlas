@@ -5241,7 +5241,7 @@ async function showNewItem(parentId){
   $('newitem-err').textContent='';
   $('n_title').value='';$('n_prio').value='';assignedNew.set('',/*silent*/true);
   parentNew.set(parentId!=null?String(parentId):'',/*silent*/true);   // render the parent card + close any open picker
-  fillTypeSelect('n_type','Task');           // ensure options match the project's real types
+  App.types.fillTypeSelect('n_type','Task');           // ensure options match the project's real types
   // sprint picker — same source as the editor's; "(no sprint)" = empty value
   try{const iters=await getIterations();_newIterRoot=iters[0]?iters[0].path.split('\\')[0]:(projectName||'');}
   catch(e){/* sprints are optional */}
@@ -5789,50 +5789,7 @@ async function createSprintSubmit(){
   }finally{btn.disabled=false;$('sp_create').textContent=sprintMode==='edit'?'Save dates':'Create sprint';loadEnd();}
 }
 
-/* ---------- work-item types (sourced from ADO — no hard-coded list) ---------- */
-async function loadTypes(){
-  let types=[];
-  try{
-    const cached=localStorage.getItem('ado.types:'+projectName);
-    if(cached){
-      types=JSON.parse(cached);
-      if(Array.isArray(types)&&types.length){
-        typeList=types;
-        types.forEach(t=>{if(t.color){TYPE_COLOR[t.name]=t.color;
-          document.documentElement.style.setProperty(tyVar(t.name),t.color);}});
-        fillTypeSelect('c_type','Task');fillTypeSelect('n_type','Task');
-        buildLegend();
-        repaintTypes();
-      }
-    }
-  }catch(e){}
-
-  try{types=await api.workItemTypes();}catch(e){types=[];}
-  if(types.length){
-    typeList=types;
-    types.forEach(t=>{if(t.color){TYPE_COLOR[t.name]=t.color;   // canvas graph reads the hex map…
-      document.documentElement.style.setProperty(tyVar(t.name),t.color);}});   // …DOM views read the CSS var (live update)
-    try{localStorage.setItem('ado.types:'+projectName,JSON.stringify(types));}catch(e){}
-  }else if(!typeList.length){
-    typeList=TYPES.map(n=>({name:n,color:TYPE_COLOR[n]||''}));     // offline fallback to the static defaults
-  }
-  fillTypeSelect('c_type','Task');fillTypeSelect('n_type','Task');
-  buildLegend();
-  repaintTypes();                                  // colours just changed → repaint so defaults don't linger
-}
-// DOM views colour via the CSS vars set above, so they update live. Only the
-// canvas graph needs a nudge to re-read the hex map after the colours change.
-function repaintTypes(){ if(mode==='graph'&&cy)cy.style().update(); }
-// (Re)populate a type <select> from the loaded types, keeping the current
-// choice if it's still valid, else falling back to `preferred` then the first.
-function fillTypeSelect(id,preferred){
-  const sel=$(id);if(!sel)return;
-  const names=typeNames(),prev=sel.value;
-  sel.innerHTML='';names.forEach(n=>sel.appendChild(new Option(n,n)));
-  sel.value=names.includes(prev)?prev:(names.includes(preferred)?preferred:(names[0]||''));
-}
-
-function buildLegend(){$('legend').innerHTML=typeNames().map(k=>`<span><i style="background:${tyColor(k)}"></i>${htmlEsc(k)}</span>`).join('');}
+/* work-item types + legend -> app/types.js (App.types.*) */
 
 /* export the current (filtered) view -> app/export.js (App.export.exportView) */
 
@@ -7916,7 +7873,7 @@ async function initialBoot(postSetup){
     window.FilterBuilderModal.preLoad();
   }
 
-  fillTypeSelect('c_type','Task');fillTypeSelect('n_type','Task');   // seed with fallback now; loadTypes() refills from ADO
+  App.types.fillTypeSelect('c_type','Task');App.types.fillTypeSelect('n_type','Task');   // seed with fallback now; App.types.loadTypes() refills from ADO
   // switching view is render-only (no API): graph draws from the store, tree DOM persists
   $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>switchMode(b.dataset.m));
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));depHandleHide();renderGraph();});
@@ -8593,7 +8550,7 @@ async function initialBoot(postSetup){
     }
     const mn=localStorage.getItem('ado.maxNodes');if(mn!==null){maxNodesLimit=parseInt(mn,10);}
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
-  buildLegend();renderFilters();updateFilterCount();updatePatBadge();updateUndoButtons();updateCreateButtons();
+  App.types.buildLegend();renderFilters();updateFilterCount();updatePatBadge();updateUndoButtons();updateCreateButtons();
   setInterval(updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
   await loadIdentity();
   try{
@@ -8665,7 +8622,7 @@ async function loadIdentity(){
 //   - Tags:  distinct tags sampled from recent items
 //   - Sprint: dated iterations (chip value = path, label = short name)
 async function loadFilterData(){
-  await loadTypes();                          // real work-item types first (drives the lines below + create dropdowns)
+  await App.types.loadTypes();                          // real work-item types first (drives the lines below + create dropdowns)
   await Promise.all([
     (async()=>{try{
       const allTypes = typeNames();

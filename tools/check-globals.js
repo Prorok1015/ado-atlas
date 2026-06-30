@@ -34,6 +34,7 @@ const files = [
   "app/const.js",
   "app/state-globals.js",
   "app/export.js",
+  "app/types.js",
   "app.js"
 ];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
