@@ -2235,7 +2235,7 @@ async function _refresh(){
   else if(mode==='board')renderBoard();
   else if(mode==='timeline')App.timeline.render();
   if(openSprintPath&&$('sprintview').classList.contains('show'))renderSprint(openSprintPath);   // live-update open sprint
-  saveSnapshot();                        // cache this view for an instant first paint next session
+  App.snapshot.saveSnapshot();                        // cache this view for an instant first paint next session
   loadChildCounts(store.roots.slice());  // fill in n.childCount → hides empty-tree arrows, badges graph nodes
 }
 // How many children each loaded item has (incl. ones the filter hides), fetched
@@ -2252,7 +2252,7 @@ async function fetchChildCounts(ids,force){   // store counts on nodes; return t
 function rerenderChildCounts(){           // reflect freshly-learned counts in the current view
   if(mode==='tree'){const ts=$('tree').scrollTop;renderTree();$('tree').scrollTop=ts;}
   else if(mode==='graph'&&cy){cy.batch(()=>cy.nodes().forEach(nd=>{const n=store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));cy.style().update();}
-  saveSnapshot();                         // persist the counts so next session's cached paint has them too
+  App.snapshot.saveSnapshot();                         // persist the counts so next session's cached paint has them too
 }
 let childCountTok=0;
 async function loadChildCounts(ids){      // top-level refresh path: guarded so a newer refresh wins
@@ -5623,28 +5623,7 @@ async function createSprintSubmit(){
 
 /* theme + auto-refresh + notify toggles + switchMode -> app/settings.js (App.settings.*) */
 
-/* ---------- last-snapshot cache (instant first paint) ---------- */
-async function snapKey(){try{const c=await api.getConfig();return (c.org&&c.project)?('snap:'+c.org+'/'+c.project):null;}catch(e){return null;}}
-async function saveSnapshot(){
-  try{
-    if(store.roots.length>1500||Object.keys(store.nodes).length>4000)return;   // skip very large views
-    const key=await snapKey();if(!key)return;
-    await chrome.storage.local.set({[key]:{roots:store.roots,top:store.top||store.roots,nodes:store.nodes,kids:store.kids,expanded:[...store.expanded],ts:Date.now()}});
-  }catch(e){/* cache is best-effort */}
-}
-async function loadSnapshot(){
-  try{
-    const key=await snapKey();if(!key)return false;
-    const r=await chrome.storage.local.get([key]);const d=r[key];
-    if(!d||!d.roots||!d.roots.length)return false;
-    if(d.ts&&(Date.now()-d.ts)>86400000)return false;   // ignore snapshots older than 24h
-    store.nodes=d.nodes||{};store.roots=d.roots;store.top=d.top||d.roots;store.kids=d.kids||{};store.expanded=new Set(d.expanded||[]);
-    renderTree();                              // instant tree from the cached snapshot
-    const age=Math.round((Date.now()-(d.ts||Date.now()))/60000);
-    setStatus(store.roots.length+' item(s) · cached'+(age>0?(' '+age+'m ago'):'')+' — refreshing…');
-    return true;
-  }catch(e){return false;}
-}
+/* last-snapshot cache -> app/snapshot.js (App.snapshot.*) */
 
 /* ---------- command palette (Ctrl/Cmd+K) ---------- */
 let palItems=[],palIdx=0;
@@ -8327,7 +8306,7 @@ async function initialBoot(postSetup){
   renderViewHelp();                          // show the controls legend for the initial view
   const p=new URLSearchParams(location.search),root=p.get('root');
   if(root){await openItem(parseInt(root));}
-  if(mode==='tree')await loadSnapshot();   // paint last session's tree instantly while the network refresh runs
+  if(mode==='tree')await App.snapshot.loadSnapshot();   // paint last session's tree instantly while the network refresh runs
   refresh().then(warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
   try {
     const tm = new TutorialManager();
