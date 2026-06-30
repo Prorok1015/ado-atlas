@@ -5621,70 +5621,7 @@ async function createSprintSubmit(){
 
 /* export the current (filtered) view -> app/export.js (App.export.exportView) */
 
-/* ---------- theme (dark / light / auto-follow-system) + auto-refresh ---------- */
-function systemDark(){try{return !window.matchMedia||window.matchMedia('(prefers-color-scheme: dark)').matches;}catch(e){return true;}}
-function applyTheme(mode){
-  const light=mode==='light'||(mode==='auto'&&!systemDark());
-  document.body.classList.toggle('light',light);
-  const btn=$('theme');
-  if(btn){
-    btn.title='theme: '+mode+(mode==='auto'?' (follows system)':'')+' — click to change';
-    const iconEl=btn.querySelector('ui-icon');
-    if(iconEl){
-      const iconName=light?'sun':'moon';
-      iconEl.setAttribute('name',iconName);
-      if(window.ICONS&&window.ICONS[iconName]){
-        iconEl.innerHTML=window.ICONS[iconName];
-      }
-    }
-  }
-  const tl=$('theme_label');if(tl)tl.textContent=mode;
-  if(cy)cy.style().update();                        // re-evaluate theme-aware graph styles (parent label colour)
-}
-function cycleTheme(){
-  let m=localStorage.getItem('ado.theme')||'dark';
-  m=m==='dark'?'light':(m==='light'?'auto':'dark');
-  try{localStorage.setItem('ado.theme',m);}catch(e){}
-  applyTheme(m);
-}
-function applyFollowNotify(status) {
-  const btn = $('f_follow_notify');
-  if (!btn) return;
-  btn.title = 'notifications: ' + status + ' — click to change';
-  btn.innerHTML = (status === 'on' ? '<ui-icon name="bell"></ui-icon> ' : '<ui-icon name="bell-off"></ui-icon> ') + `<span id="f_follow_notify_label">${status}</span>`;
-}
-async function cycleFollowNotify() {
-  const { followNotify = 'on' } = await chrome.storage.local.get("followNotify");
-  const next = followNotify === 'on' ? 'off' : 'on';
-  await chrome.storage.local.set({ followNotify: next });
-  applyFollowNotify(next);
-}
-function applyMentionNotify(status) {
-  const btn = $('f_mention_notify');
-  if (!btn) return;
-  btn.title = 'mention notifications: ' + status + ' — click to change';
-  btn.innerHTML = (status === 'on' ? '<ui-icon name="bell"></ui-icon> ' : '<ui-icon name="bell-off"></ui-icon> ') + `<span id="f_mention_notify_label">${status}</span>`;
-}
-async function cycleMentionNotify() {
-  const { mentionNotify = 'on' } = await chrome.storage.local.get("mentionNotify");
-  const next = mentionNotify === 'on' ? 'off' : 'on';
-  await chrome.storage.local.set({ mentionNotify: next });
-  applyMentionNotify(next);
-}
-let autoTimer=null;
-function autoTick(){
-  updatePatBadge();                          // keep the countdown fresh on long-lived tabs
-  if(document.hidden||pdrag||boardBusy)return;   // don't refetch hidden, or yank the board mid-drag
-  if(cur!=null&&dirty())return;              // don't disrupt unsaved editor changes
-  refresh();
-}
-function setAutoRefresh(sec){
-  if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
-  sec=parseInt(sec,10)||0;
-  if(sec>0)autoTimer=setInterval(autoTick,sec*1000);
-}
-function switchMode(m){setMode(m);try{localStorage.setItem('ado.mode',m);}catch(e){}
-  if(m==='graph')renderGraph({fit:true});else if(m==='board')renderBoard();else if(m==='timeline')App.timeline.render();else renderTree();}
+/* theme + auto-refresh + notify toggles + switchMode -> app/settings.js (App.settings.*) */
 
 /* ---------- last-snapshot cache (instant first paint) ---------- */
 async function snapKey(){try{const c=await api.getConfig();return (c.org&&c.project)?('snap:'+c.org+'/'+c.project):null;}catch(e){return null;}}
@@ -5716,12 +5653,12 @@ const PALETTE_ACTIONS=[
   {kind:'cmd',title:'Undo last change (Ctrl/Cmd+Z)',run:()=>runUndo()},
   {kind:'cmd',title:'Redo (Ctrl/Cmd+Shift+Z)',run:()=>runRedo()},
   {kind:'cmd',title:'Refresh list',run:()=>refresh()},
-  {kind:'cmd',title:'View: Tree',run:()=>switchMode('tree')},
-  {kind:'cmd',title:'View: Graph',run:()=>switchMode('graph')},
-  {kind:'cmd',title:'View: Board',run:()=>switchMode('board')},
+  {kind:'cmd',title:'View: Tree',run:()=>App.settings.switchMode('tree')},
+  {kind:'cmd',title:'View: Graph',run:()=>App.settings.switchMode('graph')},
+  {kind:'cmd',title:'View: Board',run:()=>App.settings.switchMode('board')},
   {kind:'cmd',title:'Export CSV',run:()=>App.export.exportView('csv')},
   {kind:'cmd',title:'Export JSON',run:()=>App.export.exportView('json')},
-  {kind:'cmd',title:'Toggle theme',run:()=>cycleTheme()},
+  {kind:'cmd',title:'Toggle theme',run:()=>App.settings.cycleTheme()},
   {kind:'cmd',title:'Open settings',run:()=>showSetup(true)},
   {kind:'cmd',title:'Clear bulk selection',run:()=>clearBulk()},
 ];
@@ -7685,7 +7622,7 @@ function updateUiScale(scaleFactor) {
 /* ---------- main init (runs after PAT is verified) ---------- */
 let _booted=false;
 async function initialBoot(postSetup){
-  try{applyTheme(localStorage.getItem('ado.theme')||'dark');}catch(e){}
+  try{App.settings.applyTheme(localStorage.getItem('ado.theme')||'dark');}catch(e){}
   updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
     iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canEditSprint=true;canCreateItem=true;newSprints.clear();
@@ -7703,7 +7640,7 @@ async function initialBoot(postSetup){
 
   App.types.fillTypeSelect('c_type','Task');App.types.fillTypeSelect('n_type','Task');   // seed with fallback now; App.types.loadTypes() refills from ADO
   // switching view is render-only (no API): graph draws from the store, tree DOM persists
-  $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>switchMode(b.dataset.m));
+  $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>App.settings.switchMode(b.dataset.m));
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));depHandleHide();renderGraph();});
   $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.rankDir',rankDir);}catch(e){}renderGraph({relayout:true,fit:true});});
   $('f_sort').onchange=()=>{try{localStorage.setItem('ado.sort',$('f_sort').value);}catch(e){}refresh();};
@@ -7936,11 +7873,11 @@ async function initialBoot(postSetup){
     const p=$('badgepanel');if(p.style.display==='none')return;
     const gb=$('vhbadge');if(!p.contains(e.target)&&e.target!==gb&&(!gb||!gb.contains(e.target)))p.style.display='none';});
   $('theme').onclick=cycleTheme;
-  try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')applyTheme('auto');});}catch(e){}
+  try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')App.settings.applyTheme('auto');});}catch(e){}
   // Only wire real export buttons (data-x). Pro placeholders (data-pro-feature)
   // in the same segment are handled by the delegated premium handler.
   $('export').querySelectorAll('button[data-x]').forEach(b=>b.onclick=()=>App.export.exportView(b.dataset.x));
-  $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}setAutoRefresh(s);};
+  $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}App.settings.setAutoRefresh(s);};
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
   if(window.i18n&&$('f_lang')){$('f_lang').value=window.i18n.getLang();$('f_lang').onchange=()=>{window.i18n.setLang($('f_lang').value);};}
   $('f_follow_notify').onclick=cycleFollowNotify;
@@ -8336,8 +8273,8 @@ async function initialBoot(postSetup){
     });
     updateFollowedBtnVisual();
     chrome.storage.local.get(["followNotify", "mentionNotify", "notifyAge"]).then(({followNotify, mentionNotify, notifyAge})=>{
-      applyFollowNotify(followNotify||'on');
-      applyMentionNotify(mentionNotify||'on');
+      App.settings.applyFollowNotify(followNotify||'on');
+      App.settings.applyMentionNotify(mentionNotify||'on');
       const ageSel = $('f_notify_age');
       if (ageSel) ageSel.value = notifyAge || '172800';
     });
@@ -8367,7 +8304,7 @@ async function initialBoot(postSetup){
     const tz2=localStorage.getItem('ado.tlZoom');if(tz2&&TL_PX[tz2]){tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.z===tz2));}
     const tg=localStorage.getItem('ado.tlGroup');if(tg){tlGroup=tg;$('tl_group').value=tg;}
     const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
-    const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;setAutoRefresh(au);}
+    const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;App.settings.setAutoRefresh(au);}
     const sc=localStorage.getItem('ado.uiScale');
     if(sc!==null){
       const num=parseFloat(sc);

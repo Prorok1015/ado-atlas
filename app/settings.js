@@ -1,0 +1,77 @@
+// Theme (dark / light / auto-follow-system), follow/mention notification
+// toggles, auto-refresh timer, and view-mode switching. Phase-1 leaf module of
+// the App.* refactor (REFACTORING_PLAN.md): IIFE publishing App.settings.
+// Internal helpers (systemDark, autoTick) and the autoTimer state stay private.
+// Reads/writes bare globals at call time ($, cy, window.ICONS, chrome,
+// updatePatBadge, pdrag, boardBusy, cur, dirty, refresh, setMode, renderGraph,
+// renderBoard, renderTree) and calls App.timeline.render for the timeline view.
+// Loads before app.js.
+(function (App) {
+  'use strict';
+
+  function systemDark(){try{return !window.matchMedia||window.matchMedia('(prefers-color-scheme: dark)').matches;}catch(e){return true;}}
+  function applyTheme(mode){
+    const light=mode==='light'||(mode==='auto'&&!systemDark());
+    document.body.classList.toggle('light',light);
+    const btn=$('theme');
+    if(btn){
+      btn.title='theme: '+mode+(mode==='auto'?' (follows system)':'')+' — click to change';
+      const iconEl=btn.querySelector('ui-icon');
+      if(iconEl){
+        const iconName=light?'sun':'moon';
+        iconEl.setAttribute('name',iconName);
+        if(window.ICONS&&window.ICONS[iconName]){
+          iconEl.innerHTML=window.ICONS[iconName];
+        }
+      }
+    }
+    const tl=$('theme_label');if(tl)tl.textContent=mode;
+    if(cy)cy.style().update();                        // re-evaluate theme-aware graph styles (parent label colour)
+  }
+  function cycleTheme(){
+    let m=localStorage.getItem('ado.theme')||'dark';
+    m=m==='dark'?'light':(m==='light'?'auto':'dark');
+    try{localStorage.setItem('ado.theme',m);}catch(e){}
+    applyTheme(m);
+  }
+  function applyFollowNotify(status) {
+    const btn = $('f_follow_notify');
+    if (!btn) return;
+    btn.title = 'notifications: ' + status + ' — click to change';
+    btn.innerHTML = (status === 'on' ? '<ui-icon name="bell"></ui-icon> ' : '<ui-icon name="bell-off"></ui-icon> ') + `<span id="f_follow_notify_label">${status}</span>`;
+  }
+  async function cycleFollowNotify() {
+    const { followNotify = 'on' } = await chrome.storage.local.get("followNotify");
+    const next = followNotify === 'on' ? 'off' : 'on';
+    await chrome.storage.local.set({ followNotify: next });
+    applyFollowNotify(next);
+  }
+  function applyMentionNotify(status) {
+    const btn = $('f_mention_notify');
+    if (!btn) return;
+    btn.title = 'mention notifications: ' + status + ' — click to change';
+    btn.innerHTML = (status === 'on' ? '<ui-icon name="bell"></ui-icon> ' : '<ui-icon name="bell-off"></ui-icon> ') + `<span id="f_mention_notify_label">${status}</span>`;
+  }
+  async function cycleMentionNotify() {
+    const { mentionNotify = 'on' } = await chrome.storage.local.get("mentionNotify");
+    const next = mentionNotify === 'on' ? 'off' : 'on';
+    await chrome.storage.local.set({ mentionNotify: next });
+    applyMentionNotify(next);
+  }
+  let autoTimer=null;
+  function autoTick(){
+    updatePatBadge();                          // keep the countdown fresh on long-lived tabs
+    if(document.hidden||pdrag||boardBusy)return;   // don't refetch hidden, or yank the board mid-drag
+    if(cur!=null&&dirty())return;              // don't disrupt unsaved editor changes
+    refresh();
+  }
+  function setAutoRefresh(sec){
+    if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+    sec=parseInt(sec,10)||0;
+    if(sec>0)autoTimer=setInterval(autoTick,sec*1000);
+  }
+  function switchMode(m){setMode(m);try{localStorage.setItem('ado.mode',m);}catch(e){}
+    if(m==='graph')renderGraph({fit:true});else if(m==='board')renderBoard();else if(m==='timeline')App.timeline.render();else renderTree();}
+
+  App.settings = { applyTheme, cycleTheme, applyFollowNotify, cycleFollowNotify, applyMentionNotify, cycleMentionNotify, setAutoRefresh, switchMode };
+})(window.App);
