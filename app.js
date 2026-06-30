@@ -5681,8 +5681,8 @@ let patAutoTimer=null;   // debounce for auto-loading org/project after a PAT is
 
 /* ---------- one-time wiring done before the PAT exists ---------- */
 function wireSetup(){
-  window.addEventListener('ado-401',handle401);   // PAT expired/revoked mid-session → reopen setup
-  $('setup-save').onclick=saveSetup;
+  window.addEventListener('ado-401',App.setup.handle401);   // PAT expired/revoked mid-session → reopen setup
+  $('setup-save').onclick=App.setup.saveSetup;
   $('setup-pat').addEventListener('input',()=>{   // after a PAT is pasted: persist it and (if an org is set) auto-list its projects
     clearTimeout(patAutoTimer);
     patAutoTimer=setTimeout(async()=>{
@@ -5692,12 +5692,12 @@ function wireSetup(){
       if($('setup-org').value.trim())App.setup.loadSetupProjects();   // dev.azure.com endpoint — no sign-in redirect
     },700);
   });
-  $('setup-org').addEventListener('change',loadSetupProjects);   // org chosen → fetch its projects
-  $('setup-expiry').addEventListener('change',updateSetupExpiryInfo);
-  $('setup-expiry').addEventListener('input',updateSetupExpiryInfo);
+  $('setup-org').addEventListener('change',App.setup.loadSetupProjects);   // org chosen → fetch its projects
+  $('setup-expiry').addEventListener('change',App.setup.updateSetupExpiryInfo);
+  $('setup-expiry').addEventListener('input',App.setup.updateSetupExpiryInfo);
   $('auth-mode').querySelectorAll('button').forEach(b=>b.onclick=()=>App.setup.setAuthPane(b.dataset.am));
-  $('oauth-signin').onclick=doOauthSignIn;
-  $('oauth-tenant-mode').onchange=updateTenantField;
+  $('oauth-signin').onclick=App.setup.doOauthSignIn;
+  $('oauth-tenant-mode').onchange=App.setup.updateTenantField;
   $('oauth-copy').onclick=()=>{
     const i=$('oauth-redirect');
     try{
@@ -5714,7 +5714,7 @@ function wireSetup(){
       if(i.select)i.select();
     }
   };
-  $('setup-cancel').onclick=hideSetup;
+  $('setup-cancel').onclick=App.setup.hideSetup;
   $('settingsbtn').onclick=()=>{const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}App.setup.showSetup(true);};
   $('ai_settings_btn').onclick=()=>{const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}if(window.AISettingsDialog){window.AISettingsDialog.open();}};
   $('patbadge').onclick=()=>App.setup.showSetup(true);
@@ -7626,7 +7626,7 @@ async function initialBoot(postSetup){
   document.addEventListener('mousedown',e=>{
     const p=$('badgepanel');if(p.style.display==='none')return;
     const gb=$('vhbadge');if(!p.contains(e.target)&&e.target!==gb&&(!gb||!gb.contains(e.target)))p.style.display='none';});
-  $('theme').onclick=cycleTheme;
+  $('theme').onclick=App.settings.cycleTheme;
   try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')App.settings.applyTheme('auto');});}catch(e){}
   // Only wire real export buttons (data-x). Pro placeholders (data-pro-feature)
   // in the same segment are handled by the delegated premium handler.
@@ -7634,8 +7634,8 @@ async function initialBoot(postSetup){
   $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}App.settings.setAutoRefresh(s);};
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
   if(window.i18n&&$('f_lang')){$('f_lang').value=window.i18n.getLang();$('f_lang').onchange=()=>{window.i18n.setLang($('f_lang').value);};}
-  $('f_follow_notify').onclick=cycleFollowNotify;
-  $('f_mention_notify').onclick=cycleMentionNotify;
+  $('f_follow_notify').onclick=App.settings.cycleFollowNotify;
+  $('f_mention_notify').onclick=App.settings.cycleMentionNotify;
   // bulk action bar (tree multi-select)
   $('bulk_state').onchange=e=>{const v=e.target.value;if(v)bulkApply('state',v);};
   $('bulk_prio').onchange=e=>{const v=e.target.value;if(v)bulkApply('priority',v);};
@@ -7955,7 +7955,7 @@ async function initialBoot(postSetup){
   // new-item modal (create from scratch)
   $('newbtn').onclick=()=>App.create.showNewItem();
   $('undobtn').onclick=runUndo;$('redobtn').onclick=runRedo;
-  $('n_create').onclick=createNew;$('n_cancel').onclick=closeNewItem;
+  $('n_create').onclick=App.create.createNew;$('n_cancel').onclick=App.create.closeNewItem;
   $('n_me').onclick=()=>assignedNew.set(currentUser||'me');
   $('newitem-overlay').addEventListener('mousedown',e=>{if(e.target===$('newitem-overlay'))App.create.closeNewItem();});
   $('n_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();App.create.createNew();}});
@@ -8070,7 +8070,7 @@ async function initialBoot(postSetup){
     const mn=localStorage.getItem('ado.maxNodes');if(mn!==null){maxNodesLimit=parseInt(mn,10);}
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
   App.types.buildLegend();renderFilters();updateFilterCount();App.setup.updatePatBadge();updateUndoButtons();updateCreateButtons();
-  setInterval(updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
+  setInterval(App.setup.updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
   await loadIdentity();
   try{
     const savedWidth=localStorage.getItem('ado.sideWidth');
@@ -8082,7 +8082,7 @@ async function initialBoot(postSetup){
   const p=new URLSearchParams(location.search),root=p.get('root');
   if(root){await openItem(parseInt(root));}
   if(mode==='tree')await App.snapshot.loadSnapshot();   // paint last session's tree instantly while the network refresh runs
-  refresh().then(warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
+  refresh().then(App.setup.warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
   try {
     const tm = new TutorialManager();
     window.tutorialManagerInstance = tm;
