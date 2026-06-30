@@ -1728,7 +1728,7 @@ async function times(ids, offset) {
   return out;
 }
 
-// Per-state wall-clock breakdown for one item (the editor's "⏱ time in state" row).
+// Per-state wall-clock breakdown for one item (the editor's "time in state" row).
 async function timeline(wid, offset) {
   const ups = await updatesFor(wid);
   const pts = [];

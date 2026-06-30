@@ -107,7 +107,7 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .vhh{padding:0.385rem 0.769rem 0.385rem 0.462rem;font-weight:700;color:var(--txt);user-select:none;display:flex;align-items:center;gap:0.308rem}
 .vhh .vhctrl{flex:1;cursor:pointer;padding:2px 0.308rem;border-radius:0.462rem}
 .vhh .vhctrl:hover{background:var(--panel2)}
-/* ⚙ Badges trigger embedded in the Controls header (graph mode only) — flush-left of the ▸ caret */
+/* Badges trigger embedded in the Controls header (graph mode only) — flush-left of the ▸ caret */
 .vhh .vhbadge{flex:none;display:inline-flex;align-items:center;justify-content:center;width:1.692rem;height:1.692rem;padding:0;border:1px solid var(--line);border-radius:0.462rem;background:var(--panel2);color:var(--txt);font:inherit;font-size:1rem;cursor:pointer;line-height:1}
 .vhh .vhbadge:hover{border-color:var(--accent);color:var(--accent)}
 .icon-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:1.692rem;height:1.692rem;padding:0;background:transparent;text-decoration:none;font-size:1.1rem;cursor:pointer;filter:grayscale(100%);opacity:0.7;transition:all 0.2s}
@@ -139,7 +139,7 @@ select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(
 .bttl{font-size:0.923rem;margin-bottom:0.308rem;display:flex;align-items:center;gap:0.385rem}
 .btxt{min-width:0}   /* let the title text ellipsize next to the assignee avatar */
 .bmeta{display:flex;align-items:center;gap:0.462rem;flex-wrap:wrap;font-size:0.769rem;color:var(--muted)}
-/* board card tag row — sits below .bmeta, above the est/⏱ foot */
+/* board card tag row — sits below .bmeta, above the est/foot */
 .btags{display:flex;flex-wrap:wrap;gap:0.308rem;margin-top:0.308rem}
 .btags .ttag{max-width:9.231rem}
 .bfoot{display:flex;gap:0.462rem;align-items:center;font-size:0.769rem;color:var(--muted);margin-top:0.308rem}
@@ -347,7 +347,7 @@ body.light .sgroup[data-sg="actions"]{box-shadow:0 -0.308rem 1.231rem rgba(0,0,0
 #side.fullscreen .sgroup[data-sg="actions"]{padding-left:1.846rem;padding-right:1.846rem;margin-left:-1.692rem;margin-right:-1.692rem}
 body.light .comment-card,body.light #child_form,body.light #comment_editor_container{background:var(--panel)!important}
 
-/* Save status chip: ● dirty / spinner saving / ✓ saved / ⚠ error */
+/* Save status chip: ● dirty / spinner saving / saved / error */
 .schip{flex:none;font-size:0.846rem;padding:2px 0.538rem;border-radius:0.769rem;border:1px solid transparent;color:var(--muted);display:inline-flex;align-items:center;gap:0.308rem;line-height:1.4;min-height:1.385rem}
 .schip:empty{padding:0;min-height:0;border:0}
 .schip.dirty{color:var(--accent);border-color:var(--accent);background:rgba(47,111,237,.10)}
@@ -637,7 +637,7 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
    the top of the scrolling sidebar so it stays reachable on long descriptions.
    The negative `top` value tucks it under #side's own 0.769rem padding so the bar
    sits flush against the panel edge when stuck. */
-/* In-flow format toolbar (📎 + 👁 + ⛶ live in the always-sticky shead, so the
+/* In-flow format toolbar (attach + preview + fullscreen live in the always-sticky shead, so the
    format cluster doesn't need to stick — and not sticking avoids overlapping
    sibling sgroups like Activity below). */
 .desc-tools {
@@ -807,7 +807,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 .chip.out{background:#9b2c2c;border-color:#9b2c2c;color:#fff;text-decoration:line-through}
 #filt_count{color:var(--accent);font-weight:700}
 #filt_btn.on #filt_count{color:#fff}   /* button is accent-filled when filters are active → use white for contrast */
-/* per-row "✕" clear button — only rendered when that filter has a selection */
+/* per-row "x" clear button — only rendered when that filter has a selection */
 .fclear{width:1.692rem;background:transparent;border:0;color:#e0524d;cursor:pointer;font:inherit;font-size:1rem;line-height:1;padding:0.154rem 0;border-radius:0.462rem;font-weight:700;flex:none;text-align:center}
 .fclear:hover{background:rgba(224,82,77,0.16)}
 .tag-search{border:0;border-radius:1.077rem;padding:0.231rem 1.692rem 0.231rem 0.769rem;margin:0.231rem 0;font-size:0.923rem;background:rgba(127,127,127,0.15);color:var(--txt);width:8.462rem;transition:width .15s ease,background-color .15s ease}
@@ -839,7 +839,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 .f-dropdown-item:hover{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
 .f-dropdown-item.empty{border:0;background:transparent;color:var(--muted);cursor:default;width:100%;text-align:center}
 .f-dropdown-item.empty:hover{background:transparent;color:var(--muted)}
-/* "✕ Clear all" — appears above the rows when any filter is active */
+/* "Clear all" — appears above the rows when any filter is active */
 
 /* ---- bulk action bar (tree multi-select) ---- */
 #bulkbar{background:var(--panel);border-bottom:1px solid var(--line);padding:0.538rem 0.923rem;display:flex;align-items:center;gap:0.615rem;flex-wrap:wrap}

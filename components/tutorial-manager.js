@@ -44,13 +44,48 @@ class TutorialManager {
     this.elevatedAncestors = [];
   }
 
+  async loadRegistry() {
+    const lang = (window.i18n && typeof window.i18n.getLang === 'function')
+      ? window.i18n.getLang()
+      : 'en';
+
+    // Try the locale-specific file first (skip for 'en', which is the base file).
+    if (lang && lang !== 'en') {
+      try {
+        const localizedUrl = chrome.runtime.getURL(`components/tutorials.${lang}.json`);
+        const localizedResponse = await fetch(localizedUrl);
+        if (localizedResponse.ok) {
+          return await localizedResponse.json();
+        }
+      } catch (e) {
+        // Fall through to the English fallback below.
+      }
+    }
+
+    // Fallback (and default): English source of truth.
+    const response = await fetch(chrome.runtime.getURL('components/tutorials.json'));
+    return await response.json();
+  }
+
   async init() {
     try {
-      const response = await fetch(chrome.runtime.getURL('components/tutorials.json'));
-      this.registry = await response.json();
+      this.registry = await this.loadRegistry();
     } catch (e) {
       console.error('Failed to load tutorials registry:', e);
       return;
+    }
+
+    // Refresh the cached registry when the language changes so the next tour
+    // opened uses the new locale. We do NOT restart an in-progress tour.
+    if (window.i18n && typeof window.i18n.onChange === 'function') {
+      window.i18n.onChange(async () => {
+        if (this.currentTutorial) return; // never disturb a running tour
+        try {
+          this.registry = await this.loadRegistry();
+        } catch (e) {
+          console.error('Failed to reload tutorials registry on language change:', e);
+        }
+      });
     }
 
     const data = await chrome.storage.local.get("tutorials_seen");
@@ -157,7 +192,7 @@ class TutorialManager {
       <div class="tut-prompt-box" style="width: 25rem;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h2 style="margin:0;"><ui-icon name="book"></ui-icon> Feature Tours</h2>
-          <button class="tut-btn tut-close-replay" style="border:none; background:transparent; font-size:1.1rem; padding:0; cursor:pointer; color:var(--txt);">✕</button>
+          <button class="tut-btn tut-close-replay" style="border:none; background:transparent; font-size:1.1rem; padding:0; cursor:pointer; color:var(--txt);"><ui-icon name="x"></ui-icon></button>
         </div>
         <p>Select any tour to replay it. Follow the highlights to explore the features.</p>
         <div class="tut-replay-list" style="display:flex; flex-direction:column; max-height:200px; overflow-y:auto;">

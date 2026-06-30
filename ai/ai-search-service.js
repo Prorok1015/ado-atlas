@@ -1,8 +1,15 @@
 (function(global) {
   'use strict';
 
+  // Lazy, guarded localization for USER-FACING status/error strings only.
+  // MUST stay require-safe under Node: never touch window/i18n at module load.
+  // Falls back to the English literal when i18n is unavailable (tests, SW, etc.).
+  const L = (k, p) => (typeof window !== 'undefined' && window.i18n) ? window.i18n.t(k, p) : null;
+  const LS = (k, fallback, p) => { const v = L(k, p); return v == null ? fallback : v; };
+
   class AIUnavailableError extends Error {
-    constructor(message = "Built-in AI is not available. Please make sure you are using Chrome 131+ and have enabled on-device AI flags.") {
+    constructor(message) {
+      message = message || LS('ai.svc.unavailable', "Built-in AI is not available. Please make sure you are using Chrome 131+ and have enabled on-device AI flags.");
       super(message);
       this.name = "AIUnavailableError";
     }
@@ -203,7 +210,7 @@
      */
     async executeFastPipeline(provider, query, filterFields, assignees, responseSchema, options) {
       const onProgress = options.onProgress || (() => {});
-      onProgress("Analyzing query and generating filters...", 0.2);
+      onProgress(LS('ai.svc.analyzing', "Analyzing query and generating filters..."), 0.2);
 
       // For the fast 1-pass pipeline, we do a quick textual pre-filtering of tags
       const tagsField = filterFields.find(f => f.id === 'tags');
@@ -234,7 +241,7 @@
 
       const systemPrompt = global.SEARCH_SYSTEM_PROMPT_TEMPLATE.replace('${fieldsSchema}', schemaStr) + assigneesContext;
       const result = await provider.promptJSON(systemPrompt, query, responseSchema, options);
-      onProgress("Applying filters...", 1.0);
+      onProgress(LS("ai.svc.applyingFilters", "Applying filters..."), 1.0);
       return result;
     }
 
@@ -244,7 +251,7 @@
     async executeBalancedPipeline(provider, query, filterFields, assignees, responseSchema, options) {
       const onProgress = options.onProgress || (() => {});
       
-      onProgress("Selecting relevant fields...", 0.1);
+      onProgress(LS("ai.svc.selectingFields", "Selecting relevant fields..."), 0.1);
       const selectSession = typeof provider.createSession === 'function'
         ? await provider.createSession("You are a field classifier. Output only comma-separated field IDs.", { ...options, temperature: 0.2 })
         : null;
@@ -266,7 +273,7 @@
         const selectedIds = fieldsCSV.split(',').map(s => s.trim().toLowerCase());
         
         // Resolving entities (tags/names/dates) in parallel
-        onProgress("Resolving entities (tags/names/dates)...", 0.35);
+        onProgress(LS("ai.svc.resolvingEntities", "Resolving entities (tags/names/dates)..."), 0.35);
 
         const parallelTasks = [];
         const tagsField = filterFields.find(f => f.id === 'tags');
@@ -306,7 +313,7 @@
           }
         }
 
-        onProgress("Generating JSON filter...", 0.6);
+        onProgress(LS("ai.svc.generatingJson", "Generating JSON filter..."), 0.6);
 
         const coreFields = ['type', 'state', 'tags', 'title', 'desc'];
         const matchedFields = filterFields.filter(f => selectedIds.includes(f.id.toLowerCase()) || coreFields.includes(f.id.toLowerCase()));
@@ -339,7 +346,7 @@
 
         const extracted = this.extractJSON(rawJSON);
         const parsed = JSON.parse(extracted);
-        onProgress("Applying filters...", 1.0);
+        onProgress(LS("ai.svc.applyingFilters", "Applying filters..."), 1.0);
         return { rawIR: parsed, matchedAssignees, matchedDates };
       } finally {
         if (selectSession) selectSession.destroy();
@@ -354,7 +361,7 @@
       const onProgress = options.onProgress || (() => {});
 
       // 1. Stage 1: Field Selection
-      onProgress("Selecting relevant fields...", 0.1);
+      onProgress(LS("ai.svc.selectingFields", "Selecting relevant fields..."), 0.1);
       const compactFields = filterFields.map(f => `${f.id}: ${f.displayName}`).join(', ');
       const selectPrompt = global.SEARCH_SELECT_FIELDS_PROMPT.replace('${fields_list}', compactFields) + `\n\nQuery: "${query}"\nOutput:`;
       
@@ -376,7 +383,7 @@
       const selectedIds = fieldsCSV.split(',').map(s => s.trim().toLowerCase());
 
       // Resolving entities (tags/names/dates) in parallel
-      onProgress("Resolving entities (tags/names/dates)...", 0.25);
+      onProgress(LS("ai.svc.resolvingEntities", "Resolving entities (tags/names/dates)..."), 0.25);
 
       const parallelTasks = [];
       const tagsField = filterFields.find(f => f.id === 'tags');
@@ -417,7 +424,7 @@
       }
 
       // 2. Stage 2: Intent & Value Enrichment
-      onProgress("Enriching query intent & synonyms...", 0.4);
+      onProgress(LS("ai.svc.enrichingIntent", "Enriching query intent & synonyms..."), 0.4);
       const coreFields = ['type', 'state', 'tags', 'title', 'desc'];
       const matchedFields = filterFields.filter(f => selectedIds.includes(f.id.toLowerCase()) || coreFields.includes(f.id.toLowerCase()));
 
@@ -462,7 +469,7 @@
       }
 
       // 3. Stage 3: JSON Compilation
-      onProgress("Compiling intent to JSON filter...", 0.7);
+      onProgress(LS("ai.svc.compilingJson", "Compiling intent to JSON filter..."), 0.7);
       const schemaJSON = JSON.stringify(responseSchema);
       const compilePrompt = global.SEARCH_COMPILE_JSON_PROMPT.replace('${schema}', schemaJSON) + `\n\nEnriched Intent:\n${enrichedIntent}\n\nJSON Filter Response:`;
       
@@ -490,7 +497,7 @@
         console.warn("Parsing error details:", err.message);
         console.warn("Triggering Turn 4 self-correction...");
         
-        onProgress("Self-correcting invalid JSON...", 0.85);
+        onProgress(LS("ai.svc.selfCorrecting", "Self-correcting invalid JSON..."), 0.85);
         const session4 = typeof provider.createSession === 'function'
           ? await provider.createSession("You are a JSON repair assistant. Output only valid raw JSON.", { temperature: 0.1 })
           : null;
@@ -514,7 +521,7 @@
         }
       }
 
-      onProgress("Applying filters...", 1.0);
+      onProgress(LS("ai.svc.applyingFilters", "Applying filters..."), 1.0);
       return { rawIR: parsed, matchedAssignees, matchedDates };
     }
 
@@ -848,7 +855,7 @@
         }
 
         if (!matchedField) {
-          warnings.push(`Field "${cond.field}" is not recognized and was skipped.`);
+          warnings.push(LS('ai.svc.fieldNotRecognized', `Field "${cond.field}" is not recognized and was skipped.`, { field: cond.field }));
           return null;
         }
 

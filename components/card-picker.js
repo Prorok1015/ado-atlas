@@ -1,3 +1,6 @@
+// Localized string helper (guarded: degrades to the English fallback if i18n not ready).
+const CP_L = (k, fallback, p) => (typeof window !== 'undefined' && window.i18n) ? window.i18n.t(k, p) : fallback;
+
 function parentCardHtml(n, isBulk){
   return `<i class="dot" style="background:${tyColor(n.type)}"></i>`+
     `<span class="pcid">#${n.id}</span><span class="pctitle">${htmlEsc(n.title||'')}</span>`+
@@ -66,7 +69,7 @@ function createCardPicker(base,opts){
   function draw(){
     const list=Results(); if(!list)return;
     list.innerHTML=rows.map((r,i)=>`<div class="prow${i===idx?' on':''}" data-i="${i}">${r.html}</div>`).join('')
-      +(searching?'<div class="prow"><span class="pkind"></span><span class="ptitle pcnone">searching…</span></div>':'');
+      +(searching?`<div class="prow"><span class="pkind"></span><span class="ptitle pcnone">${htmlEsc(CP_L('picker.searching', 'searching…'))}</span></div>`:'');
     list.querySelectorAll('.prow[data-i]').forEach(r=>{
       r.onmousedown=e=>{e.preventDefault();idx=+r.dataset.i;pick();};
       r.onmousemove=()=>{if(idx!==+r.dataset.i){idx=+r.dataset.i;highlight();}};
@@ -182,15 +185,15 @@ function itemPickerProvider(getExclude){
       const isBulk = card.id === 'bulk_parent_card';
       if(!v){
         if (isBulk) {
-          card.innerHTML = '<span class="pcnone">Parent…</span>';
+          card.innerHTML = `<span class="pcnone">${htmlEsc(CP_L('picker.parent.placeholder', 'Parent…'))}</span>`;
         } else {
-          card.innerHTML = '<span class="pcnone">(no parent)</span>';
+          card.innerHTML = `<span class="pcnone">${htmlEsc(CP_L('picker.parent.none', '(no parent)'))}</span>`;
         }
         return;
       }
       const n=store.nodes[v];
       if(n && n.title){card.innerHTML=parentCardHtml(n, isBulk);return;}
-      card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>` + (!isBulk ? `<span class="pctitle pcnone">loading…</span>` : '');
+      card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>` + (!isBulk ? `<span class="pctitle pcnone">${htmlEsc(CP_L('picker.loading', 'loading…'))}</span>` : '');
       const want=v;                               // resolve the title for an item that isn't in the loaded tree
       api.item(v).then(it=>{
         if(card.dataset.val!==want)return;
@@ -205,8 +208,8 @@ function itemPickerProvider(getExclude){
     },
     localRows(q){
       q=(q||'').trim().toLowerCase();const toks=q.split(/\s+/).filter(Boolean),ex=getExclude();
-      const out=[{value:'',html:`<span class="pkind">—</span><span class="ptitle pcnone">(no parent)</span>`}];
-      if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);if(id!==ex&&!store.nodes[id])out.push({value:String(id),raw:true,html:`<span class="pkind">id</span><span class="ptitle">Use #${id}</span>`});}
+      const out=[{value:'',html:`<span class="pkind">—</span><span class="ptitle pcnone">${htmlEsc(CP_L('picker.parent.none', '(no parent)'))}</span>`}];
+      if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);if(id!==ex&&!store.nodes[id])out.push({value:String(id),raw:true,html:`<span class="pkind">id</span><span class="ptitle">${htmlEsc(CP_L('picker.useId', 'Use #'+id, { id: id }))}</span>`});}
       let n=0;
       for(const node of Object.values(store.nodes)){
         if(ex!=null&&node.id===ex)continue;         // an item can't be its own parent
@@ -302,14 +305,14 @@ function assigneePeople(){const seen=new Set(),out=[];   // current user first, 
 function assigneePickerProvider(){
   return {
     renderCard(v,card){
-      if(!v || v === '@empty'){card.innerHTML='<span class="pcnone">(unassigned)</span>';return;}
+      if(!v || v === '@empty'){card.innerHTML=`<span class="pcnone">${htmlEsc(CP_L('picker.assignee.unassigned', '(unassigned)'))}</span>`;return;}
       card.innerHTML=`${personChip(v)}<span class="pctitle">${htmlEsc(v)}</span>`;
     },
     localRows(q){
       q=(q||'').trim().toLowerCase();
-      const out=[{value:'@empty',html:`<i class="pav pav0"></i><span class="ptitle pcnone">(unassigned)</span>`}];
+      const out=[{value:'@empty',html:`<i class="pav pav0"></i><span class="ptitle pcnone">${htmlEsc(CP_L('picker.assignee.unassigned', '(unassigned)'))}</span>`}];
       if(currentUser&&(!q||currentUser.toLowerCase().includes(q)))
-        out.push({value:currentUser,html:`${personChip(currentUser)}<span class="ptitle">${htmlEsc(currentUser)} <span class="pcnone">· me</span></span>`});
+        out.push({value:currentUser,html:`${personChip(currentUser)}<span class="ptitle">${htmlEsc(currentUser)} <span class="pcnone">· ${htmlEsc(CP_L('picker.assignee.me', 'me'))}</span></span>`});
       let n=0;
       for(const a of assigneePeople()){
         if(a===currentUser)continue;
@@ -331,16 +334,16 @@ function sprintPickerProvider(getNone){
   function isNone(v){return !v||v===getNone()||v==='@empty';}
   return {
     renderCard(v,card){
-      if(isNone(v)){card.innerHTML='<span class="pcnone">(no sprint)</span>';return;}
+      if(isNone(v)){card.innerHTML=`<span class="pcnone">${htmlEsc(CP_L('picker.sprint.none', '(no sprint)'))}</span>`;return;}
       const it=_sprint(v);
       if(!it){card.innerHTML=`<span class="pctitle">${htmlEsc(v.split('\\').slice(1).join('\\')||v)}</span>`;return;}
       const rt=sprintRangeText(it);
-      card.innerHTML=(isCurrentSprint(it)?'<span class="curdot" title="current sprint"></span>':'')+
+      card.innerHTML=(isCurrentSprint(it)?`<span class="curdot" title="${htmlEsc(CP_L('picker.sprint.current', 'current sprint'))}"></span>`:'')+
         `<span class="pctitle">${htmlEsc(it.name)}</span>`+(rt?`<span class="pcnone" style="flex:none">${htmlEsc(rt)}</span>`:'');
     },
     localRows(q){
       q=(q||'').trim().toLowerCase();
-      const out=[{value:getNone(),html:`<span class="pkind">—</span><span class="ptitle pcnone">(no sprint)</span>`}];
+      const out=[{value:getNone(),html:`<span class="pkind">—</span><span class="ptitle pcnone">${htmlEsc(CP_L('picker.sprint.none', '(no sprint)'))}</span>`}];
       for(const it of (iterCache||[])){
         if(q&&!it.name.toLowerCase().includes(q))continue;
         const rt=sprintRangeText(it);
@@ -364,8 +367,8 @@ function depAdderProvider(dir){
   const base=itemPickerProvider(()=>cur);
   const blocked=()=>new Set(depsArr(dir).map(Number));
   return {
-    renderCard(v,card){const t=dir==='blocks'?'add a blocked link':'add a blocked-by link';
-      card.innerHTML=`<span class="pcnone">＋ ${t}</span>`;},
+    renderCard(v,card){const t=dir==='blocks'?CP_L('picker.dep.addBlocks','add a blocked link'):CP_L('picker.dep.addBlockedBy','add a blocked-by link');
+      card.innerHTML=`<span class="pcnone">＋ ${htmlEsc(t)}</span>`;},
     localRows(q){const ex=blocked();return base.localRows(q).filter(r=>!r.value||!ex.has(+r.value));},
     apiExpand(q,rows){const inner=base.apiExpand(q,rows);if(!inner)return null;
       const ex=blocked();return async()=>(await inner()).filter(r=>!r.value||!ex.has(+r.value));},

@@ -10,55 +10,63 @@
   // `status` per item: 'stub' = has an in-context UI placeholder already;
   // 'partial' = base feature exists free, Pro adds more; 'planned' = not started.
 
+  // Lazy, guarded i18n helper. Falls back to an English literal so the panel
+  // degrades gracefully when the runtime is absent.
+  const L = (k, p, fallback) => (typeof global.i18n !== 'undefined' && global.i18n)
+    ? global.i18n.t(k, p)
+    : (fallback != null ? fallback : k);
+
+  // Catalog rows carry i18n keys (titleKey/descKey) resolved at render time; the
+  // English literal lives in locales/en.json. groupKey localizes the section head.
   const CATALOG = [
-    { group: 'Analytics', icon: 'bar-chart', items: [
-      { key: 'analytics',   title: 'Analytics module',        desc: 'Process-analytics workspace built from work-item revision history.', status: 'stub' },
-      { key: 'an_cycle',    title: 'Cycle / Lead Time',       desc: 'Time-in-state and end-to-end delivery time per work item.', status: 'planned' },
-      { key: 'an_cfd',      title: 'Cumulative Flow (CFD)',   desc: 'Stacked state distribution over time — spot bottlenecks and growing WIP.', status: 'planned' },
-      { key: 'an_aging',    title: 'Aging WIP',               desc: 'How long in-progress items have been open — a strong daily-standup signal.', status: 'planned' },
-      { key: 'an_burndown', title: 'Burndown / Burnup',       desc: 'Sprint progress against scope, with scope-change tracking.', status: 'planned' },
-      { key: 'an_velocity', title: 'Velocity',                desc: 'Completed story points / count per sprint, per team.', status: 'planned' },
-      { key: 'an_stale',    title: 'Stale Items',             desc: 'Board of items stuck in a state longer than N days.', status: 'planned' },
-      { key: 'an_blocked',  title: 'Blocked-time analytics',  desc: 'Total time items spent blocked.', status: 'planned' }
+    { groupKey: 'proFeatures.group.analytics', icon: 'bar-chart', items: [
+      { key: 'analytics',   titleKey: 'proFeatures.item.analytics.title',  descKey: 'proFeatures.item.analytics.desc',  status: 'stub' },
+      { key: 'an_cycle',    titleKey: 'proFeatures.item.anCycle.title',    descKey: 'proFeatures.item.anCycle.desc',    status: 'planned' },
+      { key: 'an_cfd',      titleKey: 'proFeatures.item.anCfd.title',      descKey: 'proFeatures.item.anCfd.desc',      status: 'planned' },
+      { key: 'an_aging',    titleKey: 'proFeatures.item.anAging.title',    descKey: 'proFeatures.item.anAging.desc',    status: 'planned' },
+      { key: 'an_burndown', titleKey: 'proFeatures.item.anBurndown.title', descKey: 'proFeatures.item.anBurndown.desc', status: 'planned' },
+      { key: 'an_velocity', titleKey: 'proFeatures.item.anVelocity.title', descKey: 'proFeatures.item.anVelocity.desc', status: 'planned' },
+      { key: 'an_stale',    titleKey: 'proFeatures.item.anStale.title',    descKey: 'proFeatures.item.anStale.desc',    status: 'planned' },
+      { key: 'an_blocked',  titleKey: 'proFeatures.item.anBlocked.title',  descKey: 'proFeatures.item.anBlocked.desc',  status: 'planned' }
     ]},
-    { group: 'AI', icon: 'sparkles', items: [
-      { key: 'cloud_ai',   title: 'ADO Atlas Cloud AI',       desc: 'Cloud GPT / Claude via our proxy — no API key of your own.', status: 'stub' },
-      { key: 'ai_summary', title: 'AI Sprint Summary',        desc: 'Auto digest: what shipped, what is stuck, risks.', status: 'planned' },
-      { key: 'ai_deps',    title: 'AI dependency explainer',  desc: 'Plain-language "why does this block the release" on the graph.', status: 'planned' },
-      { key: 'ai_reports', title: 'Natural-language reports', desc: 'Ask questions like "what slowed last sprint" and get an answer.', status: 'planned' },
-      { key: 'ai_risk',    title: 'Risk detection',           desc: 'Flags items at risk of missing their date from revision dynamics.', status: 'planned' }
+    { groupKey: 'proFeatures.group.ai', icon: 'sparkles', items: [
+      { key: 'cloud_ai',   titleKey: 'proFeatures.item.cloudAi.title',   descKey: 'proFeatures.item.cloudAi.desc',   status: 'stub' },
+      { key: 'ai_summary', titleKey: 'proFeatures.item.aiSummary.title', descKey: 'proFeatures.item.aiSummary.desc', status: 'planned' },
+      { key: 'ai_deps',    titleKey: 'proFeatures.item.aiDeps.title',    descKey: 'proFeatures.item.aiDeps.desc',    status: 'planned' },
+      { key: 'ai_reports', titleKey: 'proFeatures.item.aiReports.title', descKey: 'proFeatures.item.aiReports.desc', status: 'planned' },
+      { key: 'ai_risk',    titleKey: 'proFeatures.item.aiRisk.title',    descKey: 'proFeatures.item.aiRisk.desc',    status: 'planned' }
     ]},
-    { group: 'Visualization & QoL', icon: 'layout', items: [
-      { key: 'conditional_formatting', title: 'Conditional formatting', desc: 'Colour cards by rules (priority, age, assignee, custom fields).', status: 'planned' },
-      { key: 'saved_views',     title: 'Saved Views',           desc: 'Save a mode + filter + grouping combo and switch in one click.', status: 'planned' },
-      { key: 'swimlanes',       title: 'Board swimlanes',       desc: 'Group the board into lanes by epic / assignee / priority.', status: 'planned' },
-      { key: 'critical_path',   title: 'Critical path',         desc: 'Highlight the dependency chain that drives the deadline on Timeline.', status: 'planned' },
-      { key: 'baseline_gantt',  title: 'Gantt baseline',        desc: 'Compare planned vs actual dates on the Timeline.', status: 'planned' },
-      { key: 'ultra_dark',      title: 'Ultra Dark theme',      desc: 'Extra high-contrast dark theme variant.', status: 'planned' },
-      { key: 'quick_templates', title: 'Quick-create templates',desc: 'One-click work-item templates for repetitive creation.', status: 'planned' }
+    { groupKey: 'proFeatures.group.viz', icon: 'layout', items: [
+      { key: 'conditional_formatting', titleKey: 'proFeatures.item.conditionalFormatting.title', descKey: 'proFeatures.item.conditionalFormatting.desc', status: 'planned' },
+      { key: 'saved_views',     titleKey: 'proFeatures.item.savedViews.title',     descKey: 'proFeatures.item.savedViews.desc',     status: 'planned' },
+      { key: 'swimlanes',       titleKey: 'proFeatures.item.swimlanes.title',      descKey: 'proFeatures.item.swimlanes.desc',      status: 'planned' },
+      { key: 'critical_path',   titleKey: 'proFeatures.item.criticalPath.title',   descKey: 'proFeatures.item.criticalPath.desc',   status: 'planned' },
+      { key: 'baseline_gantt',  titleKey: 'proFeatures.item.baselineGantt.title',  descKey: 'proFeatures.item.baselineGantt.desc',  status: 'planned' },
+      { key: 'ultra_dark',      titleKey: 'proFeatures.item.ultraDark.title',      descKey: 'proFeatures.item.ultraDark.desc',      status: 'planned' },
+      { key: 'quick_templates', titleKey: 'proFeatures.item.quickTemplates.title', descKey: 'proFeatures.item.quickTemplates.desc', status: 'planned' }
     ]},
-    { group: 'Filters', icon: 'folder', items: [
-      { key: 'filter_presets', title: 'Synced filter presets', desc: 'Free saves 5 locally; Pro stores in the cloud, syncs across devices/accounts and raises the limit.', status: 'partial' }
+    { groupKey: 'proFeatures.group.filters', icon: 'folder', items: [
+      { key: 'filter_presets', titleKey: 'proFeatures.item.filterPresets.title', descKey: 'proFeatures.item.filterPresets.desc', status: 'partial' }
     ]},
-    { group: 'Sign-in', icon: 'key', items: [
-      { key: 'hosted_oauth', title: '1-Click Microsoft Sign-in', desc: 'Sign in with Microsoft in one click — no Entra app to register.', status: 'stub' }
+    { groupKey: 'proFeatures.group.signIn', icon: 'key', items: [
+      { key: 'hosted_oauth', titleKey: 'proFeatures.item.hostedOauth.title', descKey: 'proFeatures.item.hostedOauth.desc', status: 'stub' }
     ]},
-    { group: 'Export & Integrations', icon: 'download', items: [
-      { key: 'export',     title: 'Advanced Export (PDF/Excel)', desc: 'High-res Gantt/Timeline (SVG/PDF) and analytics to CSV/Excel.', status: 'stub' },
-      { key: 'share_link', title: 'Public share link',           desc: 'Read-only snapshot link to a graph/timeline for stakeholders without ADO access.', status: 'planned' }
+    { groupKey: 'proFeatures.group.export', icon: 'download', items: [
+      { key: 'export',     titleKey: 'proFeatures.item.export.title',    descKey: 'proFeatures.item.export.desc',    status: 'stub' },
+      { key: 'share_link', titleKey: 'proFeatures.item.shareLink.title', descKey: 'proFeatures.item.shareLink.desc', status: 'planned' }
     ]},
-    { group: 'Team & Enterprise', icon: 'user', items: [
-      { key: 'shared_views',     title: 'Shared presets / dashboards', desc: 'Team-wide shared filters, views and dashboards.', status: 'planned' },
-      { key: 'tv_dashboard',     title: 'TV / kiosk dashboards',       desc: 'Read-only kiosk mode for standup screens.', status: 'planned' },
-      { key: 'scheduled_reports',title: 'Scheduled reports',           desc: 'Weekly sprint metrics to email / Slack / Teams.', status: 'planned' },
-      { key: 'cross_project',    title: 'Cross-project / org boards',  desc: 'Aggregate items from several projects / organizations.', status: 'planned' }
+    { groupKey: 'proFeatures.group.team', icon: 'user', items: [
+      { key: 'shared_views',     titleKey: 'proFeatures.item.sharedViews.title',      descKey: 'proFeatures.item.sharedViews.desc',      status: 'planned' },
+      { key: 'tv_dashboard',     titleKey: 'proFeatures.item.tvDashboard.title',      descKey: 'proFeatures.item.tvDashboard.desc',      status: 'planned' },
+      { key: 'scheduled_reports',titleKey: 'proFeatures.item.scheduledReports.title', descKey: 'proFeatures.item.scheduledReports.desc', status: 'planned' },
+      { key: 'cross_project',    titleKey: 'proFeatures.item.crossProject.title',     descKey: 'proFeatures.item.crossProject.desc',     status: 'planned' }
     ]}
   ];
 
   const STATUS = {
-    stub:    { label: 'Stub in UI', cls: 'pf-st-stub' },
-    partial: { label: 'Free + Pro', cls: 'pf-st-partial' },
-    planned: { label: 'Planned',    cls: 'pf-st-planned' }
+    stub:    { labelKey: 'proFeatures.status.stub',    cls: 'pf-st-stub' },
+    partial: { labelKey: 'proFeatures.status.partial', cls: 'pf-st-partial' },
+    planned: { labelKey: 'proFeatures.status.planned', cls: 'pf-st-planned' }
   };
 
   let built = false;
@@ -117,27 +125,33 @@
 
     const groupsHtml = CATALOG.map(g => `
       <div class="pf-group">
-        <div class="pf-group-title"><ui-icon name="${g.icon}"></ui-icon>${g.group}</div>
+        <div class="pf-group-title"><ui-icon name="${g.icon}"></ui-icon><span data-i18n="${g.groupKey}"></span></div>
         <div class="pf-grid">
           ${g.items.map(it => `
             <button type="button" class="pf-tile" data-key="${it.key}">
               <div class="pf-tile-top">
-                <span class="pf-tile-title">${it.title}</span>
-                <span class="pf-tag ${STATUS[it.status].cls}">${STATUS[it.status].label}</span>
+                <span class="pf-tile-title" data-i18n="${it.titleKey}"></span>
+                <span class="pf-tag ${STATUS[it.status].cls}" data-i18n="${STATUS[it.status].labelKey}"></span>
               </div>
-              <div class="pf-tile-desc">${it.desc}</div>
+              <div class="pf-tile-desc" data-i18n="${it.descKey}"></div>
             </button>`).join('')}
         </div>
       </div>`).join('');
 
     panelEl.innerHTML = `
-      <button class="pf-close" type="button" aria-label="Close">&times;</button>
-      <div class="pf-head"><span class="pf-badge"><ui-icon name="gem"></ui-icon>Pro</span><h2>Explore ADO Atlas Pro</h2></div>
-      <p class="pf-sub">Everything planned for the paid tier. Click any feature for details.</p>
+      <button class="pf-close" type="button" aria-label="Close" data-i18n-title="common.close">&times;</button>
+      <div class="pf-head"><span class="pf-badge"><ui-icon name="gem"></ui-icon><span data-i18n="proFeatures.badge.pro">Pro</span></span><h2 data-i18n="proFeatures.title">Explore ADO Atlas Pro</h2></div>
+      <p class="pf-sub" data-i18n="proFeatures.subtitle">Everything planned for the paid tier. Click any feature for details.</p>
       ${groupsHtml}
     `;
     backdropEl.appendChild(panelEl);
     document.body.appendChild(backdropEl);
+
+    // Translate static markup; re-apply on language switch so an open panel updates.
+    if (global.i18n) {
+      global.i18n.applyDOM(panelEl);
+      global.i18n.onChange(() => { if (built) global.i18n.applyDOM(panelEl); });
+    }
 
     panelEl.querySelector('.pf-close').addEventListener('click', () => ProFeaturesPanel.close());
     backdropEl.addEventListener('click', (e) => { if (e.target === backdropEl) ProFeaturesPanel.close(); });
@@ -149,7 +163,9 @@
         const item = findItem(key);
         ProFeaturesPanel.close();
         if (global.PremiumPaywall) {
-          global.PremiumPaywall.open(key, item ? { title: item.title, desc: item.desc } : null);
+          // Hand the paywall resolved (localized) strings for catalog items that
+          // have no dedicated FEATURES entry of their own.
+          global.PremiumPaywall.open(key, item ? { title: L(item.titleKey), desc: L(item.descKey) } : null);
         }
       });
     });

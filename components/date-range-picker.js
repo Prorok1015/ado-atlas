@@ -1,3 +1,10 @@
+// Localized string helper (guarded: degrades to the English fallback if i18n not ready).
+const DRP_L = (k, fallback, p) => (typeof window !== 'undefined' && window.i18n) ? window.i18n.t(k, p) : fallback;
+const DRP_WEEKDAY_KEYS = ['dateRange.weekday.mo', 'dateRange.weekday.tu', 'dateRange.weekday.we', 'dateRange.weekday.th', 'dateRange.weekday.fr', 'dateRange.weekday.sa', 'dateRange.weekday.su'];
+const DRP_WEEKDAY_EN = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+const DRP_MONTH_KEYS = ['dateRange.month.jan', 'dateRange.month.feb', 'dateRange.month.mar', 'dateRange.month.apr', 'dateRange.month.may', 'dateRange.month.jun', 'dateRange.month.jul', 'dateRange.month.aug', 'dateRange.month.sep', 'dateRange.month.oct', 'dateRange.month.nov', 'dateRange.month.dec'];
+const DRP_MONTH_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 class DateRangePicker {
   constructor(containerId, options = {}) {
     this.container = document.getElementById(containerId);
@@ -12,6 +19,17 @@ class DateRangePicker {
     this.currentMonth.setUTCDate(1); // Set to start of month in UTC
     this.hoverDate = null;
     this.render();
+    // Re-render an open picker when the interface language switches.
+    if (typeof window !== 'undefined' && window.i18n && !this._i18nBound) {
+      this._i18nBound = true;
+      window.i18n.onChange(() => { if (this.container && this.container.isConnected) this.render(); });
+    }
+  }
+
+  // BCP-47 locale tag for native date formatting (falls back to en-US).
+  localeTag() {
+    const l = (typeof window !== 'undefined' && window.i18n) ? window.i18n.getLang() : 'en';
+    return ({ en: 'en-US', ru: 'ru-RU', es: 'es-ES', de: 'de-DE' })[l] || 'en-US';
   }
 
   parseUtcDate(str) {
@@ -141,7 +159,7 @@ class DateRangePicker {
     title.style.cursor = 'pointer';
     
     if (this.viewMode === 'days') {
-      title.textContent = this.currentMonth.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+      title.textContent = this.currentMonth.toLocaleString(this.localeTag(), { month: 'long', year: 'numeric', timeZone: 'UTC' });
       title.onclick = () => {
         this.viewMode = 'months';
         this.render();
@@ -174,10 +192,10 @@ class DateRangePicker {
       // Weekday labels row
       const weekLabels = document.createElement('div');
       weekLabels.className = 'drp-weekdays';
-      ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].forEach(day => {
+      DRP_WEEKDAY_KEYS.forEach((key, i) => {
         const lbl = document.createElement('div');
         lbl.className = 'drp-weekday';
-        lbl.textContent = day;
+        lbl.textContent = DRP_L(key, DRP_WEEKDAY_EN[i]);
         weekLabels.appendChild(lbl);
       });
       this.container.appendChild(weekLabels);
@@ -237,11 +255,10 @@ class DateRangePicker {
     } else if (this.viewMode === 'months') {
       const grid = document.createElement('div');
       grid.className = 'drp-grid drp-grid-large';
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      months.forEach((m, idx) => {
+      DRP_MONTH_KEYS.forEach((key, idx) => {
         const item = document.createElement('div');
         item.className = 'drp-item-large';
-        item.textContent = m;
+        item.textContent = DRP_L(key, DRP_MONTH_EN[idx]);
         if (idx === this.currentMonth.getUTCMonth()) {
           item.classList.add('active');
         }
@@ -280,24 +297,25 @@ class DateRangePicker {
 
     const rangeText = document.createElement('span');
     rangeText.className = 'drp-range-summary';
+    const loc = this.localeTag();
     if (this.single) {
       if (this.start) {
-        rangeText.textContent = this.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+        rangeText.textContent = this.start.toLocaleDateString(loc, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
       } else {
-        rangeText.textContent = 'Select date...';
+        rangeText.textContent = DRP_L('dateRange.selectDate', 'Select date...');
       }
     } else if (this.start || this.finish) {
-      const sPart = this.start ? this.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '?';
-      const fPart = this.finish ? this.finish.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '?';
+      const sPart = this.start ? this.start.toLocaleDateString(loc, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '?';
+      const fPart = this.finish ? this.finish.toLocaleDateString(loc, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '?';
       rangeText.textContent = `${sPart} — ${fPart}`;
     } else {
-      rangeText.textContent = 'Select date range...';
+      rangeText.textContent = DRP_L('dateRange.selectRange', 'Select date range...');
     }
 
     const clearBtn = document.createElement('button');
     clearBtn.type = 'button';
     clearBtn.className = 'btn btn-sm drp-clear';
-    clearBtn.textContent = 'Clear';
+    clearBtn.textContent = DRP_L('dateRange.clear', 'Clear');
     clearBtn.onclick = () => {
       this.start = null;
       this.finish = null;

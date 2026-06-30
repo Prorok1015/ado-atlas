@@ -14,26 +14,33 @@
   // TODO(Stage 2): replace with the Lemon Squeezy checkout URL.
   const BUY_URL = 'https://prorok1015.github.io/ado-atlas/#pricing';
 
+  // Lazy, guarded i18n helper. Falls back to the English literal when the runtime
+  // is not present (so this file degrades gracefully even outside the app).
+  const L = (k, p, fallback) => (typeof global.i18n !== 'undefined' && global.i18n)
+    ? global.i18n.t(k, p)
+    : (fallback != null ? fallback : k);
+
   // Per-feature pitch shown on the left (keyed by data-pro-feature value).
+  // `titleKey`/`descKey` resolve at render time so language switches re-pitch.
   const FEATURES = {
-    analytics:      { title: 'Analytics',                 desc: 'Cycle Time, WIP trends, Flow Efficiency and a Stale Items board — process analytics built from your work-item history.' },
-    filter_presets: { title: 'Synced Filter Presets',     desc: 'Free saves up to 5 filters on this device. Pro keeps them in the cloud, syncs across every device and account on the same subscription (independent of your Google/Chrome account), and raises the limit.' },
-    hosted_oauth:   { title: '1-Click Microsoft Sign-in', desc: 'Sign in with Microsoft in one click — no need to register your own Entra ID app.' },
-    cloud_ai:       { title: 'ADO Atlas Cloud AI',        desc: 'Powerful cloud LLMs (GPT / Claude) through our secure proxy — no API key of your own required.' },
-    export:         { title: 'Advanced Export',           desc: 'High-resolution Gantt / Timeline export (SVG / PDF) and analytics export to CSV / Excel.' },
-    default:        { title: 'ADO Atlas Pro',             desc: 'Unlock advanced analytics and quality-of-life tools for teams — $5/mo or $49/yr.' }
+    analytics:      { titleKey: 'paywall.feature.analytics.title',     descKey: 'paywall.feature.analytics.desc' },
+    filter_presets: { titleKey: 'paywall.feature.filterPresets.title', descKey: 'paywall.feature.filterPresets.desc' },
+    hosted_oauth:   { titleKey: 'paywall.feature.hostedOauth.title',   descKey: 'paywall.feature.hostedOauth.desc' },
+    cloud_ai:       { titleKey: 'paywall.feature.cloudAi.title',       descKey: 'paywall.feature.cloudAi.desc' },
+    export:         { titleKey: 'paywall.feature.export.title',        descKey: 'paywall.feature.export.desc' },
+    default:        { titleKey: 'paywall.feature.default.title',       descKey: 'paywall.feature.default.desc' }
   };
 
   // The full benefit list shown on the right. `key` ties a row to a FEATURES key so
   // the triggering feature can be highlighted; rows without a feature key (e.g. UI
-  // extras) just list extra value.
+  // extras) just list extra value. `textKey` resolves at render time.
   const BENEFITS = [
-    { key: 'analytics',      icon: 'bar-chart', text: 'Process analytics — Cycle Time, Flow Efficiency, WIP trends & Stale Items' },
-    { key: 'cloud_ai',       icon: 'cloud',     text: 'ADO Atlas Cloud AI — GPT / Claude with no API key of your own' },
-    { key: 'hosted_oauth',   icon: 'key',       text: '1-click Microsoft sign-in — no Entra app to register' },
-    { key: 'filter_presets', icon: 'save',      text: 'Cloud-synced filter presets across all your devices, with a higher limit' },
-    { key: 'export',         icon: 'download',  text: 'Advanced export — high-res Gantt/Timeline (SVG/PDF) & analytics to CSV/Excel' },
-    { key: 'ui',             icon: 'sparkles',  text: 'UI extras — Ultra Dark theme, conditional formatting & quick-create templates' }
+    { key: 'analytics',      icon: 'bar-chart', textKey: 'paywall.benefit.analytics' },
+    { key: 'cloud_ai',       icon: 'cloud',     textKey: 'paywall.benefit.cloudAi' },
+    { key: 'hosted_oauth',   icon: 'key',       textKey: 'paywall.benefit.hostedOauth' },
+    { key: 'filter_presets', icon: 'save',      textKey: 'paywall.benefit.filterPresets' },
+    { key: 'export',         icon: 'download',  textKey: 'paywall.benefit.export' },
+    { key: 'ui',             icon: 'sparkles',  textKey: 'paywall.benefit.ui' }
   ];
 
   let built = false;
@@ -45,6 +52,9 @@
   let activateBtn = null;
   let msgEl = null;
   let benefitsEl = null;
+  // Remembers the current pitch so an open dialog can re-render on language switch.
+  let activeFeature = null;
+  let activeInfo = null;
 
   function injectStyles() {
     if (document.getElementById('premium-paywall-styles')) return;
@@ -111,25 +121,25 @@
     panelEl = document.createElement('div');
     panelEl.className = 'pw-panel';
     panelEl.innerHTML = `
-      <button class="pw-close" type="button" aria-label="Close">&times;</button>
+      <button class="pw-close" type="button" aria-label="Close" data-i18n-title="common.close">&times;</button>
       <div class="pw-body">
         <div class="pw-left">
-          <div class="pw-badge"><span><ui-icon name="gem"></ui-icon>Pro</span></div>
+          <div class="pw-badge"><span><ui-icon name="gem"></ui-icon><span data-i18n="paywall.badge.pro">Pro</span></span></div>
           <div class="pw-title"></div>
           <p class="pw-desc"></p>
           <div class="pw-key-row">
-            <input type="text" placeholder="Paste your license key…" spellcheck="false" autocomplete="off">
-            <button class="pw-btn pw-btn-activate" type="button">Activate</button>
+            <input type="text" data-i18n-placeholder="paywall.licenseKey.placeholder" placeholder="Paste your license key…" spellcheck="false" autocomplete="off">
+            <button class="pw-btn pw-btn-activate" type="button" data-i18n="paywall.activate">Activate</button>
           </div>
           <p class="pw-msg"></p>
-          <a class="pw-btn-buy" target="_blank" rel="noopener noreferrer">Get ADO Atlas Pro — $5/mo</a>
+          <a class="pw-btn-buy" target="_blank" rel="noopener noreferrer" data-i18n="paywall.buy">Get ADO Atlas Pro — $5/mo</a>
         </div>
         <div class="pw-right">
-          <div class="pw-right-title">Everything in Pro</div>
+          <div class="pw-right-title" data-i18n="paywall.everythingInPro">Everything in Pro</div>
           <ul class="pw-benefits">
-            ${BENEFITS.map(b => `<li class="pw-benefit" data-key="${b.key}"><ui-icon name="${b.icon}"></ui-icon><span>${b.text}</span></li>`).join('')}
+            ${BENEFITS.map(b => `<li class="pw-benefit" data-key="${b.key}"><ui-icon name="${b.icon}"></ui-icon><span data-i18n="${b.textKey}"></span></li>`).join('')}
           </ul>
-          <button type="button" class="pw-seeall">See all Pro features →</button>
+          <button type="button" class="pw-seeall" data-i18n="paywall.seeAll">See all Pro features →</button>
         </div>
       </div>
     `;
@@ -156,19 +166,42 @@
       if (global.ProFeaturesPanel) global.ProFeaturesPanel.open();
     });
 
+    // Translate the static markup, then re-pitch on language switch so an open
+    // dialog updates live.
+    if (global.i18n) {
+      global.i18n.applyDOM(panelEl);
+      global.i18n.onChange(() => {
+        if (!built) return;
+        global.i18n.applyDOM(panelEl);
+        renderPitch();
+      });
+    }
+
     built = true;
+  }
+
+  // Renders the left-column title/desc for the currently active feature pitch.
+  function renderPitch() {
+    if (!titleEl || !descEl) return;
+    const f = activeInfo || FEATURES[activeFeature] || FEATURES.default;
+    // info from ProFeaturesPanel carries literal title/desc (catalog items aren't
+    // all localized); FEATURES entries carry i18n keys resolved here.
+    titleEl.textContent = f.title != null ? f.title : L(f.titleKey);
+    descEl.textContent = f.desc != null ? f.desc : L(f.descKey);
   }
 
   async function onActivate() {
     const key = (keyInput.value || '').trim();
-    if (!key) { setMsg('Please enter a license key.', true); return; }
-    setMsg('Activating…', false);
+    if (!key) { setMsg(L('paywall.msg.enterKey', null, 'Please enter a license key.'), true); return; }
+    setMsg(L('paywall.msg.activating', null, 'Activating…'), false);
     activateBtn.disabled = true;
     try {
       await global.EntitlementManager.activate(key);
-      setMsg('Activated! Enjoy Pro.', false);
+      setMsg(L('paywall.msg.activated', null, 'Activated! Enjoy Pro.'), false);
     } catch (e) {
-      setMsg(e.message || 'Activation failed.', true);
+      // EntitlementManager errors are not UI chrome — surface as-is, falling back
+      // to a localized generic failure when no message is supplied.
+      setMsg(e.message || L('paywall.msg.activationFailed', null, 'Activation failed.'), true);
     } finally {
       activateBtn.disabled = false;
     }
@@ -185,9 +218,9 @@
     // used by ProFeaturesPanel to pitch catalog items that have no FEATURES entry.
     open(feature, info) {
       build();
-      const f = info || FEATURES[feature] || FEATURES.default;
-      titleEl.textContent = f.title;
-      descEl.textContent = f.desc;
+      activeFeature = feature;
+      activeInfo = info || null;
+      renderPitch();
       // Highlight the benefit row that matches the triggering feature.
       benefitsEl.querySelectorAll('.pw-benefit').forEach(li => {
         li.classList.toggle('active', li.dataset.key === feature);

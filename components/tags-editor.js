@@ -1,3 +1,6 @@
+// Localized string helper (guarded: degrades to the English fallback if i18n not ready).
+const TAGS_L = (k, fallback, p) => (typeof window !== 'undefined' && window.i18n) ? window.i18n.t(k, p) : fallback;
+
 class TagsEditor {
   constructor(containerId, options = {}) {
     this.containerId = containerId;
@@ -10,6 +13,12 @@ class TagsEditor {
     this.adding = false;
     this.committing = false;
     this.disabled = false;
+    // Re-render to pick up the new language when the user switches it.
+    if (typeof window !== 'undefined' && window.i18n) {
+      window.i18n.onChange(() => {
+        if (!this.adding && document.getElementById(this.containerId)) this.render();
+      });
+    }
   }
 
   norm(s) {
@@ -51,12 +60,13 @@ class TagsEditor {
       opClass = op === 'add' ? 'add' : 'remove';
     }
 
-    let html = this.cur.map((t, i) => 
-      `<span class="tagchip ${opClass}" style="background:${personColor(t)}">${htmlEsc(t)}<b data-i="${i}" title="remove">×</b></span>`
+    const removeLbl = TAGS_L('tags.remove', 'remove');
+    let html = this.cur.map((t, i) =>
+      `<span class="tagchip ${opClass}" style="background:${personColor(t)}">${htmlEsc(t)}<b data-i="${i}" title="${htmlEsc(removeLbl)}">×</b></span>`
     ).join('');
 
     if (!this.cur.length && !this.adding) {
-      html = '<span class="pcnone">no tags</span>';
+      html = `<span class="pcnone">${htmlEsc(TAGS_L('tags.empty', 'no tags'))}</span>`;
     }
 
     const inpId = this.options.idPrefix + 'taginp';
@@ -67,12 +77,12 @@ class TagsEditor {
     html += this.adding
       ? `<span class="tagadd-wrap" style="display:inline-flex;align-items:center;gap:4px;">
            <span class="f-dropdown-container">
-             <input id="${inpId}" class="taginp" placeholder="tag…" autocomplete="off">
+             <input id="${inpId}" class="taginp" placeholder="${htmlEsc(TAGS_L('tags.placeholder', 'tag…'))}" autocomplete="off">
              <div id="${dropdownId}" class="f-dropdown" style="display:none"></div>
            </span>
-           <button type="button" id="${okId}" class="tagok" title="add tag">✓</button>
+           <button type="button" id="${okId}" class="tagok" title="${htmlEsc(TAGS_L('tags.addTitle', 'add tag'))}"><ui-icon name="check"></ui-icon></button>
          </span>`
-      : `<button type="button" class="tagadd" id="${plusId}" title="add a tag">＋</button>`;
+      : `<button type="button" class="tagadd" id="${plusId}" title="${htmlEsc(TAGS_L('tags.addNew', 'add a tag'))}">＋</button>`;
 
     box.innerHTML = html;
 
@@ -103,7 +113,7 @@ class TagsEditor {
         if (!matches.length) {
           const empty = document.createElement('div');
           empty.className = 'f-dropdown-item empty';
-          empty.textContent = 'No matches';
+          empty.textContent = TAGS_L('tags.noMatches', 'No matches');
           dropdown.appendChild(empty);
         } else {
           matches.forEach(val => {

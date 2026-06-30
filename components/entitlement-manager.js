@@ -9,6 +9,9 @@
   // NOTE: this is the billing/premium gate. The unrelated per-item "follow"
   // feature lives in FollowManager (components/follow-manager.js).
 
+  // Localized string helper (guarded: degrades to the English fallback if i18n not ready).
+  const L = (k, fallback, p) => (typeof window !== 'undefined' && window.i18n) ? window.i18n.t(k, p) : fallback;
+
   const STORAGE_KEY = 'entitlement';
   const GRACE_DAYS = 7;
   const GRACE_MS = GRACE_DAYS * 24 * 60 * 60 * 1000;
@@ -58,7 +61,7 @@
     // to the Go backend, then persist the returned entitlement and notify.
     async activate(licenseKey) {
       void licenseKey;
-      throw new Error('Premium activation is not available yet — coming soon.');
+      throw new Error(L('entitlement.activationUnavailable', 'Premium activation is not available yet — coming soon.'));
     },
 
     // STUB (Stage 2): POST /api/license/validate; invoked from the background

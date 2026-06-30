@@ -8,8 +8,19 @@
   root.AdoLib = lib;
   root.timeExprToMath = lib.timeExprToMath;
   root.evaluateMath = lib.evaluateMath;
+  root.formatMessage = lib.formatMessage;
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
+
+  // ---- i18n ----
+  // Interpolate {placeholder} tokens in a localized template. Pure and
+  // deterministic so it lives here (no DOM/chrome) and is unit-tested. Missing
+  // params leave their token untouched so gaps are visible rather than silent.
+  function formatMessage(template, params) {
+    if (!template) return "";
+    if (!params) return template;
+    return String(template).replace(/\{(\w+)\}/g, (m, k) => (k in params ? String(params[k]) : m));
+  }
 
   // ---- WIQL ----
   function wiqlQuote(v) { return String(v).replace(/'/g, "''"); }
@@ -441,6 +452,6 @@
     return result;
   }
 
-  return { wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml,
+  return { formatMessage, wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml,
            base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath };
 });

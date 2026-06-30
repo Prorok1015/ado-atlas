@@ -11,6 +11,29 @@ function test(name, fn) {
 }
 const utc = (...a) => new Date(Date.UTC(...a));
 
+// ---- formatMessage (i18n interpolation) ----
+test("formatMessage: substitutes a single placeholder", () => {
+  assert.strictEqual(lib.formatMessage("{count} items followed", { count: 3 }), "3 items followed");
+});
+test("formatMessage: substitutes multiple placeholders", () => {
+  assert.strictEqual(lib.formatMessage("{a} of {b}", { a: 2, b: 5 }), "2 of 5");
+});
+test("formatMessage: leaves unknown placeholder token untouched", () => {
+  assert.strictEqual(lib.formatMessage("hi {name}", { other: "x" }), "hi {name}");
+});
+test("formatMessage: no params returns template verbatim", () => {
+  assert.strictEqual(lib.formatMessage("plain {x}"), "plain {x}");
+});
+test("formatMessage: empty/missing template returns empty string", () => {
+  assert.strictEqual(lib.formatMessage("", { x: 1 }), "");
+  assert.strictEqual(lib.formatMessage(undefined, { x: 1 }), "");
+  assert.strictEqual(lib.formatMessage(null), "");
+});
+test("formatMessage: coerces non-string param values", () => {
+  assert.strictEqual(lib.formatMessage("{v}", { v: 0 }), "0");
+  assert.strictEqual(lib.formatMessage("{v}", { v: false }), "false");
+});
+
 // ---- wiqlQuote ----
 test("wiqlQuote doubles single quotes", () => {
   assert.strictEqual(lib.wiqlQuote("O'Brien"), "O''Brien");

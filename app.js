@@ -310,7 +310,7 @@ let pdrag=null, suppressClick=false;            // custom pointer-based drag for
 let boardScroll=null;                           // saved board scroll to restore from the sprint view
 let boardGroup='sprint';                        // board grouping: 'sprint' | 'assignee' | 'state'
 let canCreateSprint=true;                       // show the "add sprint" column until a create is denied (403)
-let canEditSprint=true;                          // show the sprint "✎ dates" button until an edit is denied (403)
+let canEditSprint=true;                          // show the sprint "dates" button until an edit is denied (403)
 let canCreateItem=true;                         // show the New / + Child buttons until a create is denied (403)
 const newSprints=new Set();                     // sprint paths created this session — stay visible while still empty
 let pendingSprintItems=null;                     // cards dropped on "＋ New sprint" → moved into the sprint once created
@@ -356,7 +356,8 @@ async function ensureKids(id){            // load children once, cache in the st
 }
 
 function setStatus(t,err){const s=$('status');if(!s)return;if(t.includes('<ui-icon')){s.innerHTML=t;}else{s.textContent=t;}s.style.color=err?'#e06c75':'var(--muted)';}
-function customConfirm(message, title = 'Confirm Action') {
+function customConfirm(message, title) {
+  if (title == null) title = window.i18n.t('dialog.confirmActionTitle');
   return new Promise((resolve) => {
     $('confirm-title').textContent = title;
     $('confirm-message').innerHTML = message;
@@ -384,7 +385,8 @@ function customConfirm(message, title = 'Confirm Action') {
     ok.focus();
   });
 }
-function customAlert(message, title = 'Alert') {
+function customAlert(message, title) {
+  if (title == null) title = window.i18n.t('dialog.alertTitle');
   return new Promise((resolve) => {
     $('confirm-title').textContent = title;
     $('confirm-message').innerHTML = message;
@@ -565,7 +567,7 @@ function renderFilters(){
   if (indEl) indEl.style.display = 'none';
 
   const el=$('filterchips');el.innerHTML='';
-  // toggle the static "✕ Clear all" in the Find row — visibility (not display)
+  // toggle the static "Clear all" in the Find row — visibility (not display)
   // keeps its slot reserved so the search input never shifts when filters appear
   const all=$('filt_clear_all');if(all)all.style.visibility=filterCount()>0?'visible':'hidden';
   FILTERS.forEach(f=>{
@@ -585,7 +587,7 @@ function renderFilters(){
 
     const row=document.createElement('div');row.className='frow';
     const lab=document.createElement('span');lab.className='fl';lab.textContent=f.label;row.appendChild(lab);
-    // per-row clear "✕" sits left of the chips. ALWAYS rendered so the chip
+    // per-row clear "x" sits left of the chips. ALWAYS rendered so the chip
     // alignment doesn't jump when it appears/disappears; visibility:hidden
     // keeps the slot reserved when this filter has no selection.
     const x=document.createElement('button');
@@ -646,7 +648,7 @@ function renderFilters(){
         if(!matches.length){
           const empty=document.createElement('div');
           empty.className='f-dropdown-item empty';
-          empty.textContent='No matches';
+          empty.textContent=window.i18n.t('filter.noMatches');
           dropdown.appendChild(empty);
         } else {
           matches.forEach(val=>{
@@ -734,7 +736,7 @@ function scheduleApply(){clearTimeout(applyTimer);applyTimer=setTimeout(refresh,
 /* ---------- tree ---------- */
 function childrenUl(id){
   const ul=document.createElement('ul');const kids=store.kids[id]||[];
-  if(!kids.length){const e=document.createElement('div');e.className='empty';e.textContent='(no children)';ul.appendChild(e);}
+  if(!kids.length){const e=document.createElement('div');e.className='empty';e.textContent=window.i18n.t('tree.noChildren');ul.appendChild(e);}
   kids.forEach(cid=>{if(store.nodes[cid])ul.appendChild(treeNode(store.nodes[cid]));});
   return ul;
 }
@@ -766,7 +768,7 @@ function treeNode(n){
     pc.style.background=prioColor(n.priority);pc.title='priority '+n.priority;return pc;
   })():null;
   // A right-pushing spacer keeps the right-aligned cluster anchored regardless of
-  // which badges the user has hidden via ⚙ Badges; everything appended after it
+  // which badges the user has hidden via Badges; everything appended after it
   // sits on the right edge in insertion order.
   const sp=document.createElement('span');sp.className='rspacer';sp.style.cssText='flex:1';
   if(prioEl)row.append(cb,tog,dot,lab,prioEl,sp);
@@ -1082,8 +1084,8 @@ async function bulkApply(field,val){
   });
   itemsListHtml += '</div>';
 
-  const msg = `Apply <strong style="color:var(--txt); font-weight:700;">${htmlEsc(displayName)}</strong> = ${htmlVal} to ${ids.length} item(s):` + itemsListHtml;
-  if(!await customConfirm(msg, 'Bulk Apply')) {
+  const msg = window.i18n.t('bulk.applyConfirm', {field:`<strong style="color:var(--txt); font-weight:700;">${htmlEsc(displayName)}</strong>`, value:htmlVal, count:ids.length}) + itemsListHtml;
+  if(!await customConfirm(msg, window.i18n.t('bulk.applyTitle'))) {
     syncBulkBarValues();
     return;
   }
@@ -1390,7 +1392,7 @@ function mixHex(hex,toward,t){const a=hexToRgb(hex),b=hexToRgb(toward);return 'r
 const nodeFill=type=>{const c=TYPE_COLOR[type]||'#95a5a6';return document.body.classList.contains('light')?mixHex(c,'#ffffff',0.82):mixHex(c,'#11151b',0.70);};
 const nodeStroke=type=>TYPE_COLOR[type]||'#95a5a6';
 // Per-view "what to show" toggles. Each view exposes its own set of fields
-// through the ⚙ popover anchored on the Controls box. Choices persist as one
+// through the popover anchored on the Controls box. Choices persist as one
 // nested object under `ado.badges`; the legacy `ado.graphBadges` flat key is
 // migrated on first load.
 const BADGE_FIELDS_BY_VIEW={
@@ -1537,7 +1539,7 @@ function initCy(){
   // Click on a dep edge → confirm + delete.
   cy.on('tap','edge[kind="dep"]',async e=>{
     const ed=e.target,s=Number(ed.data('source')),t=Number(ed.data('target'));
-    if(!await customConfirm(`Remove dependency #${s} → #${t}?`, 'Remove Dependency'))return;
+    if(!await customConfirm(window.i18n.t('dep.removeConfirm', {source:s, target:t}), window.i18n.t('dep.removeTitle')))return;
     await removeDepLink(s,t,'blocks');
   });
   cy.on('mouseover','edge[kind="dep"]',e=>e.target.addClass('hot'));
@@ -1669,7 +1671,7 @@ async function renderGraph(opts){
   cy.resize();
   const token=++renderToken;                    // newest render wins; stale async results bail out
   let ids=[...reachable()].filter(id=>store.nodes[id]);
-  if(!ids.length){cy.elements().remove();setStatus('nothing matches the filters');return;}
+  if(!ids.length){cy.elements().remove();setStatus(window.i18n.t('status.nothingMatches'));return;}
   const originalCount = ids.length;
   let isTruncated = false;
   if (ids.length > maxNodesLimit) {
@@ -1744,7 +1746,7 @@ async function renderGraph(opts){
 
 // ISO date/datetime -> "30 May 2026" (UTC, so it never drifts a day across timezones)
 function prettyDate(s){if(!s)return '';const m=String(s).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return String(s).slice(0,10);
-  return (+m[3])+' '+new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).toLocaleString('en-US',{month:'short',timeZone:'UTC'})+' '+m[1];}
+  return (+m[3])+' '+new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).toLocaleString(window.i18n.getLang(),{month:'short',timeZone:'UTC'})+' '+m[1];}
 const DONE_STATES=['Closed','Resolved','Removed','Done'];
 let iterCache=null;
 async function getIterations(){                     // sprint dates — fetched once, cached
@@ -1830,7 +1832,7 @@ async function renderBoard(){
     }
     const wrap=document.createElement('div');wrap.className='bcards';
     colItems.forEach(n=>wrap.appendChild(boardCard(n,fin,today)));
-    if(!colItems.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
+    if(!colItems.length){const ph=document.createElement('div');ph.className='empty';ph.textContent=window.i18n.t('board.dropHere');wrap.appendChild(ph);}
     col.dataset.field='iteration';col.dataset.val=(k==='__none__')?root:k;   // drop = change sprint
     col.append(h,wrap);fragment.appendChild(col);
   });
@@ -1859,7 +1861,7 @@ function renderBoardByAssignee(el,items){
     h.innerHTML=(k?htmlEsc(k):'Unassigned')+'<br>'+colMeta(arr);
     const wrap=document.createElement('div');wrap.className='bcards';
     arr.forEach(n=>wrap.appendChild(boardCard(n,null,'')));   // no overdue colouring in assignee view
-    if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
+    if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent=window.i18n.t('board.dropHere');wrap.appendChild(ph);}
     col.dataset.field='assigned';col.dataset.val=k;   // drop = reassign
     col.append(h,wrap);fragment.appendChild(col);
   });
@@ -1883,7 +1885,7 @@ function renderBoardByState(el,items){
     h.innerHTML=(k?`<span class="sbadge" style="background:${stateColor(k)}">${htmlEsc(k)}</span>`:'(no state)')+'<br>'+colMeta(arr);
     const wrap=document.createElement('div');wrap.className='bcards';
     arr.forEach(n=>wrap.appendChild(boardCard(n,null,today)));   // overdue colouring by target date
-    if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent='drop here';wrap.appendChild(ph);}
+    if(!arr.length){const ph=document.createElement('div');ph.className='empty';ph.textContent=window.i18n.t('board.dropHere');wrap.appendChild(ph);}
     col.dataset.field='state';col.dataset.val=k;   // drop = change state
     col.append(h,wrap);fragment.appendChild(col);
   });
@@ -1895,7 +1897,7 @@ function boardCard(n,finish,today){
   const c=document.createElement('div');c.className='bcard'+(overdue?' overdue':'')+(bulkSel.has(n.id)?' bulksel':'');
   c.style.borderLeftColor=tyColor(n.type);   // left marker = item TYPE colour
   c.dataset.id=n.id;c.dataset.est=(n.est!=null?n.est:'');
-  // Gate each badge by the board's per-field toggle (⚙ in the Controls header).
+  // Gate each badge by the board's per-field toggle (in the Controls header).
   const showAssigned=badgeOn('assigned','board'),showType=badgeOn('type','board'),
         showPrio=badgeOn('priority','board'),showState=badgeOn('state','board'),
         showEst=badgeOn('est','board'),showTags=badgeOn('tags','board');
@@ -1997,7 +1999,7 @@ document.addEventListener('mouseup',async ()=>{
   const node=store.nodes[d.id],curVal=node?(node[field]||''):'';   // field: iteration | assigned | state
   if(val===curVal&&!bulk)return;
   if(field==='iteration'){const it=_sprint(val),fin=it&&it.finish?it.finish.slice(0,10):null,today=new Date().toISOString().slice(0,10);
-    if(fin&&fin<today&&!await customConfirm(`Sprint "${it.name}" ended ${fin}. Move ${bulk?bulkSel.size+' items':'#'+d.id} there anyway?`, 'Confirm Move'))return;}
+    if(fin&&fin<today&&!await customConfirm(window.i18n.t('move.sprintEndedConfirm', {sprint:it.name, date:fin, what:bulk?window.i18n.t('move.nItems',{count:bulkSel.size}):('#'+d.id)}), window.i18n.t('move.confirmTitle')))return;}
   if(bulk)moveCards([...bulkSel],field,val);else moveCard(d.id,field,val);
 });
 
@@ -2017,7 +2019,7 @@ function renderSprint(path){
   top.innerHTML=`<button class="btn" id="g_back" title="back to board">←</button>`+
     `<span style="display:inline-flex;align-items:center;gap:6px">${curMark}<b>${htmlEsc(it.name)}</b></span> <span style="color:var(--muted)">${it.start.slice(0,10)} → ${it.finish.slice(0,10)} · ${items.length} items`+
     `${se?' · Σest '+(Math.round(se*10)/10)+'h':''} · <span id="g_act">Σ<ui-icon name="clock"></ui-icon> …</span></span>`+
-    (canEditSprint?`<button class="btn" id="g_editdates" title="edit sprint dates">✎ dates</button>`:'')+
+    (canEditSprint?`<button class="btn" id="g_editdates" title="edit sprint dates"><ui-icon name="edit"></ui-icon> dates</button>`:'')+
     `<button class="btn${sprintGroup==='assignee'?' on':''}" id="g_group" title="group rows by assignee" style="margin-left:auto">by assignee</button>`;
   el.appendChild(top);
   const head=document.createElement('div');head.className='ghead';
@@ -2049,7 +2051,7 @@ function renderSprint(path){
     right.innerHTML=`<span>${n.est!=null?'est '+(+n.est)+'h':''}</span> <span class="gact"><ui-icon name="clock"></ui-icon> …</span>`;
     row.append(lab,track,right);return row;
   };
-  if(!items.length){const e=document.createElement('div');e.className='empty';e.style.padding='12px';e.textContent='no items match the current filters';el.appendChild(e);}
+  if(!items.length){const e=document.createElement('div');e.className='empty';e.style.padding='12px';e.textContent=window.i18n.t('empty.noItemsMatch');el.appendChild(e);}
   else if(sprintGroup==='assignee'){
     const groups=new Map();items.forEach(n=>{const k=n.assigned||'';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);});
     const names=[...groups.keys()].filter(k=>k).sort((a,b)=>a.localeCompare(b));if(groups.has(''))names.push('');
@@ -2125,7 +2127,7 @@ function tlKey(n){                                 // row group key for the curr
 function tlMonths(t0,t1){                          // month segments spanning [t0,t1]
   const out=[];let y=new Date(t0).getUTCFullYear(),m=new Date(t0).getUTCMonth();
   for(;;){const start=Date.UTC(y,m,1),end=Date.UTC(y,m+1,1)-TL_DAY;if(start>t1)break;
-    const lab=new Date(start).toLocaleString('en-US',{month:'short'})+(m===0?(" '"+String(y).slice(2)):'');
+    const lab=new Date(start).toLocaleString(window.i18n.getLang(),{month:'short'})+(m===0?(" '"+String(y).slice(2)):'');
     out.push({start,end,label:lab});m++;if(m>11){m=0;y++;}}
   return out;
 }
@@ -2138,7 +2140,7 @@ async function renderTimeline(){
   const dated=[],undated=[];
   items.forEach(n=>{const d=tlDates(n);if(d){n._tl=d;dated.push(n);}else undated.push(n);});
   if(!dated.length){
-    el.innerHTML='<div class="tlempty">'+(items.length?`none of the ${items.length} item(s) have start/target dates or a dated sprint`:'nothing matches the filters')+'</div>';
+    el.innerHTML='<div class="tlempty">'+(items.length?window.i18n.t('timeline.noDatedItems',{count:items.length}):window.i18n.t('status.nothingMatches'))+'</div>';
     setStatus(`${items.length} items · 0 scheduled`+capNote());return;
   }
   let min=Infinity,max=-Infinity;dated.forEach(n=>{if(n._tl.s<min)min=n._tl.s;if(n._tl.e>max)max=n._tl.e;});
@@ -2174,7 +2176,7 @@ async function renderTimeline(){
   }
   // rows
   const ymd=ms=>new Date(ms).toISOString().slice(0,10);
-  // Timeline label: dot + #id title + optional state pill + optional assignee chip — gated by ⚙ Badges (timeline).
+  // Timeline label: dot + #id title + optional state pill + optional assignee chip — gated by Badges (timeline).
   const showTlPrio=badgeOn('priority','timeline'),showTlState=badgeOn('state','timeline'),showTlAsg=badgeOn('assigned','timeline');
   const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${tyColor(n.type)}"></i>`+
     (showTlAsg&&n.assigned?personChipT(n.assigned):'')+
@@ -2183,7 +2185,7 @@ async function renderTimeline(){
     `</div>`;
   // sp (optional) = the group's sprint window {s,e}; bars outside it are flagged.
   const rowHTML=(n,sp)=>{const t=n._tl,oos=sp&&(t.s<sp.s||t.e>sp.e);
-    const tip=`${n.start?prettyDate(n.start):(t.soft?'sprint start':'?')} → ${(n.target||n.due)?prettyDate(n.target||n.due):(t.soft?'sprint finish':'?')}`+(oos?'  ⚠ dates fall outside the sprint':'');
+    const tip=`${n.start?prettyDate(n.start):(t.soft?'sprint start':'?')} → ${(n.target||n.due)?prettyDate(n.target||n.due):(t.soft?'sprint finish':'?')}`+(oos?'  dates fall outside the sprint':'');
     const prefix=(showTlPrio&&n.priority)?('P'+n.priority+' '):'';
     return `<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${htmlEsc(tip)}">${htmlEsc(prefix)}#${n.id} ${htmlEsc(n.title)}</div></div></div>`;};
   const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
@@ -2250,11 +2252,13 @@ function setMode(m){
 // Per-view "what can I do here" legend, bottom-left. Each view has its own
 // non-obvious interactions (modifier-click to bulk-select, drag semantics, …);
 // this surfaces them. Collapsible, with the state remembered across sessions.
+// Rows store i18n key suffixes for the key-combo (k) and description (d); the
+// icon/symbol (i) is literal. Resolved to localized text in renderViewHelp().
 const VIEW_HELP={
-  tree:[['<ui-icon name="mouse-pointer"></ui-icon>','Click','open item'],['▸','Click ▸','expand / collapse'],['<ui-icon name="check-square"></ui-icon>','Ctrl-click','toggle select'],['<ui-icon name="arrow-up-down"></ui-icon>','Shift-click','select range'],['<ui-icon name="move"></ui-icon>','Drag','re-parent onto a row']],
-  graph:[['<ui-icon name="mouse-pointer"></ui-icon>','Click','open item'],['<ui-icon name="mouse-pointer"></ui-icon>','Double-click','expand / collapse children'],['<ui-icon name="check-square"></ui-icon>','Ctrl / Shift-click','toggle select'],['<ui-icon name="move"></ui-icon>','Drag node','move · background pans'],['<ui-icon name="search"></ui-icon>','Scroll','zoom'],['→','+Deps: drag handle','create dependency link'],['<ui-icon name="trash"></ui-icon>','+Deps: click edge','delete dependency']],
-  board:[['<ui-icon name="mouse-pointer"></ui-icon>','Click','open item'],['<ui-icon name="check-square"></ui-icon>','Ctrl / Shift-click','toggle / range select'],['<ui-icon name="move"></ui-icon>','Drag','move to another column'],['<ui-icon name="plus"></ui-icon>','Drag → ＋','new sprint from cards']],
-  timeline:[['<ui-icon name="mouse-pointer"></ui-icon>','Click','open item'],['<ui-icon name="check-square"></ui-icon>','Ctrl-click','toggle select'],['<ui-icon name="arrow-up-down"></ui-icon>','Shift-click','select range']],
+  tree:[['<ui-icon name="mouse-pointer"></ui-icon>','click','openItem'],['▸','clickExpand','expandCollapse'],['<ui-icon name="check-square"></ui-icon>','ctrlClick','toggleSelect'],['<ui-icon name="arrow-up-down"></ui-icon>','shiftClick','selectRange'],['<ui-icon name="move"></ui-icon>','drag','reparentRow']],
+  graph:[['<ui-icon name="mouse-pointer"></ui-icon>','click','openItem'],['<ui-icon name="mouse-pointer"></ui-icon>','doubleClick','expandCollapseChildren'],['<ui-icon name="check-square"></ui-icon>','ctrlShiftClick','toggleSelect'],['<ui-icon name="move"></ui-icon>','dragNode','moveBackgroundPans'],['<ui-icon name="search"></ui-icon>','scroll','zoom'],['→','depsDragHandle','createDepLink'],['<ui-icon name="trash"></ui-icon>','depsClickEdge','deleteDep']],
+  board:[['<ui-icon name="mouse-pointer"></ui-icon>','click','openItem'],['<ui-icon name="check-square"></ui-icon>','ctrlShiftClick','toggleRangeSelect'],['<ui-icon name="move"></ui-icon>','drag','moveToColumn'],['<ui-icon name="plus"></ui-icon>','dragToPlus','newSprintFromCards']],
+  timeline:[['<ui-icon name="mouse-pointer"></ui-icon>','click','openItem'],['<ui-icon name="check-square"></ui-icon>','ctrlClick','toggleSelect'],['<ui-icon name="arrow-up-down"></ui-icon>','shiftClick','selectRange']],
 };
 function viewHelpCollapsed(){try{return localStorage.getItem('ado.viewhelp')==='0';}catch(e){return false;}}
 function renderViewHelp(){
@@ -2268,16 +2272,16 @@ function renderViewHelp(){
   }
   const collapsed=viewHelpCollapsed();
   box.classList.toggle('collapsed',collapsed);
-  // The ⚙ gear in the Controls header is per-view: every view that defines a
+  // The gear in the Controls header is per-view: every view that defines a
   // BADGE_FIELDS_BY_VIEW entry gets a popover ("Show on nodes / cards / rows / bars").
   const hasFields=!!(BADGE_FIELDS_BY_VIEW[mode]&&BADGE_FIELDS_BY_VIEW[mode].length);
-  const gear=hasFields?`<button class="vhbadge" id="vhbadge" title="show / hide fields on this view"><ui-icon name="settings"></ui-icon></button>`:'';
-  const bugBtn=`<a class="icon-btn" href="https://github.com/Prorok1015/ado-atlas/issues" target="_blank" title="Report a Bug">
+  const gear=hasFields?`<button class="vhbadge" id="vhbadge" title="${htmlEsc(window.i18n.t('viewHelp.toggleFields'))}"><ui-icon name="settings"></ui-icon></button>`:'';
+  const bugBtn=`<a class="icon-btn" href="https://github.com/Prorok1015/ado-atlas/issues" target="_blank" title="${htmlEsc(window.i18n.t('viewHelp.reportBug'))}">
     <ui-icon name="bug"></ui-icon>
   </a>`;
-  box.innerHTML=`<div class="vhh" id="vhh">${bugBtn}${gear}<span class="vhctrl">${collapsed?'▸':'▾'} Controls</span></div>`+
-    `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${r[0]}</span><span class="vk">${htmlEsc(r[1])}</span><span class="vd">${htmlEsc(r[2])}</span></div>`).join('')+
-    `<div class="vhnote">selecting items opens the bulk-edit bar</div></div>`;
+  box.innerHTML=`<div class="vhh" id="vhh">${bugBtn}${gear}<span class="vhctrl">${collapsed?'▸':'▾'} ${htmlEsc(window.i18n.t('viewHelp.controls'))}</span></div>`+
+    `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${r[0]}</span><span class="vk">${htmlEsc(window.i18n.t('viewHelp.k.'+r[1]))}</span><span class="vd">${htmlEsc(window.i18n.t('viewHelp.d.'+r[2]))}</span></div>`).join('')+
+    `<div class="vhnote">${htmlEsc(window.i18n.t('viewHelp.note'))}</div></div>`;
   // Clicking the "Controls" label collapses/expands; the gear is its own button.
   $('vhh').querySelector('.vhctrl').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
   const gb=$('vhbadge');if(gb)gb.onclick=e=>{e.stopPropagation();toggleBadgePanel();};
@@ -2287,9 +2291,12 @@ function renderViewHelp(){
     if (window.LayerManager) window.LayerManager.close($('badgepanel'));
   }
 }
+// The legend is built in JS from VIEW_HELP, so it won't pick up data-i18n DOM
+// updates — re-render it (and the badge panel if open) when the language changes.
+if(window.i18n&&window.i18n.onChange)window.i18n.onChange(()=>{ if($('viewhelp'))renderViewHelp(); if($('badgepanel')&&$('badgepanel').style.display!=='none')renderBadgePanel(); });
 // Per-view "Show on …" popover (anchored on the Controls box's bottom-left corner).
 // Toggling a checkbox re-renders the matching view so the change shows immediately.
-const BADGE_PANEL_HEADER={graph:'Show on nodes',board:'Show on cards',tree:'Show on rows',timeline:'Show on bars'};
+const BADGE_PANEL_HEADER={graph:'badgePanel.graph',board:'badgePanel.board',tree:'badgePanel.tree',timeline:'badgePanel.timeline'};
 function renderBadgePanel(){
   const view=mode,fields=BADGE_FIELDS_BY_VIEW[view]||[];
   const p=$('badgepanel');
@@ -2298,12 +2305,12 @@ function renderBadgePanel(){
     if (window.LayerManager) window.LayerManager.close(p);
     return;
   }
-  let html=`<div class="bph">${htmlEsc(BADGE_PANEL_HEADER[view]||'Show')}</div>`+
+  let html=`<div class="bph">${htmlEsc(BADGE_PANEL_HEADER[view]?window.i18n.t(BADGE_PANEL_HEADER[view]):window.i18n.t('badgePanel.show'))}</div>`+
     fields.map(f=>`<label><input type="checkbox" data-k="${f.key}"${badgeOn(f.key,view)?' checked':''}> ${htmlEsc(f.label)}</label>`).join('');
   if(view==='graph'){
     html+=`<div class="bp-divider" style="margin:8px 0 6px;border-top:1px dashed var(--border)"></div>`+
       `<div class="bp-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0">`+
-        `<span>Max nodes</span>`+
+        `<span>${htmlEsc(window.i18n.t('badgePanel.maxNodes'))}</span>`+
         `<select id="f_max_nodes" style="font-size:11px;padding:2px;background:var(--bg);color:var(--txt);border:1px solid var(--border);border-radius:3px">`+
           `<option value="200">200</option>`+
           `<option value="500">500</option>`+
@@ -2432,7 +2439,7 @@ async function loadChildCounts(ids){      // top-level refresh path: guarded so 
 
 /* ---------- editor ---------- */
 async function closePanel(force){
-  if(!force&&dirty()&&!await customConfirm('Discard unsaved changes?', 'Discard Changes'))return;
+  if(!force&&dirty()&&!await customConfirm(window.i18n.t('editor.discardConfirm'), window.i18n.t('editor.discardTitle')))return;
   document.querySelectorAll('.sidebar-backdrop, .activity-backdrop, .editor-backdrop').forEach(el => el.remove());
   parentEditor.close();depBlockedByPicker.close();depBlocksPicker.close();closeMention();
   if($('side').classList.contains('fullscreen'))toggleFullscreen(false);   // restore inline width before hiding
@@ -2523,7 +2530,7 @@ function renderAttachments(){
   }
   if(group)group.style.display='block';
   if(!arr.length&&!atchState.uploading){
-    box.innerHTML=`<div class="atch-empty">Drop files here to attach</div>`;
+    box.innerHTML=`<div class="atch-empty">${htmlEsc(window.i18n.t('attach.dropHere'))}</div>`;
     return;
   }
   const head=`<div class="atchhead"><span class="acount">${arr.length}</span> file(s)`+
@@ -2567,7 +2574,7 @@ function renderAttachments(){
 async function removeAttachment(a){
   if(cur==null)return;
   const wid=cur;
-  if(!await customConfirm('Remove attachment "'+a.name+'"?', 'Remove Attachment'))return;
+  if(!await customConfirm(window.i18n.t('attach.removeConfirm', {name:a.name}), window.i18n.t('attach.removeTitle')))return;
   try{
     const res=await api.removeAttachmentLink(wid,a.url);
     if(cur===wid){atchState.list=res.attachments||[];renderAttachments();}
@@ -2837,7 +2844,7 @@ async function loadTimeline(id){
   hdr.style.width = '100%';
   
   hdr.innerHTML = `<span style="font-weight:500; font-size:0.846rem; color:var(--muted); display:flex; align-items:center; gap:4px;"><ui-icon name="clock"></ui-icon> time in state</span>` +
-    `<button class="stime-toggle-btn" title="Toggle view">${currentView === 'bar' ? '☰ List' : '<ui-icon name="bar-chart"></ui-icon> Bar'}</button>`;
+    `<button class="stime-toggle-btn" title="Toggle view">${currentView === 'bar' ? '<ui-icon name="list"></ui-icon> List' : '<ui-icon name="bar-chart"></ui-icon> Bar'}</button>`;
   
   hdr.querySelector('.stime-toggle-btn').onclick = () => {
     localStorage.setItem('ado.timelineView', currentView === 'bar' ? 'list' : 'bar');
@@ -3083,7 +3090,7 @@ async function openItem(id){
   const myToken=++openToken;
   // Always ask before clobbering edits — including reopening the SAME dirty
   // item (which would otherwise silently reload from server and wipe the work).
-  if(cur!=null&&dirty()&&!await customConfirm('Discard unsaved changes to #'+cur+'?', 'Discard Changes'))return;
+  if(cur!=null&&dirty()&&!await customConfirm(window.i18n.t('editor.discardItemConfirm', {id:cur}), window.i18n.t('editor.discardTitle')))return;
   // After the async confirm another openItem() may have started — bail if superseded.
   if(myToken!==openToken)return;
 
@@ -3936,7 +3943,7 @@ function setSaveChip(state,msg){
   else if(state==='saved'){
     if(btns)btns.classList.add('hidden');
     chip.className='schip saved';
-    chip.innerHTML='✓ Saved';_saveChipTimer=setTimeout(()=>{
+    chip.innerHTML='<ui-icon name="check"></ui-icon> Saved';_saveChipTimer=setTimeout(()=>{
       const c=$('s_status_chip');if(c)c.className='schip';
       refreshDirty();
     },2500);
@@ -4150,7 +4157,7 @@ function applyDepLocal(from,to,op){
 }
 async function addDepLink(focusId,otherId,dir){
   const {from,to}=depPair(focusId,otherId,dir);
-  if(from===to){setStatus("a work item can't depend on itself",true);return;}
+  if(from===to){setStatus(window.i18n.t('status.cannotDependSelf'),true);return;}
   // Local dup-check only when the sidebar's open item IS the focus (else we have no fresh state)
   if(cur===focusId&&depsArr(dir).includes(otherId))return;
   loadStart('linking #'+from+' → #'+to+'…');
@@ -4376,7 +4383,7 @@ async function quickSave(field){
   const numEq=(a,b)=>(a===''||a==null)&&(b===''||b==null) ? true : String(a)===String(b);
   if(field==='parent'){
     if(v.parent===orig.parent)return;
-    if(v.parent!==''&&Number(v.parent)===id){setStatus('A work item cannot be its own parent',true);return;}
+    if(v.parent!==''&&Number(v.parent)===id){setStatus(window.i18n.t('status.cannotParentSelf'),true);return;}
     parentChanged=true;
   } else if(field==='priority'){
     const op=orig.priority?String(orig.priority):'';
@@ -4975,7 +4982,7 @@ async function saveEditComment(e, commentId) {
 }
 
 async function deleteCommentAction(commentId) {
-  if (!await customConfirm("Delete this comment?", "Delete Comment")) return;
+  if (!await customConfirm(window.i18n.t('comment.deleteConfirm'), window.i18n.t('comment.deleteTitle'))) return;
   loadStart('deleting…');
   try {
     await api.deleteComment(cur, commentId);
@@ -5326,13 +5333,13 @@ async function createNew(){
   openItem(r.id);                                  // jump straight into the new item's editor
 }
 
-/* ---------- create / edit a sprint (Board → By Sprint "＋" column; sprint screen "✎") ---------- */
+/* ---------- create / edit a sprint (Board → By Sprint "＋" column; sprint screen "edit") ---------- */
 function formatDisplayDate(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.slice(0, 10).split('-');
   if (parts.length !== 3) return dateStr;
   const d = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  return d.toLocaleDateString(window.i18n.getLang(), { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
 function updateSprintRangeDisplay(start, finish) {
   const trigger = $('sprint-range-trigger');
@@ -6057,7 +6064,7 @@ async function doOauthSignIn(){
   try{
     const name=await api.oauthSignIn(cid,tenant);
     currentUser=name||'';
-    $('oauth-status').textContent=name?('✓ Signed in as '+name):'✓ Signed in';
+    $('oauth-status').innerHTML=name?('<ui-icon name="check"></ui-icon> Signed in as '+htmlEsc(name)):'<ui-icon name="check"></ui-icon> Signed in';
     await loadSetupOrgs();                // populate org/project from the signed-in account
   }catch(e){
     $('oauth-status').textContent='Sign-in failed: '+e.message;
@@ -6079,7 +6086,7 @@ function showSetup(cancellable){
     else{$('oauth-tenant-mode').value='custom';$('oauth-tenant-id').value=t;}
     updateTenantField();
     setAuthPane(c.authMode==='oauth'?'oauth':'pat');
-    $('oauth-status').textContent=(c.authMode==='oauth'&&c.oauthAccess)?(currentUser?('✓ Signed in as '+currentUser):'✓ Signed in'):'';
+    $('oauth-status').innerHTML=(c.authMode==='oauth'&&c.oauthAccess)?(currentUser?('<ui-icon name="check"></ui-icon> Signed in as '+htmlEsc(currentUser)):'<ui-icon name="check"></ui-icon> Signed in'):'';
     const signedIn=(c.authMode==='oauth')?!!c.oauthAccess:!!c.pat;
     if(c.org&&signedIn)loadSetupProjects();   // reopening settings: populate the project dropdown for the saved org
   });
@@ -8112,10 +8119,10 @@ async function initialBoot(postSetup){
         btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
         btn.title = "Built-in AI is unsupported on this device. Click to configure cloud models.";
       } else if (avail === 'downloadable') {
-        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;">⬇</span>`;
+        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;"><ui-icon name="download"></ui-icon></span>`;
         btn.title = provider.id === 'chrome-prompt-api' ? "Download AI model and search." : "Configure API Key and search.";
       } else if (avail === 'downloading') {
-        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;">⏳</span>`;
+        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;"><ui-icon name="clock"></ui-icon></span>`;
         btn.title = "Downloading model... Click to view progress.";
       } else {
         btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
@@ -8206,7 +8213,7 @@ async function initialBoot(postSetup){
   };
   $('fit').onclick=()=>cy&&cy.fit(undefined,40);
   loadBadgesOn();                                                 // restore last "what to show on nodes" choices
-  // The ⚙ Badges trigger is now part of the Controls panel header (wired in renderViewHelp);
+  // The Badges trigger is now part of the Controls panel header (wired in renderViewHelp);
   // here we just handle outside-click dismissal of the popover.
   document.addEventListener('mousedown',e=>{
     const p=$('badgepanel');if(p.style.display==='none')return;
@@ -8218,6 +8225,7 @@ async function initialBoot(postSetup){
   $('export').querySelectorAll('button[data-x]').forEach(b=>b.onclick=()=>exportView(b.dataset.x));
   $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}setAutoRefresh(s);};
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
+  if(window.i18n&&$('f_lang')){$('f_lang').value=window.i18n.getLang();$('f_lang').onchange=()=>{window.i18n.setLang($('f_lang').value);};}
   $('f_follow_notify').onclick=cycleFollowNotify;
   $('f_mention_notify').onclick=cycleMentionNotify;
   // bulk action bar (tree multi-select)
@@ -8756,7 +8764,7 @@ function wirePremiumPlaceholders(){
     e.preventDefault();
     const feature=el.dataset.proFeature;
     if(window.EntitlementManager && !window.EntitlementManager.gate(feature))return; // Free → paywall shown
-    if(window.customAlert)window.customAlert('This Pro feature is coming soon.','Pro');
+    if(window.customAlert)window.customAlert(window.i18n.t('pro.comingSoon'),window.i18n.t('pro.title'));
   });
   // "Explore ADO Atlas Pro" — opens the full premium feature catalog.
   const explore=$('pro_explore_btn');
@@ -8765,6 +8773,7 @@ function wirePremiumPlaceholders(){
 
 /* ---------- boot ---------- */
 window.addEventListener('DOMContentLoaded',async()=>{
+  if(window.i18n){try{await window.i18n.init();window.i18n.applyDOM();}catch(e){}}
   wireSetup();
   FollowManager.init(openItem);
   if (window.EntitlementManager) await window.EntitlementManager.init();

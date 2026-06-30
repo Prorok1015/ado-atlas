@@ -1,5 +1,65 @@
 importScripts('lib.js', 'api.js');
 
+// ---- Self-contained notification i18n (service worker has no window.i18n) ----
+// Keyed by short message ids. Use {token} placeholders resolved via AdoLib.formatMessage.
+const NOTIFY_I18N = {
+  en: {
+    mentionTitle: "Mentioned in [#{id}] {title}",
+    mentionMessage: "{author} in {fieldName}:\n\"{text}\"",
+    followTitle: "[#{id}] {title}",
+    followMessage: "{author} updated this item:\n{changes}",
+    moreChanges: "(+ {count} more changes)",
+    contextMessage: "ADO Atlas",
+    openButton: "Open"
+  },
+  ru: {
+    mentionTitle: "Упоминание в [#{id}] {title}",
+    mentionMessage: "{author} в поле {fieldName}:\n\"{text}\"",
+    followTitle: "[#{id}] {title}",
+    followMessage: "{author} обновил(а) элемент:\n{changes}",
+    moreChanges: "(+ ещё {count} изменений)",
+    contextMessage: "ADO Atlas",
+    openButton: "Открыть"
+  },
+  es: {
+    mentionTitle: "Mención en [#{id}] {title}",
+    mentionMessage: "{author} en {fieldName}:\n\"{text}\"",
+    followTitle: "[#{id}] {title}",
+    followMessage: "{author} actualizó este elemento:\n{changes}",
+    moreChanges: "(+ {count} cambios más)",
+    contextMessage: "ADO Atlas",
+    openButton: "Abrir"
+  },
+  de: {
+    mentionTitle: "Erwähnt in [#{id}] {title}",
+    mentionMessage: "{author} in {fieldName}:\n\"{text}\"",
+    followTitle: "[#{id}] {title}",
+    followMessage: "{author} hat dieses Element aktualisiert:\n{changes}",
+    moreChanges: "(+ {count} weitere Änderungen)",
+    contextMessage: "ADO Atlas",
+    openButton: "Öffnen"
+  }
+};
+
+const NOTIFY_LANGS = ["en", "ru", "es", "de"];
+
+// Read active language mirrored by the app into chrome.storage.local under 'ado.lang'.
+async function getNotifyLang() {
+  try {
+    const { ["ado.lang"]: lang } = await chrome.storage.local.get("ado.lang");
+    return NOTIFY_LANGS.includes(lang) ? lang : "en";
+  } catch (_) {
+    return "en";
+  }
+}
+
+// Resolve a notification string: dict[lang][id] -> dict.en[id] -> id, then interpolate {token}s.
+function nt(lang, id, params) {
+  const dict = NOTIFY_I18N[lang] || NOTIFY_I18N.en;
+  const template = (dict && dict[id]) || NOTIFY_I18N.en[id] || id;
+  return globalThis.AdoLib.formatMessage(template, params || {});
+}
+
 // On extension click, open/focus the UI
 chrome.action.onClicked.addListener(async () => {
   await openAppWindow();
@@ -368,7 +428,7 @@ async function runAllNotificationChecks() {
               fromVal = fromVal.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
               toVal = toVal.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
-              changeDescriptions.push(`${fieldName}: ${fromVal} ➔ ${toVal}`);
+              changeDescriptions.push(`${fieldName}: ${fromVal} → ${toVal}`);
             }
           }
         });
@@ -392,6 +452,8 @@ async function runAllNotificationChecks() {
     let followedItemsUpdated = false;
     let mentionedItemsUpdated = false;
 
+    const notifyLang = await getNotifyLang();
+
     for (const res of results) {
       if (!res) continue;
 
@@ -413,10 +475,10 @@ async function runAllNotificationChecks() {
           chrome.notifications.create(`app-item-${res.id}-${idx}`, {
             type: "basic",
             iconUrl: "icons/icon-128.png",
-            title: `Mentioned in [#${res.id}] ${res.title}`,
-            message: `${author} in ${fieldName}:\n"${combinedText}"`,
-            contextMessage: `ADO Atlas`,
-            buttons: [{ title: "Open" }],
+            title: nt(notifyLang, "mentionTitle", { id: res.id, title: res.title }),
+            message: nt(notifyLang, "mentionMessage", { author, fieldName, text: combinedText }),
+            contextMessage: nt(notifyLang, "contextMessage"),
+            buttons: [{ title: nt(notifyLang, "openButton") }],
             priority: 2,
             requireInteraction: true
           }, (id) => {
@@ -429,16 +491,16 @@ async function runAllNotificationChecks() {
         // Standard Follow notification
         let message = res.changes.join("\n");
         if (res.changes.length > 5) {
-          message = res.changes.slice(0, 5).join("\n") + `\n(+ ${res.changes.length - 5} more changes)`;
+          message = res.changes.slice(0, 5).join("\n") + "\n" + nt(notifyLang, "moreChanges", { count: res.changes.length - 5 });
         }
 
         chrome.notifications.create(`app-item-${res.id}-follow`, {
           type: "basic",
           iconUrl: "icons/icon-128.png",
-          title: `[#${res.id}] ${res.title}`,
-          message: `${res.author} updated this item:\n${message}`,
-          contextMessage: `ADO Atlas`,
-          buttons: [{ title: "Open" }],
+          title: nt(notifyLang, "followTitle", { id: res.id, title: res.title }),
+          message: nt(notifyLang, "followMessage", { author: res.author, changes: message }),
+          contextMessage: nt(notifyLang, "contextMessage"),
+          buttons: [{ title: nt(notifyLang, "openButton") }],
           priority: 2,
           requireInteraction: true
         }, (id) => {

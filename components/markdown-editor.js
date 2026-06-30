@@ -1,3 +1,6 @@
+// Localized string helper (guarded: degrades to the English fallback if i18n not ready).
+const MD_L = (k, fallback, p) => (typeof window !== 'undefined' && window.i18n) ? window.i18n.t(k, p) : fallback;
+
 class MarkdownEditor {
   constructor(containerEl, options = {}) {
     this.container = typeof containerEl === 'string' ? document.getElementById(containerEl) : containerEl;
@@ -14,6 +17,28 @@ class MarkdownEditor {
     this.render();
     this.initElements();
     this.bindEvents();
+
+    // Re-localize the static toolbar/labels when the interface language switches,
+    // preserving the current text, edit/preview mode and disabled state.
+    if (typeof window !== 'undefined' && window.i18n) {
+      window.i18n.onChange(() => this.relocalize());
+    }
+  }
+
+  // Rebuilds the static chrome (toolbar titles, label, placeholder, dropzone)
+  // for the active language without losing editor content or state.
+  relocalize() {
+    if (!this.container || !this.textarea) return;
+    if (this.container.classList.contains('fullscreen')) return; // avoid disrupting an active fullscreen session
+    const text = this.textarea.value;
+    const wasEdit = this.isEditMode;
+    const wasDisabled = this.textarea.disabled;
+    this.render();
+    this.initElements();
+    this.bindEvents();
+    this.textarea.value = text;
+    if (!wasEdit) this.togglePreview(true);
+    if (wasDisabled) this.setDisabled(true);
   }
 
   render() {
@@ -21,25 +46,25 @@ class MarkdownEditor {
       <div class="desc-tools">
         <label class="dlabel">${htmlEsc(this.options.label)}</label>
         <div class="dfmt">
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="bold"   title="Bold (Ctrl+B)"><b>B</b></button>
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="italic" title="Italic (Ctrl+I)"><i>I</i></button>
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="strike" title="Strikethrough"><s>S</s></button>
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="code"   title="Inline code">&lt;/&gt;</button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="bold"   title="${htmlEsc(MD_L('md.bold', 'Bold (Ctrl+B)'))}"><b>B</b></button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="italic" title="${htmlEsc(MD_L('md.italic', 'Italic (Ctrl+I)'))}"><i>I</i></button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="strike" title="${htmlEsc(MD_L('md.strike', 'Strikethrough'))}"><s>S</s></button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="code"   title="${htmlEsc(MD_L('md.code', 'Inline code'))}">&lt;/&gt;</button>
           <span class="dsep"></span>
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="h"      title="Heading (cycles #, ##, ###)">H</button>
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="ul"     title="Bulleted list">•</button>
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="ol"     title="Numbered list">1.</button>
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="quote"  title="Quote">❝</button>
-          <button type="button" class="dbtn dbtn-i-only" data-fmt="link"   title="Insert link"><ui-icon name="link"></ui-icon></button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="h"      title="${htmlEsc(MD_L('md.heading', 'Heading (cycles #, ##, ###)'))}">H</button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="ul"     title="${htmlEsc(MD_L('md.bulletedList', 'Bulleted list'))}">•</button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="ol"     title="${htmlEsc(MD_L('md.numberedList', 'Numbered list'))}">1.</button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="quote"  title="${htmlEsc(MD_L('md.quote', 'Quote'))}">”</button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="link"   title="${htmlEsc(MD_L('md.insertLink', 'Insert link'))}"><ui-icon name="link"></ui-icon></button>
         </div>
         <div class="dtspacer"></div>
-        <button type="button" class="dbtn icon dbtn-toggle" title="Toggle preview / edit"><ui-icon name="eye"></ui-icon></button>
-        <button type="button" class="dbtn icon dbtn-full" title="Toggle fullscreen mode (Esc to exit)"><ui-icon name="maximize"></ui-icon></button>
+        <button type="button" class="dbtn icon dbtn-toggle" title="${htmlEsc(MD_L('md.togglePreview', 'Toggle preview / edit'))}"><ui-icon name="eye"></ui-icon></button>
+        <button type="button" class="dbtn icon dbtn-full" title="${htmlEsc(MD_L('md.toggleFullscreen', 'Toggle fullscreen mode (Esc to exit)'))}"><ui-icon name="maximize"></ui-icon></button>
       </div>
       <div class="desc-wrap">
         <textarea placeholder="${htmlEsc(this.options.placeholder)}"></textarea>
         <div class="mdview" style="display:none"></div>
-        ${this.options.allowAttachments ? '<div class="desc-dropzone"><div class="ddz-inner"><ui-icon name="paperclip"></ui-icon> Drop to attach & insert into description</div></div>' : ''}
+        ${this.options.allowAttachments ? `<div class="desc-dropzone"><div class="ddz-inner"><ui-icon name="paperclip"></ui-icon> ${htmlEsc(MD_L('md.dropToAttach', 'Drop to attach & insert into description'))}</div></div>` : ''}
       </div>
       ${this.options.allowAttachments ? '<input type="file" multiple style="display:none">' : ''}
     `;
@@ -166,14 +191,14 @@ class MarkdownEditor {
       this.textarea.style.display = 'none';
       this.previewDiv.style.display = 'block';
       this.toggleBtn.innerHTML = '<ui-icon name="edit"></ui-icon>';
-      this.toggleBtn.title = 'switch to edit mode';
+      this.toggleBtn.title = MD_L('md.switchToEdit', 'switch to edit mode');
       this.toggleBtn.classList.add('on');
       this.container.classList.add('preview-mode');
     } else {
       this.previewDiv.style.display = 'none';
       this.textarea.style.display = 'block';
       this.toggleBtn.innerHTML = '<ui-icon name="eye"></ui-icon>';
-      this.toggleBtn.title = 'toggle preview / edit';
+      this.toggleBtn.title = MD_L('md.togglePreview', 'Toggle preview / edit');
       this.toggleBtn.classList.remove('on');
       this.container.classList.remove('preview-mode');
       this.textarea.focus();
@@ -193,7 +218,7 @@ class MarkdownEditor {
       }
       this.container.classList.add('fullscreen');
       this.fullBtn.classList.add('on');
-      this.fullBtn.title = 'Exit fullscreen mode';
+      this.fullBtn.title = MD_L('md.exitFullscreen', 'Exit fullscreen mode');
 
       if (!backdrop) {
         backdrop = document.createElement('div');
@@ -216,7 +241,7 @@ class MarkdownEditor {
     } else {
       this.container.classList.remove('fullscreen');
       this.fullBtn.classList.remove('on');
-      this.fullBtn.title = 'Toggle fullscreen mode (Esc to exit)';
+      this.fullBtn.title = MD_L('md.toggleFullscreen', 'Toggle fullscreen mode (Esc to exit)');
       
       if (window.LayerManager) {
         window.LayerManager.close(this.container);
@@ -337,11 +362,12 @@ class MarkdownEditor {
     const sel = v.slice(s, e);
     
     if (typeof customLinkPrompt !== 'function') {
-      const url = prompt('Link URL (https://…)', 'https://');
+      const url = prompt(MD_L('md.linkUrlPrompt', 'Link URL (https://…)'), 'https://');
       if (!url || !/^https?:\/\//i.test(url)) return;
-      const ins = `[${sel || 'link text'}](${url})`;
+      const linkText = sel || MD_L('md.linkText', 'link text');
+      const ins = `[${linkText}](${url})`;
       ta.value = v.slice(0, s) + ins + v.slice(e);
-      ta.selectionStart = s + 1; ta.selectionEnd = s + 1 + (sel || 'link text').length;
+      ta.selectionStart = s + 1; ta.selectionEnd = s + 1 + linkText.length;
       ta.focus(); this.fireChange();
       return;
     }
@@ -402,10 +428,10 @@ class MarkdownEditor {
       atchState.uploading++; renderAttachments();
       let up;
       try { up = await api.uploadAttachment(f); }
-      catch (e) { atchState.uploading--; renderAttachments(); setStatus('upload failed: ' + e.message, true); continue; }
+      catch (e) { atchState.uploading--; renderAttachments(); setStatus(MD_L('md.uploadFailed', 'upload failed: ' + e.message, { error: e.message }), true); continue; }
       let res;
       try { res = await api.addAttachmentLink(wid, up.url, up.name, ''); }
-      catch (e) { atchState.uploading--; renderAttachments(); setStatus('attach failed: ' + e.message, true); continue; }
+      catch (e) { atchState.uploading--; renderAttachments(); setStatus(MD_L('md.attachFailed', 'attach failed: ' + e.message, { error: e.message }), true); continue; }
       atchState.uploading--;
       if (cur !== wid) { renderAttachments(); continue; }
       atchState.list = res.attachments || [];
@@ -414,7 +440,7 @@ class MarkdownEditor {
         this.insertAtCursor(md);
       }
       renderAttachments();
-      setStatus('#' + wid + ' attached ' + up.name);
+      setStatus(MD_L('md.attached', '#' + wid + ' attached ' + up.name, { id: wid, name: up.name }));
     }
   }
 }

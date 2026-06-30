@@ -1,6 +1,9 @@
 (function(global) {
   'use strict';
 
+  // Localized string helper (guarded: degrades to the English fallback if i18n not ready).
+  const L = (k, fallback, p) => (typeof window !== 'undefined' && window.i18n) ? window.i18n.t(k, p) : fallback;
+
   let modalEl = null;
   let textInput = null;
   let submitBtn = null;
@@ -49,9 +52,9 @@
         <div class="ai-modal-card">
           <div class="ai-modal-header" style="display: flex; justify-content: space-between; align-items: center;">
             <h3 class="ai-modal-title">
-              <span class="ai-sparkles-icon" style="color:#a855f7; display:flex; align-items:center;"><ui-icon name="sparkles"></ui-icon></span> AI Search
-              <span class="ai-beta-badge-text">BETA</span>
-              <span class="logic-hint" id="ai-search-help-trigger" style="cursor: pointer; display: flex; align-items: center;" data-tooltip-html="<b>Privacy-First On-Device AI</b><br/><br/>This feature runs <b>entirely locally</b> on your machine using Google Chrome's built-in Gemini Nano model.<br/><br/>🔒 <b>100% Private & Secure:</b> Your queries, dynamic fields, and work item data never leave your browser and are never sent to external servers.">
+              <span class="ai-sparkles-icon" style="color:#a855f7; display:flex; align-items:center;"><ui-icon name="sparkles"></ui-icon></span> <span data-i18n="ai.title">AI Search</span>
+              <span class="ai-beta-badge-text" data-i18n="ai.beta">BETA</span>
+              <span class="logic-hint" id="ai-search-help-trigger" style="cursor: pointer; display: flex; align-items: center;" data-i18n-tooltip="ai.helpTooltip.nano" data-tooltip-html="<b>Privacy-First On-Device AI</b><br/><br/>This feature runs <b>entirely locally</b> on your machine using Google Chrome's built-in Gemini Nano model.<br/><br/><b>100% Private & Secure:</b> Your queries, dynamic fields, and work item data never leave your browser and are never sent to external servers.">
                 <ui-icon name="help"></ui-icon>
               </span>
             </h3>
@@ -64,27 +67,27 @@
           </div>
           <div class="ai-modal-body" style="display:flex; flex-direction:row; gap:20px; padding:20px; align-items:stretch;">
             <div class="ai-main-content" style="flex:1; display:flex; flex-direction:column; gap:16px;">
-              <div class="ai-modal-desc">
+              <div class="ai-modal-desc" data-i18n="ai.desc">
                 Describe what you're looking for in plain language, and AI will configure the search filters for you.
               </div>
               <div class="ai-textarea-wrapper">
-                <textarea id="ai-search-text-input" placeholder="e.g., active bugs assigned to me created in the last week..." rows="4" maxlength="800"></textarea>
+                <textarea id="ai-search-text-input" data-i18n-placeholder="ai.inputPlaceholder" placeholder="e.g., active bugs assigned to me created in the last week..." rows="4" maxlength="800"></textarea>
                 <div class="ai-char-counter"><span id="ai-char-count">0</span>/800</div>
               </div>
-              
+
               <div class="ai-reasoning-container">
-                <span class="ai-reasoning-label">Reasoning Depth:</span>
+                <span class="ai-reasoning-label" data-i18n="ai.reasoningDepth">Reasoning Depth:</span>
                 <div class="ai-reasoning-options">
-                  <button class="ai-reasoning-btn ${selectedLevel === 'auto' ? 'active' : ''}" data-level="auto" title="Automatically chooses the best depth based on query complexity">Auto</button>
-                  <button class="ai-reasoning-btn ${selectedLevel === 'fast' ? 'active' : ''}" data-level="fast" title="Fast 1-pass response, best for simple queries">Fast</button>
-                  <button class="ai-reasoning-btn ${selectedLevel === 'balanced' ? 'active' : ''}" data-level="balanced" title="2-pass schema-filtered. Recommended balance of speed and quality">Balanced</button>
-                  <button class="ai-reasoning-btn ${selectedLevel === 'thorough' ? 'active' : ''}" data-level="thorough" title="3-pass reasoning with self-correction. Best for complex logic">Thorough</button>
+                  <button class="ai-reasoning-btn ${selectedLevel === 'auto' ? 'active' : ''}" data-level="auto" data-i18n="ai.reasoning.auto" data-i18n-title="ai.reasoning.autoTitle" title="Automatically chooses the best depth based on query complexity">Auto</button>
+                  <button class="ai-reasoning-btn ${selectedLevel === 'fast' ? 'active' : ''}" data-level="fast" data-i18n="ai.reasoning.fast" data-i18n-title="ai.reasoning.fastTitle" title="Fast 1-pass response, best for simple queries">Fast</button>
+                  <button class="ai-reasoning-btn ${selectedLevel === 'balanced' ? 'active' : ''}" data-level="balanced" data-i18n="ai.reasoning.balanced" data-i18n-title="ai.reasoning.balancedTitle" title="2-pass schema-filtered. Recommended balance of speed and quality">Balanced</button>
+                  <button class="ai-reasoning-btn ${selectedLevel === 'thorough' ? 'active' : ''}" data-level="thorough" data-i18n="ai.reasoning.thorough" data-i18n-title="ai.reasoning.thoroughTitle" title="3-pass reasoning with self-correction. Best for complex logic">Thorough</button>
                 </div>
               </div>
-              
+
               <div class="ai-progress-container" id="ai-search-progress" style="display: none;">
                 <div class="ai-progress-header">
-                  <span class="ai-progress-status" id="ai-search-status-text">Processing...</span>
+                  <span class="ai-progress-status" id="ai-search-status-text" data-i18n="ai.processing">Processing...</span>
                   <span class="ai-progress-percent" id="ai-search-percent-text">0%</span>
                 </div>
                 <div class="ai-progress-bar-bg">
@@ -98,30 +101,30 @@
             <!-- Right Tutorial Sidebar -->
             <div class="ai-tutorial-sidebar" style="width: 240px; padding-left: 20px; border-left: 1px solid var(--line, #333); display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; box-sizing: border-box;">
               <h4 style="margin: 0; font-size: 0.8rem; font-weight: 700; color: var(--accent, #a855f7); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                <span style="display:inline-flex; align-items:center; color:#a855f7;"><ui-icon name="sparkles"></ui-icon></span> How to search
+                <span style="display:inline-flex; align-items:center; color:#a855f7;"><ui-icon name="sparkles"></ui-icon></span> <span data-i18n="ai.howToSearch">How to search</span>
               </h4>
               <div style="font-size: 0.76rem; line-height: 1.45; color: var(--muted, #aaa); display: flex; flex-direction: column; gap: 10px;">
-                <div>
+                <div data-i18n="ai.help.intro">
                   Describe your request in natural language. AI will resolve dates, paths, fields, and assignees.
                 </div>
                 <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--line, #333); padding: 8px 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 6px;">
-                  <strong style="color: var(--txt);">💡 Examples (Click to try):</strong>
+                  <strong style="color: var(--txt);" data-i18n="ai.help.examplesTitle">Examples (Click to try):</strong>
                   <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <div>• <span class="example-link">active bugs assigned to me created in the last 2 weeks</span></div>
-                    <div>• <span class="example-link">resolved user stories in Sprint 15 or 16</span></div>
-                    <div>• <span class="example-link">tasks for Alex and me with high priority</span></div>
+                    <div>• <span class="example-link" data-i18n="ai.help.example1">active bugs assigned to me created in the last 2 weeks</span></div>
+                    <div>• <span class="example-link" data-i18n="ai.help.example2">resolved user stories in Sprint 15 or 16</span></div>
+                    <div>• <span class="example-link" data-i18n="ai.help.example3">tasks for Alex and me with high priority</span></div>
                   </div>
                 </div>
-                <div>
-                  <strong>🌐 Multilingual:</strong> Write in English, Russian, French, etc. Roster names are mapped automatically.
+                <div data-i18n-html="ai.help.multilingual">
+                  <strong>Multilingual:</strong> Write in English, Russian, French, etc. Roster names are mapped automatically.
                 </div>
               </div>
             </div>
           </div>
           <div class="ai-modal-footer" style="display: flex; gap: 8px; justify-content: flex-end; padding: 16px 20px; border-top: 1px solid var(--line, #333);">
-            <button class="btn btn-secondary" id="ai-search-cancel-btn">Cancel</button>
-            <button class="btn btn-primary" id="ai-search-submit-btn" disabled>Search</button>
-            <button class="btn btn-primary" id="ai-search-apply-direct-btn" style="background: linear-gradient(135deg, #7209b7, #3f37c9); border-color: #560bad;" disabled>Apply directly</button>
+            <button class="btn btn-secondary" id="ai-search-cancel-btn" data-i18n="common.cancel">Cancel</button>
+            <button class="btn btn-primary" id="ai-search-submit-btn" data-i18n="ai.search" disabled>Search</button>
+            <button class="btn btn-primary" id="ai-search-apply-direct-btn" style="background: linear-gradient(135deg, #7209b7, #3f37c9); border-color: #560bad;" data-i18n="ai.applyDirectly" disabled>Apply directly</button>
           </div>
         </div>
       </div>
@@ -136,12 +139,12 @@
     backgroundStatusEl.style.display = 'none';
     backgroundStatusEl.innerHTML = `
       <div class="ai-bg-header">
-        <span class="ai-bg-title" style="display:flex; align-items:center; gap:6px;"><span style="color:#a855f7; display:flex; align-items:center;"><ui-icon name="sparkles"></ui-icon></span> AI Search Task</span>
+        <span class="ai-bg-title" style="display:flex; align-items:center; gap:6px;"><span style="color:#a855f7; display:flex; align-items:center;"><ui-icon name="sparkles"></ui-icon></span> <span data-i18n="ai.bg.title">AI Search Task</span></span>
         <button class="ai-bg-close-btn" id="ai-bg-close-btn">&times;</button>
       </div>
       <div class="ai-bg-body">
         <div class="ai-bg-status-row">
-          <span class="ai-bg-status-text" id="ai-bg-status-text">Processing...</span>
+          <span class="ai-bg-status-text" id="ai-bg-status-text" data-i18n="ai.processing">Processing...</span>
           <span class="ai-bg-percent" id="ai-bg-percent">0%</span>
         </div>
         <div class="ai-bg-progress-bar-bg">
@@ -149,8 +152,8 @@
         </div>
       </div>
       <div class="ai-bg-footer" style="display: none; justify-content: flex-end; gap: 6px; margin-top: 8px;">
-        <button class="btn btn-secondary btn-sm" id="ai-bg-dismiss-btn" style="padding:2px 8px; font-size:0.75rem;">Dismiss</button>
-        <button class="btn btn-primary btn-sm" id="ai-bg-action-btn" style="padding:2px 8px; font-size:0.75rem; background:#7209b7; border-color:#7209b7;">View Filters</button>
+        <button class="btn btn-secondary btn-sm" id="ai-bg-dismiss-btn" style="padding:2px 8px; font-size:0.75rem;" data-i18n="ai.bg.dismiss">Dismiss</button>
+        <button class="btn btn-primary btn-sm" id="ai-bg-action-btn" style="padding:2px 8px; font-size:0.75rem; background:#7209b7; border-color:#7209b7;" data-i18n="ai.bg.viewFilters">View Filters</button>
       </div>
     `;
     document.body.appendChild(backgroundStatusEl);
@@ -267,7 +270,7 @@
       if (hideHelp) {
         if (sidebar) sidebar.style.display = 'none';
         if (card) card.style.width = '480px';
-        if (toggleText) toggleText.textContent = 'Show Help';
+        if (toggleText) toggleText.textContent = L('ai.showHelp', 'Show Help');
         if (toggleBtn) {
           toggleBtn.style.borderColor = 'var(--line, #333)';
           toggleBtn.style.color = 'var(--muted, #aaa)';
@@ -275,7 +278,7 @@
       } else {
         if (sidebar) sidebar.style.display = 'flex';
         if (card) card.style.width = '720px';
-        if (toggleText) toggleText.textContent = 'Hide Help';
+        if (toggleText) toggleText.textContent = L('ai.hideHelp', 'Hide Help');
         if (toggleBtn) {
           toggleBtn.style.borderColor = 'var(--accent, #a855f7)';
           toggleBtn.style.color = 'var(--accent, #a855f7)';
@@ -313,6 +316,22 @@
         currentResult = null;
       }
     };
+
+    // Translate the freshly built static markup, and re-translate + re-render the
+    // dynamic chrome (help toggle, provider tabs/tooltips) when the language switches.
+    if (window.i18n) {
+      window.i18n.applyDOM(modalEl);
+      window.i18n.applyDOM(backgroundStatusEl);
+      window.i18n.onChange(() => {
+        if (!modalEl) return;
+        window.i18n.applyDOM(modalEl);
+        window.i18n.applyDOM(backgroundStatusEl);
+        if (typeof updateHelpLayout === 'function') updateHelpLayout();
+        if (modalEl.style.display !== 'none') {
+          updateAvailabilityUI();
+        }
+      });
+    }
   }
 
   const DEFAULT_GEMINI_MODELS = [
@@ -437,7 +456,7 @@
         <div class="ai-modal-header">
           <h3 class="ai-modal-title" style="display:flex; align-items:center; gap:6px;">
             <span style="color:#a855f7; display:flex; align-items:center;"><ui-icon name="settings"></ui-icon></span>
-            AI Search Configuration <span class="ai-beta-badge-text">BETA</span>
+            <span data-i18n="ai.settings.title">AI Search Configuration</span> <span class="ai-beta-badge-text" data-i18n="ai.beta">BETA</span>
           </h3>
           <button class="ai-modal-close" id="ai-settings-close-btn">&times;</button>
         </div>
@@ -445,12 +464,12 @@
           
           <!-- Left Pane: Connection List -->
           <div class="ai-settings-sidebar" style="width: 220px; border-right: 1px solid var(--line, #333); display: flex; flex-direction: column; padding: 12px; gap: 10px; flex-shrink: 0; box-sizing: border-box;">
-            <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted, #888); margin-bottom: 4px;">API Connections</div>
+            <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted, #888); margin-bottom: 4px;" data-i18n="ai.settings.connections">API Connections</div>
             <div id="ai-settings-connections-list" style="display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto;">
               <!-- Connection items rendered here -->
             </div>
             <button class="btn btn-secondary btn-sm" id="ai-settings-add-conn-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.78rem; padding: 6px 0; font-weight: 600; border-radius: 6px; cursor: pointer;">
-              <span style="display:inline-flex; align-items:center; font-size:1.1em; font-weight: bold;">+</span> Add Connection
+              <span style="display:inline-flex; align-items:center; font-size:1.1em; font-weight: bold;">+</span> <span data-i18n="ai.settings.addConnection">Add Connection</span>
             </button>
           </div>
 
@@ -458,51 +477,51 @@
           <div class="ai-settings-form-pane" style="flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 14px; overflow-y: auto; box-sizing: border-box;">
             <div id="ai-settings-form-empty-state" style="display: none; flex: 1; align-items: center; justify-content: center; flex-direction: column; color: var(--muted, #888); text-align: center; gap: 8px; height: 100%;">
               <span style="font-size: 1.5rem; opacity: 0.5; color: #a855f7;"><ui-icon name="cloud"></ui-icon></span>
-              <span>No connection selected. Add or select a connection to edit.</span>
+              <span data-i18n="ai.settings.emptyState">No connection selected. Add or select a connection to edit.</span>
             </div>
             <div id="ai-settings-form-content" style="display: flex; flex-direction: column; gap: 12px;">
-              <div class="ai-settings-instructions" style="font-size: 0.76rem; background: var(--panel2, rgba(255,255,255,0.02)); border: 1px solid var(--line, #333); padding: 8px 10px; border-radius: 8px; color: var(--muted, #aaa); line-height: 1.35; margin-bottom: 2px;">
+              <div class="ai-settings-instructions" style="font-size: 0.76rem; background: var(--panel2, rgba(255,255,255,0.02)); border: 1px solid var(--line, #333); padding: 8px 10px; border-radius: 8px; color: var(--muted, #aaa); line-height: 1.35; margin-bottom: 2px;" data-i18n="ai.settings.instructions">
                 Configure connection endpoint and model parameters below. API keys are stored securely in local browser storage.
-              </div>
-              
-              <div class="ai-settings-row" style="display:flex; flex-direction:column; gap:4px;">
-                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);">Connection Name</label>
-                <input type="text" id="ai-settings-conn-name" placeholder="e.g. My Gemini Connection" style="padding:6px; background:var(--field, #121212); border:1px solid var(--line, #333); border-radius:4px; color:var(--txt); font-size: 0.85rem;">
               </div>
 
               <div class="ai-settings-row" style="display:flex; flex-direction:column; gap:4px;">
-                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);">Cloud Provider Type</label>
+                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);" data-i18n="ai.settings.connName">Connection Name</label>
+                <input type="text" id="ai-settings-conn-name" data-i18n-placeholder="ai.settings.connNamePlaceholder" placeholder="e.g. My Gemini Connection" style="padding:6px; background:var(--field, #121212); border:1px solid var(--line, #333); border-radius:4px; color:var(--txt); font-size: 0.85rem;">
+              </div>
+
+              <div class="ai-settings-row" style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);" data-i18n="ai.settings.cloudType">Cloud Provider Type</label>
                 <select id="ai-settings-cloud-type" style="padding:6px; background:var(--field, #121212); border:1px solid var(--line, #333); border-radius:4px; color:var(--txt); font-size: 0.85rem;">
-                  <option value="gemini">Google Gemini API</option>
-                  <option value="openai">OpenAI (or Compatible)</option>
+                  <option value="gemini" data-i18n="ai.settings.cloudType.gemini">Google Gemini API</option>
+                  <option value="openai" data-i18n="ai.settings.cloudType.openai">OpenAI (or Compatible)</option>
                 </select>
               </div>
 
               <div class="ai-settings-row" style="display:flex; flex-direction:column; gap:4px;">
-                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);">API Key / Token</label>
+                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);" data-i18n="ai.settings.apiKey">API Key / Token</label>
                 <div style="display:flex; gap:6px;">
-                  <input type="password" id="ai-settings-api-key" placeholder="Paste your API Key here" style="flex:1; padding:6px; background:var(--field, #121212); border:1px solid var(--line, #333); border-radius:4px; color:var(--txt); font-size: 0.85rem;">
-                  <button class="btn btn-secondary btn-sm" id="ai-settings-test-key-btn" style="padding:0 10px; font-size:0.75rem; height:28px; border-radius:4px; font-weight:600;">Verify</button>
+                  <input type="password" id="ai-settings-api-key" data-i18n-placeholder="ai.settings.apiKeyPlaceholder" placeholder="Paste your API Key here" style="flex:1; padding:6px; background:var(--field, #121212); border:1px solid var(--line, #333); border-radius:4px; color:var(--txt); font-size: 0.85rem;">
+                  <button class="btn btn-secondary btn-sm" id="ai-settings-test-key-btn" style="padding:0 10px; font-size:0.75rem; height:28px; border-radius:4px; font-weight:600;" data-i18n="ai.settings.verify">Verify</button>
                 </div>
                 <div id="ai-settings-key-hint" style="font-size:0.72rem; color:var(--muted, #888); margin-top:2px;"></div>
                 <div id="ai-settings-verify-status" style="font-size:0.72rem; display:none; margin-top:2px;"></div>
               </div>
 
               <div class="ai-settings-row" style="display:flex; flex-direction:column; gap:4px;">
-                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);">API Endpoint (Optional)</label>
-                <input type="text" id="ai-settings-endpoint" placeholder="e.g. https://generativelanguage.googleapis.com" style="padding:6px; background:var(--field, #121212); border:1px solid var(--line, #333); border-radius:4px; color:var(--txt); font-size: 0.85rem;">
+                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);" data-i18n="ai.settings.endpoint">API Endpoint (Optional)</label>
+                <input type="text" id="ai-settings-endpoint" data-i18n-placeholder="ai.settings.endpointPlaceholderGemini" placeholder="e.g. https://generativelanguage.googleapis.com" style="padding:6px; background:var(--field, #121212); border:1px solid var(--line, #333); border-radius:4px; color:var(--txt); font-size: 0.85rem;">
               </div>
 
               <div class="ai-settings-row" style="display:flex; flex-direction:column; gap:4px; position:relative;">
-                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);">Model Name</label>
+                <label style="font-size:0.82rem; font-weight:600; color:var(--txt);" data-i18n="ai.settings.modelName">Model Name</label>
                 <div class="f-dropdown-container" style="display:flex; flex-direction:column; width:100%; position:relative;">
-                  <input type="text" id="ai-settings-model" placeholder="e.g. gemini-3.1-flash-lite" style="width:100%; padding:6px; background:var(--field, #121212); border:1px solid var(--line, #333); border-radius:4px; color:var(--txt); box-sizing:border-box; font-size: 0.85rem;">
+                  <input type="text" id="ai-settings-model" data-i18n-placeholder="ai.settings.modelPlaceholder" placeholder="e.g. gemini-3.1-flash-lite" style="width:100%; padding:6px; background:var(--field, #121212); border:1px solid var(--line, #333); border-radius:4px; color:var(--txt); box-sizing:border-box; font-size: 0.85rem;">
                   <div id="ai-settings-model-dropdown" class="f-dropdown" style="display:none; position:absolute; left:0; top:100%; width:100%; max-height:140px; overflow-y:auto; box-sizing:border-box; z-index:9600;"></div>
                 </div>
               </div>
 
               <div style="margin-top: 6px;">
-                <button class="btn btn-sm" id="ai-settings-delete-conn-btn" style="background:transparent; border:1px solid #ef4444; color:#ef4444; font-size:0.75rem; padding:4px 10px; border-radius:4px; font-weight:600; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                <button class="btn btn-sm" id="ai-settings-delete-conn-btn" style="background:transparent; border:1px solid #ef4444; color:#ef4444; font-size:0.75rem; padding:4px 10px; border-radius:4px; font-weight:600; display:flex; align-items:center; gap:4px; cursor:pointer;" data-i18n="ai.settings.deleteConnection">
                   Delete Connection
                 </button>
               </div>
@@ -511,8 +530,8 @@
           </div>
         </div>
         <div class="ai-modal-footer" style="display: flex; gap: 8px; justify-content: flex-end; padding: 12px 20px; border-top: 1px solid var(--line, #333); background: var(--panel, #1e1e1e);">
-          <button class="btn btn-secondary" id="ai-settings-cancel-btn">Cancel</button>
-          <button class="btn btn-primary" id="ai-settings-save-btn" style="background: #7209b7; border-color: #7209b7;">Save Config</button>
+          <button class="btn btn-secondary" id="ai-settings-cancel-btn" data-i18n="common.cancel">Cancel</button>
+          <button class="btn btn-primary" id="ai-settings-save-btn" style="background: #7209b7; border-color: #7209b7;" data-i18n="ai.settings.saveConfig">Save Config</button>
         </div>
       </div>
     `;
@@ -551,13 +570,13 @@
 
     settingsCloudTypeSelect.addEventListener('change', () => {
       if (settingsCloudTypeSelect.value === 'openai') {
-        settingsEndpointInput.placeholder = 'e.g., https://api.openai.com/v1/chat/completions';
+        settingsEndpointInput.placeholder = L('ai.settings.endpointPlaceholderOpenai', 'e.g., https://api.openai.com/v1/chat/completions');
         if (!settingsModelInput.value.trim() || settingsModelInput.value === 'gemini-3.1-flash-lite') {
           settingsModelInput.value = 'gpt-4o-mini';
         }
         allAvailableModels = DEFAULT_OPENAI_MODELS;
       } else {
-        settingsEndpointInput.placeholder = 'e.g., https://generativelanguage.googleapis.com';
+        settingsEndpointInput.placeholder = L('ai.settings.endpointPlaceholderGemini', 'e.g., https://generativelanguage.googleapis.com');
         if (!settingsModelInput.value.trim() || settingsModelInput.value === 'gpt-4o-mini') {
           settingsModelInput.value = 'gemini-3.1-flash-lite';
         }
@@ -575,7 +594,7 @@
       const newId = 'custom-cloud-' + Date.now();
       const newConn = {
         id: newId,
-        displayName: 'New Connection',
+        displayName: L('ai.settings.newConnection', 'New Connection'),
         providerType: 'gemini',
         apiKey: '',
         endpoint: '',
@@ -593,7 +612,8 @@
       if (!p) return;
 
       const confirmFn = window.customConfirm || global.customConfirm;
-      const isConfirmed = confirmFn ? await confirmFn(`Delete connection "${p.displayName}"?`, 'Confirm Delete') : confirm(`Delete connection "${p.displayName}"?`);
+      const confirmMsg = L('ai.settings.confirmDelete', `Delete connection "${p.displayName}"?`, { name: p.displayName });
+      const isConfirmed = confirmFn ? await confirmFn(confirmMsg, L('ai.settings.confirmDeleteTitle', 'Confirm Delete')) : confirm(confirmMsg);
       if (!isConfirmed) return;
 
       localProviders = localProviders.filter(item => item.id !== activeLocalId);
@@ -622,7 +642,7 @@
       if (filtered.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'f-dropdown-item empty';
-        empty.textContent = 'No matching models';
+        empty.textContent = L('ai.settings.noMatchingModels', 'No matching models');
         settingsModelDropdown.appendChild(empty);
       } else {
         filtered.forEach(modelName => {
@@ -699,13 +719,13 @@
       if (!apiKey) {
         settingsVerifyStatusEl.style.display = 'block';
         settingsVerifyStatusEl.style.color = '#ef4444';
-        settingsVerifyStatusEl.textContent = 'Please enter an API Key first.';
+        settingsVerifyStatusEl.textContent = L('ai.settings.enterKeyFirst', 'Please enter an API Key first.');
         return;
       }
 
       settingsVerifyStatusEl.style.display = 'block';
       settingsVerifyStatusEl.style.color = '#a855f7';
-      settingsVerifyStatusEl.textContent = 'Verifying connection...';
+      settingsVerifyStatusEl.textContent = L('ai.settings.verifying', 'Verifying connection...');
       allAvailableModels = [];
       hideModelDropdownImpl();
 
@@ -732,7 +752,7 @@
 
         if (models.length === 0) {
           settingsVerifyStatusEl.style.color = '#eab308';
-          settingsVerifyStatusEl.textContent = '✓ Connected, but no matching models were found.';
+          settingsVerifyStatusEl.textContent = L('ai.settings.connectedNoModels', 'Connected, but no matching models were found.');
           return;
         }
 
@@ -740,12 +760,12 @@
         allAvailableModels = models;
 
         settingsVerifyStatusEl.style.color = '#22c55e';
-        settingsVerifyStatusEl.textContent = `✓ Connected! ${models.length} models loaded. Select from dropdown or type.`;
+        settingsVerifyStatusEl.textContent = L('ai.settings.connectedModels', `Connected! ${models.length} models loaded. Select from dropdown or type.`, { count: models.length });
         showModelDropdownImpl();
 
       } catch (err) {
         settingsVerifyStatusEl.style.color = '#ef4444';
-        settingsVerifyStatusEl.textContent = `❌ Verification failed: ${err.message}`;
+        settingsVerifyStatusEl.textContent = L('ai.settings.verifyFailed', `Verification failed: ${err.message}`, { error: err.message });
       }
     });
 
@@ -779,6 +799,20 @@
         window.updateAIFilterButtonState();
       }
     });
+
+    // Translate the static settings markup, and re-translate + re-render the
+    // dynamic connection list / form chrome when the language switches.
+    if (window.i18n) {
+      window.i18n.applyDOM(settingsModalEl);
+      window.i18n.onChange(() => {
+        if (!settingsModalEl) return;
+        window.i18n.applyDOM(settingsModalEl);
+        if (settingsModalEl.style.display !== 'none') {
+          renderConnectionsList();
+          loadSelectedConnectionToForm();
+        }
+      });
+    }
   }
 
   function saveCurrentFormValues() {
@@ -786,7 +820,7 @@
     const p = localProviders.find(item => item.id === activeLocalId);
     if (!p) return;
 
-    p.displayName = settingsConnNameInput.value.trim() || 'Untitled Connection';
+    p.displayName = settingsConnNameInput.value.trim() || L('ai.settings.untitledConnection', 'Untitled Connection');
     p.providerType = settingsCloudTypeSelect.value;
     p.apiKey = settingsApiKeyInput.value.trim();
     p.endpoint = settingsEndpointInput.value.trim();
@@ -824,7 +858,7 @@
         <div style="font-size: 0.8rem; font-weight: 600; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.displayName}</div>
         <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
           <span style="font-size: 0.6rem; font-weight: 600; border-radius: 4px; padding: 1px 4px; text-transform: uppercase; ${badgeStyle}">${badgeText}</span>
-          <span style="font-size: 0.65rem; color: ${p.apiKey ? '#22c55e' : '#eab308'}; font-weight: 500;">${p.apiKey ? 'Configured' : 'Unconfigured'}</span>
+          <span style="font-size: 0.65rem; color: ${p.apiKey ? '#22c55e' : '#eab308'}; font-weight: 500;">${p.apiKey ? L('ai.settings.badge.configured', 'Configured') : L('ai.settings.badge.unconfigured', 'Unconfigured')}</span>
         </div>
       `;
 
@@ -864,7 +898,7 @@
         settingsAddConnBtn.disabled = true;
         settingsAddConnBtn.style.opacity = '0.5';
         settingsAddConnBtn.style.cursor = 'not-allowed';
-        settingsAddConnBtn.title = 'Maximum of 4 custom connections reached';
+        settingsAddConnBtn.title = L('ai.settings.maxConnections', 'Maximum of 4 custom connections reached');
       } else {
         settingsAddConnBtn.disabled = false;
         settingsAddConnBtn.style.opacity = '1';
@@ -878,9 +912,9 @@
     if (!settingsKeyHintEl || !settingsCloudTypeSelect) return;
     const type = settingsCloudTypeSelect.value;
     if (type === 'openai') {
-      settingsKeyHintEl.innerHTML = `Get your API key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#10b981; text-decoration:underline;">OpenAI API Keys</a>.`;
+      settingsKeyHintEl.innerHTML = L('ai.settings.keyHintOpenai', `Get your API key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#10b981; text-decoration:underline;">OpenAI API Keys</a>.`);
     } else {
-      settingsKeyHintEl.innerHTML = `Get your API key at <a href="https://aistudio.google.com/" target="_blank" style="color:#a855f7; text-decoration:underline;">Google AI Studio</a>.`;
+      settingsKeyHintEl.innerHTML = L('ai.settings.keyHintGemini', `Get your API key at <a href="https://aistudio.google.com/" target="_blank" style="color:#a855f7; text-decoration:underline;">Google AI Studio</a>.`);
     }
   }
 
@@ -907,9 +941,9 @@
     allAvailableModels = p.providerType === 'openai' ? DEFAULT_OPENAI_MODELS : DEFAULT_GEMINI_MODELS;
 
     if (p.providerType === 'openai') {
-      settingsEndpointInput.placeholder = 'e.g., https://api.openai.com/v1/chat/completions';
+      settingsEndpointInput.placeholder = L('ai.settings.endpointPlaceholderOpenai', 'e.g., https://api.openai.com/v1/chat/completions');
     } else {
-      settingsEndpointInput.placeholder = 'e.g., https://generativelanguage.googleapis.com';
+      settingsEndpointInput.placeholder = L('ai.settings.endpointPlaceholderGemini', 'e.g., https://generativelanguage.googleapis.com');
     }
     updateKeyHint();
   }
@@ -1009,19 +1043,19 @@
     const nanoProvider = allProviders.find(p => p.id === 'chrome-prompt-api');
     if (nanoProvider) {
       const avail = await nanoProvider.getAvailability();
-      let badgeText = 'Checking...';
+      let badgeText = L('ai.tab.nano.checking', 'Checking...');
       let badgeColor = '#eab308';
       if (avail === 'available' || avail === 'supported') {
-        badgeText = '✓ Available';
+        badgeText = L('ai.tab.nano.available', 'Available');
         badgeColor = '#22c55e';
       } else if (avail === 'downloadable') {
-        badgeText = '⬇ Downloadable';
+        badgeText = L('ai.tab.nano.downloadable', 'Downloadable');
         badgeColor = '#eab308';
       } else if (avail === 'downloading') {
-        badgeText = '🔄 Downloading...';
+        badgeText = L('ai.tab.nano.downloading', 'Downloading...');
         badgeColor = '#3b82f6';
       } else {
-        badgeText = '❌ Unsupported';
+        badgeText = L('ai.tab.nano.unsupported', 'Unsupported');
         badgeColor = '#ef4444';
       }
 
@@ -1033,8 +1067,8 @@
       nanoTab.onmouseenter = () => {
         if (window.LayerManager) {
           globalTooltip.innerHTML = `
-            <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">Gemini Nano</div>
-            <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">Built-in Local AI</div>
+            <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">${L('ai.tab.nano.title', 'Gemini Nano')}</div>
+            <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">${L('ai.tab.nano.subtitle', 'Built-in Local AI')}</div>
             <div style="font-size: 0.72rem; font-weight: 500; color: ${badgeColor};">${badgeText}</div>
           `;
           globalTooltip.classList.add('right-tooltip');
@@ -1067,13 +1101,13 @@
       proTab.className = 'ai-modal-tab';
       proTab.id = 'ai-provider-tab-pro';
       proTab.style.position = 'relative';
-      proTab.innerHTML = `<span style="display:flex; align-items:center; color:#f2a900;"><ui-icon name="cloud"></ui-icon></span><span class="pro-badge-tiny" style="position:absolute; top:-0.3rem; left:-0.3rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span>`;
+      proTab.innerHTML = `<span style="display:flex; align-items:center; color:#f2a900;"><ui-icon name="cloud"></ui-icon></span><span class="pro-badge-tiny" style="position:absolute; top:-0.3rem; left:-0.3rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>${L('ai.pro', 'PRO')}</span>`;
       proTab.onmouseenter = () => {
         if (window.LayerManager) {
           globalTooltip.innerHTML = `
-            <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">ADO Atlas Cloud AI</div>
-            <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">Cloud GPT / Claude via our proxy — no API key needed</div>
-            <div style="font-size: 0.72rem; font-weight: 700; color: #f2a900;">PRO</div>
+            <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">${L('ai.tab.pro.title', 'ADO Atlas Cloud AI')}</div>
+            <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">${L('ai.tab.pro.subtitle', 'Cloud GPT / Claude via our proxy — no API key needed')}</div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: #f2a900;">${L('ai.pro', 'PRO')}</div>
           `;
           globalTooltip.classList.add('right-tooltip');
           globalTooltip.style.transform = 'none';
@@ -1105,16 +1139,16 @@
       const isGemini = provider.config.providerType === 'gemini';
       const isConfigured = !!provider.config.apiKey;
       
-      const badgeText = isConfigured ? '✓ Configured' : '⚙ Unconfigured';
+      const badgeText = isConfigured ? L('ai.tab.byok.configured', 'Configured') : L('ai.tab.byok.unconfigured', 'Unconfigured');
       const badgeColor = isConfigured ? '#22c55e' : '#eab308';
-      
-      let subtitle = isGemini ? 'Google AI Studio' : 'OpenAI Platform';
+
+      let subtitle = isGemini ? L('ai.tab.byok.geminiSubtitle', 'Google AI Studio') : L('ai.tab.byok.openaiSubtitle', 'OpenAI Platform');
       if (provider.config.endpoint) {
         try {
           const urlObj = new URL(provider.config.endpoint);
           subtitle = urlObj.hostname;
         } catch (e) {
-          subtitle = 'Custom Endpoint';
+          subtitle = L('ai.tab.byok.customEndpoint', 'Custom Endpoint');
         }
       }
 
@@ -1167,8 +1201,8 @@
     settingsTab.onmouseenter = () => {
       if (window.LayerManager) {
         globalTooltip.innerHTML = `
-          <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">Configure AI...</div>
-          <div style="font-size: 0.72rem; color: var(--muted, #888);">Manage models and API connections</div>
+          <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">${L('ai.tab.config.title', 'Configure AI...')}</div>
+          <div style="font-size: 0.72rem; color: var(--muted, #888);">${L('ai.tab.config.subtitle', 'Manage models and API connections')}</div>
         `;
         globalTooltip.classList.add('right-tooltip');
         globalTooltip.style.transform = 'none'; // reset global CSS translate
@@ -1212,7 +1246,7 @@
 
   async function updateAvailabilityUI() {
     if (!global.aiProviderRegistry) {
-      showError("AI Service Layer is not initialized.");
+      showError(L('ai.error.serviceNotInit', "AI Service Layer is not initialized."));
       return;
     }
 
@@ -1221,22 +1255,24 @@
     const helpTrigger = document.getElementById('ai-search-help-trigger');
     if (helpTrigger) {
       if (activeProvider && activeProvider.id === 'chrome-prompt-api') {
-        helpTrigger.setAttribute('data-tooltip-html', 
+        helpTrigger.setAttribute('data-i18n-tooltip', 'ai.helpTooltip.nano');
+        helpTrigger.setAttribute('data-tooltip-html', L('ai.helpTooltip.nano',
           '<b>Privacy-First On-Device AI</b><br/><br/>' +
           'This feature runs <b>entirely locally</b> on your machine using Google Chrome\'s built-in Gemini Nano model.<br/><br/>' +
-          '🔒 <b>100% Private & Secure:</b> Your queries, dynamic fields, and work item data never leave your browser and are never sent to external servers.'
-        );
+          '<b>100% Private & Secure:</b> Your queries, dynamic fields, and work item data never leave your browser and are never sent to external servers.'
+        ));
       } else {
-        helpTrigger.setAttribute('data-tooltip-html', 
+        helpTrigger.setAttribute('data-i18n-tooltip', 'ai.helpTooltip.cloud');
+        helpTrigger.setAttribute('data-tooltip-html', L('ai.helpTooltip.cloud',
           '<b>Custom Cloud AI</b><br/><br/>' +
           'This feature calls your configured cloud AI endpoint (Google Gemini or OpenAI).<br/><br/>' +
-          '🌐 <b>External Requests:</b> Your queries, dynamic fields, and work item metadata will be sent to the configured provider API to compile the search filters.'
-        );
+          '<b>External Requests:</b> Your queries, dynamic fields, and work item metadata will be sent to the configured provider API to compile the search filters.'
+        ));
       }
     }
 
     if (!activeProvider) {
-      showError("Chrome Built-in AI is not supported. Please configure a Custom Cloud AI provider under 'Configure AI...' to enable search.");
+      showError(L('ai.error.notSupported', "Chrome Built-in AI is not supported. Please configure a Custom Cloud AI provider under 'Configure AI...' to enable search."));
       textInput.setAttribute('disabled', 'true');
       submitBtn.setAttribute('disabled', 'true');
       applyDirectBtn.setAttribute('disabled', 'true');
@@ -1245,33 +1281,33 @@
 
     const avail = await activeProvider.getAvailability();
     if (avail === 'unsupported') {
-      showError("Built-in AI is unsupported on this device. Ensure your system meets hardware requirements (at least 22GB free space) and flags are enabled.");
+      showError(L('ai.error.unsupportedDevice', "Built-in AI is unsupported on this device. Ensure your system meets hardware requirements (at least 22GB free space) and flags are enabled."));
       textInput.setAttribute('disabled', 'true');
       submitBtn.setAttribute('disabled', 'true');
       applyDirectBtn.setAttribute('disabled', 'true');
     } else if (avail === 'downloadable') {
       if (activeProvider.id === 'chrome-prompt-api') {
-        showInfo("Built-in Gemini Nano model is ready to download. Searching will download the model first (~22MB download, ~250MB unpacked).");
-        submitBtn.textContent = 'Download & Search';
+        showInfo(L('ai.info.nanoReady', "Built-in Gemini Nano model is ready to download. Searching will download the model first (~22MB download, ~250MB unpacked)."));
+        submitBtn.textContent = L('ai.downloadAndSearch', 'Download & Search');
       } else {
-        showInfo("Custom Cloud provider requires configuration. Click 'Configure AI...' to input your API Key.");
-        submitBtn.textContent = 'Search';
+        showInfo(L('ai.info.cloudNeedsConfig', "Custom Cloud provider requires configuration. Click 'Configure AI...' to input your API Key."));
+        submitBtn.textContent = L('ai.search', 'Search');
       }
       handleTextInput();
     } else if (avail === 'downloading') {
-      showProgress("Downloading on-device AI model...", 0);
+      showProgress(L('ai.status.downloadingModel', "Downloading on-device AI model..."), 0);
       submitBtn.setAttribute('disabled', 'true');
       applyDirectBtn.setAttribute('disabled', 'true');
       activeProvider.ensureReady((progress) => {
-        showProgress("Downloading on-device AI model...", progress);
+        showProgress(L('ai.status.downloadingModel', "Downloading on-device AI model..."), progress);
       }).then(() => {
         updateAvailabilityUI();
       }).catch(e => {
-        showError("Model download failed: " + e.message);
+        showError(L('ai.status.modelDownloadFailed', "Model download failed: " + e.message, { error: e.message }));
       });
     } else {
       clearStatus();
-      submitBtn.textContent = 'Search (Preview)';
+      submitBtn.textContent = L('ai.searchPreview', 'Search (Preview)');
       handleTextInput();
     }
   }
@@ -1336,14 +1372,14 @@
       const avail = await activeProvider.getAvailability();
       if (avail === 'downloadable' || avail === 'downloading') {
         downloadProgressActive = true;
-        showProgress("Downloading on-device AI model (first-time only)...", 0);
+        showProgress(L('ai.status.downloadingModelFirst', "Downloading on-device AI model (first-time only)..."), 0);
         await activeProvider.ensureReady((progress) => {
-          showProgress("Downloading on-device AI model...", progress);
+          showProgress(L('ai.status.downloadingModel', "Downloading on-device AI model..."), progress);
         });
         downloadProgressActive = false;
       }
 
-      showProgress("Generating filters with AI...", 0.0);
+      showProgress(L('ai.status.generatingFilters', "Generating filters with AI..."), 0.0);
       
       const result = await global.aiSearchService.search(query, {
         reasoningLevel: selectedLevel,
@@ -1373,9 +1409,9 @@
         } else {
           if (global.FilterBuilderModal) {
             if (result.warnings && result.warnings.length > 0) {
-              const warnText = "AI Warnings:\n" + result.warnings.join("\n");
+              const warnText = L('ai.warnings.title', "AI Warnings:\n" + result.warnings.join("\n"), { warnings: result.warnings.join("\n") });
               if (window.customAlert) {
-                window.customAlert(warnText, "AI Search Warning");
+                window.customAlert(warnText, L('ai.warnings.dialogTitle', "AI Search Warning"));
               } else {
                 alert(warnText);
               }
@@ -1392,7 +1428,7 @@
         // Dialog is hidden, show background success card
         currentResult = result;
         if (backgroundStatusEl) {
-          backgroundStatusText.textContent = "AI Search completed successfully!";
+          backgroundStatusText.textContent = L('ai.bg.completed', "AI Search completed successfully!");
           backgroundPercentText.textContent = "100%";
           backgroundProgressFill.style.width = "100%";
           backgroundStatusEl.querySelector('.ai-bg-footer').style.display = 'flex';
@@ -1407,11 +1443,11 @@
       if (isDialogVisible) {
         textInput.removeAttribute('disabled');
         handleTextInput();
-        showError("Search failed: " + e.message);
+        showError(L('ai.searchFailed', "Search failed: " + e.message, { error: e.message }));
       } else {
         if (backgroundStatusEl) {
-          backgroundStatusText.textContent = "❌ AI Search failed: " + e.message;
-          backgroundPercentText.textContent = "Error";
+          backgroundStatusText.textContent = L('ai.bg.failed', "AI Search failed: " + e.message, { error: e.message });
+          backgroundPercentText.textContent = L('ai.bg.error', "Error");
           backgroundProgressFill.style.width = "0%";
           backgroundStatusEl.style.display = 'flex';
         }
@@ -1444,7 +1480,7 @@
 
     // If search is currently active, sync the progress display
     if (isSearchingActive) {
-      showProgress(progressStatus.textContent || "Processing...", parseFloat(progressFill.style.width) / 100);
+      showProgress(progressStatus.textContent || L('ai.processing', "Processing..."), parseFloat(progressFill.style.width) / 100);
     }
 
     if (window.LayerManager) {
@@ -1510,8 +1546,8 @@
 
       if (hasDraft && window.customConfirm) {
         const confirm = await window.customConfirm(
-          "You have unsaved draft filters. Overwrite them with the AI search results?",
-          "Overwrite Draft"
+          L('ai.confirm.overwriteDraft', "You have unsaved draft filters. Overwrite them with the AI search results?"),
+          L('ai.confirm.overwriteDraftTitle', "Overwrite Draft")
         );
         if (!confirm) return;
       }

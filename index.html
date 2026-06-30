@@ -13,36 +13,37 @@
 </head>
 <body>
 <script src="theme-init.js"></script>
+<script src="i18n-init.js"></script>
 <div id="bar">
   <h1><img src="icons/icon-48.png" style="display:block;width:22px;height:22px;object-fit:contain" alt="ADO Atlas" title="ADO Atlas"></h1>
-  <button class="projbadge" id="projbadge" title="current project — click to switch" style="display:none"></button>
-  <button class="btn save" id="newbtn" title="create a new work item (N)"><ui-icon name="plus"></ui-icon> New</button>
-  <button class="btn" id="undobtn" title="undo (Ctrl/Cmd+Z)" disabled><ui-icon name="undo"></ui-icon></button>
-  <button class="btn" id="redobtn" title="redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)" disabled><ui-icon name="redo"></ui-icon></button>
-  <div class="seg" id="mode"><button data-m="tree" class="on">Tree</button><button data-m="graph">Graph</button><button data-m="board">Board</button><button data-m="timeline">Timeline</button></div>
-  <div class="seg" id="emode" style="display:none"><button data-e="hierarchy" class="on" title="just hierarchy (compound boxes)">Hier</button><button data-e="dep" title="add dependency arrows">+ Deps</button></div>
-  <div class="seg" id="dir" style="display:none"><button data-d="TB"><ui-icon name="arrow-up-down"></ui-icon> V</button><button data-d="LR" class="on"><ui-icon name="arrow-left-right"></ui-icon> H</button></div>
-  <div class="seg" id="grp" style="display:none"><button data-g="sprint" class="on">by Sprint</button><button data-g="state">by State</button><button data-g="assignee">by Assignee</button></div>
-  <div class="seg" id="tlzoom" style="display:none" title="timeline zoom"><button data-z="day">Day</button><button data-z="week" class="on">Week</button><button data-z="month">Month</button></div>
-  <select id="tl_group" title="group timeline rows" style="display:none"><option value="none">group: none</option><option value="sprint">by Sprint</option><option value="state">by State</option><option value="assignee">by Assignee</option><option value="type">by Type</option></select>
-  <button class="btn" id="empty_btn" title="show empty columns (sprints / states / assignees)" style="display:none"><ui-icon name="slash"></ui-icon> empty</button>
+  <button class="projbadge" id="projbadge" data-i18n-title="toolbar.project.title" title="current project — click to switch" style="display:none"></button>
+  <button class="btn save" id="newbtn" data-i18n-title="toolbar.new.title" title="create a new work item (N)"><ui-icon name="plus"></ui-icon> <span data-i18n="toolbar.new">New</span></button>
+  <button class="btn" id="undobtn" data-i18n-title="toolbar.undo.title" title="undo (Ctrl/Cmd+Z)" disabled><ui-icon name="undo"></ui-icon></button>
+  <button class="btn" id="redobtn" data-i18n-title="toolbar.redo.title" title="redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)" disabled><ui-icon name="redo"></ui-icon></button>
+  <div class="seg" id="mode"><button data-m="tree" class="on" data-i18n="toolbar.mode.tree">Tree</button><button data-m="graph" data-i18n="toolbar.mode.graph">Graph</button><button data-m="board" data-i18n="toolbar.mode.board">Board</button><button data-m="timeline" data-i18n="toolbar.mode.timeline">Timeline</button></div>
+  <div class="seg" id="emode" style="display:none"><button data-e="hierarchy" class="on" data-i18n-title="toolbar.emode.hier.title" title="just hierarchy (compound boxes)" data-i18n="toolbar.emode.hier">Hier</button><button data-e="dep" data-i18n-title="toolbar.emode.dep.title" title="add dependency arrows" data-i18n="toolbar.emode.dep">+ Deps</button></div>
+  <div class="seg" id="dir" style="display:none"><button data-d="TB"><ui-icon name="arrow-up-down"></ui-icon> <span data-i18n="toolbar.dir.v">V</span></button><button data-d="LR" class="on"><ui-icon name="arrow-left-right"></ui-icon> <span data-i18n="toolbar.dir.h">H</span></button></div>
+  <div class="seg" id="grp" style="display:none"><button data-g="sprint" class="on" data-i18n="toolbar.group.sprint">by Sprint</button><button data-g="state" data-i18n="toolbar.group.state">by State</button><button data-g="assignee" data-i18n="toolbar.group.assignee">by Assignee</button></div>
+  <div class="seg" id="tlzoom" style="display:none" data-i18n-title="toolbar.tlzoom.title" title="timeline zoom"><button data-z="day" data-i18n="toolbar.tlzoom.day">Day</button><button data-z="week" class="on" data-i18n="toolbar.tlzoom.week">Week</button><button data-z="month" data-i18n="toolbar.tlzoom.month">Month</button></div>
+  <select id="tl_group" data-i18n-title="toolbar.tlgroup.title" title="group timeline rows" style="display:none"><option value="none" data-i18n="toolbar.tlgroup.none">group: none</option><option value="sprint" data-i18n="toolbar.group.sprint">by Sprint</option><option value="state" data-i18n="toolbar.group.state">by State</option><option value="assignee" data-i18n="toolbar.group.assignee">by Assignee</option><option value="type" data-i18n="toolbar.group.type">by Type</option></select>
+  <button class="btn" id="empty_btn" data-i18n-title="toolbar.empty.title" title="show empty columns (sprints / states / assignees)" style="display:none"><ui-icon name="slash"></ui-icon> <span data-i18n="toolbar.empty">empty</span></button>
   <div class="split-btn" id="filter-split">
-    <button class="btn" id="filt_btn" title="filters, search &amp; sort">Filters <span id="filt_count"></span></button>
-    <button class="btn icon" id="followed_btn" title="Filter by followed items"><ui-icon name="star"></ui-icon></button>
+    <button class="btn" id="filt_btn" data-i18n-title="toolbar.filters.title" title="filters, search &amp; sort"><span data-i18n="toolbar.filters">Filters</span> <span id="filt_count"></span></button>
+    <button class="btn icon" id="followed_btn" data-i18n-title="toolbar.followed.title" title="Filter by followed items"><ui-icon name="star"></ui-icon></button>
   </div>
-  <button class="btn" id="fit" title="fit graph" style="display:none">Fit</button>
+  <button class="btn" id="fit" data-i18n-title="toolbar.fit.title" title="fit graph" style="display:none" data-i18n="toolbar.fit">Fit</button>
   <span class="barspacer" id="bar-spacer"></span>
-  <div class="seg" id="export" title="export the current (filtered) view"><button data-x="csv"><ui-icon name="download"></ui-icon> CSV</button><button data-x="json">JSON</button><button data-pro-feature="export" title="High-resolution PDF / Excel export (Pro)">PDF <span class="pro-badge-text"><ui-icon name="gem"></ui-icon>PRO</span></button><button data-pro-feature="export" title="High-resolution PDF / Excel export (Pro)">Excel <span class="pro-badge-text"><ui-icon name="gem"></ui-icon>PRO</span></button></div>
-  <button class="btn" id="analytics_btn" style="position: relative;" data-pro-feature="analytics" title="Process analytics: Cycle Time, Flow Efficiency, WIP trends (Pro)"><ui-icon name="bar-chart"></ui-icon> Analytics <span class="pro-badge-tiny" style="position:absolute; top:-0.385rem; right:-0.385rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span></button>
-  <span class="patbadge" id="patbadge" title="PAT validity"></span>
+  <div class="seg" id="export" data-i18n-title="export.title" title="export the current (filtered) view"><button data-x="csv"><ui-icon name="download"></ui-icon> <span data-i18n="export.csv">CSV</span></button><button data-x="json" data-i18n="export.json">JSON</button><button data-pro-feature="export" data-i18n-title="export.pdf.title" title="High-resolution PDF / Excel export (Pro)"><span data-i18n="export.pdf">PDF</span> <span class="pro-badge-text"><ui-icon name="gem"></ui-icon>PRO</span></button><button data-pro-feature="export" data-i18n-title="export.excel.title" title="High-resolution PDF / Excel export (Pro)"><span data-i18n="export.excel">Excel</span> <span class="pro-badge-text"><ui-icon name="gem"></ui-icon>PRO</span></button></div>
+  <button class="btn" id="analytics_btn" style="position: relative;" data-pro-feature="analytics" data-i18n-title="toolbar.analytics.title" title="Process analytics: Cycle Time, Flow Efficiency, WIP trends (Pro)"><ui-icon name="bar-chart"></ui-icon> <span data-i18n="toolbar.analytics">Analytics</span> <span class="pro-badge-tiny" style="position:absolute; top:-0.385rem; right:-0.385rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span></button>
+  <span class="patbadge" id="patbadge" data-i18n-title="toolbar.patbadge.title" title="PAT validity"></span>
   <span class="legend" id="legend"></span>
   <span class="popwrap" id="settings-wrap">
-    <button class="btn" id="morebtn" title="settings &amp; display options"><ui-icon name="settings"></ui-icon></button>
+    <button class="btn" id="morebtn" data-i18n-title="settings.more.title" title="settings &amp; display options"><ui-icon name="settings"></ui-icon></button>
     <div id="morepanel" style="display:none">
-      <div class="mrow"><span class="ml">Theme<span class="logic-hint" data-tooltip-html="<b>Theme Switcher</b><br/>Cycle between Light, Dark, or System Sync theme options."><ui-icon name="help"></ui-icon></span></span>
-        <button class="btn" id="theme" title="cycle dark / light / auto"><ui-icon name="moon"></ui-icon> <span id="theme_label">dark</span></button></div>
-      <div class="mrow"><span class="ml">UI Scale<span class="logic-hint" data-tooltip-html="<b>UI Scaling</b><br/>Adjust the overall font and interface scaling factor for high-resolution displays."><ui-icon name="help"></ui-icon></span></span>
-        <select id="f_scale" title="UI scaling factor">
+      <div class="mrow"><span class="ml"><span data-i18n="settings.theme">Theme</span><span class="logic-hint" data-i18n-tooltip="help.theme" data-tooltip-html="<b>Theme Switcher</b><br/>Cycle between Light, Dark, or System Sync theme options."><ui-icon name="help"></ui-icon></span></span>
+        <button class="btn" id="theme" data-i18n-title="settings.theme.title" title="cycle dark / light / auto"><ui-icon name="moon"></ui-icon> <span id="theme_label">dark</span></button></div>
+      <div class="mrow"><span class="ml"><span data-i18n="settings.uiScale">UI Scale</span><span class="logic-hint" data-i18n-tooltip="help.uiScale" data-tooltip-html="<b>UI Scaling</b><br/>Adjust the overall font and interface scaling factor for high-resolution displays."><ui-icon name="help"></ui-icon></span></span>
+        <select id="f_scale" data-i18n-title="settings.uiScale.title" title="UI scaling factor">
           <option value="0.8">80%</option>
           <option value="0.9">90%</option>
           <option value="1.0" selected>100%</option>
@@ -52,145 +53,152 @@
           <option value="1.4">140%</option>
           <option value="1.5">150%</option>
         </select></div>
-      <div class="mrow"><span class="ml">Auto-refresh<span class="logic-hint" data-tooltip-html="<b>Auto-Refresh</b><br/>Set the interval for automatic background updates from Azure DevOps, or turn it off."><ui-icon name="help"></ui-icon></span></span>
-        <select id="f_auto" title="auto-refresh interval"><option value="0">off</option><option value="60">1 min</option><option value="300">5 min</option><option value="900">15 min</option></select></div>
-      <div class="mrow"><span class="ml">Timezone<span class="logic-hint" data-tooltip-html="<b>Timezone Config</b><br/>Configure the timezone used for active-time calculations and work-hours constraints."><ui-icon name="help"></ui-icon></span></span>
-        <select id="f_tz" title="timezone for work-hours / active-time"></select></div>
-      <div class="mrow"><span class="ml" title="working hours window for active-time (local)">Work hours<span class="logic-hint" data-tooltip-html="<b>Work Hours</b><br/>Define your active working hours window used for calculating business seconds and timespans."><ui-icon name="help"></ui-icon></span></span>
+      <div class="mrow"><span class="ml" data-i18n="settings.language">Language</span>
+        <select id="f_lang" data-i18n-title="settings.language.title" title="interface language">
+          <option value="en">English</option>
+          <option value="ru">Русский</option>
+          <option value="es">Español</option>
+          <option value="de">Deutsch</option>
+        </select></div>
+      <div class="mrow"><span class="ml"><span data-i18n="settings.autoRefresh">Auto-refresh</span><span class="logic-hint" data-i18n-tooltip="help.autoRefresh" data-tooltip-html="<b>Auto-Refresh</b><br/>Set the interval for automatic background updates from Azure DevOps, or turn it off."><ui-icon name="help"></ui-icon></span></span>
+        <select id="f_auto" data-i18n-title="settings.autoRefresh.title" title="auto-refresh interval"><option value="0" data-i18n="settings.autoRefresh.off">off</option><option value="60" data-i18n="settings.dur.1min">1 min</option><option value="300" data-i18n="settings.dur.5min">5 min</option><option value="900" data-i18n="settings.dur.15min">15 min</option></select></div>
+      <div class="mrow"><span class="ml"><span data-i18n="settings.timezone">Timezone</span><span class="logic-hint" data-i18n-tooltip="help.timezone" data-tooltip-html="<b>Timezone Config</b><br/>Configure the timezone used for active-time calculations and work-hours constraints."><ui-icon name="help"></ui-icon></span></span>
+        <select id="f_tz" data-i18n-title="settings.timezone.title" title="timezone for work-hours / active-time"></select></div>
+      <div class="mrow"><span class="ml" data-i18n-title="settings.workHours.rowTitle" title="working hours window for active-time (local)"><span data-i18n="settings.workHours">Work hours</span><span class="logic-hint" data-i18n-tooltip="help.workHours" data-tooltip-html="<b>Work Hours</b><br/>Define your active working hours window used for calculating business seconds and timespans."><ui-icon name="help"></ui-icon></span></span>
         <span class="whrs"><input id="f_wh_start" type="number" min="0" max="23">–<input id="f_wh_end" type="number" min="1" max="24"></span></div>
-      <div class="mrow"><span>Notifications<span class="logic-hint" data-tooltip-html="<b>Notifications</b><br/>Toggle desktop alerts for Followed Items."><ui-icon name="help"></ui-icon></span></span>
-        <button class="btn" id="f_follow_notify" title="toggle desktop notifications"><ui-icon name="bell"></ui-icon> <span id="f_follow_notify_label">on</span></button></div>
-      <div class="mrow"><span>Mentions<span class="logic-hint" data-tooltip-html="<b>Mentions</b><br/>Toggle desktop alerts for User Mentions."><ui-icon name="help"></ui-icon></span></span>
-        <button class="btn" id="f_mention_notify" title="toggle mention notifications"><ui-icon name="bell"></ui-icon> <span id="f_mention_notify_label">on</span></button></div>
-      <div class="mrow"><span>Notify age<span class="logic-hint" data-tooltip-html="<b>Notification Age</b><br/>Define the maximum age threshold (e.g. 2 days) to filter out older historic changes and prevent excessive notifications."><ui-icon name="help"></ui-icon></span></span>
-        <select id="f_notify_age" title="maximum age of changes to notify about">
-          <option value="1800">30 min</option>
-          <option value="3600">1 hour</option>
-          <option value="86400">1 day</option>
-          <option value="172800" selected>2 days</option>
-          <option value="604800">1 week</option>
+      <div class="mrow"><span><span data-i18n="settings.notifications">Notifications</span><span class="logic-hint" data-i18n-tooltip="help.notifications" data-tooltip-html="<b>Notifications</b><br/>Toggle desktop alerts for Followed Items."><ui-icon name="help"></ui-icon></span></span>
+        <button class="btn" id="f_follow_notify" data-i18n-title="settings.notifications.title" title="toggle desktop notifications"><ui-icon name="bell"></ui-icon> <span id="f_follow_notify_label">on</span></button></div>
+      <div class="mrow"><span><span data-i18n="settings.mentions">Mentions</span><span class="logic-hint" data-i18n-tooltip="help.mentions" data-tooltip-html="<b>Mentions</b><br/>Toggle desktop alerts for User Mentions."><ui-icon name="help"></ui-icon></span></span>
+        <button class="btn" id="f_mention_notify" data-i18n-title="settings.mentions.title" title="toggle mention notifications"><ui-icon name="bell"></ui-icon> <span id="f_mention_notify_label">on</span></button></div>
+      <div class="mrow"><span><span data-i18n="settings.notifyAge">Notify age</span><span class="logic-hint" data-i18n-tooltip="help.notifyAge" data-tooltip-html="<b>Notification Age</b><br/>Define the maximum age threshold (e.g. 2 days) to filter out older historic changes and prevent excessive notifications."><ui-icon name="help"></ui-icon></span></span>
+        <select id="f_notify_age" data-i18n-title="settings.notifyAge.title" title="maximum age of changes to notify about">
+          <option value="1800" data-i18n="settings.dur.30min">30 min</option>
+          <option value="3600" data-i18n="settings.dur.1hour">1 hour</option>
+          <option value="86400" data-i18n="settings.dur.1day">1 day</option>
+          <option value="172800" selected data-i18n="settings.dur.2days">2 days</option>
+          <option value="604800" data-i18n="settings.dur.1week">1 week</option>
         </select></div>
       <div class="mrow mrow-full" style="display:flex;gap:6px;align-items:stretch">
-        <button class="btn" id="cz_open" style="flex:1" title="reorder / show-hide toolbar buttons and work-item panel fields"><ui-icon name="layout"></ui-icon> Customize layout…</button>
-        <button class="btn" id="emojis_open" style="width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center" title="Customize reactions emojis or images"><ui-icon name="smile"></ui-icon></button>
+        <button class="btn" id="cz_open" style="flex:1" data-i18n-title="settings.customizeLayout.title" title="reorder / show-hide toolbar buttons and work-item panel fields"><ui-icon name="layout"></ui-icon> <span data-i18n="settings.customizeLayout">Customize layout…</span></button>
+        <button class="btn" id="emojis_open" style="width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center" data-i18n-title="settings.customizeEmojis.title" title="Customize reactions emojis or images"><ui-icon name="smile"></ui-icon></button>
       </div>
-      <div class="mrow mrow-full"><button class="btn" id="tutorialbtn" title="Replay interactive feature tours"><ui-icon name="book"></ui-icon> Interactive Tours…</button></div>
-      <div class="mrow mrow-full"><button class="btn btn-ai" id="ai_settings_btn" style="position: relative;" title="Configure on-device or cloud AI models"><ui-icon name="sparkles"></ui-icon> AI Models & Connections… <span class="ai-beta-badge-tiny" style="position: absolute; top: -0.385rem; right: -0.385rem; font-size: 0.615rem; padding: 0.077rem 0.308rem; pointer-events: none; z-index: 5;">BETA</span></button></div>
-      <div class="mrow mrow-full"><button class="btn" id="settingsbtn" title="Azure DevOps connection (PAT / org / project)"><ui-icon name="settings"></ui-icon> Connection (PAT / org / project)…</button></div>
-      <div class="mrow mrow-full"><button class="btn" id="pro_explore_btn" style="position:relative" title="See everything in ADO Atlas Pro"><ui-icon name="gem"></ui-icon> Explore ADO Atlas Pro <span class="pro-badge-tiny" style="position:absolute; top:-0.385rem; right:-0.385rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span></button></div>
+      <div class="mrow mrow-full"><button class="btn" id="tutorialbtn" data-i18n-title="settings.tours.title" title="Replay interactive feature tours"><ui-icon name="book"></ui-icon> <span data-i18n="settings.tours">Interactive Tours…</span></button></div>
+      <div class="mrow mrow-full"><button class="btn btn-ai" id="ai_settings_btn" style="position: relative;" data-i18n-title="settings.aiModels.title" title="Configure on-device or cloud AI models"><ui-icon name="sparkles"></ui-icon> <span data-i18n="settings.aiModels">AI Models & Connections…</span> <span class="ai-beta-badge-tiny" style="position: absolute; top: -0.385rem; right: -0.385rem; font-size: 0.615rem; padding: 0.077rem 0.308rem; pointer-events: none; z-index: 5;">BETA</span></button></div>
+      <div class="mrow mrow-full"><button class="btn" id="settingsbtn" data-i18n-title="settings.connection.title" title="Azure DevOps connection (PAT / org / project)"><ui-icon name="settings"></ui-icon> <span data-i18n="settings.connection">Connection (PAT / org / project)…</span></button></div>
+      <div class="mrow mrow-full"><button class="btn" id="pro_explore_btn" style="position:relative" data-i18n-title="settings.explorePro.title" title="See everything in ADO Atlas Pro"><ui-icon name="gem"></ui-icon> <span data-i18n="settings.explorePro">Explore ADO Atlas Pro</span> <span class="pro-badge-tiny" style="position:absolute; top:-0.385rem; right:-0.385rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span></button></div>
     </div>
   </span>
 </div>
 <div id="loading"></div>
 <div id="filterpanel" style="display:none">
   <div class="frow" id="filter-query">
-    <span class="fl">Find</span>
-    <button class="fclear" id="filt_clear_all" title="clear all filters" style="visibility:hidden"><ui-icon name="x"></ui-icon></button>
+    <span class="fl" data-i18n="filter.find">Find</span>
+    <button class="fclear" id="filt_clear_all" data-i18n-title="filter.clearAll.title" title="clear all filters" style="visibility:hidden"><ui-icon name="x"></ui-icon></button>
     <div class="fsearch-group-wrapper" style="position: relative; display: inline-flex; flex: 1; min-width: 12.308rem; max-width: 26.154rem; height: 2rem;">
       <div class="fsearch-group" style="width: 100%; margin: 0;">
         <div class="fsearch-container">
-          <input id="search" class="fsearch" placeholder="id or text…">
+          <input id="search" class="fsearch" data-i18n-placeholder="filter.search.placeholder" placeholder="id or text…">
           <button type="button" class="search-clear-btn" id="search-clear" style="display:none"><ui-icon name="x"></ui-icon></button>
         </div>
-        <button class="fsearch-group-btn" id="searchbtn" title="Search by ID or text"><ui-icon name="search"></ui-icon></button>
-        <button class="fsearch-group-btn fsearch-group-btn-ai" id="ai_filter_btn" title="AI Search over work items (BETA)">
+        <button class="fsearch-group-btn" id="searchbtn" data-i18n-title="filter.searchBtn.title" title="Search by ID or text"><ui-icon name="search"></ui-icon></button>
+        <button class="fsearch-group-btn fsearch-group-btn-ai" id="ai_filter_btn" data-i18n-title="filter.aiSearch.title" title="AI Search over work items (BETA)">
           <span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>
         </button>
       </div>
       <span class="ai-beta-badge-tiny" style="position: absolute; top: -0.462rem; right: -0.462rem; font-size: 0.615rem; padding: 0.077rem 0.308rem; pointer-events: none; z-index: 5;">BETA</span>
     </div>
-    <span class="fl fl-sort">Sort</span>
-    <select id="f_sort" title="sort order"><option value="">id</option><option value="priority">priority</option></select>
-    <button class="btn" id="refreshbtn" title="reload from server (drop caches)"><span class="ricon"><ui-icon name="refresh-cw"></ui-icon></span> Refresh</button>
-    <button class="btn" id="advanced_filter_btn" title="Open advanced visual filter builder">Advanced...</button>
+    <span class="fl fl-sort" data-i18n="filter.sort">Sort</span>
+    <select id="f_sort" data-i18n-title="filter.sort.title" title="sort order"><option value="" data-i18n="filter.sort.id">id</option><option value="priority" data-i18n="filter.sort.priority">priority</option></select>
+    <button class="btn" id="refreshbtn" data-i18n-title="filter.refresh.title" title="reload from server (drop caches)"><span class="ricon"><ui-icon name="refresh-cw"></ui-icon></span> <span data-i18n="filter.refresh">Refresh</span></button>
+    <button class="btn" id="advanced_filter_btn" data-i18n-title="filter.advanced.title" title="Open advanced visual filter builder" data-i18n="filter.advanced">Advanced...</button>
   </div>
   <div id="filterchips"></div>
   <div id="advanced-filter-indicator" style="display:none; align-items:center; gap:8px; padding:6px 12px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; margin-top:8px; font-size:0.923rem;">
-    <span style="font-weight:600; color:var(--accent);">Advanced Filter Active</span>
-    <button class="btn" id="advanced_filter_edit_btn" style="padding:2px 8px; font-size:0.8rem; height:auto; line-height:1.2;">Edit</button>
-    <button class="fclear" id="advanced_filter_clear_btn" style="visibility:visible; cursor:pointer;" title="clear advanced filter"><ui-icon name="x"></ui-icon></button>
+    <span style="font-weight:600; color:var(--accent);" data-i18n="filter.advancedActive">Advanced Filter Active</span>
+    <button class="btn" id="advanced_filter_edit_btn" style="padding:2px 8px; font-size:0.8rem; height:auto; line-height:1.2;" data-i18n="filter.advancedEdit">Edit</button>
+    <button class="fclear" id="advanced_filter_clear_btn" style="visibility:visible; cursor:pointer;" data-i18n-title="filter.advancedClear.title" title="clear advanced filter"><ui-icon name="x"></ui-icon></button>
   </div>
 </div>
 <div id="bulkbar" style="display:none">
   <span id="bulk_count">0 selected</span>
 
   <div class="bulk-group" id="bulk_g_state">
-    <span class="bulk-label">State</span>
-    <select id="bulk_state" title="set state on selected"><option value="">State…</option></select>
+    <span class="bulk-label" data-i18n="bulk.state">State</span>
+    <select id="bulk_state" data-i18n-title="bulk.state.title" title="set state on selected"><option value="" data-i18n="bulk.state.placeholder">State…</option></select>
   </div>
 
   <div class="bulk-group" id="bulk_g_priority">
-    <span class="bulk-label">Priority</span>
-    <select id="bulk_prio" title="set priority on selected"><option value="">Priority…</option><option value="1">P1</option><option value="2">P2</option><option value="3">P3</option><option value="4">P4</option></select>
+    <span class="bulk-label" data-i18n="bulk.priority">Priority</span>
+    <select id="bulk_prio" data-i18n-title="bulk.priority.title" title="set priority on selected"><option value="" data-i18n="bulk.priority.placeholder">Priority…</option><option value="1">P1</option><option value="2">P2</option><option value="3">P3</option><option value="4">P4</option></select>
   </div>
 
   <!-- Assignee Card Picker -->
   <div class="bulk-group" id="bulk_g_assigned" style="display:inline-flex;position:relative">
-    <span class="bulk-label">Assignee</span>
+    <span class="bulk-label" data-i18n="bulk.assignee">Assignee</span>
     <input type="hidden" id="bulk_assigned">
-    <button type="button" class="btn pcard" id="bulk_assigned_card" title="click to change assignee" style="min-width:130px">Assignee…</button>
+    <button type="button" class="btn pcard" id="bulk_assigned_card" data-i18n-title="bulk.assignee.title" title="click to change assignee" style="min-width:130px" data-i18n="bulk.assignee.placeholder">Assignee…</button>
     <div id="bulk_assigned_pick" class="ppick" style="display:none;position:absolute;top:100%;left:0;z-index:9000;min-width:220px">
-      <input id="bulk_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+      <input id="bulk_assigned_search" class="psearch" data-i18n-placeholder="picker.searchPeople" placeholder="search people…  (Esc to cancel)" autocomplete="off">
       <div id="bulk_assigned_results" class="presults"></div>
     </div>
   </div>
 
   <!-- Sprint Card Picker -->
   <div class="bulk-group" id="bulk_g_iteration" style="display:inline-flex;position:relative">
-    <span class="bulk-label">Sprint</span>
+    <span class="bulk-label" data-i18n="bulk.sprint">Sprint</span>
     <input type="hidden" id="bulk_iter">
-    <button type="button" class="btn pcard" id="bulk_iter_card" title="click to change sprint" style="min-width:150px">Sprint…</button>
+    <button type="button" class="btn pcard" id="bulk_iter_card" data-i18n-title="bulk.sprint.title" title="click to change sprint" style="min-width:150px" data-i18n="bulk.sprint.placeholder">Sprint…</button>
     <div id="bulk_iter_pick" class="ppick" style="display:none;position:absolute;top:100%;left:0;z-index:9000;min-width:300px">
-      <input id="bulk_iter_search" class="psearch" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
+      <input id="bulk_iter_search" class="psearch" data-i18n-placeholder="picker.searchSprints" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
       <div id="bulk_iter_results" class="presults"></div>
     </div>
   </div>
 
   <!-- Parent Card Picker -->
   <div class="bulk-group" id="bulk_g_parent" style="display:inline-flex;position:relative">
-    <span class="bulk-label">Parent</span>
+    <span class="bulk-label" data-i18n="bulk.parent">Parent</span>
     <input type="hidden" id="bulk_parent">
-    <button type="button" class="btn pcard" id="bulk_parent_card" title="click to change parent" style="min-width:130px">Parent…</button>
+    <button type="button" class="btn pcard" id="bulk_parent_card" data-i18n-title="bulk.parent.title" title="click to change parent" style="min-width:130px" data-i18n="bulk.parent.placeholder">Parent…</button>
     <div id="bulk_parent_pick" class="ppick" style="display:none;position:absolute;top:100%;left:0;z-index:9000;min-width:280px">
-      <input id="bulk_parent_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+      <input id="bulk_parent_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
       <div id="bulk_parent_results" class="presults"></div>
     </div>
   </div>
 
   <!-- Tags Actions -->
   <div class="bulk-group" id="bulk_g_tags" style="display:inline-flex;gap:4px;align-items:center;">
-    <span class="bulk-label">Tags</span>
+    <span class="bulk-label" data-i18n="bulk.tags">Tags</span>
     <div class="seg" id="bulk_tag_op_seg" style="display:inline-flex;margin:0;">
-      <button type="button" class="on" data-op="add">Add</button>
-      <button type="button" data-op="remove">Remove</button>
+      <button type="button" class="on" data-op="add" data-i18n="bulk.tags.add">Add</button>
+      <button type="button" data-op="remove" data-i18n="bulk.tags.remove">Remove</button>
     </div>
     <div id="bulk_tag_container" class="tagedit" style="display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap;"></div>
-    <button class="btn" id="bulk_tag_btn">Apply Tags</button>
+    <button class="btn" id="bulk_tag_btn" data-i18n="bulk.tags.apply">Apply Tags</button>
   </div>
 
   <!-- Dates Actions -->
   <div class="bulk-group" id="bulk_g_dates" style="display:inline-flex;gap:4px;align-items:center;">
-    <span class="bulk-label">Dates</span>
+    <span class="bulk-label" data-i18n="bulk.dates">Dates</span>
     <div class="drp-wrapper" style="position:relative; display:inline-flex;">
       <div style="position:relative; display:flex; align-items:center;">
-        <input type="text" class="btn pcard" id="bulk-range-trigger" placeholder="Select dates..." style="width:200px; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+        <input type="text" class="btn pcard" id="bulk-range-trigger" data-i18n-placeholder="bulk.dates.placeholder" placeholder="Select dates..." style="width:200px; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
         <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
       </div>
       <div id="bulk-range-picker" class="drp-popover"></div>
     </div>
     <input id="bulk_start" type="hidden">
     <input id="bulk_target" type="hidden">
-    <button class="btn" id="bulk_dates_btn">set dates</button>
+    <button class="btn" id="bulk_dates_btn" data-i18n="bulk.dates.set">set dates</button>
   </div>
 
   <!-- Followed Actions -->
   <div class="bulk-group" id="bulk_g_followed" style="display:inline-flex;gap:4px;align-items:center;">
-    <button class="btn" id="bulk_follow_btn" title="Follow all selected items" style="padding: 6px 9px;"><ui-icon name="star-filled"></ui-icon></button>
-    <button class="btn" id="bulk_unfollow_btn" title="Unfollow all selected items" style="padding: 6px 9px;"><ui-icon name="star"></ui-icon></button>
+    <button class="btn" id="bulk_follow_btn" data-i18n-title="bulk.follow.title" title="Follow all selected items" style="padding: 6px 9px;"><ui-icon name="star-filled"></ui-icon></button>
+    <button class="btn" id="bulk_unfollow_btn" data-i18n-title="bulk.unfollow.title" title="Unfollow all selected items" style="padding: 6px 9px;"><ui-icon name="star"></ui-icon></button>
   </div>
 
-  <button class="btn" id="bulk_clear" title="clear selection"><ui-icon name="x"></ui-icon> clear</button>
-  <button class="btn" id="bulk_cust_btn" title="customize bulk bar" style="padding: 2px 8px;"><ui-icon name="more-vertical"></ui-icon></button>
+  <button class="btn" id="bulk_clear" data-i18n-title="bulk.clear.title" title="clear selection"><ui-icon name="x"></ui-icon> <span data-i18n="bulk.clear">clear</span></button>
+  <button class="btn" id="bulk_cust_btn" data-i18n-title="bulk.customize.title" title="customize bulk bar" style="padding: 2px 8px;"><ui-icon name="more-vertical"></ui-icon></button>
 </div>
 <datalist id="assignees"></datalist>
 <div id="main">
@@ -199,7 +207,7 @@
     <div id="cy"></div>
     <div id="cy-loading" style="display:none">
       <div class="spinner-ring"></div>
-      <div id="cy-loading-text">calculating layout…</div>
+      <div id="cy-loading-text" data-i18n="view.calculatingLayout">calculating layout…</div>
     </div>
     <div id="board"></div>
     <div id="sprintview"></div>
@@ -211,20 +219,20 @@
   <div id="side" class="hidden">
     <div class="shead">
       <span id="s_hdr" class="ttl">—</span>
-      <span id="s_status_chip" class="schip" title="save status"></span>
+      <span id="s_status_chip" class="schip" data-i18n-title="side.saveStatus.title" title="save status"></span>
       <div id="s_unsaved_btns" class="unsaved-header-btns hidden">
-        <button type="button" class="btn save" id="s_save" title="Save changes (Ctrl+S)">Save</button>
-        <button type="button" class="btn discard" id="s_discard" title="Discard changes">Discard</button>
+        <button type="button" class="btn save" id="s_save" data-i18n-title="side.save.title" title="Save changes (Ctrl+S)" data-i18n="common.save">Save</button>
+        <button type="button" class="btn discard" id="s_discard" data-i18n-title="side.discard.title" title="Discard changes" data-i18n="side.discard">Discard</button>
       </div>
-      <button class="btn icon" id="s_desc_attach" title="attach a file (or paste / drop into the description)"><ui-icon name="paperclip"></ui-icon></button>
-      <button class="btn icon" id="s_customize" title="customize this panel (reorder / show-hide fields)"><ui-icon name="settings"></ui-icon></button>
+      <button class="btn icon" id="s_desc_attach" data-i18n-title="side.attach.title" title="attach a file (or paste / drop into the description)"><ui-icon name="paperclip"></ui-icon></button>
+      <button class="btn icon" id="s_customize" data-i18n-title="side.customize.title" title="customize this panel (reorder / show-hide fields)"><ui-icon name="settings"></ui-icon></button>
       <div class="split-btn" id="s_link_split">
-        <button class="btn icon" id="s_copy_link" title="Copy link to Azure DevOps"><ui-icon name="link"></ui-icon></button>
-        <a class="btn icon" id="s_link" target="_blank" title="open in Azure DevOps"><ui-icon name="external-link"></ui-icon></a>
+        <button class="btn icon" id="s_copy_link" data-i18n-title="side.copyLink.title" title="Copy link to Azure DevOps"><ui-icon name="link"></ui-icon></button>
+        <a class="btn icon" id="s_link" target="_blank" data-i18n-title="side.openAdo.title" title="open in Azure DevOps"><ui-icon name="external-link"></ui-icon></a>
       </div>
-      <button class="btn icon" id="s_desc_full" title="toggle full-screen editor (Esc to exit)"><ui-icon name="maximize"></ui-icon></button>
-      <button class="btn icon" id="s_follow" title="Follow / Unfollow this item"><ui-icon name="star"></ui-icon></button>
-      <button class="btn icon" id="s_close" title="close (Esc)"><ui-icon name="x"></ui-icon></button>
+      <button class="btn icon" id="s_desc_full" data-i18n-title="side.fullscreen.title" title="toggle full-screen editor (Esc to exit)"><ui-icon name="maximize"></ui-icon></button>
+      <button class="btn icon" id="s_follow" data-i18n-title="side.follow.title" title="Follow / Unfollow this item"><ui-icon name="star"></ui-icon></button>
+      <button class="btn icon" id="s_close" data-i18n-title="side.close.title" title="close (Esc)"><ui-icon name="x"></ui-icon></button>
     </div>
     <div class="sgroup" data-sg="nav">
       <div id="s_ctx"></div>
@@ -243,11 +251,11 @@
       <label>Assigned</label>
       <input type="hidden" id="s_assigned">
       <div class="prow-field">
-        <button type="button" class="btn pcard" id="s_assigned_card" title="click to change assignee"></button>
-        <button type="button" class="btn" id="s_me" title="assign to me" style="padding:6px 9px">me</button>
+        <button type="button" class="btn pcard" id="s_assigned_card" data-i18n-title="picker.changeAssignee.title" title="click to change assignee"></button>
+        <button type="button" class="btn" id="s_me" data-i18n-title="picker.assignToMe.title" title="assign to me" style="padding:6px 9px" data-i18n="picker.me">me</button>
       </div>
       <div id="s_assigned_pick" class="ppick" style="display:none">
-        <input id="s_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+        <input id="s_assigned_search" class="psearch" data-i18n-placeholder="picker.searchPeople" placeholder="search people…  (Esc to cancel)" autocomplete="off">
         <div id="s_assigned_results" class="presults"></div>
       </div>
     </div>
@@ -255,10 +263,10 @@
     <label>Sprint</label>
     <input type="hidden" id="s_iter">
     <div class="prow-field">
-      <button type="button" class="btn pcard" id="s_iter_card" title="click to change sprint"></button>
+      <button type="button" class="btn pcard" id="s_iter_card" data-i18n-title="picker.changeSprint.title" title="click to change sprint"></button>
     </div>
     <div id="s_iter_pick" class="ppick" style="display:none">
-      <input id="s_iter_search" class="psearch" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
+      <input id="s_iter_search" class="psearch" data-i18n-placeholder="picker.searchSprints" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
       <div id="s_iter_results" class="presults"></div>
     </div>
     </div>
@@ -266,11 +274,11 @@
     <label>Parent</label>
     <input type="hidden" id="s_parent">
     <div class="prow-field">
-      <button type="button" class="btn pcard" id="s_parent_card" title="click to change parent"></button>
-      <button type="button" class="btn" id="s_parent_open" title="open parent" style="padding:6px 9px">↑</button>
+      <button type="button" class="btn pcard" id="s_parent_card" data-i18n-title="picker.changeParent.title" title="click to change parent"></button>
+      <button type="button" class="btn" id="s_parent_open" data-i18n-title="picker.openParent.title" title="open parent" style="padding:6px 9px">↑</button>
     </div>
     <div id="s_parent_pick" class="ppick" style="display:none">
-      <input id="s_parent_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+      <input id="s_parent_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
       <div id="s_parent_results" class="presults"></div>
     </div>
     </div>
@@ -282,10 +290,10 @@
         <div id="s_deps_blockedby_chips" class="depchips"></div>
         <input type="hidden" id="s_deps_blockedby">
         <div class="prow-field">
-          <button type="button" class="btn pcard" id="s_deps_blockedby_card" title="add a blocking work item"></button>
+          <button type="button" class="btn pcard" id="s_deps_blockedby_card" data-i18n-title="deps.addBlocking.title" title="add a blocking work item"></button>
         </div>
         <div id="s_deps_blockedby_pick" class="ppick" style="display:none">
-          <input id="s_deps_blockedby_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+          <input id="s_deps_blockedby_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
           <div id="s_deps_blockedby_results" class="presults"></div>
         </div>
       </div>
@@ -294,10 +302,10 @@
         <div id="s_deps_blocks_chips" class="depchips"></div>
         <input type="hidden" id="s_deps_blocks">
         <div class="prow-field">
-          <button type="button" class="btn pcard" id="s_deps_blocks_card" title="add a work item this blocks"></button>
+          <button type="button" class="btn pcard" id="s_deps_blocks_card" data-i18n-title="deps.addBlocked.title" title="add a work item this blocks"></button>
         </div>
         <div id="s_deps_blocks_pick" class="ppick" style="display:none">
-          <input id="s_deps_blocks_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+          <input id="s_deps_blocks_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
           <div id="s_deps_blocks_results" class="presults"></div>
         </div>
       </div>
@@ -312,37 +320,37 @@
       <label>Attachments</label>
       <div class="atch-wrap">
         <div id="s_atch" class="atchlist"></div>
-        <div class="atch-dropzone"><div class="ddz-inner"><ui-icon name="paperclip"></ui-icon> Drop to attach</div></div>
+        <div class="atch-dropzone"><div class="ddz-inner"><ui-icon name="paperclip"></ui-icon> <span data-i18n="side.dropToAttach">Drop to attach</span></div></div>
       </div>
     </div>
     <div class="sgroup" data-sg="actions">
-      <div id="activity-resizer" class="activity-resizer" title="Drag to resize activity list"></div>
+      <div id="activity-resizer" class="activity-resizer" data-i18n-title="side.activityResizer.title" title="Drag to resize activity list"></div>
       <div class="activity-header">
         <h2 id="activity_toggle_btn" style="cursor:pointer; user-select:none;">
-          Activity <span class="toggle-arrow"><ui-icon name="chevron-right"></ui-icon></span> <span class="acount-badge" id="s_activity_count" style="display:none">0</span>
+          <span data-i18n="side.activity">Activity</span> <span class="toggle-arrow"><ui-icon name="chevron-right"></ui-icon></span> <span class="acount-badge" id="s_activity_count" style="display:none">0</span>
         </h2>
         <div class="ah-actions">
-          <button type="button" class="btn btn-sm" id="s_childbtn">＋ Child</button>
-          <button type="button" class="btn btn-sm" id="s_comment"><ui-icon name="message-square"></ui-icon> Comment</button>
-          <button type="button" class="btn btn-sm" id="s_act_full" title="Toggle fullscreen activity"><ui-icon name="maximize"></ui-icon></button>
+          <button type="button" class="btn btn-sm" id="s_childbtn">＋ <span data-i18n="side.child">Child</span></button>
+          <button type="button" class="btn btn-sm" id="s_comment"><ui-icon name="message-square"></ui-icon> <span data-i18n="side.comment">Comment</span></button>
+          <button type="button" class="btn btn-sm" id="s_act_full" data-i18n-title="side.actFull.title" title="Toggle fullscreen activity"><ui-icon name="maximize"></ui-icon></button>
         </div>
       </div>
       <div id="activity-content" class="hidden">
         <div id="comment_editor_container"></div>
         <div id="child_form">
           <div class="row"><select id="c_type" style="width:100%"></select>
-            <select id="c_prio" style="max-width:78px"><option value="">P —</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-          <input id="c_title" placeholder="new child title">
+            <select id="c_prio" style="max-width:78px"><option value="" data-i18n="child.prioPlaceholder">P —</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+          <input id="c_title" data-i18n-placeholder="child.titlePlaceholder" placeholder="new child title">
           <input type="hidden" id="c_assigned">
           <div class="prow-field">
-            <button type="button" class="btn pcard" id="c_assigned_card" title="click to choose an assignee"></button>
-            <button type="button" class="btn" id="c_me" title="assign to me" style="padding:4px 8px">me</button>
+            <button type="button" class="btn pcard" id="c_assigned_card" data-i18n-title="picker.chooseAssignee.title" title="click to choose an assignee"></button>
+            <button type="button" class="btn" id="c_me" data-i18n-title="picker.assignToMe.title" title="assign to me" style="padding:4px 8px" data-i18n="picker.me">me</button>
           </div>
           <div id="c_assigned_pick" class="ppick" style="display:none">
-            <input id="c_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+            <input id="c_assigned_search" class="psearch" data-i18n-placeholder="picker.searchPeople" placeholder="search people…  (Esc to cancel)" autocomplete="off">
             <div id="c_assigned_results" class="presults"></div>
           </div>
-          <div class="actions"><button class="btn save" id="c_create">Create</button><button class="btn" id="c_cancel">Cancel</button></div>
+          <div class="actions"><button class="btn save" id="c_create" data-i18n="child.create">Create</button><button class="btn" id="c_cancel" data-i18n="common.cancel">Cancel</button></div>
         </div>
         <div id="s_activity"></div>
       </div>
@@ -356,45 +364,45 @@
      Parent is optional — leave blank for a top-level item. -->
 <div id="newitem-overlay">
   <div id="newitem-box">
-    <h1>New work item</h1>
+    <h1 data-i18n="newitem.title">New work item</h1>
     <div class="row">
       <div><label>Type</label><select id="n_type" style="width:100%"></select></div>
       <div style="max-width:96px"><label>Priority</label><select id="n_prio" style="width:100%"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
     </div>
     <label>Title</label>
-    <input id="n_title" placeholder="work item title" style="width:100%">
+    <input id="n_title" data-i18n-placeholder="newitem.titlePlaceholder" placeholder="work item title" style="width:100%">
     <label>Assigned</label>
     <input type="hidden" id="n_assigned">
     <div class="prow-field">
-      <button type="button" class="btn pcard" id="n_assigned_card" title="click to choose an assignee"></button>
-      <button type="button" class="btn" id="n_me" title="assign to me" style="padding:6px 9px">me</button>
+      <button type="button" class="btn pcard" id="n_assigned_card" data-i18n-title="picker.chooseAssignee.title" title="click to choose an assignee"></button>
+      <button type="button" class="btn" id="n_me" data-i18n-title="picker.assignToMe.title" title="assign to me" style="padding:6px 9px" data-i18n="picker.me">me</button>
     </div>
     <div id="n_assigned_pick" class="ppick" style="display:none">
-      <input id="n_assigned_search" class="psearch" placeholder="search people…  (Esc to cancel)" autocomplete="off">
+      <input id="n_assigned_search" class="psearch" data-i18n-placeholder="picker.searchPeople" placeholder="search people…  (Esc to cancel)" autocomplete="off">
       <div id="n_assigned_results" class="presults"></div>
     </div>
     <label>Parent</label>
     <input type="hidden" id="n_parent">
     <div class="prow-field">
-      <button type="button" class="btn pcard" id="n_parent_card" title="click to choose a parent"></button>
+      <button type="button" class="btn pcard" id="n_parent_card" data-i18n-title="picker.chooseParent.title" title="click to choose a parent"></button>
     </div>
     <div id="n_parent_pick" class="ppick" style="display:none">
-      <input id="n_parent_search" class="psearch" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
+      <input id="n_parent_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
       <div id="n_parent_results" class="presults"></div>
     </div>
     <label>Sprint</label>
     <input type="hidden" id="n_iter">
     <div class="prow-field">
-      <button type="button" class="btn pcard" id="n_iter_card" title="click to choose a sprint"></button>
+      <button type="button" class="btn pcard" id="n_iter_card" data-i18n-title="picker.chooseSprint.title" title="click to choose a sprint"></button>
     </div>
     <div id="n_iter_pick" class="ppick" style="display:none">
-      <input id="n_iter_search" class="psearch" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
+      <input id="n_iter_search" class="psearch" data-i18n-placeholder="picker.searchSprints" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
       <div id="n_iter_results" class="presults"></div>
     </div>
     <div id="newitem-err"></div>
     <div id="newitem-actions">
-      <button class="btn save" id="n_create" title="Ctrl/Cmd+Enter">Create</button>
-      <button class="btn" id="n_cancel">Cancel</button>
+      <button class="btn save" id="n_create" data-i18n-title="newitem.createHint.title" title="Ctrl/Cmd+Enter" data-i18n="newitem.create">Create</button>
+      <button class="btn" id="n_cancel" data-i18n="common.cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -403,26 +411,26 @@
      Creates a dated iteration; needs permission to add iteration nodes in ADO. -->
 <div id="sprint-overlay">
   <div id="sprint-box">
-    <h1 id="sprint-title">New sprint</h1>
-    <label>Name</label>
-    <input id="sp_name" placeholder="e.g. Sprint 7" style="width:100%" autocomplete="off">
+    <h1 id="sprint-title" data-i18n="sprint.title">New sprint</h1>
+    <label data-i18n="sprint.name">Name</label>
+    <input id="sp_name" data-i18n-placeholder="sprint.namePlaceholder" placeholder="e.g. Sprint 7" style="width:100%" autocomplete="off">
     <input id="sp_start" type="hidden">
     <input id="sp_finish" type="hidden">
     <div class="drp-wrapper" style="margin:6px 0 10px; position:relative;">
       <div style="position:relative; display:flex; align-items:center; width:100%;">
-        <input type="text" class="btn pcard" id="sprint-range-trigger" placeholder="Select dates..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+        <input type="text" class="btn pcard" id="sprint-range-trigger" data-i18n-placeholder="bulk.dates.placeholder" placeholder="Select dates..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
         <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
       </div>
       <div id="sprint-range-picker" class="drp-popover"></div>
     </div>
     <div id="sprint-pending-container" style="display:none; margin:10px 0; border-top:1px solid var(--line); padding-top:10px;">
-      <label style="margin-bottom:6px; display:block;">Items to move to this sprint:</label>
+      <label style="margin-bottom:6px; display:block;" data-i18n="sprint.itemsToMove">Items to move to this sprint:</label>
       <div id="sprint-pending-list" style="max-height:120px; overflow-y:auto;"></div>
     </div>
     <div id="sprint-err"></div>
     <div id="sprint-actions">
-      <button class="btn save" id="sp_create" title="Ctrl/Cmd+Enter">Create sprint</button>
-      <button class="btn" id="sp_cancel">Cancel</button>
+      <button class="btn save" id="sp_create" data-i18n-title="newitem.createHint.title" title="Ctrl/Cmd+Enter" data-i18n="sprint.create">Create sprint</button>
+      <button class="btn" id="sp_cancel" data-i18n="common.cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -430,42 +438,42 @@
 <!-- Customize toolbar: reorder (drag) and show/hide (checkbox) the toolbar controls. -->
 <div id="customize-overlay">
   <div id="customize-box">
-    <h1 id="cz_title">Customize</h1>
+    <h1 id="cz_title" data-i18n="customize.title">Customize</h1>
     <div id="cz_tabs">
-      <button data-cz="bar" class="on">Toolbar</button>
-      <button data-cz="side">Work item panel</button>
-      <button data-cz="bulk">Bulk Edit</button>
+      <button data-cz="bar" class="on" data-i18n="customize.tab.toolbar">Toolbar</button>
+      <button data-cz="side" data-i18n="customize.tab.panel">Work item panel</button>
+      <button data-cz="bulk" data-i18n="customize.tab.bulk">Bulk Edit</button>
     </div>
     <div id="cz_wtype_container" style="display:none; margin:8px 0; align-items: center; gap: 10px; flex-wrap: wrap;">
-      <label style="font-size:12px;">Customize for type:</label>
+      <label style="font-size:12px;" data-i18n="customize.forType">Customize for type:</label>
       <div class="type-chips" id="cz_wtype_chips"></div>
     </div>
-    <p class="hint">Drag rows to reorder, uncheck to hide. Changes apply live and are remembered.</p>
+    <p class="hint" data-i18n="customize.hint">Drag rows to reorder, uncheck to hide. Changes apply live and are remembered.</p>
     <div id="customize-list"></div>
     <div class="cz-visual-editor-container" id="cz_visual_editor" style="display:none">
       <div class="cz-toolbox">
-        <h3>Structure</h3>
+        <h3 data-i18n="customize.structure">Structure</h3>
         <div class="cz-toolbox-section" id="cz_toolbox_structures">
-          <div class="cz-toolbox-item" draggable="true" data-type="group"><span class="grip"><ui-icon name="folder"></ui-icon></span> Collapsible Group</div>
-          <div class="cz-toolbox-item" draggable="true" data-type="row"><span class="grip">◫</span> 2-Column Row</div>
-          <div class="cz-toolbox-item" draggable="true" data-type="row3"><span class="grip">⧟</span> 3-Column Row</div>
-          <div class="cz-toolbox-item" draggable="true" data-type="label"><span class="grip"><ui-icon name="file-text"></ui-icon></span> Custom Text Block</div>
-          <div class="cz-toolbox-item" draggable="true" data-type="separator"><span class="grip"><ui-icon name="minus"></ui-icon></span> Separator Line</div>
+          <div class="cz-toolbox-item" draggable="true" data-type="group"><span class="grip"><ui-icon name="folder"></ui-icon></span> <span data-i18n="customize.collapsibleGroup">Collapsible Group</span></div>
+          <div class="cz-toolbox-item" draggable="true" data-type="row"><span class="grip">◫</span> <span data-i18n="customize.row2col">2-Column Row</span></div>
+          <div class="cz-toolbox-item" draggable="true" data-type="row3"><span class="grip">⧟</span> <span data-i18n="customize.row3col">3-Column Row</span></div>
+          <div class="cz-toolbox-item" draggable="true" data-type="label"><span class="grip"><ui-icon name="file-text"></ui-icon></span> <span data-i18n="customize.textBlock">Custom Text Block</span></div>
+          <div class="cz-toolbox-item" draggable="true" data-type="separator"><span class="grip"><ui-icon name="minus"></ui-icon></span> <span data-i18n="customize.separator">Separator Line</span></div>
         </div>
-        <h3>Available Fields</h3>
+        <h3 data-i18n="customize.availableFields">Available Fields</h3>
         <div class="cz-toolbox-section" id="cz_toolbox_fields"></div>
       </div>
       <div class="cz-canvas-wrapper">
         <div class="cz-canvas-hdr">
-          <span>Sidebar Live Preview (Drag elements here)</span>
-          <span style="color:var(--accent); font-weight:500;">Live Editing</span>
+          <span data-i18n="customize.livePreview">Sidebar Live Preview (Drag elements here)</span>
+          <span style="color:var(--accent); font-weight:500;" data-i18n="customize.liveEditing">Live Editing</span>
         </div>
         <div class="cz-canvas" id="cz_canvas"></div>
       </div>
     </div>
     <div id="customize-actions">
-      <button class="btn" id="cz_reset">Reset to default</button>
-      <button class="btn save" id="cz_done">Done</button>
+      <button class="btn" id="cz_reset" data-i18n="customize.reset">Reset to default</button>
+      <button class="btn save" id="cz_done" data-i18n="customize.done">Done</button>
     </div>
 
   </div>
@@ -473,68 +481,68 @@
 <!-- Customize emojis modal -->
 <div id="emojis-overlay">
   <div id="emojis-box">
-    <h1>Customize Reactions</h1>
-    <p class="hint">Override standard reactions with custom emojis or image URLs (https://...). Leave blank to restore defaults.</p>
+    <h1 data-i18n="emojis.title">Customize Reactions</h1>
+    <p class="hint" data-i18n="emojis.hint">Override standard reactions with custom emojis or image URLs (https://...). Leave blank to restore defaults.</p>
     <div id="emojis-inputs-list">
       <div class="emoji-config-row">
         <div class="emoji-preview-col" id="emoji_preview_like"></div>
-        <span class="ml emoji-label">Like</span>
-        <input id="emoji_override_like" placeholder="Paste URL or type emoji" autocomplete="off">
-        <label class="btn file-upload-btn" title="Upload custom image file">
+        <span class="ml emoji-label" data-i18n="emojis.like">Like</span>
+        <input id="emoji_override_like" data-i18n-placeholder="emojis.inputPlaceholder" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" data-i18n-title="emojis.upload.title" title="Upload custom image file">
           <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="like" style="display:none">
         </label>
       </div>
       <div class="emoji-config-row">
         <div class="emoji-preview-col" id="emoji_preview_dislike"></div>
-        <span class="ml emoji-label">Dislike</span>
-        <input id="emoji_override_dislike" placeholder="Paste URL or type emoji" autocomplete="off">
-        <label class="btn file-upload-btn" title="Upload custom image file">
+        <span class="ml emoji-label" data-i18n="emojis.dislike">Dislike</span>
+        <input id="emoji_override_dislike" data-i18n-placeholder="emojis.inputPlaceholder" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" data-i18n-title="emojis.upload.title" title="Upload custom image file">
           <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="dislike" style="display:none">
         </label>
       </div>
       <div class="emoji-config-row">
         <div class="emoji-preview-col" id="emoji_preview_heart"></div>
-        <span class="ml emoji-label">Heart</span>
-        <input id="emoji_override_heart" placeholder="Paste URL or type emoji" autocomplete="off">
-        <label class="btn file-upload-btn" title="Upload custom image file">
+        <span class="ml emoji-label" data-i18n="emojis.heart">Heart</span>
+        <input id="emoji_override_heart" data-i18n-placeholder="emojis.inputPlaceholder" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" data-i18n-title="emojis.upload.title" title="Upload custom image file">
           <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="heart" style="display:none">
         </label>
       </div>
       <div class="emoji-config-row">
         <div class="emoji-preview-col" id="emoji_preview_hooray"></div>
-        <span class="ml emoji-label">Hooray</span>
-        <input id="emoji_override_hooray" placeholder="Paste URL or type emoji" autocomplete="off">
-        <label class="btn file-upload-btn" title="Upload custom image file">
+        <span class="ml emoji-label" data-i18n="emojis.hooray">Hooray</span>
+        <input id="emoji_override_hooray" data-i18n-placeholder="emojis.inputPlaceholder" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" data-i18n-title="emojis.upload.title" title="Upload custom image file">
           <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="hooray" style="display:none">
         </label>
       </div>
       <div class="emoji-config-row">
         <div class="emoji-preview-col" id="emoji_preview_smile"></div>
-        <span class="ml emoji-label">Smile</span>
-        <input id="emoji_override_smile" placeholder="Paste URL or type emoji" autocomplete="off">
-        <label class="btn file-upload-btn" title="Upload custom image file">
+        <span class="ml emoji-label" data-i18n="emojis.smile">Smile</span>
+        <input id="emoji_override_smile" data-i18n-placeholder="emojis.inputPlaceholder" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" data-i18n-title="emojis.upload.title" title="Upload custom image file">
           <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="smile" style="display:none">
         </label>
       </div>
       <div class="emoji-config-row">
         <div class="emoji-preview-col" id="emoji_preview_confused"></div>
-        <span class="ml emoji-label">Confused</span>
-        <input id="emoji_override_confused" placeholder="Paste URL or type emoji" autocomplete="off">
-        <label class="btn file-upload-btn" title="Upload custom image file">
+        <span class="ml emoji-label" data-i18n="emojis.confused">Confused</span>
+        <input id="emoji_override_confused" data-i18n-placeholder="emojis.inputPlaceholder" placeholder="Paste URL or type emoji" autocomplete="off">
+        <label class="btn file-upload-btn" data-i18n-title="emojis.upload.title" title="Upload custom image file">
           <ui-icon name="folder"></ui-icon>
           <input type="file" accept="image/*" class="emoji-file-input" data-type="confused" style="display:none">
         </label>
       </div>
     </div>
     <div id="emojis-actions">
-      <button class="btn" id="emojis_reset">Reset to default</button>
-      <button class="btn save" id="emojis_save">Save</button>
-      <button class="btn" id="emojis_cancel">Cancel</button>
+      <button class="btn" id="emojis_reset" data-i18n="emojis.reset">Reset to default</button>
+      <button class="btn save" id="emojis_save" data-i18n="common.save">Save</button>
+      <button class="btn" id="emojis_cancel" data-i18n="common.cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -543,24 +551,24 @@
      check passes (handled by app.js boot). -->
 <div id="setup-overlay">
   <div id="setup-box">
-    <h1>Connect to Azure DevOps</h1>
+    <h1 data-i18n="setup.title">Connect to Azure DevOps</h1>
     <div class="seg" id="auth-mode" style="margin-bottom:10px">
-      <button data-am="pat" class="on">Token</button>
-      <button data-am="oauth">Microsoft sign-in</button>
+      <button data-am="pat" class="on" data-i18n="setup.authMode.token">Token</button>
+      <button data-am="oauth" data-i18n="setup.authMode.oauth">Microsoft sign-in</button>
     </div>
 
     <div id="auth-pat">
-      <p>Talk to Azure DevOps with a Personal Access Token. Create one at
+      <p data-i18n-html="setup.pat.intro">Talk to Azure DevOps with a Personal Access Token. Create one at
          <a href="https://dev.azure.com/_usersSettings/tokens" target="_blank" rel="noopener noreferrer">dev.azure.com → User settings → Personal access tokens</a>
          with at least <b>Work Items (Read &amp; Write)</b> and <b>Project and Team (Read)</b> scopes. The PAT is stored in
          <code>chrome.storage.local</code> on this machine only.</p>
-      <label>Personal Access Token</label>
-      <input id="setup-pat" type="password" placeholder="Paste your PAT here" style="width:100%">
-      <p class="hint" id="setup-load-hint">Paste a PAT, then fill in your Organization and Project (both are in your <code>dev.azure.com/&lt;org&gt;/&lt;project&gt;</code> URL). The project list fills in automatically once the org is set.</p>
-      <label>PAT expiry <span style="color:var(--muted);font-weight:400">(optional — copy from the token page for a validity countdown)</span></label>
+      <label data-i18n="setup.pat.label">Personal Access Token</label>
+      <input id="setup-pat" type="password" data-i18n-placeholder="setup.pat.placeholder" placeholder="Paste your PAT here" style="width:100%">
+      <p class="hint" id="setup-load-hint" data-i18n-html="setup.pat.loadHint">Paste a PAT, then fill in your Organization and Project (both are in your <code>dev.azure.com/&lt;org&gt;/&lt;project&gt;</code> URL). The project list fills in automatically once the org is set.</p>
+      <label data-i18n-html="setup.pat.expiryLabel">PAT expiry <span style="color:var(--muted);font-weight:400">(optional — copy from the token page for a validity countdown)</span></label>
       <div class="drp-wrapper" style="position:relative; margin-bottom:4px;">
         <div style="position:relative; display:flex; align-items:center; width:100%;">
-          <input type="text" class="btn pcard" id="setup-expiry-trigger" placeholder="Select date..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
+          <input type="text" class="btn pcard" id="setup-expiry-trigger" data-i18n-placeholder="setup.expiry.placeholder" placeholder="Select date..." style="width:100%; text-align:left; padding-right:24px; cursor:text;" autocomplete="off">
           <span style="position:absolute; right:8px; color:var(--muted); font-size:10px; pointer-events:none;">▼</span>
         </div>
         <div id="setup-expiry-picker" class="drp-popover"></div>
@@ -570,52 +578,52 @@
     </div>
 
     <div id="auth-oauth" style="display:none">
-      <button class="btn save" style="position:relative; width:100%; justify-content:center; margin-bottom:12px" data-pro-feature="hosted_oauth" title="Sign in with Microsoft in one click — no Entra app registration required (Pro)"><ui-icon name="key"></ui-icon> 1-Click Microsoft Sign-in <span class="pro-badge-tiny" style="position:absolute; top:-0.385rem; right:-0.385rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span></button>
-      <p style="text-align:center; color:var(--muted); font-size:12px; margin:0 0 12px">— or register your own app (free) —</p>
-      <p>Sign in with your Microsoft (Entra ID) account — no token to copy, and it
+      <button class="btn save" style="position:relative; width:100%; justify-content:center; margin-bottom:12px" data-pro-feature="hosted_oauth" data-i18n-title="setup.oauth.oneClick.title" title="Sign in with Microsoft in one click — no Entra app registration required (Pro)"><ui-icon name="key"></ui-icon> <span data-i18n="setup.oauth.oneClick">1-Click Microsoft Sign-in</span> <span class="pro-badge-tiny" style="position:absolute; top:-0.385rem; right:-0.385rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>PRO</span></button>
+      <p style="text-align:center; color:var(--muted); font-size:12px; margin:0 0 12px" data-i18n="setup.oauth.orRegister">— or register your own app (free) —</p>
+      <p data-i18n-html="setup.oauth.intro">Sign in with your Microsoft (Entra ID) account — no token to copy, and it
          refreshes automatically. A one-time app registration is required; see
          <a href="https://prorok1015.github.io/ado-atlas/oauth-setup.html" target="_blank" rel="noopener noreferrer">the setup guide</a>.</p>
-      <label>Application (client) ID</label>
+      <label data-i18n="setup.oauth.clientId">Application (client) ID</label>
       <input id="oauth-client" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off">
-      <label>Account type / tenant</label>
+      <label data-i18n="setup.oauth.tenant">Account type / tenant</label>
       <select id="oauth-tenant-mode" style="width:100%">
-        <option value="organizations">Work or school account</option>
-        <option value="custom">Specific tenant ID…</option>
+        <option value="organizations" data-i18n="setup.oauth.tenant.work">Work or school account</option>
+        <option value="custom" data-i18n="setup.oauth.tenant.custom">Specific tenant ID…</option>
       </select>
-      <input id="oauth-tenant-id" placeholder="tenant ID (GUID)" autocomplete="off" style="display:none">
-      <p class="hint"><b><ui-icon name="alert-triangle"></ui-icon> Work/school (Microsoft Entra) accounts only.</b> Personal Microsoft accounts (outlook/hotmail/live), including a personal account that owns an Azure DevOps org, <b>cannot</b> use OAuth — Azure DevOps has no OAuth resource for them. Use the <b>Token</b> tab (PAT) instead; it works with any account.</p>
-      <label>Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact value in your Entra app)</span></label>
+      <input id="oauth-tenant-id" data-i18n-placeholder="setup.oauth.tenantId.placeholder" placeholder="tenant ID (GUID)" autocomplete="off" style="display:none">
+      <p class="hint" data-i18n-html="setup.oauth.warning"><b><ui-icon name="alert-triangle"></ui-icon> Work/school (Microsoft Entra) accounts only.</b> Personal Microsoft accounts (outlook/hotmail/live), including a personal account that owns an Azure DevOps org, <b>cannot</b> use OAuth — Azure DevOps has no OAuth resource for them. Use the <b>Token</b> tab (PAT) instead; it works with any account.</p>
+      <label data-i18n-html="setup.oauth.redirectLabel">Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact value in your Entra app)</span></label>
       <div style="display:flex;gap:6px">
         <input id="oauth-redirect" readonly style="flex:1">
-        <button class="btn" id="oauth-copy" title="Copy to clipboard"><ui-icon name="copy"></ui-icon> Copy</button>
+        <button class="btn" id="oauth-copy" data-i18n-title="setup.oauth.copy.title" title="Copy to clipboard"><ui-icon name="copy"></ui-icon> <span data-i18n="common.copy">Copy</span></button>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
-        <button class="btn save" id="oauth-signin">Sign in with Microsoft</button>
+        <button class="btn save" id="oauth-signin" data-i18n="setup.oauth.signin">Sign in with Microsoft</button>
         <span id="oauth-status" style="color:var(--muted);font-size:12px"></span>
       </div>
     </div>
 
     <div class="row">
-      <div><label>Organization</label><input id="setup-org" list="setup-orglist" placeholder="your-org" autocomplete="off"><datalist id="setup-orglist"></datalist></div>
-      <div><label>Project</label><input id="setup-project" list="setup-projlist" placeholder="your-project" autocomplete="off"><datalist id="setup-projlist"></datalist></div>
+      <div><label data-i18n="setup.org">Organization</label><input id="setup-org" list="setup-orglist" data-i18n-placeholder="setup.org.placeholder" placeholder="your-org" autocomplete="off"><datalist id="setup-orglist"></datalist></div>
+      <div><label data-i18n="setup.project">Project</label><input id="setup-project" list="setup-projlist" data-i18n-placeholder="setup.project.placeholder" placeholder="your-project" autocomplete="off"><datalist id="setup-projlist"></datalist></div>
     </div>
     <div id="setup-err"></div>
     <div id="setup-actions">
-      <button class="btn save" id="setup-save">Save &amp; Connect</button>
-      <button class="btn" id="setup-cancel" style="display:none">Cancel</button>
+      <button class="btn save" id="setup-save" data-i18n="setup.saveConnect">Save &amp; Connect</button>
+      <button class="btn" id="setup-cancel" style="display:none" data-i18n="common.cancel">Cancel</button>
     </div>
-    <p class="hint" style="margin:14px 0 0">ADO Atlas is an independent project — not affiliated with or endorsed by Microsoft. Your token and data stay on this device. <a href="https://prorok1015.github.io/ado-atlas/privacy.html" target="_blank" rel="noopener noreferrer">Privacy</a></p>
+    <p class="hint" style="margin:14px 0 0" data-i18n-html="setup.footer">ADO Atlas is an independent project — not affiliated with or endorsed by Microsoft. Your token and data stay on this device. <a href="https://prorok1015.github.io/ado-atlas/privacy.html" target="_blank" rel="noopener noreferrer">Privacy</a></p>
   </div>
 </div>
 
 <!-- Custom confirm modal -->
 <div id="confirm-overlay" class="modal-backdrop" style="display:none">
   <div id="confirm-box">
-    <h1 id="confirm-title">Confirm Action</h1>
-    <p id="confirm-message">Are you sure?</p>
+    <h1 id="confirm-title" data-i18n="confirm.title">Confirm Action</h1>
+    <p id="confirm-message" data-i18n="confirm.message">Are you sure?</p>
     <div id="confirm-actions">
-      <button class="btn" id="confirm-cancel">Cancel</button>
-      <button class="btn save" id="confirm-ok">OK</button>
+      <button class="btn" id="confirm-cancel" data-i18n="common.cancel">Cancel</button>
+      <button class="btn save" id="confirm-ok" data-i18n="common.ok">OK</button>
     </div>
   </div>
 </div>
@@ -623,19 +631,19 @@
 <!-- Custom link insert modal -->
 <div id="link-overlay" class="modal-backdrop" style="display:none">
   <div id="link-box">
-    <h1 id="link-dialog-title">Insert Link</h1>
+    <h1 id="link-dialog-title" data-i18n="link.title">Insert Link</h1>
     <div>
-      <label for="link-dialog-text">Text to display</label>
-      <input id="link-dialog-text" placeholder="link text" autocomplete="off">
+      <label for="link-dialog-text" data-i18n="link.textLabel">Text to display</label>
+      <input id="link-dialog-text" data-i18n-placeholder="link.textPlaceholder" placeholder="link text" autocomplete="off">
     </div>
     <div>
-      <label for="link-dialog-url">Address (URL)</label>
+      <label for="link-dialog-url" data-i18n="link.urlLabel">Address (URL)</label>
       <input id="link-dialog-url" placeholder="https://example.com" autocomplete="off">
     </div>
     <div id="link-dialog-err" style="color:#e06c75; font-size:11px; margin-top:2px;"></div>
     <div id="link-actions">
-      <button class="btn" id="link-cancel">Cancel</button>
-      <button class="btn save" id="link-ok">Insert</button>
+      <button class="btn" id="link-cancel" data-i18n="common.cancel">Cancel</button>
+      <button class="btn save" id="link-ok" data-i18n="link.insert">Insert</button>
     </div>
   </div>
 </div>
@@ -643,9 +651,9 @@
 <!-- Command palette (Ctrl/Cmd+K): fuzzy-find loaded items + quick actions. -->
 <div id="palette">
   <div id="palette-box">
-    <input id="palette-input" placeholder="Jump to an item (#id or title) or run a command…" autocomplete="off">
+    <input id="palette-input" data-i18n-placeholder="palette.placeholder" placeholder="Jump to an item (#id or title) or run a command…" autocomplete="off">
     <div id="palette-list"></div>
-    <div id="palette-foot"><span>↑↓ navigate · ↵ open · esc close</span></div>
+    <div id="palette-foot"><span data-i18n="palette.foot">↑↓ navigate · ↵ open · esc close</span></div>
   </div>
 </div>
 
@@ -653,6 +661,7 @@
 <script src="components/layer-manager.js"></script>
 <script src="filter-compiler.js"></script>
 <script src="lib.js"></script>
+<script src="components/i18n.js"></script>
 <script src="api.js"></script>
 <script src="components/markdown-editor.js"></script>
 <script src="components/card-picker.js"></script>

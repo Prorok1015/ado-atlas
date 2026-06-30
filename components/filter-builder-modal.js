@@ -2,6 +2,12 @@
 (function(root) {
   "use strict";
 
+  // Lazy, guarded i18n helper. Resolves via the in-app runtime when present,
+  // otherwise returns the English literal fallback so the modal degrades cleanly.
+  const L = (k, p, fallback) => (typeof window !== 'undefined' && window.i18n)
+    ? window.i18n.t(k, p)
+    : (fallback != null ? fallback : k);
+
   // Built-in fields that don't need their technical key displayed in the UI dropdown
   const BUILT_IN_FIELDS = new Set([
     'id', 'parent', 'state', 'type', 'priority', 'assigned', 'iteration', 'tags',
@@ -209,9 +215,11 @@
       const draftStr = localStorage.getItem('fbDraftFilter');
       if (draftStr && draftStr !== JSON.stringify(currentIR)) {
         const confirmFn = window.customConfirm;
+        const modifyMsg = L('filter.confirm.modifyLoaded.msg', null, "Making changes to this saved filter will create a new draft. This will overwrite your existing draft filter. Do you want to proceed?");
+        const modifyTitle = L('filter.confirm.modifyLoaded.title', null, "Modify Loaded Filter");
         const ok = confirmFn
-          ? await confirmFn("Making changes to this saved filter will create a new draft. This will overwrite your existing draft filter. Do you want to proceed?", "Modify Loaded Filter")
-          : confirm("Making changes to this saved filter will create a new draft. This will overwrite your existing draft filter. Do you want to proceed?");
+          ? await confirmFn(modifyMsg, modifyTitle)
+          : confirm(modifyMsg);
         if (!ok) return;
         activeSavedFilterIndex = null;
       } else {
@@ -380,7 +388,7 @@
         if (!schemaLoaded) {
           return `
             <div class="f-dropdown-container fb-date-picker-row" style="position: relative; display: inline-flex; align-items: center; gap: 6px;">
-              <input type="text" class="tag-search" placeholder="Loading schema..." disabled style="width: 100px;">
+              <input type="text" class="tag-search" placeholder="${htmlEsc(L('filter.input.loadingSchema', null, 'Loading schema...'))}" disabled style="width: 100px;">
               <span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>
             </div>
           `;
@@ -388,8 +396,8 @@
         return `
           <div class="f-dropdown-container fb-date-picker-row" style="position: relative; display: inline-flex; align-items: center; gap: 4px;">
             <input type="hidden" id="fb-val-${cardIdx}-${field}">
-            <input type="text" class="tag-search" id="fb-val-${cardIdx}-${field}_trigger" placeholder="Add date..." autocomplete="off" style="width: 100px;">
-            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
+            <input type="text" class="tag-search" id="fb-val-${cardIdx}-${field}_trigger" placeholder="${htmlEsc(L('filter.input.addDate', null, 'Add date...'))}" autocomplete="off" style="width: 100px;">
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="${htmlEsc(L('common.apply', null, 'Apply'))}"><ui-icon name="check"></ui-icon></button>
             <div id="fb-val-${cardIdx}-${field}_picker" class="drp-popover" style="position: absolute; z-index: 1010;"></div>
           </div>
         `;
@@ -498,15 +506,15 @@
         if (!schemaLoaded) {
           return `
             <div class="f-dropdown-container fb-card-picker-row" style="position: relative; display: inline-flex; align-items: center; gap: 6px;">
-              <input class="tag-search" placeholder="Loading schema..." disabled autocomplete="off" style="font-size: 11px; padding: 2px 8px; min-height: 22px; height: 22px; line-height: 18px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel);">
+              <input class="tag-search" placeholder="${htmlEsc(L('filter.input.loadingSchema', null, 'Loading schema...'))}" disabled autocomplete="off" style="font-size: 11px; padding: 2px 8px; min-height: 22px; height: 22px; line-height: 18px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel);">
               <span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>
             </div>
           `;
         }
         return `
           <div class="f-dropdown-container fb-card-picker-row" style="position: relative; display: inline-flex; align-items: center; gap: 4px;">
-            <input type="text" id="fb-val-${cardIdx}-${field}" class="tag-search" placeholder="Choose..." autocomplete="off">
-            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
+            <input type="text" id="fb-val-${cardIdx}-${field}" class="tag-search" placeholder="${htmlEsc(L('filter.input.choose', null, 'Choose...'))}" autocomplete="off">
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="${htmlEsc(L('common.apply', null, 'Apply'))}"><ui-icon name="check"></ui-icon></button>
             <div id="fb-val-${cardIdx}-${field}_pick" class="ppick" style="display:none; position:absolute; left:0; top:100%; z-index:1010;">
               <div id="fb-val-${cardIdx}-${field}_results" class="presults"></div>
             </div>
@@ -600,15 +608,15 @@
         if (!schemaLoaded) {
           return `
             <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 6px;">
-              <input class="tag-search" placeholder="Loading schema..." disabled autocomplete="off">
+              <input class="tag-search" placeholder="${htmlEsc(L('filter.input.loadingSchema', null, 'Loading schema...'))}" disabled autocomplete="off">
               <span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>
             </div>
           `;
         }
         return `
           <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 4px; position: relative;">
-            <input id="fb-input-${cardIdx}-${field}" class="tag-search" placeholder="Add value..." autocomplete="off">
-            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
+            <input id="fb-input-${cardIdx}-${field}" class="tag-search" placeholder="${htmlEsc(L('filter.input.addValue', null, 'Add value...'))}" autocomplete="off">
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="${htmlEsc(L('common.apply', null, 'Apply'))}"><ui-icon name="check"></ui-icon></button>
             <div id="fb-dropdown-${cardIdx}-${field}" class="f-dropdown" style="display:none"></div>
           </div>
         `;
@@ -631,7 +639,7 @@
           if (matches.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'f-dropdown-item empty';
-            empty.textContent = 'No matches';
+            empty.textContent = L('filter.input.noMatches', null, 'No matches');
             dropdownEl.appendChild(empty);
           } else {
             matches.forEach(val => {
@@ -715,15 +723,15 @@
         if (!schemaLoaded) {
           return `
             <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 6px;">
-              <input type="text" class="tag-search" placeholder="Loading schema..." disabled>
+              <input type="text" class="tag-search" placeholder="${htmlEsc(L('filter.input.loadingSchema', null, 'Loading schema...'))}" disabled>
               <span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>
             </div>
           `;
         }
         return `
           <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 4px;">
-            <input id="fb-input-${cardIdx}-${field}" type="text" class="tag-search" placeholder="Add value..." autocomplete="off">
-            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
+            <input id="fb-input-${cardIdx}-${field}" type="text" class="tag-search" placeholder="${htmlEsc(L('filter.input.addValue', null, 'Add value...'))}" autocomplete="off">
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="${htmlEsc(L('common.apply', null, 'Apply'))}"><ui-icon name="check"></ui-icon></button>
           </div>
         `;
       },
@@ -773,7 +781,7 @@
         if (!schemaLoaded) {
           return `
             <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 6px;">
-              <input type="text" class="tag-search" placeholder="Loading schema..." disabled>
+              <input type="text" class="tag-search" placeholder="${htmlEsc(L('filter.input.loadingSchema', null, 'Loading schema...'))}" disabled>
               <span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>
             </div>
           `;
@@ -781,10 +789,10 @@
         return `
           <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 4px;">
             <div class="time-input-wrap">
-              <input id="fb-input-${cardIdx}-${field}" type="text" class="tag-search" placeholder="Add value..." autocomplete="off">
-              <span class="time-hint-icon" title="Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h"><ui-icon name="clock"></ui-icon></span>
+              <input id="fb-input-${cardIdx}-${field}" type="text" class="tag-search" placeholder="${htmlEsc(L('filter.input.addValue', null, 'Add value...'))}" autocomplete="off">
+              <span class="time-hint-icon" title="${htmlEsc(L('filter.input.timeMathHint', null, 'Supports math expressions: h (hours), d (days = 8h), w (weeks = 40h), e.g. 1d + 4h'))}"><ui-icon name="clock"></ui-icon></span>
             </div>
-            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="Apply">✓</button>
+            <button type="button" class="btn-apply-chip" id="fb-apply-btn-${cardIdx}-${field}" title="${htmlEsc(L('common.apply', null, 'Apply'))}"><ui-icon name="check"></ui-icon></button>
           </div>
         `;
       },
@@ -847,7 +855,7 @@
           return `
             <div class="f-dropdown-container" style="display: inline-flex; align-items: center; gap: 6px;">
               <select class="tag-search" disabled style="width: 80px;">
-                <option>Loading...</option>
+                <option>${htmlEsc(L('common.loading', null, 'Loading...'))}</option>
               </select>
               <span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>
             </div>
@@ -856,7 +864,7 @@
         return `
           <div class="f-dropdown-container">
             <select id="fb-select-${cardIdx}-${field}" class="tag-search" style="width: 80px; padding: 2px 8px; cursor: pointer;">
-              <option value="" disabled selected hidden>Select...</option>
+              <option value="" disabled selected hidden>${htmlEsc(L('filter.input.select', null, 'Select...'))}</option>
               <option value="True">True</option>
               <option value="False">False</option>
             </select>
@@ -943,18 +951,18 @@
       macros = window.FilterCompiler.getSupportedMacros(field, filterFields);
     }
 
-    let html = 'Values within a field are joined by <b>OR</b>.<br>';
+    let html = L('filter.tooltip.valuesOr', null, 'Values within a field are joined by <b>OR</b>.') + '<br>';
     if (ops.length > 0) {
       const opsFormatted = ops.map(op => op.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
-      html += '<br><b>Supported Operators:</b><br><code>' + opsFormatted.join(', ') + '</code>';
+      html += '<br><b>' + L('filter.tooltip.supportedOperators', null, 'Supported Operators:') + '</b><br><code>' + opsFormatted.join(', ') + '</code>';
     }
     if (macros.length > 0) {
-      html += '<br><br><b>Supported Macros:</b><br><code>' + macros.join(', ') + '</code>';
+      html += '<br><br><b>' + L('filter.tooltip.supportedMacros', null, 'Supported Macros:') + '</b><br><code>' + macros.join(', ') + '</code>';
     }
 
     const strategy = getInputStrategy(field);
     if (strategy === InputStrategies.timeMath) {
-      html += '<br><br><i>Supports math: 1d 4h</i>';
+      html += '<br><br><i>' + L('filter.tooltip.supportsMath', null, 'Supports math: 1d 4h') + '</i>';
     }
 
     return html;
@@ -1012,25 +1020,25 @@
         <div id="filter-builder-box">
           <div class="fb-header">
             <div style="display:flex; align-items:center; gap:8px;">
-              <h2>Advanced Filter Builder</h2>
-              <button class="fb-help-btn" id="fb-help-btn" title="Syntax Help"><ui-icon name="help"></ui-icon></button>
+              <h2 data-i18n="filter.builder.title">Advanced Filter Builder</h2>
+              <button class="fb-help-btn" id="fb-help-btn" data-i18n-title="filter.builder.syntaxHelp" title="Syntax Help"><ui-icon name="help"></ui-icon></button>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
-              <a class="fb-icon-btn" href="https://github.com/Prorok1015/ado-atlas/issues" target="_blank" title="Report a Bug">
+              <a class="fb-icon-btn" href="https://github.com/Prorok1015/ado-atlas/issues" target="_blank" data-i18n-title="filter.builder.reportBug" title="Report a Bug">
                 <ui-icon name="bug"></ui-icon>
               </a>
-              <button class="fb-close-btn" id="fb-close-btn"><ui-icon name="x"></ui-icon></button>
+              <button class="fb-close-btn" id="fb-close-btn" data-i18n-title="common.close"><ui-icon name="x"></ui-icon></button>
             </div>
           </div>
           <div id="fb-draft-banner" style="display:none; background:rgba(230, 126, 34, 0.1); color:#e67e22; padding:8px 16px; border-bottom:1px solid rgba(230, 126, 34, 0.3); align-items:center; justify-content:space-between; font-size:0.85rem;">
-            <div><strong>Draft Restored</strong> — You have unapplied changes.</div>
-            <button id="fb-discard-draft-btn" style="background:transparent; border:1px solid #e67e22; color:#e67e22; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;">Discard Draft</button>
+            <div data-i18n-html="filter.builder.draftRestored"><strong>Draft Restored</strong> — You have unapplied changes.</div>
+            <button id="fb-discard-draft-btn" data-i18n="filter.builder.discardDraft" style="background:transparent; border:1px solid #e67e22; color:#e67e22; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;">Discard Draft</button>
           </div>
           <div id="fb-ai-banner" style="display:none; background:rgba(114, 9, 183, 0.1); color:#a855f7; padding:8px 16px; border-bottom:1px solid rgba(114, 9, 183, 0.3); align-items:center; justify-content:space-between; font-size:0.85rem;">
-            <div style="display:flex; align-items:center; gap:6px;"><span style="color:#a855f7; display:flex;"><ui-icon name="sparkles"></ui-icon></span> <strong>AI Search result is ready!</strong> — Click apply to load the generated filters.</div>
+            <div style="display:flex; align-items:center; gap:6px;"><span style="color:#a855f7; display:flex;"><ui-icon name="sparkles"></ui-icon></span> <span data-i18n-html="filter.builder.aiReady"><strong>AI Search result is ready!</strong> — Click apply to load the generated filters.</span></div>
             <div style="display:flex; gap:6px;">
-              <button id="fb-discard-ai-btn" style="background:transparent; border:1px solid rgba(114, 9, 183, 0.4); color:#a855f7; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;">Dismiss</button>
-              <button id="fb-apply-ai-btn" style="background:#7209b7; border:none; color:#fff; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;">Apply AI Filter</button>
+              <button id="fb-discard-ai-btn" data-i18n="filter.builder.dismiss" style="background:transparent; border:1px solid rgba(114, 9, 183, 0.4); color:#a855f7; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;">Dismiss</button>
+              <button id="fb-apply-ai-btn" data-i18n="filter.builder.applyAiFilter" style="background:#7209b7; border:none; color:#fff; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;">Apply AI Filter</button>
             </div>
           </div>
           <div class="fb-main-content">
@@ -1041,21 +1049,21 @@
             <div class="fb-preview-panel">
               <div class="fb-preview-header">
                 <div style="display:flex; align-items:center; gap:6px;">
-                  <button id="fb-preview-toggle-btn" class="fb-icon-btn" style="margin:0; border:none;" title="Toggle Preview Sidebar">
+                  <button id="fb-preview-toggle-btn" class="fb-icon-btn" style="margin:0; border:none;" data-i18n-title="filter.builder.togglePreview" title="Toggle Preview Sidebar">
                     <ui-icon name="chevron-right"></ui-icon>
                   </button>
-                  <span class="preview-title">Preview</span>
+                  <span class="preview-title" data-i18n="filter.builder.preview">Preview</span>
                 </div>
                 <span id="fb-preview-count">0 items</span>
               </div>
               <div class="fb-preview-list" id="fb-preview-list">
-                <div style="color:var(--muted); text-align:center; padding-top:20px;">No results matching filters</div>
+                <div style="color:var(--muted); text-align:center; padding-top:20px;" data-i18n="filter.builder.noResults">No results matching filters</div>
               </div>
             </div>
 
-                
 
-            <div id="fb-preview-tab" class="fb-preview-tab" title="Open Preview">
+
+            <div id="fb-preview-tab" class="fb-preview-tab" data-i18n-title="filter.builder.openPreview" title="Open Preview">
               <ui-icon name="chevron-right"></ui-icon>
             </div>
           </div>
@@ -1063,30 +1071,30 @@
             <div class="fb-footer-left" style="display:flex; align-items:center; gap:8px;">
               <button class="fb-ie-btn fb-ie-btn--outline" id="fb-show-followed" style="display:flex; align-items:center; gap:6px;">
                 <span class="fb-toggle-icon"><ui-icon name="star"></ui-icon></span>
-                Only followed items
+                <span data-i18n="filter.builder.onlyFollowed">Only followed items</span>
               </button>
-              <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ai-search-btn" style="position:relative; display:flex; align-items:center; gap:6px; background: linear-gradient(135deg, rgba(114,9,183,0.1), rgba(63,55,201,0.1)); border-color: rgba(99,102,241,0.3);" title="AI Search over work items (BETA)">
+              <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ai-search-btn" style="position:relative; display:flex; align-items:center; gap:6px; background: linear-gradient(135deg, rgba(114,9,183,0.1), rgba(63,55,201,0.1)); border-color: rgba(99,102,241,0.3);" data-i18n-title="filter.builder.aiSearchTooltip" title="AI Search over work items (BETA)">
                 <span style="color:#a855f7; display: flex; align-items: center;"><ui-icon name="sparkles"></ui-icon></span>
-                AI Search...
+                <span data-i18n="filter.builder.aiSearch">AI Search...</span>
                 <span class="ai-beta-badge-tiny" style="position: absolute; top: -0.385rem; right: -0.385rem; font-size: 0.615rem; padding: 0 0.231rem;">BETA</span>
               </button>
             </div>
             <div class="fb-actions" style="display:flex; gap:8px;">
-              <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-manage-btn" title="Manage Saved Filters & Import/Export"><ui-icon name="folder"></ui-icon> Manage</button>
-              <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-save-btn" title="Save Current Filter"><ui-icon name="save"></ui-icon> Save</button>
-              <button class="fb-ie-btn fb-ie-btn--outline" id="fb-cancel-btn">Cancel</button>
-              <button class="fb-ie-btn fb-ie-btn--accent" id="fb-apply-btn">Apply Filter</button>
+              <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-manage-btn" data-i18n-title="filter.builder.manageTooltip" title="Manage Saved Filters & Import/Export"><ui-icon name="folder"></ui-icon> <span data-i18n="filter.builder.manage">Manage</span></button>
+              <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-save-btn" data-i18n-title="filter.builder.saveTooltip" title="Save Current Filter"><ui-icon name="save"></ui-icon> <span data-i18n="common.save">Save</span></button>
+              <button class="fb-ie-btn fb-ie-btn--outline" id="fb-cancel-btn" data-i18n="common.cancel">Cancel</button>
+              <button class="fb-ie-btn fb-ie-btn--accent" id="fb-apply-btn" data-i18n="filter.builder.applyFilter">Apply Filter</button>
             </div>
           </div>
           
           <!-- Save Filter Dialog -->
           <div id="fb-save-dialog" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:100; backdrop-filter: blur(2px);">
             <div style="background:var(--panel); padding:20px; border-radius:10px; border:1px solid var(--line); width:300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-              <h3 style="margin-top:0; font-size:1rem; letter-spacing:0.3px;">Save Filter</h3>
-              <input type="text" id="fb-save-name" placeholder="Filter Name..." class="tag-search" style="margin:12px 0; width:100%; box-sizing:border-box;">
+              <h3 style="margin-top:0; font-size:1rem; letter-spacing:0.3px;" data-i18n="filter.save.title">Save Filter</h3>
+              <input type="text" id="fb-save-name" data-i18n-placeholder="filter.save.namePlaceholder" placeholder="Filter Name..." class="tag-search" style="margin:12px 0; width:100%; box-sizing:border-box;">
               <div style="display:flex; justify-content:flex-end; gap:6px;">
-                <button class="fb-ie-btn fb-ie-btn--outline" id="fb-save-cancel">Cancel</button>
-                <button class="fb-ie-btn fb-ie-btn--accent" id="fb-save-confirm">Save</button>
+                <button class="fb-ie-btn fb-ie-btn--outline" id="fb-save-cancel" data-i18n="common.cancel">Cancel</button>
+                <button class="fb-ie-btn fb-ie-btn--accent" id="fb-save-confirm" data-i18n="common.save">Save</button>
               </div>
             </div>
           </div>
@@ -1095,13 +1103,13 @@
           <div id="fb-manage-dialog" class="fb-manage-dialog-overlay" style="display:none;">
             <div class="fb-manage-dialog-card">
               <div class="fb-manage-dialog-header">
-                <h3>Manage Filters</h3>
-                <button class="fb-close-btn" id="fb-manage-close">&times;</button>
+                <h3 data-i18n="filter.manage.title">Manage Filters</h3>
+                <button class="fb-close-btn" id="fb-manage-close" data-i18n-title="common.close">&times;</button>
               </div>
-              
+
               <div class="fb-manage-tabs">
-                <button class="fb-manage-tab active" id="fb-tab-list-btn"><ui-icon name="folder"></ui-icon> Saved Filters <span id="fb-saved-count" class="fb-saved-count"></span></button>
-                <button class="fb-manage-tab" id="fb-tab-ie-btn"><ui-icon name="copy"></ui-icon> Import / Export</button>
+                <button class="fb-manage-tab active" id="fb-tab-list-btn"><ui-icon name="folder"></ui-icon> <span data-i18n="filter.manage.savedFilters">Saved Filters</span> <span id="fb-saved-count" class="fb-saved-count"></span></button>
+                <button class="fb-manage-tab" id="fb-tab-ie-btn"><ui-icon name="copy"></ui-icon> <span data-i18n="filter.manage.importExport">Import / Export</span></button>
               </div>
               
               <div id="fb-manage-pane-list" class="fb-manage-pane" style="display:flex;">
@@ -1113,25 +1121,25 @@
               <div id="fb-manage-pane-ie" class="fb-manage-pane" style="display:none;">
                 <div class="fb-ie-toolbar">
                   <div class="fb-ie-toolbar-start">
-                    <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-ie-paste"><ui-icon name="copy"></ui-icon> Paste</button>
-                    <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-ie-file-import"><ui-icon name="upload"></ui-icon> Import File</button>
+                    <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-ie-paste"><ui-icon name="copy"></ui-icon> <span data-i18n="filter.ie.paste">Paste</span></button>
+                    <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-ie-file-import"><ui-icon name="upload"></ui-icon> <span data-i18n="filter.ie.importFile">Import File</span></button>
                     <input type="file" id="fb-ie-file-input" accept=".json" style="display:none;" />
                   </div>
                   <div class="fb-ie-toolbar-end">
-                    <button class="fb-ie-btn fb-ie-btn--icon" id="fb-ie-format" title="Format JSON"><ui-icon name="ruler"></ui-icon></button>
-                    <button class="fb-ie-btn fb-ie-btn--icon" id="fb-ie-clear" title="Clear Text"><ui-icon name="trash"></ui-icon></button>
+                    <button class="fb-ie-btn fb-ie-btn--icon" id="fb-ie-format" data-i18n-title="filter.ie.formatJson" title="Format JSON"><ui-icon name="ruler"></ui-icon></button>
+                    <button class="fb-ie-btn fb-ie-btn--icon" id="fb-ie-clear" data-i18n-title="filter.ie.clearText" title="Clear Text"><ui-icon name="trash"></ui-icon></button>
                   </div>
                 </div>
-                <textarea id="fb-ie-text" class="fb-ie-textarea" rows="8" placeholder="Paste FilterIR JSON here..."></textarea>
+                <textarea id="fb-ie-text" class="fb-ie-textarea" rows="8" data-i18n-placeholder="filter.ie.textareaPlaceholder" placeholder="Paste FilterIR JSON here..."></textarea>
                 <div id="fb-ie-status" class="fb-ie-status"></div>
                 <div class="fb-ie-actions">
                   <div class="fb-ie-actions-secondary">
-                    <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-ie-copy"><ui-icon name="copy"></ui-icon> Copy</button>
-                    <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-ie-export" disabled><ui-icon name="download"></ui-icon> Export</button>
+                    <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-ie-copy"><ui-icon name="copy"></ui-icon> <span data-i18n="filter.ie.copy">Copy</span></button>
+                    <button class="fb-ie-btn fb-ie-btn--ghost" id="fb-ie-export" disabled><ui-icon name="download"></ui-icon> <span data-i18n="filter.ie.export">Export</span></button>
                   </div>
                   <div class="fb-ie-actions-primary">
-                    <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ie-import" disabled>Import to Builder</button>
-                    <button class="fb-ie-btn fb-ie-btn--accent" id="fb-ie-apply" disabled>Apply & Execute</button>
+                    <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ie-import" disabled data-i18n="filter.ie.importToBuilder">Import to Builder</button>
+                    <button class="fb-ie-btn fb-ie-btn--accent" id="fb-ie-apply" disabled data-i18n="filter.ie.applyExecute">Apply &amp; Execute</button>
                   </div>
                 </div>
               </div>
@@ -1150,6 +1158,18 @@
       document.body.appendChild(div.firstElementChild);
       modalElement = document.getElementById('filter-builder-backdrop');
 
+      // Translate static markup once built; re-apply on language switch and
+      // re-render the dynamic card body (built outside applyDOM's data-i18n scope).
+      if (window.i18n) {
+        window.i18n.applyDOM(modalElement);
+        window.i18n.onChange(() => {
+          if (!modalElement) return;
+          window.i18n.applyDOM(modalElement);
+          // Re-render dynamic cards/preview so their composed strings update too.
+          if (currentIR) { try { renderCards(); runLivePreview(false); } catch (e) {} }
+        });
+      }
+
       
   function flashSuccess(btn, originalText) {
     if (!btn) return;
@@ -1157,7 +1177,7 @@
     const prevCol = btn.style.color;
     btn.style.background = '#27ae60';
     btn.style.color = 'white';
-    btn.innerHTML = '<ui-icon name="check-circle"></ui-icon> Success';
+    btn.innerHTML = '<ui-icon name="check-circle"></ui-icon> ' + L('filter.flash.success', null, 'Success');
     setTimeout(() => {
       btn.style.background = prevBg;
       btn.style.color = prevCol;
@@ -1167,7 +1187,7 @@
 
   function flashCopySuccess(btn, originalText, isTextButton) {
     if (!btn) return;
-    btn.innerHTML = isTextButton ? '<ui-icon name="check"></ui-icon> Copied' : '<ui-icon name="check"></ui-icon>';
+    btn.innerHTML = isTextButton ? '<ui-icon name="check"></ui-icon> ' + L('filter.flash.copied', null, 'Copied') : '<ui-icon name="check"></ui-icon>';
     btn.classList.add('copied');
     setTimeout(() => {
       btn.innerHTML = originalText;
@@ -1217,7 +1237,7 @@
                 statusEl.style.cssText = 'color:#e74c3c; font-size:0.85rem; margin-bottom:8px; display:flex; align-items:center; gap:6px;';
                 saveInput.parentNode.insertBefore(statusEl, saveInput.nextSibling);
               }
-              statusEl.innerHTML = `<ui-icon name="alert-triangle"></ui-icon> You already have ${savedFilters.length}/${maxFilters} saved filters. Delete one to save a new one.`;
+              statusEl.innerHTML = `<ui-icon name="alert-triangle"></ui-icon> ` + L('filter.save.limitReached', { count: savedFilters.length, max: maxFilters }, `You already have ${savedFilters.length}/${maxFilters} saved filters. Delete one to save a new one.`);
               saveInput.classList.add('error');
               setTimeout(() => saveInput.classList.remove('error'), 1500);
               return;
@@ -1226,12 +1246,12 @@
             if (storage) {
               storage.set({ fbSavedFilters: savedFilters }, () => {
                 saveDialog.style.display = 'none';
-                flashSuccess(saveBtn, '<ui-icon name="save"></ui-icon> Save');
+                flashSuccess(saveBtn, '<ui-icon name="save"></ui-icon> ' + L('common.save', null, 'Save'));
               });
             } else {
               localStorage.setItem('fbSavedFilters', JSON.stringify(savedFilters));
               saveDialog.style.display = 'none';
-              flashSuccess(saveBtn, '<ui-icon name="save"></ui-icon> Save');
+              flashSuccess(saveBtn, '<ui-icon name="save"></ui-icon> ' + L('common.save', null, 'Save'));
             }
           };
 
@@ -1312,7 +1332,7 @@
                 
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'fb-filter-name';
-                nameSpan.innerHTML = '<span style="color:var(--muted); font-size:0.75rem; text-transform:uppercase; font-weight:700; border: 1px solid var(--line); padding: 2px 5px; border-radius: 4px; margin-right: 8px; background:var(--panel2)">Draft</span> ' + (draftConfig.name || 'Unsaved Filter');
+                nameSpan.innerHTML = '<span style="color:var(--muted); font-size:0.75rem; text-transform:uppercase; font-weight:700; border: 1px solid var(--line); padding: 2px 5px; border-radius: 4px; margin-right: 8px; background:var(--panel2)">' + htmlEsc(L('filter.manage.draftBadge', null, 'Draft')) + '</span> ' + (draftConfig.name || L('filter.manage.unsavedFilter', null, 'Unsaved Filter'));
                 draftRow.appendChild(nameSpan);
                 
                 const actions = document.createElement('div');
@@ -1321,21 +1341,22 @@
                 if (isDraftActive) {
                   const activeBadge = document.createElement('span');
                   activeBadge.className = 'fb-active-badge';
-                  activeBadge.innerHTML = '<ui-icon name="check"></ui-icon> Active';
+                  activeBadge.innerHTML = '<ui-icon name="check"></ui-icon> ' + L('filter.manage.active', null, 'Active');
                   actions.appendChild(activeBadge);
                 }
                 
                 const clearDraftBtn = document.createElement('button');
                 clearDraftBtn.className = 'fb-icon-btn';
-                clearDraftBtn.title = 'Clear draft';
+                clearDraftBtn.title = L('filter.manage.clearDraftTooltip', null, 'Clear draft');
                 clearDraftBtn.innerHTML = '<ui-icon name="trash"></ui-icon>';
                 clearDraftBtn.style.border = 'none';
                 clearDraftBtn.onclick = async (e) => {
                   e.stopPropagation();
                   const confirmFn = window.customConfirm;
+                  const clearMsg = L('filter.confirm.clearDraft.msg', null, "Are you sure you want to delete your current unsaved draft filter?");
                   const ok = confirmFn
-                    ? await confirmFn("Are you sure you want to delete your current unsaved draft filter?", "Clear Draft")
-                    : confirm("Are you sure you want to delete your current unsaved draft filter?");
+                    ? await confirmFn(clearMsg, L('filter.confirm.clearDraft.title', null, "Clear Draft"))
+                    : confirm(clearMsg);
                   if (ok) {
                     localStorage.removeItem('fbDraftFilter');
                     if (activeSavedFilterIndex === null) {
@@ -1350,7 +1371,7 @@
                 
                 const shareDraftBtn = document.createElement('button');
                 shareDraftBtn.className = 'fb-icon-btn';
-                shareDraftBtn.title = 'Share / Download';
+                shareDraftBtn.title = L('filter.manage.shareTooltip', null, 'Share / Download');
                 shareDraftBtn.innerHTML = '<ui-icon name="share"></ui-icon>';
                 shareDraftBtn.style.border = 'none';
                 shareDraftBtn.onclick = async (e) => {
@@ -1423,7 +1444,7 @@
                   renderCards();
                   runLivePreview(false);
                   manageDialog.style.display = 'none';
-                  flashSuccess(manageBtn, '<ui-icon name="folder"></ui-icon> Manage');
+                  flashSuccess(manageBtn, '<ui-icon name="folder"></ui-icon> ' + L('filter.builder.manage', null, 'Manage'));
                 };
                 
                 manageList.appendChild(draftRow);
@@ -1432,7 +1453,7 @@
             
             if (savedFilters.length === 0) {
               if (!draftStr) {
-                manageList.innerHTML = '<div style="color:var(--muted);">No saved filters found.</div>';
+                manageList.innerHTML = '<div style="color:var(--muted);">' + htmlEsc(L('filter.manage.noSaved', null, 'No saved filters found.')) + '</div>';
               }
             } else {
               savedFilters.forEach((item, idx) => {
@@ -1455,13 +1476,13 @@
                 if (isActive) {
                   const activeBadge = document.createElement('span');
                   activeBadge.className = 'fb-active-badge';
-                  activeBadge.innerHTML = '<ui-icon name="check"></ui-icon> Active';
+                  activeBadge.innerHTML = '<ui-icon name="check"></ui-icon> ' + L('filter.manage.active', null, 'Active');
                   actions.appendChild(activeBadge);
                 }
                 
                 const copyItemBtn = document.createElement('button');
                 copyItemBtn.className = 'fb-icon-btn';
-                copyItemBtn.title = 'Copy to clipboard';
+                copyItemBtn.title = L('filter.manage.copyTooltip', null, 'Copy to clipboard');
                 copyItemBtn.innerHTML = '<ui-icon name="copy"></ui-icon>';
                 copyItemBtn.style.border = 'none';
                 copyItemBtn.onclick = (e) => {
@@ -1533,15 +1554,16 @@
 
                 const deleteItemBtn = document.createElement('button');
                 deleteItemBtn.className = 'fb-icon-btn';
-                deleteItemBtn.title = 'Delete';
+                deleteItemBtn.title = L('common.delete', null, 'Delete');
                 deleteItemBtn.innerHTML = '<ui-icon name="trash"></ui-icon>';
                 deleteItemBtn.style.border = 'none';
                 deleteItemBtn.onclick = async (e) => {
                   e.stopPropagation();
                   const confirmFn = window.customConfirm;
+                  const delMsg = L('filter.confirm.deleteFilter.msg', { name: item.name }, `Are you sure you want to delete filter "${item.name}"?`);
                   const ok = confirmFn
-                    ? await confirmFn(`Are you sure you want to delete filter "${item.name}"?`, "Delete Filter")
-                    : confirm(`Are you sure you want to delete filter "${item.name}"?`);
+                    ? await confirmFn(delMsg, L('filter.confirm.deleteFilter.title', null, "Delete Filter"))
+                    : confirm(delMsg);
                   if (ok) {
                     savedFilters.splice(idx, 1);
                     if (activeSavedFilterIndex === idx) {
@@ -1574,7 +1596,7 @@
                   renderCards();
                   runLivePreview(false);
                   manageDialog.style.display = 'none';
-                  flashSuccess(manageBtn, '<ui-icon name="folder"></ui-icon> Manage');
+                  flashSuccess(manageBtn, '<ui-icon name="folder"></ui-icon> ' + L('filter.builder.manage', null, 'Manage'));
                 };
                 
                 manageList.appendChild(row);
@@ -1635,7 +1657,7 @@
             const isValidFilter = isGroup || hasWhere || (config.where === null) || (typeof config === 'object');
             
             if (isValidFilter) {
-              let detail = 'Valid filter configuration';
+              let detail = L('filter.ie.validConfig', null, 'Valid filter configuration');
               let count = 0;
               const countRules = (group) => {
                 if (group && Array.isArray(group.rules)) {
@@ -1647,9 +1669,9 @@
               };
               if (isGroup) countRules(config);
               else if (hasWhere) countRules(config.where);
-              
-              if (count > 0) detail += ` (${count} condition${count > 1 ? 's' : ''})`;
-              
+
+              if (count > 0) detail += ` (` + L('filter.ie.conditionCount', { count: count }, `${count} condition${count > 1 ? 's' : ''}`) + `)`;
+
               if (ieStatus) {
                 ieStatus.innerHTML = `<span style="color:#2da44e; display:inline-flex; align-items:center; gap:4px;"><ui-icon name="check-circle"></ui-icon> ${detail}</span>`;
               }
@@ -1668,7 +1690,7 @@
             }
           } catch (err) {
             if (ieStatus) {
-              ieStatus.innerHTML = `<span style="color:#e06c75; display:inline-flex; align-items:center; gap:4px;"><ui-icon name="alert-triangle"></ui-icon> Invalid JSON: ${err.message}</span>`;
+              ieStatus.innerHTML = `<span style="color:#e06c75; display:inline-flex; align-items:center; gap:4px;"><ui-icon name="alert-triangle"></ui-icon> ` + L('filter.ie.invalidJson', null, 'Invalid JSON:') + ` ${err.message}</span>`;
             }
             if (ieImportBtn) ieImportBtn.disabled = true;
             if (ieApplyBtn) ieApplyBtn.disabled = true;
@@ -1689,12 +1711,13 @@
                 const parsed = JSON.parse(text);
                 ieText.value = JSON.stringify(parsed, null, 2);
               } catch (e) {}
-              flashCopySuccess(iePasteBtn, '<ui-icon name="copy"></ui-icon> Paste', true);
+              flashCopySuccess(iePasteBtn, '<ui-icon name="copy"></ui-icon> ' + L('filter.ie.paste', null, 'Paste'), true);
             } catch (err) {
+              const clipMsg = L('filter.alert.clipboardRead.msg', null, 'Could not read clipboard. Please paste manually (Ctrl+V).');
               if (window.customAlert) {
-                window.customAlert('Could not read clipboard. Please paste manually (Ctrl+V).', 'Clipboard Error');
+                window.customAlert(clipMsg, L('filter.alert.clipboardRead.title', null, 'Clipboard Error'));
               } else {
-                alert('Could not read clipboard. Please paste manually (Ctrl+V).');
+                alert(clipMsg);
               }
             }
           };
@@ -1719,14 +1742,15 @@
                     const parsed = JSON.parse(text);
                     ieText.value = JSON.stringify(parsed, null, 2);
                   } catch (err) {}
-                  flashCopySuccess(ieFileImportBtn, '<ui-icon name="upload"></ui-icon> Import File', true);
+                  flashCopySuccess(ieFileImportBtn, '<ui-icon name="upload"></ui-icon> ' + L('filter.ie.importFile', null, 'Import File'), true);
                 };
                 reader.readAsText(file);
               } else {
+                const selMsg = L('filter.alert.selectJson.msg', null, 'Please select a valid .json file.');
                 if (window.customAlert) {
-                  window.customAlert('Please select a valid .json file.', 'Import Error');
+                  window.customAlert(selMsg, L('filter.alert.importError.title', null, 'Import Error'));
                 } else {
-                  alert('Please select a valid .json file.');
+                  alert(selMsg);
                 }
               }
             }
@@ -1743,10 +1767,11 @@
               validateJsonInput(ieText.value);
               flashCopySuccess(ieFormatBtn, '<ui-icon name="ruler"></ui-icon>', false);
             } catch (err) {
+              const fmtMsg = L('filter.alert.cannotFormat.msg', null, 'Cannot format invalid JSON.');
               if (window.customAlert) {
-                window.customAlert('Cannot format invalid JSON.', 'Format Error');
+                window.customAlert(fmtMsg, L('filter.alert.formatError.title', null, 'Format Error'));
               } else {
-                alert('Cannot format invalid JSON.');
+                alert(fmtMsg);
               }
             }
           };
@@ -1791,10 +1816,11 @@
             };
             reader.readAsText(file);
           } else {
+            const dropMsg = L('filter.alert.dropJson.msg', null, 'Please drop a valid .json file.');
             if (window.customAlert) {
-              window.customAlert('Please drop a valid .json file.', 'Import Error');
+              window.customAlert(dropMsg, L('filter.alert.importError.title', null, 'Import Error'));
             } else {
-              alert('Please drop a valid .json file.');
+              alert(dropMsg);
             }
           }
         });
@@ -1802,7 +1828,7 @@
         document.getElementById('fb-ie-copy').onclick = () => {
           ieText.select();
           document.execCommand('copy');
-          flashCopySuccess(document.getElementById('fb-ie-copy'), '<ui-icon name="copy"></ui-icon> Copy', true);
+          flashCopySuccess(document.getElementById('fb-ie-copy'), '<ui-icon name="copy"></ui-icon> ' + L('filter.ie.copy', null, 'Copy'), true);
         };
 
         if (ieExportBtn) {
@@ -1879,14 +1905,15 @@
                 draftBanner.style.display = 'flex';
               }
               manageDialog.style.display = 'none';
-              flashSuccess(manageBtn, '<ui-icon name="folder"></ui-icon> Manage');
+              flashSuccess(manageBtn, '<ui-icon name="folder"></ui-icon> ' + L('filter.builder.manage', null, 'Manage'));
             };
             
             if (draftStr && draftStr !== JSON.stringify(config)) {
               const confirmFn = window.customConfirm;
+              const overwriteMsg = L('filter.confirm.overwriteDraft.msg', null, "Importing this filter will overwrite your current draft filter. Do you want to proceed?");
               const ok = confirmFn
-                ? await confirmFn("Importing this filter will overwrite your current draft filter. Do you want to proceed?", "Overwrite Draft?")
-                : confirm("Importing this filter will overwrite your current draft filter. Do you want to proceed?");
+                ? await confirmFn(overwriteMsg, L('filter.confirm.overwriteDraft.title', null, "Overwrite Draft?"))
+                : confirm(overwriteMsg);
               if (ok) {
                 doImport();
               }
@@ -2049,8 +2076,8 @@
       
       let cardHeaderHtml = `
         <div class="fb-group-card-header">
-          <span class="fb-group-card-title">Filter Group Card ${cardIdx + 1}</span>
-          ${cards.length > 1 ? `<button class="fb-group-card-delete" id="fb-card-delete-${cardIdx}">Delete Card</button>` : ''}
+          <span class="fb-group-card-title">${htmlEsc(L('filter.card.title', { n: cardIdx + 1 }, `Filter Group Card ${cardIdx + 1}`))}</span>
+          ${cards.length > 1 ? `<button class="fb-group-card-delete" id="fb-card-delete-${cardIdx}">${htmlEsc(L('filter.card.delete', null, 'Delete Card'))}</button>` : ''}
         </div>
       `;
 
@@ -2078,7 +2105,7 @@
         rowsHtml += `
           <div class="fb-field-row">
             <div class="fb-field-label-wrap">
-              <button class="fb-field-delete" id="fb-field-delete-${cardIdx}-${field}" title="Remove Field row">&times;</button>
+              <button class="fb-field-delete" id="fb-field-delete-${cardIdx}-${field}" title="${htmlEsc(L('filter.card.removeFieldRow', null, 'Remove Field row'))}">&times;</button>
               <span class="fb-field-label">${displayName}:</span>
               <span class="logic-hint" data-tooltip-html="${htmlEsc(getTooltipHtml(field))}"><ui-icon name="help"></ui-icon></span>
             </div>
@@ -2095,7 +2122,7 @@
         ${rowsHtml}
         <div class="f-dropdown-container fb-add-field-container" style="margin-top: 12px; align-self: flex-start; display: flex; align-items: center; gap: 6px;">
           <input id="fb-add-field-input-${cardIdx}" class="tag-search" 
-            placeholder="${schemaLoaded ? '+ Add Field...' : 'Loading schema...'}" 
+            placeholder="${schemaLoaded ? htmlEsc(L('filter.card.addField', null, '+ Add Field...')) : htmlEsc(L('filter.input.loadingSchema', null, 'Loading schema...'))}"
             autocomplete="off" 
             ${schemaLoaded ? '' : 'disabled'}>
           ${schemaLoaded ? '' : '<span class="spin" style="width: 12px; height: 12px; border-width: 1.5px;"></span>'}
@@ -2127,7 +2154,7 @@
           if (matches.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'f-dropdown-item empty';
-            empty.textContent = 'No matching fields';
+            empty.textContent = L('filter.input.noMatchingFields', null, 'No matching fields');
             addFieldDropdown.appendChild(empty);
           } else {
             matches.forEach(f => {
@@ -2285,7 +2312,7 @@
     // 6. Add group OR button
     const addGroupBtn = document.createElement('button');
     addGroupBtn.className = 'fb-add-group-btn';
-    addGroupBtn.innerHTML = `&#43; Add OR Group`;
+    addGroupBtn.innerHTML = `&#43; ` + htmlEsc(L('filter.card.addOrGroup', null, 'Add OR Group'));
     addGroupBtn.onclick = () => updateState(addGroupCard);
     container.appendChild(addGroupBtn);
   }
@@ -2309,11 +2336,11 @@
       const countEl = document.getElementById('fb-preview-count');
       if (!listEl) return;
 
-      listEl.innerHTML = '<div style="color:var(--muted); text-align:center; padding-top:20px;">Loading preview...</div>';
+      listEl.innerHTML = '<div style="color:var(--muted); text-align:center; padding-top:20px;">' + htmlEsc(L('filter.preview.loading', null, 'Loading preview...')) + '</div>';
 
       try {
         if (!window.api || typeof window.api.search !== 'function') {
-          listEl.innerHTML = '<div style="color:var(--muted); text-align:center; padding-top:20px;">API search unavailable</div>';
+          listEl.innerHTML = '<div style="color:var(--muted); text-align:center; padding-top:20px;">' + htmlEsc(L('filter.preview.apiUnavailable', null, 'API search unavailable')) + '</div>';
           return;
         }
 
@@ -2321,10 +2348,10 @@
         const displayLimit = 20;
         const sliced = results.slice(0, displayLimit);
 
-        countEl.textContent = `${results.length} items`;
+        countEl.textContent = L('filter.preview.itemsCount', { n: results.length }, `${results.length} items`);
 
         if (results.length === 0) {
-          listEl.innerHTML = '<div style="color:var(--muted); text-align:center; padding-top:20px;">No results matching filters</div>';
+          listEl.innerHTML = '<div style="color:var(--muted); text-align:center; padding-top:20px;">' + htmlEsc(L('filter.builder.noResults', null, 'No results matching filters')) + '</div>';
           return;
         }
 
@@ -2359,12 +2386,12 @@
         if (results.length > displayLimit) {
           const extra = document.createElement('div');
           extra.style.cssText = 'color:var(--muted); font-size:0.8rem; text-align:center; padding:10px 4px 4px 4px;';
-          extra.textContent = `...and ${results.length - displayLimit} more items`;
+          extra.textContent = L('filter.preview.moreItems', { n: results.length - displayLimit }, `...and ${results.length - displayLimit} more items`);
           listEl.appendChild(extra);
         }
 
       } catch (e) {
-        listEl.innerHTML = `<div style="color:#ff6b6b; text-align:center; padding-top:20px;">Error running preview: ${e.message}</div>`;
+        listEl.innerHTML = `<div style="color:#ff6b6b; text-align:center; padding-top:20px;">` + htmlEsc(L('filter.preview.error', null, 'Error running preview:')) + ` ${htmlEsc(e.message)}</div>`;
       }
     }, 400);
   }
@@ -2433,8 +2460,8 @@
           const hasRules = currentIR && currentIR.where && currentIR.where.rules && currentIR.where.rules.some(r => r.rules && r.rules.length > 0);
           if (hasRules && window.customConfirm) {
             const confirm = await window.customConfirm(
-              "Discard active edits and apply the AI search filters?",
-              "Apply AI Filter"
+              L('filter.confirm.applyAi.msg', null, "Discard active edits and apply the AI search filters?"),
+              L('filter.confirm.applyAi.title', null, "Apply AI Filter")
             );
             if (!confirm) return;
           }

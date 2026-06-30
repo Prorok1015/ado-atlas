@@ -1,0 +1,235 @@
+{
+  "v1.2.0_toolbar_controls": {
+    "title": "<ui-icon name=\"compass\"></ui-icon> Rundgang: Symbolleiste & Navigation",
+    "version": "1.2.0",
+    "context": "board",
+    "steps": [
+      {
+        "element": "#mode",
+        "title": "<ui-icon name=\"map\"></ui-icon> Ansichtsumschalter & Gesten",
+        "text": "Wechseln Sie die Layoutansichten dynamisch!<hr/><div class='tut-section'><div class='tut-section-title'>Layout-Typen</div><div>• <span class='tut-badge'>Baum</span> - Eltern-Kind-Hierarchie.<br/>• <span class='tut-badge'>Graph</span> - Visuelle Abhängigkeitskarte.<br/>• <span class='tut-badge'>Board</span> - Workflow mit Spaltenphasen.<br/>• <span class='tut-badge'>Zeitachse</span> - Sprints & Gantt-Roadmaps.</div></div><div class='tut-section'><div class='tut-section-title'>Profi-Tipp</div><div>Ziehen Sie Zeilen in der Baumansicht per Drag-and-drop, um Eltern-Kind-Hierarchien schnell zu ändern, oder verwenden Sie <kbd>Strg/Cmd</kbd>+Klick für die Massenbearbeitung.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#filt_btn",
+        "title": "<ui-icon name=\"search\"></ui-icon> Erweiterte Filter",
+        "text": "Grenzen Sie Ihren Arbeitsbereich sofort ein!<hr/><div class='tut-section'><div class='tut-section-title'>Such- und Filteroptionen</div><div>• Suchen Sie Elemente nach Text, Titel oder ID.<br/>• Filtern Sie nach <span class='tut-badge'>Sprint</span>, <span class='tut-badge'>Status</span>, <span class='tut-badge'>Zugewiesen</span> oder <span class='tut-badge'>Tags</span>.<br/>• Wechseln Sie die Sortierreihenfolge nach Priorität oder ID.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#followed_btn",
+        "title": "<ui-icon name=\"star\"></ui-icon> Verfolgte Elemente filtern",
+        "text": "Konzentrieren Sie sich auf die Elemente, die Sie verfolgen!<hr/><div class='tut-section'><div class='tut-section-title'>Stern-Filter umschalten</div><div>Klicken Sie auf die Stern-Schaltfläche, um die aktive Ansicht sofort so zu filtern, dass nur die abonnierten Arbeitselemente angezeigt werden.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#undobtn",
+        "title": "<ui-icon name=\"undo\"></ui-icon> Rückgängig & Wiederholen",
+        "text": "Korrigieren Sie Fehler mit einem Klick!<hr/><div class='tut-section'><div class='tut-section-title'>Tastenkombinationen</div><div>• <kbd>Strg + Z</kbd> - Macht Hierarchieänderungen, Statusänderungen oder Beschreibungsbearbeitungen rückgängig.<br/>• <kbd>Strg + Y</kbd> - Wiederholt die zuletzt rückgängig gemachte Aktion.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#morebtn",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Anzeige & Einstellungen",
+        "text": "Verwalten Sie die Anzeige und Verbindungen der Anwendung!<hr/><div class='tut-section'><div class='tut-section-title'>Einstellungsoptionen</div><div>Konfigurieren Sie Themenwechsel, Zeitzonenkontexte, Intervalle für die automatische Aktualisierung, benutzerdefinierte Reaktions-Emojis oder DevOps-Verbindungen.</div></div>",
+        "position": "bottom"
+      }
+    ]
+  },
+  "v1.2.0_display_settings": {
+    "title": "<ui-icon name=\"settings\"></ui-icon> Rundgang: Anzeigeeinstellungen",
+    "version": "1.2.0",
+    "context": "settings",
+    "steps": [
+      {
+        "element": "#morepanel",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Allgemeine Einstellungen",
+        "text": "Steuern Sie Einstellungen und Voreinstellungen!<hr/><div class='tut-section'><div class='tut-section-title'>Verfügbare Einstellungen</div><div>Thema, UI-Skalierung, Aktualisierungsraten, Zeitzonenversatz und aktive Arbeitszeiten.</div></div><div class='tut-section'><div class='tut-section-title'>Hilfe zu Einstellungen</div><div>Bewegen Sie den Mauszeiger über das Symbol <ui-icon name=\"help\"></ui-icon> neben einer beliebigen Einstellungsbezeichnung, um ausführliche Tooltip-Hinweise zu lesen!</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#cz_open",
+        "title": "<ui-icon name=\"layout\"></ui-icon> Layout anpassen",
+        "text": "Passen Sie das Layout an Ihr Projekt an!<hr/><div class='tut-section'><div class='tut-section-title'>Layout-Anpassung</div><div>• Ordnen Sie die Schaltflächen der Symbolleiste neu an oder schalten Sie ihre Sichtbarkeit um.<br/>• Wählen Sie Spalten für die Ansichten Baum, Board und Zeitachse.<br/>• Wählen Sie, welche Felder auf den Karten angezeigt werden.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#emojis_open",
+        "title": "<ui-icon name=\"smile\"></ui-icon> Benutzerdefinierte Reaktionen",
+        "text": "Personalisieren Sie Kommentarreaktionen!<hr/><div class='tut-section'><div class='tut-section-title'>Reaktions-Ressourcen</div><div>Wählen Sie benutzerdefinierte Emojis oder laden Sie Bilder hoch, um sie anstelle der Standardreaktionen als Reaktionen auf Aktivitätskommentare zu verwenden.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#tutorialbtn",
+        "title": "<ui-icon name=\"book\"></ui-icon> Interaktive Rundgänge",
+        "text": "Frischen Sie Ihr Wissen jederzeit auf!<hr/><div class='tut-section'><div class='tut-section-title'>Funktionsrundgänge</div><div>Öffnen Sie diese Liste, um ein beliebiges Tutorial zu wiederholen, Ihren Fortschritt zu überprüfen oder den Verlauf der gesehenen Elemente vollständig zurückzusetzen.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#settingsbtn",
+        "title": "<ui-icon name=\"key\"></ui-icon> DevOps-Verbindung",
+        "text": "Konfigurieren Sie Ihren Projektkontext!<hr/><div class='tut-section'><div class='tut-section-title'>Verbindungsdetails</div><div>Verwalten Sie Organisations-URLs, Projektnamen, PAT-Token oder OAuth-Anmeldedaten, um eine sichere Verbindung mit Azure DevOps herzustellen.</div></div>",
+        "position": "bottom"
+      }
+    ]
+  },
+  "v1.2.0_sidebar_features": {
+    "title": "<ui-icon name=\"copy\"></ui-icon> Details & Aktionen der Seitenleiste",
+    "version": "1.2.0",
+    "context": "sidebar",
+    "steps": [
+      {
+        "element": "#s_desc_attach",
+        "title": "<ui-icon name=\"paperclip\"></ui-icon> Dateianhänge",
+        "text": "Laden Sie Dateien und Protokolle sofort hoch!<hr/><div class='tut-section'><div class='tut-section-title'>So fügen Sie an</div><div>• Klicken Sie auf dieses Büroklammer-Symbol, um Dateien auszuwählen.<br/>• Fügen Sie Bilder aus der Zwischenablage direkt in Beschreibungen ein.<br/>• Ziehen Sie Dateien aus dem Explorer per Drag-and-drop an eine beliebige Stelle des Panels.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#s_customize",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Panel anpassen",
+        "text": "Blenden Sie Detailfelder aus oder ordnen Sie sie neu an!<hr/><div class='tut-section'><div class='tut-section-title'>Seitenleisten-Layouts</div><div>Passen Sie an, welche Felder in diesem Panel sichtbar sind. Die Layout-Konfiguration wird automatisch <span class='tut-key'>pro Arbeitselementtyp</span> gespeichert (z. B. Bug-Layout vs. Epic-Layout).</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#s_link_split",
+        "title": "<ui-icon name=\"link\"></ui-icon> ADO-Link & Navigation",
+        "text": "Springen Sie direkt zum Cloud-Portal!<hr/><div class='tut-section'><div class='tut-section-title'>Link-Optionen</div><div>• Linksklick: Springen Sie direkt zur Azure-DevOps-Webseite dieses Elements.<br/>• Rechts-/Splitklick: Kopieren Sie den direkten ADO-Element-Link in die Zwischenablage.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#s_desc_full",
+        "title": "<ui-icon name=\"maximize\"></ui-icon> Vollbild-Editor",
+        "text": "Schreiben Sie Dokumentation komfortabel!<hr/><div class='tut-section'><div class='tut-section-title'>Vollbildmodus</div><div>Aktivieren Sie den Vollbild-Editormodus, um Beschreibungsdokumentation zu schreiben, Markdown-Text zu bearbeiten oder lange Beschreibungen zu lesen.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#s_follow",
+        "title": "<ui-icon name=\"star\"></ui-icon> Lokale Abonnements (Folgen)",
+        "text": "Bleiben Sie über wichtige Arbeitselemente auf dem Laufenden!<hr/><div class='tut-section'><div class='tut-section-title'>Lokale Benachrichtigungen</div><div>Atlas überwacht abonnierte Elemente im Hintergrund und sendet Desktop-Benachrichtigungen bei Änderungen. Es registriert Sie <span class='tut-key'>nicht</span> auf dem ADO-Server und vermeidet so Spam-E-Mails!</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "[data-sg='title']",
+        "title": "<ui-icon name=\"copy\"></ui-icon> Dynamische Felder",
+        "text": "Felder passen sich an Ihren Arbeitselementtyp an!<hr/><div class='tut-section'><div class='tut-section-title'>Datensynchronisierung</div><div>Titel, Status, Zugewiesen und andere Detailfelder werden sofort mit Azure DevOps synchronisiert und ändern sich dynamisch je nach aktuellem Element.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#activity_toggle_btn",
+        "title": "<ui-icon name=\"trending-up\"></ui-icon> Aktivität & Zeit im Status",
+        "text": "Verfolgen Sie Übergangszeiten und Kommentare!<hr/><div class='tut-section'><div class='tut-section-title'>Statusübergänge</div><div>Analysieren Sie, wie lange Arbeitselemente in jedem Status verbringen (z. B. Active, Resolved), um Engpässe zu erkennen.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": ".ah-actions",
+        "title": "<ui-icon name=\"message-square\"></ui-icon> Aktivitätsaktionen",
+        "text": "Führen Sie Aktionen direkt aus der Seitenleiste aus!<hr/><div class='tut-section'><div class='tut-section-title'>Schnellaktionen</div><div>• Erstellen Sie untergeordnete Elemente mit einem Klick.<br/>• Veröffentlichen Sie Markdown-Kommentare.<br/>• Schalten Sie den vollständigen Diskussionsverlauf um.</div></div>",
+        "position": "left"
+      }
+    ]
+  },
+  "v1.2.0_advanced_filter_syntax": {
+    "title": "<ui-icon name=\"search\"></ui-icon> Erweiterter Filter-Builder",
+    "version": "1.2.0",
+    "context": "advanced_filter_modal",
+    "steps": [
+      {
+        "element": ".fb-add-field-container",
+        "title": "<ui-icon name=\"plus\"></ui-icon> Verschachtelte logische Gruppen",
+        "text": "Klicken Sie auf <span class='tut-key'>Feld hinzufügen</span>, um Regelzeilen anzufügen.<hr/><div class='tut-section'><div class='tut-section-title'>Verschachtelungslogik</div><div>Sie können Gruppen verschachteln! Kombinieren Sie mehrere Bedingungen mit den Selektoren <span class='tut-badge'>AND</span> oder <span class='tut-badge'>OR</span>, um komplexe, mehrstufige logische Abfragen zu erstellen.</div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-field-row",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Operatoren umschalten",
+        "text": "Klicken Sie auf den <span class='tut-key'>Operator-Chip</span> (z. B. <code>=</code>), um ihn direkt umzuschalten!<hr/><div class='tut-section'><div class='tut-section-title'>Hierarchische Filterung</div><div>Verwenden Sie den Operator <span class='tut-badge'>UNDER</span>, um Area-Path-Unterbäume zu durchsuchen oder rekursive Eltern-Kind-Hierarchien zu prüfen (z. B. alle Nachkommen von Epic 123).</div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-field-row",
+        "title": "<ui-icon name=\"sparkles\"></ui-icon> Identitäts- & Wertmakros",
+        "text": "Vermeiden Sie fest codierte Werte mithilfe intelligenter Makros!<hr/><div class='tut-section'><div class='tut-section-title'>Gängige Makros</div><div>• <span class='tut-code-inline'>@me</span> - Entspricht dem aktiven Benutzer (ideal für das Feld Zugewiesen).<br/>• <span class='tut-code-inline'>@empty</span> - Entspricht Elementen mit leeren oder nicht ausgefüllten Feldern.</div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-field-row",
+        "title": "<ui-icon name=\"calendar\"></ui-icon> Datums- & Systemmakros",
+        "text": "Filtern Sie dynamisch nach Zeiträumen oder Projektumfang!<hr/><div class='tut-section'><div class='tut-section-title'>Erweiterte Makros</div><div>• <span class='tut-code-inline'>@today</span> - Entspricht dem aktuellen Datum. Unterstützt Versätze wie <span class='tut-code-inline'>@today - 7</span>.<br/>• <span class='tut-code-inline'>@currentiteration</span> - Verweist auf den aktuellen Sprint.<br/>• <span class='tut-code-inline'>@project</span> - Bezieht sich auf den aktuellen Projektkontext.</div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-preview-panel",
+        "title": "<ui-icon name=\"eye\"></ui-icon> Live-Ergebnisvorschau",
+        "text": "Überprüfen Sie Ihren Filter sofort!<hr/><div class='tut-section'><div class='tut-section-title'>Live-Seitenleiste</div><div>Die Seitenleiste führt Ihre Abfrage im Hintergrund aus, rendert übereinstimmende Arbeitselemente und zeigt die Trefferanzahl in Echtzeit an, während Sie tippen!</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#fb-show-followed",
+        "title": "<ui-icon name=\"star\"></ui-icon> Nur verfolgte Elemente",
+        "text": "Konzentrieren Sie sich nur auf das, was für Sie wichtig ist!<hr/><div class='tut-section'><div class='tut-section-title'>Schnellumschaltung</div><div>Schalten Sie diesen Schalter um, um die gesamten Ergebnisse der erweiterten Abfrage schnell auf die Elemente zu beschränken, denen Sie derzeit folgen.</div></div>",
+        "position": "top"
+      },
+      {
+        "element": "#fb-save-btn",
+        "title": "<ui-icon name=\"save\"></ui-icon> Gespeicherte Voreinstellungen",
+        "text": "Speichern Sie Ihre komplexen Abfragen!<hr/><div class='tut-section'><div class='tut-section-title'>Regeln bewahren</div><div>Klicken Sie auf <span class='tut-key'>Speichern</span>, um die gesamte Konfiguration unter einem benutzerdefinierten Namen zu speichern und sie für zukünftige Sitzungen wiederverwendbar zu machen.</div></div>",
+        "position": "top"
+      },
+      {
+        "element": "#fb-manage-btn",
+        "title": "<ui-icon name=\"folder\"></ui-icon> Filtermanager",
+        "text": "Klicken Sie auf <span class='tut-key'>Verwalten</span>, um das Steuerungsfenster zu öffnen. Von dort aus können Sie Konfigurationen löschen, teilen oder importieren/exportieren.",
+        "position": "top"
+      },
+      {
+        "element": "#fb-tab-list-btn",
+        "title": "<ui-icon name=\"folder\"></ui-icon> Registerkarte Gespeicherte Filter",
+        "text": "Organisieren Sie Ihre Voreinstellungsbibliothek!<hr/><div class='tut-section'><div class='tut-section-title'>Verfügbare Aktionen</div><div>• Klicken Sie auf den Namen eines gespeicherten Filters, um ihn sofort anzuwenden.<br/>• Klicken Sie auf <ui-icon name=\"copy\"></ui-icon>, um ihn in die Zwischenablage zu kopieren.<br/>• Klicken Sie auf <ui-icon name=\"share\"></ui-icon>, um die Konfiguration zu teilen oder herunterzuladen.<br/>• Klicken Sie auf den Papierkorb, um veraltete Konfigurationen zu löschen.</div></div><div class='tut-section'><div class='tut-section-title'>Cloud-Synchronisierung</div><div>Alle gespeicherten Filter werden mit dem Speicher Ihres Kontos synchronisiert. Sie werden auf allen Ihren Geräten und Browsersitzungen unter diesem Konto geteilt.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#fb-tab-ie-btn",
+        "title": "<ui-icon name=\"copy\"></ui-icon> Registerkarte Import / Export",
+        "text": "Teilen Sie Filter einfach!<hr/><div class='tut-section'><div class='tut-section-title'>JSON-Import/Export</div><div>• Fügen Sie JSON direkt ein oder laden Sie eine <code>.json</code>-Datei hoch.<br/>• Klicken Sie auf <span class='tut-key'>Anwenden & Ausführen</span>, um einen eingefügten Filter sofort auszuführen, ohne ihn in Ihren Voreinstellungen zu speichern!</div></div>",
+        "position": "bottom"
+      }
+    ]
+  },
+  "v1.2.0_ai_search": {
+    "title": "<ui-icon name=\"sparkles\"></ui-icon> Rundgang: KI-Suche & natürliche Sprache",
+    "version": "1.2.0",
+    "context": "board",
+    "steps": [
+      {
+        "element": "#ai_filter_btn",
+        "title": "<ui-icon name=\"sparkles\"></ui-icon> KI-Suche auslösen",
+        "text": "Klicken Sie auf diese Funkel-Schaltfläche, um den interaktiven KI-Suchdialog zu öffnen.<hr/><div class='tut-section'><div class='tut-section-title'>Datenschutzorientierte KI auf dem Gerät</div><div>Läuft zu 100 % lokal auf Ihrem Rechner mit dem in Google Chrome integrierten Gemini-Nano-Modell. Es verlassen niemals Daten Ihren Browser!</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#ai-search-text-input",
+        "title": "<ui-icon name=\"message-square\"></ui-icon> Abfrage in natürlicher Sprache",
+        "text": "Beschreiben Sie in einfacher Sprache, wonach Sie suchen (z. B. auf Englisch oder Russisch).<hr/><div class='tut-section'><div class='tut-section-title'>Beispiele zum Ausprobieren</div><div>• <i>\"aktive Bugs, die mir zugewiesen und in den letzten 2 Wochen erstellt wurden\"</i><br/>• <i>\"erledigte Aufgaben in Sprint 15 oder 16\"</i></div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": ".ai-reasoning-container",
+        "title": "<ui-icon name=\"trending-up\"></ui-icon> Optionen für die Denktiefe",
+        "text": "Wählen Sie die Verarbeitungstiefe der KI:<hr/><div class='tut-section'><div>• <span class='tut-badge'>Auto</span> - Wählt automatisch die beste Tiefe.<br/>• <span class='tut-badge'>Schnell</span> - Schnelle Ausführung in 1 Durchgang.<br/>• <span class='tut-badge'>Ausgewogen</span> - Schema-gefilterter Parser mit 2 Durchgängen (empfohlen).<br/>• <span class='tut-badge'>Gründlich</span> - Schlussfolgerung in 3 Durchgängen mit Selbstkorrektur.</div></div>",
+        "position": "top"
+      },
+      {
+        "element": "#ai-provider-tab-settings",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Cloud- & Modellverbindungen",
+        "text": "Klicken Sie auf die Registerkarte <span class='tut-key'>+</span>, um externe Verbindungen zu konfigurieren!<hr/><div class='tut-section'><div class='tut-section-title'>Unterstützung benutzerdefinierter Anbieter</div><div>Verbinden Sie die Google-Gemini-API (mit einem kostenlosen Schlüssel aus AI Studio) oder die OpenAI-API. Sie können benutzerdefinierte Modelle direkt aus dem tag-ähnlichen Dropdown-Menü auswählen!</div></div>",
+        "position": "right"
+      },
+      {
+        "element": "#ai-search-submit-btn",
+        "title": "<ui-icon name=\"search\"></ui-icon> Filter ausführen & überprüfen",
+        "text": "Klicken Sie auf <span class='tut-key'>Suchen</span>, damit die KI Ihre Abfrage verarbeitet. Sie können die erstellten visuellen Filter überprüfen und sie im erweiterten Filter-Builder verfeinern, bevor Sie sie auf Ihre aktive Arbeitsbereichsansicht anwenden.",
+        "position": "top"
+      }
+    ]
+  }
+}

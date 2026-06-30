@@ -10,6 +10,7 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 const files = [
   "lib.js",
+  "components/i18n.js",
   "api.js",
   "components/markdown-editor.js",
   "components/card-picker.js",
