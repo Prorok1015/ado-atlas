@@ -439,11 +439,8 @@ function customLinkPrompt(defaultText) {
   });
 }
 function capNote(){return listCapped?' · capped, narrow the filters':'';}   // appended to count statuses when LIST_CAP was hit
-// ---- loading indicator (refcounted: top progress bar shows while any async work runs) ----
-let _loads=0;
-function loadStart(label){_loads++;const l=$('loading');if(l)l.classList.add('on');if(label)setStatus(label);}
-function loadEnd(){_loads=Math.max(0,_loads-1);if(_loads===0){const l=$('loading');if(l)l.classList.remove('on');}}
-async function withLoad(label,fn){loadStart(label);try{return await fn();}finally{loadEnd();}}
+// loading indicator (loadStart/loadEnd/withLoad) -> app/loading.js (bare globals)
+
 function getContextPopular(key, allVals){
   const counts={};
   const nodes=Object.values(store.nodes||{});

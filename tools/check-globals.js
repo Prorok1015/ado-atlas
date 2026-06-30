@@ -32,6 +32,7 @@ const files = [
   "components/ai-search-dialog.js",
   "app/namespace.js",
   "app/const.js",
+  "app/loading.js",
   "app/state-globals.js",
   "app/export.js",
   "app/types.js",
