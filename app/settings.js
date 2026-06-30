@@ -60,7 +60,7 @@
   }
   let autoTimer=null;
   function autoTick(){
-    updatePatBadge();                          // keep the countdown fresh on long-lived tabs
+    App.setup.updatePatBadge();                          // keep the countdown fresh on long-lived tabs
     if(document.hidden||pdrag||boardBusy)return;   // don't refetch hidden, or yank the board mid-drag
     if(cur!=null&&dirty())return;              // don't disrupt unsaved editor changes
     refresh();

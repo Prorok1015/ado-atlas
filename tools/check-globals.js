@@ -40,6 +40,7 @@ const files = [
   "app/item-create.js",
   "app/settings.js",
   "app/snapshot.js",
+  "app/setup.js",
   "app.js"
 ];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
