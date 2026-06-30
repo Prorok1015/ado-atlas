@@ -30,6 +30,9 @@ const files = [
   "ai/prompts/search-prompt.js",
   "ai/ai-search-service.js",
   "components/ai-search-dialog.js",
+  "app/namespace.js",
+  "app/const.js",
+  "app/state-globals.js",
   "app.js"
 ];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
