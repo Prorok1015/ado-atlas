@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ADO Atlas</title>
-<link rel="stylesheet" href="app.css">
-<link rel="stylesheet" href="components/filter-builder-modal.css">
-<link rel="stylesheet" href="components/ai-search-dialog.css">
+<link rel="stylesheet" href="src/styles/app.css">
+<link rel="stylesheet" href="src/styles/filter-builder-modal.css">
+<link rel="stylesheet" href="src/styles/ai-search-dialog.css">
 <script src="vendor/cytoscape.min.js"></script>
 <script src="vendor/dagre.min.js"></script>
 <script src="vendor/cytoscape-dagre.js"></script>
 </head>
 <body>
-<script src="theme-init.js"></script>
-<script src="i18n-init.js"></script>
+<script src="src/boot/theme-init.js"></script>
+<script src="src/boot/i18n-init.js"></script>
 <div id="bar">
   <h1><img src="icons/icon-48.png" style="display:block;width:22px;height:22px;object-fit:contain" alt="ADO Atlas" title="ADO Atlas"></h1>
   <button class="projbadge" id="projbadge" data-i18n-title="toolbar.project.title" title="current project — click to switch" style="display:none"></button>
@@ -657,41 +657,41 @@
   </div>
 </div>
 
-<script src="components/icons.js"></script>
-<script src="components/layer-manager.js"></script>
-<script src="filter-compiler.js"></script>
-<script src="lib.js"></script>
-<script src="components/i18n.js"></script>
-<script src="api.js"></script>
-<script src="components/markdown-editor.js"></script>
-<script src="components/card-picker.js"></script>
-<script src="components/tags-editor.js"></script>
-<script src="components/date-range-picker.js"></script>
-<script src="components/tutorial-manager.js"></script>
-<script src="components/follow-manager.js"></script>
-<script src="components/entitlement-manager.js"></script>
-<script src="components/premium-paywall.js"></script>
-<script src="components/pro-features.js"></script>
-<script src="components/filter-builder-modal.js"></script>
-<script src="components/filter-manager.js"></script>
-<script src="ai/ai-provider.js"></script>
-<script src="ai/chrome-prompt-provider.js"></script>
-<script src="ai/custom-cloud-provider.js"></script>
-<script src="ai/hosted-cloud-provider.js"></script>
-<script src="ai/prompts/search-prompt.js"></script>
-<script src="ai/ai-search-service.js"></script>
-<script src="components/ai-search-dialog.js"></script>
-<script src="app/namespace.js"></script>
-<script src="app/const.js"></script>
-<script src="app/loading.js"></script>
-<script src="app/state-globals.js"></script>
-<script src="app/export.js"></script>
-<script src="app/types.js"></script>
-<script src="app/timeline.js"></script>
-<script src="app/item-create.js"></script>
-<script src="app/settings.js"></script>
-<script src="app/snapshot.js"></script>
-<script src="app/setup.js"></script>
-<script src="app.js"></script>
+<script src="src/components/icons.js"></script>
+<script src="src/components/layer-manager.js"></script>
+<script src="src/core/filter-compiler.js"></script>
+<script src="src/core/lib.js"></script>
+<script src="src/components/i18n.js"></script>
+<script src="src/core/api.js"></script>
+<script src="src/components/markdown-editor.js"></script>
+<script src="src/components/card-picker.js"></script>
+<script src="src/components/tags-editor.js"></script>
+<script src="src/components/date-range-picker.js"></script>
+<script src="src/components/tutorial-manager.js"></script>
+<script src="src/components/follow-manager.js"></script>
+<script src="src/components/entitlement-manager.js"></script>
+<script src="src/components/premium-paywall.js"></script>
+<script src="src/components/pro-features.js"></script>
+<script src="src/components/filter-builder-modal.js"></script>
+<script src="src/components/filter-manager.js"></script>
+<script src="src/ai/ai-provider.js"></script>
+<script src="src/ai/chrome-prompt-provider.js"></script>
+<script src="src/ai/custom-cloud-provider.js"></script>
+<script src="src/ai/hosted-cloud-provider.js"></script>
+<script src="src/ai/prompts/search-prompt.js"></script>
+<script src="src/ai/ai-search-service.js"></script>
+<script src="src/components/ai-search-dialog.js"></script>
+<script src="src/app/namespace.js"></script>
+<script src="src/app/const.js"></script>
+<script src="src/app/loading.js"></script>
+<script src="src/app/state-globals.js"></script>
+<script src="src/app/export.js"></script>
+<script src="src/app/types.js"></script>
+<script src="src/app/timeline.js"></script>
+<script src="src/app/item-create.js"></script>
+<script src="src/app/settings.js"></script>
+<script src="src/app/snapshot.js"></script>
+<script src="src/app/setup.js"></script>
+<script src="src/app.js"></script>
 </body>
 </html>

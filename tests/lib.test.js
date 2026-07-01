@@ -1,8 +1,8 @@
 // Unit tests for the pure helpers in lib.js. No deps — run with: npm test
 // (or: node tests/lib.test.js). Exits non-zero if anything fails.
 const assert = require("node:assert");
-const lib = require("../lib.js");
-const FilterManager = require("../components/filter-manager.js");
+const lib = require("../src/core/lib.js");
+const FilterManager = require("../src/components/filter-manager.js");
 
 let pass = 0, fail = 0;
 function test(name, fn) {

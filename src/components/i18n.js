@@ -23,7 +23,7 @@
 
   async function load(l) {
     try {
-      const res = await fetch(chrome.runtime.getURL(`locales/${l}.json`));
+      const res = await fetch(chrome.runtime.getURL(`src/locales/${l}.json`));
       return res.ok ? await res.json() : {};
     } catch (e) {
       return {};

@@ -8,7 +8,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const LOCALES_DIR = path.join(__dirname, "..", "locales");
+const LOCALES_DIR = path.join(__dirname, "..", "src", "locales");
 const BASE = "en";
 const TRANSLATIONS = ["ru", "es", "de"]; // locales expected to mirror en.json
 

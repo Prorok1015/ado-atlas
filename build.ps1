@@ -8,8 +8,8 @@ $ErrorActionPreference = 'Stop'
 $root  = $PSScriptRoot
 $dist  = Join-Path $root 'dist'
 $out   = Join-Path $dist 'ado-atlas-extension.zip'
-$files = @('manifest.json','background.js','index.html','lib.js','api.js','app.js','app.css','README.md','LICENSE','THIRD-PARTY-NOTICES.md','theme-init.js','i18n-init.js','filter-compiler.js')
-$dirs  = @('vendor','icons','components', 'ai', 'app', 'locales', '_locales')
+$files = @('manifest.json','background.js','index.html','README.md','LICENSE','THIRD-PARTY-NOTICES.md')
+$dirs  = @('vendor','icons','_locales','src')   # src/ holds core, boot, app, components, ai, styles, locales
 
 if (Test-Path $dist) { Remove-Item -Recurse -Force $dist }
 New-Item -ItemType Directory -Path $dist | Out-Null

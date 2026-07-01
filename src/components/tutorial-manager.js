@@ -52,7 +52,7 @@ class TutorialManager {
     // Try the locale-specific file first (skip for 'en', which is the base file).
     if (lang && lang !== 'en') {
       try {
-        const localizedUrl = chrome.runtime.getURL(`components/tutorials.${lang}.json`);
+        const localizedUrl = chrome.runtime.getURL(`src/components/tutorials.${lang}.json`);
         const localizedResponse = await fetch(localizedUrl);
         if (localizedResponse.ok) {
           return await localizedResponse.json();
@@ -63,7 +63,7 @@ class TutorialManager {
     }
 
     // Fallback (and default): English source of truth.
-    const response = await fetch(chrome.runtime.getURL('components/tutorials.json'));
+    const response = await fetch(chrome.runtime.getURL('src/components/tutorials.json'));
     return await response.json();
   }
 

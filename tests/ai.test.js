@@ -21,10 +21,10 @@ global.window = {
 };
 
 // Load the AI Search Service
-require("../ai/ai-provider.js");
-require("../ai/chrome-prompt-provider.js");
-require("../ai/prompts/search-prompt.js");
-require("../ai/ai-search-service.js");
+require("../src/ai/ai-provider.js");
+require("../src/ai/chrome-prompt-provider.js");
+require("../src/ai/prompts/search-prompt.js");
+require("../src/ai/ai-search-service.js");
 
 let pass = 0, fail = 0;
 function test(name, fn) {
