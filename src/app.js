@@ -5625,55 +5625,7 @@ async function createSprintSubmit(){
 
 /* last-snapshot cache -> app/snapshot.js (App.snapshot.*) */
 
-/* ---------- command palette (Ctrl/Cmd+K) ---------- */
-let palItems=[],palIdx=0;
-const PALETTE_ACTIONS=[
-  {kind:'cmd',title:'New work item',run:()=>App.create.showNewItem()},
-  {kind:'cmd',title:'Undo last change (Ctrl/Cmd+Z)',run:()=>runUndo()},
-  {kind:'cmd',title:'Redo (Ctrl/Cmd+Shift+Z)',run:()=>runRedo()},
-  {kind:'cmd',title:'Refresh list',run:()=>refresh()},
-  {kind:'cmd',title:'View: Tree',run:()=>App.settings.switchMode('tree')},
-  {kind:'cmd',title:'View: Graph',run:()=>App.settings.switchMode('graph')},
-  {kind:'cmd',title:'View: Board',run:()=>App.settings.switchMode('board')},
-  {kind:'cmd',title:'Export CSV',run:()=>App.export.exportView('csv')},
-  {kind:'cmd',title:'Export JSON',run:()=>App.export.exportView('json')},
-  {kind:'cmd',title:'Toggle theme',run:()=>App.settings.cycleTheme()},
-  {kind:'cmd',title:'Open settings',run:()=>App.setup.showSetup(true)},
-  {kind:'cmd',title:'Clear bulk selection',run:()=>clearBulk()},
-];
-function openPalette(){$('palette').classList.add('show');if (window.LayerManager) window.LayerManager.open($('palette'));const i=$('palette-input');i.value='';renderPalette('');i.focus();}
-function closePalette(){$('palette').classList.remove('show');if (window.LayerManager) window.LayerManager.close($('palette'));}
-function paletteMatches(q){
-  q=(q||'').trim().toLowerCase();
-  const toks=q.split(/\s+/).filter(Boolean),out=[];
-  if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);out.push({kind:'open',title:'Open #'+id,run:()=>openItem(id)});}
-  if(toks.length){                         // only match items once the user has typed something
-    let n=0;
-    for(const node of Object.values(store.nodes)){
-      const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
-      if(toks.every(t=>hay.includes(t))){out.push({kind:node.type||'item',title:`#${node.id} ${node.title||''}`,state:node.state,run:()=>openItem(node.id)});if(++n>=40)break;}
-    }
-  }
-  for(const a of PALETTE_ACTIONS){if(!toks.length||toks.every(t=>a.title.toLowerCase().includes(t)))out.push(a);}
-  return out.slice(0,50);
-}
-function renderPalette(q){palItems=paletteMatches(q);palIdx=0;drawPalette();}
-function drawPalette(){
-  const list=$('palette-list');
-  if(!palItems.length){list.innerHTML='<div class="prow"><span class="ptitle" style="color:var(--muted)">no matches</span></div>';return;}
-  list.innerHTML=palItems.map((it,i)=>{
-    const badge=it.state?`<span class="pbadge" style="background:${stateColor(it.state)}">${htmlEsc(it.state)}</span>`:'';
-    return `<div class="prow${i===palIdx?' on':''}" data-i="${i}"><span class="pkind">${htmlEsc(it.kind)}</span><span class="ptitle">${htmlEsc(it.title)}</span>${badge}</div>`;
-  }).join('');
-  list.querySelectorAll('.prow[data-i]').forEach(r=>{
-    r.onclick=()=>{palIdx=+r.dataset.i;runPalette();};
-    r.onmousemove=()=>{if(palIdx!==+r.dataset.i){palIdx=+r.dataset.i;highlightPalette();}};
-  });
-}
-function highlightPalette(){$('palette-list').querySelectorAll('.prow[data-i]').forEach(r=>r.classList.toggle('on',+r.dataset.i===palIdx));}
-function movePalette(d){if(!palItems.length)return;palIdx=(palIdx+d+palItems.length)%palItems.length;highlightPalette();
-  const el=$('palette-list').querySelector('.prow.on');if(el)el.scrollIntoView({block:'nearest'});}
-function runPalette(){const it=palItems[palIdx];if(!it)return;closePalette();try{it.run();}catch(e){setStatus('ERROR: '+e.message,true);}}
+/* command palette (Ctrl/Cmd+K) -> app/command-palette.js (App.palette.*) */
 
 /* setup cluster (modal/picker/PAT-countdown) -> app/setup.js (App.setup.*) */
 let setupAuthMode='pat';                 // which auth pane is active in the setup modal
@@ -7703,7 +7655,7 @@ async function initialBoot(postSetup){
   syncBulkDatePicker(null, null);
   // command palette (Ctrl/Cmd+K)
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.code==='KeyK'&&!e.altKey){e.preventDefault();
-    $('palette').classList.contains('show')?closePalette():openPalette();}});
+    $('palette').classList.contains('show')?App.palette.closePalette():App.palette.openPalette();}});
   // undo / redo — keyed on e.code (physical key), so it works on non-Latin
   // keyboard layouts; native text-undo wins inside fields.
   document.addEventListener('keydown',e=>{
@@ -7724,14 +7676,14 @@ async function initialBoot(postSetup){
     if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(t&&t.isContentEditable))return;
     if($('palette').classList.contains('show')||$('setup-overlay').classList.contains('show')||$('newitem-overlay').classList.contains('show'))return;
     e.preventDefault();App.create.showNewItem();});
-  $('palette-input').addEventListener('input',e=>renderPalette(e.target.value));
+  $('palette-input').addEventListener('input',e=>App.palette.renderPalette(e.target.value));
   $('palette-input').addEventListener('keydown',e=>{
-    if(e.key==='ArrowDown'){e.preventDefault();e.stopPropagation();movePalette(1);}
-    else if(e.key==='ArrowUp'){e.preventDefault();e.stopPropagation();movePalette(-1);}
-    else if(e.key==='Enter'){e.preventDefault();e.stopPropagation();runPalette();}
-    else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closePalette();}
+    if(e.key==='ArrowDown'){e.preventDefault();e.stopPropagation();App.palette.movePalette(1);}
+    else if(e.key==='ArrowUp'){e.preventDefault();e.stopPropagation();App.palette.movePalette(-1);}
+    else if(e.key==='Enter'){e.preventDefault();e.stopPropagation();App.palette.runPalette();}
+    else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();App.palette.closePalette();}
   });
-  $('palette').addEventListener('mousedown',e=>{if(e.target===$('palette'))closePalette();});
+  $('palette').addEventListener('mousedown',e=>{if(e.target===$('palette'))App.palette.closePalette();});
   (function(){const rz=$('resizer'),side=$('side');let drag=false;     // resizable Work Item panel
     rz.addEventListener('mousedown',e=>{drag=true;rz.classList.add('active');document.body.style.cursor='col-resize';e.preventDefault();});
     document.addEventListener('mousemove',e=>{if(!drag)return;
@@ -7869,7 +7821,7 @@ async function initialBoot(postSetup){
       if (window.LayerManager && window.LayerManager.stack.length > 0) {
         const topLayer = window.LayerManager.stack[window.LayerManager.stack.length - 1];
         const el = topLayer.element;
-        if (el.id === 'palette') { e.preventDefault(); e.stopPropagation(); closePalette(); return; }
+        if (el.id === 'palette') { e.preventDefault(); e.stopPropagation(); App.palette.closePalette(); return; }
         if (el.id === 'newitem-overlay') {
           e.preventDefault(); e.stopPropagation();
           if(parentNew.isOpen())parentNew.close();

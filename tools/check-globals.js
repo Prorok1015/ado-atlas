@@ -41,6 +41,7 @@ const files = [
   "src/app/settings.js",
   "src/app/snapshot.js",
   "src/app/setup.js",
+  "src/app/command-palette.js",
   "src/app.js"
 ];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
