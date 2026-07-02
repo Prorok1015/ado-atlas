@@ -53,6 +53,7 @@ const files = [
   "src/app/bulk.js",
   "src/app/date-pickers.js",
   "src/app/attachments.js",
+  "src/app/mention.js",
   "src/app/sprint-edit.js",
   "src/app.js"
 ];
