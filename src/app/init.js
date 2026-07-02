@@ -252,7 +252,7 @@ async function initialBoot(postSetup){
       if(cur!=null)openItem(cur);               // reload the open editor so its fields match server
     }finally{b.classList.remove('spinning');b.disabled=false;}
   };
-  $('fit').onclick=()=>cy&&cy.fit(undefined,40);
+  $('fit').onclick=()=>App.state.cy&&App.state.cy.fit(undefined,40);
   loadBadgesOn();                                                 // restore last "what to show on nodes" choices
   // The Badges trigger is now part of the Controls panel header (wired in renderViewHelp);
   // here we just handle outside-click dismissal of the popover.
@@ -369,7 +369,7 @@ async function initialBoot(postSetup){
     rz.addEventListener('mousedown',e=>{drag=true;rz.classList.add('active');document.body.style.cursor='col-resize';e.preventDefault();});
     document.addEventListener('mousemove',e=>{if(!drag)return;
       const w=Math.min(Math.max(window.innerWidth-e.clientX,300),Math.round(window.innerWidth*0.7));side.style.width=w+'px';});
-    document.addEventListener('mouseup',()=>{if(drag){drag=false;rz.classList.remove('active');document.body.style.cursor='';if(cy)cy.resize();try{localStorage.setItem('ado.sideWidth',side.style.width);}catch(e){}}});
+    document.addEventListener('mouseup',()=>{if(drag){drag=false;rz.classList.remove('active');document.body.style.cursor='';if(App.state.cy)App.state.cy.resize();try{localStorage.setItem('ado.sideWidth',side.style.width);}catch(e){}}});
   })();
   $('s_save').onclick=save;
   $('s_comment').onclick=()=>{App.activity.toggleActivityExpand(true);toggleComment();};

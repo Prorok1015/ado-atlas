@@ -5,7 +5,7 @@
 // command-palette/dependencies/card-picker/item-create), so the whole cluster
 // stays bare — pure relocation, zero call-site churn. customFieldsState /
 // LAZY_GROUPS / HEAVY_FIELD_MAP / currentTimelineId / currentTimelineData declared
-// here. Relies on bare globals resolved at call time: $, api, cur/App.state.orig/App.state.selRow/cy/
+// here. Relies on bare globals resolved at call time: $, api, cur/App.state.orig/App.state.selRow/App.state.cy/
 // App.state.activeItemData (state-globals), setStatus, customConfirm, refresh, dirty,
 // editorValues, refreshDirty, renderAttachments, clearAttBlobs, closeMention,
 // toggleFullscreen, depsState, parentEditor/assignedEditor/sprintEditor/tagsEditor,
@@ -272,7 +272,7 @@ async function closePanel(force){
   atchState.list=[];atchState.wid=null;atchState.uploading=0;renderAttachments();clearAttBlobs();
   depsState.blockedBy=[];depsState.blocks=[];App.deps.renderDeps();
   if(App.state.selRow){App.state.selRow.classList.remove('sel');App.state.selRow=null;}
-  if(cy)cy.$(':selected').unselect();
+  if(App.state.cy)App.state.cy.$(':selected').unselect();
 }
 
 // ---- item context / timeline / dynamic pickers / openItem ----

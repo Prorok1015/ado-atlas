@@ -2,7 +2,7 @@
 // toggles, auto-refresh timer, and view-mode switching. Phase-1 leaf module of
 // the App.* refactor (REFACTORING_PLAN.md): IIFE publishing App.settings.
 // Internal helpers (systemDark, autoTick) and the autoTimer state stay private.
-// Reads/writes bare globals at call time ($, cy, window.ICONS, chrome,
+// Reads/writes bare globals at call time ($, App.state.cy, window.ICONS, chrome,
 // updatePatBadge, pdrag, boardBusy, cur, dirty, refresh, setMode, renderGraph,
 // renderBoard, renderTree) and calls App.timeline.render for the timeline view.
 // Loads before app.js.
@@ -26,7 +26,7 @@
       }
     }
     const tl=$('theme_label');if(tl)tl.textContent=mode;
-    if(cy)cy.style().update();                        // re-evaluate theme-aware graph styles (parent label colour)
+    if(App.state.cy)App.state.cy.style().update();                        // re-evaluate theme-aware graph styles (parent label colour)
   }
   function cycleTheme(){
     let m=localStorage.getItem('ado.theme')||'dark';

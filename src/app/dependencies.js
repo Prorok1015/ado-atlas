@@ -9,7 +9,7 @@
 // OUTSIDE this module (closePanel / openItem: `depsState.blockedBy=[];...`), so
 // the declaration cannot move here. We read/mutate it bare at call time.
 //
-// Reads/writes other bare globals at call time ($, store, cur, cy, mode,
+// Reads/writes other bare globals at call time ($, store, cur, App.state.cy, mode,
 // App.state.edgeMode, App.state.depCache, api, tyColor, htmlEsc, loadStart, loadEnd, setStatus,
 // openItem, pushAction, denyOnForbidden, createCardPicker, depsState) and the
 // bare picker helpers depAdderProvider / depPickerOnChange (card-picker.js).
@@ -78,11 +78,11 @@
     if(cur===from){const a=depsState.blocks;if(op==='add'){if(!a.includes(to))a.push(to);}else depsState.blocks=a.filter(x=>x!==to);}
     if(cur===to){const a=depsState.blockedBy;if(op==='add'){if(!a.includes(from))a.push(from);}else depsState.blockedBy=a.filter(x=>x!==from);}
     if(cur===from||cur===to)renderDeps();
-    if(cy&&mode==='graph'&&App.state.edgeMode!=='hierarchy'){
+    if(App.state.cy&&mode==='graph'&&App.state.edgeMode!=='hierarchy'){
       const eid='d_'+from+'_'+to;
-      const existing=cy.getElementById(eid);
-      if(op==='add'){if(existing.empty()&&cy.getElementById(String(from)).nonempty()&&cy.getElementById(String(to)).nonempty())
-        cy.add({group:'edges',data:{id:eid,source:String(from),target:String(to),kind:'dep'}});}
+      const existing=App.state.cy.getElementById(eid);
+      if(op==='add'){if(existing.empty()&&App.state.cy.getElementById(String(from)).nonempty()&&App.state.cy.getElementById(String(to)).nonempty())
+        App.state.cy.add({group:'edges',data:{id:eid,source:String(from),target:String(to),kind:'dep'}});}
       else{if(existing.nonempty())existing.remove();}
     }
   }

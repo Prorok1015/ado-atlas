@@ -258,7 +258,7 @@ function applyVisualSync(id,body,v){
     if('due'in body)s.due=v.due;
     if('estimate'in body)s.est=(v.est===''?null:Number(v.est));
     if('tags'in body)s.tags=v.tags;}
-  if(cy&&store.nodes[id]){const n=cy.getElementById(String(id));if(n.nonempty())n.data(Object.assign({},store.nodes[id]));}
+  if(App.state.cy&&store.nodes[id]){const n=App.state.cy.getElementById(String(id));if(n.nonempty())n.data(Object.assign({},store.nodes[id]));}
 }
 
 // Refresh the listing view if a saved field shifts WHERE the item appears.

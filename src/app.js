@@ -335,7 +335,7 @@ function renderBadgePanel(){
   p.querySelectorAll('input[data-k]').forEach(cb=>cb.onchange=()=>{
     if(!badgesOn[view])badgesOn[view]={};
     badgesOn[view][cb.dataset.k]=cb.checked;saveBadgesOn();
-    if(view==='graph'){if(cy)cy.style(App.graph.gstyle()).update();}   // graph mappers re-read on next paint
+    if(view==='graph'){if(App.state.cy)App.state.cy.style(App.graph.gstyle()).update();}   // graph mappers re-read on next paint
     else if(view==='board')App.board.renderBoard();
     else if(view==='tree'){const ts=$('tree').scrollTop;App.tree.renderTree();$('tree').scrollTop=ts;}
     else if(view==='timeline')App.timeline.render();
@@ -435,7 +435,7 @@ async function fetchChildCounts(ids,force){   // store counts on nodes; return t
 }
 function rerenderChildCounts(){           // reflect freshly-learned counts in the current view
   if(mode==='tree'){const ts=$('tree').scrollTop;App.tree.renderTree();$('tree').scrollTop=ts;}
-  else if(mode==='graph'&&cy){cy.batch(()=>cy.nodes().forEach(nd=>{const n=store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));cy.style().update();}
+  else if(mode==='graph'&&App.state.cy){App.state.cy.batch(()=>App.state.cy.nodes().forEach(nd=>{const n=store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));App.state.cy.style().update();}
   App.snapshot.saveSnapshot();                         // persist the counts so next session's cached paint has them too
 }
 let childCountTok=0;

@@ -6,7 +6,7 @@
 // and reads/mutates activeWType/sideHidden/SIDE_GROUPS bare; app.js initialBoot
 // wires showCustomize/updateUiScale/applyBarLayout/applyBulkLayout/applySideLayout
 // bare — so the whole subsystem stays bare, zero call-site churn. Relies on bare
-// globals resolved at call time: $, cy, api, localStorage, App.settings, App.setup,
+// globals resolved at call time: $, App.state.cy, api, localStorage, App.settings, App.setup,
 // window.LayerManager, htmlEsc, setStatus, window.i18n.
 
 /* ---------- toolbar customization: reorder + show/hide, persisted ---------- */
@@ -1656,7 +1656,7 @@ function updateUiScale(scaleFactor) {
     localStorage.setItem('ado.uiScale', parseFloat(scaleFactor).toFixed(1));
   } catch(e) {}
   document.documentElement.style.fontSize = (13 * scaleFactor) + 'px';
-  if (typeof cy !== 'undefined' && cy && typeof cy.resize === 'function') {
-    cy.resize();
+  if (typeof App.state.cy !== 'undefined' && App.state.cy && typeof App.state.cy.resize === 'function') {
+    App.state.cy.resize();
   }
 }

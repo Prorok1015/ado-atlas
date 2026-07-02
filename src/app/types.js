@@ -1,7 +1,7 @@
 // Work-item types sourced from ADO (no hard-coded list) + the type legend and
 // type <select> population. Phase-1 leaf module of the App.* refactor
 // (REFACTORING_PLAN.md): IIFE publishing App.types; internal calls stay local.
-// Reads/writes bare globals (projectName, typeList, TYPE_COLOR, mode, cy, api,
+// Reads/writes bare globals (projectName, typeList, TYPE_COLOR, mode, App.state.cy, api,
 // $, htmlEsc, typeNames, tyVar, tyColor, TYPES) at call time. Loads before app.js.
 (function (App) {
   'use strict';
@@ -39,7 +39,7 @@
 
   // DOM views colour via the CSS vars set above, so they update live. Only the
   // canvas graph needs a nudge to re-read the hex map after the colours change.
-  function repaintTypes() { if (mode === 'graph' && cy) cy.style().update(); }
+  function repaintTypes() { if (mode === 'graph' && App.state.cy) App.state.cy.style().update(); }
 
   // (Re)populate a type <select> from the loaded types, keeping the current
   // choice if it's still valid, else falling back to `preferred` then the first.

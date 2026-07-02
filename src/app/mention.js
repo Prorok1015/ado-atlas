@@ -5,7 +5,7 @@
 // stay bare — pure relocation, zero call-site churn. toggleFullscreen is called
 // bare from app.js (openItem wiring / closePanel / initialBoot). Relies on other
 // bare globals resolved at call time: $, api, window.i18n, App.state.activeEditor,
-// App.state.descEditor, cy, window.LayerManager, htmlEsc.
+// App.state.descEditor, App.state.cy, window.LayerManager, htmlEsc.
 /* @mention typeahead: opens when the caret follows "@xxx" (no whitespace).
    Click / Enter inserts `@[Display](descriptor)` in markdown form, which
    mdToHtml then renders as an ADO mention anchor. */
@@ -228,5 +228,5 @@ function toggleFullscreen(force){
     }
   }
   side.classList.toggle('fullscreen',on);
-  if(cy)try{cy.resize();}catch(e){}
+  if(App.state.cy)try{App.state.cy.resize();}catch(e){}
 }
