@@ -172,3 +172,74 @@ PAT/OAuth + repo/org. Generalize:
   pattern (registry + capability + active) for the tracker backend.
 - **Order of work**: do `App.prefs` (Phase 1 of the sync spec) first — connection
   config + active-provider selection want a real prefs layer. Then Provider Phase 1–2.
+
+## 13. Multi-provider federation (see Jira + ADO on one screen simultaneously)
+
+Feasible, and this abstraction is the right base — but it's a larger feature than
+single-provider swap. Positioned as a Pro-tier capability, built AFTER single-provider
+(§10 phases 1–4). One decision must be made EARLY though (phase 1), because it's cheap
+now and expensive to retrofit.
+
+### 13.1 Composite/global IDs — lock in during Phase 1
+
+Today ids are numeric and that assumption is baked in (`/^\d+$/`, `parseInt(id,10)`,
+`Number(nd.data('id'))`, `store.nodes[Number(...)]`, root URL param, bulkSel, cy node
+ids, snapshot keys). Federation needs a **global id string** `"<providerId>:<nativeId>"`
+(e.g. `ado:123`, `jira:PROJ-45`) so ADO #123 and Jira #123 don't collide.
+
+Adopt composite ids **from the start of the provider work** even in single-provider
+mode (AdoProvider emits `ado:123`): the app treats id as an opaque string; a provider
+parses its own native id out of it. Retrofitting later touches nearly everything —
+doing it during the initial provider refactor is far cheaper. (Numeric `/^\d+$/`
+search shortcuts become provider-aware: "123" → search within the active/typed source.)
+
+### 13.2 AggregateProvider
+
+An `AggregateProvider` implements the same Provider contract; `api` points to it when
+more than one source is active. It fans out to the active providers and merges.
+
+- **Reads**: `Promise.allSettled` across active providers with the same filter IR; each
+  returns canonical items already tagged `source: providerId` with composite ids →
+  concat → app-side sort/filter/cap. **Partial failure is first-class**: one source
+  down shows the others + a per-source error chip (never a blank screen).
+- **Writes**: dispatched by the item's `source` to the owning provider. Create asks
+  "which source?" (or defaults to a chosen one). Bulk ops group the selection by
+  source and fan out; undo is per-source.
+- **Paging/sort**: no cross-source server sort — fetch capped per source, merge, sort,
+  cap app-side (log the cap per source, per the no-silent-caps rule).
+
+### 13.3 Capabilities in a mixed session
+
+- **Per-item for actions**: an item's editable fields/available actions come from ITS
+  provider's schema/capabilities (a GitHub issue has no story-points field; an ADO item
+  does — the panel adapts per open item).
+- **View-level = degrade to the common denominator**: the flat/tree **list** works for
+  everything and is the default multi-source view (+ a **Source** badge/color per row).
+  Capability-specific views (Board *sprint* grouping, dependency **graph**, **Gantt**)
+  are shown only for sources that support them — for a mixed session either hide them
+  or render **per-source lanes/sections**. First cut: unified list + source badges;
+  advanced views limited to a single active source or to capability-common sources.
+- **Normalized status** (semantic `todo | in-progress | done`, mapped by each provider
+  from its native states) lets a mixed Board/State-filter group across providers whose
+  native workflows differ ("Done" vs "Closed").
+
+### 13.4 What does NOT cross providers
+
+- **Hierarchy & dependencies are within a source** — an ADO item's parent can't be a
+  Jira issue. The tree shows per-source roots; deps/graph are per-source. Cross-source
+  links are out of scope (a capability that's always false across sources).
+
+### 13.5 UI / config
+
+- **Source indicator** everywhere an item appears (card, tree row, graph node, panel
+  header): provider glyph + color.
+- Config distinguishes **configured** providers (all set up, each with its own
+  connection/secrets) from the **active set** (multi-select of which to show now) — an
+  `App.prefs` list; secrets stay firewalled per provider.
+
+### 13.6 Phasing
+
+Federation = **Provider phase 5**, after single-provider is proven (§10). The only
+early cost is §13.1 (composite ids) which lands in phase 1. Then: AggregateProvider +
+merge/route (5a) → source badges + unified list as the mixed default (5b) → per-source
+lanes for capability views + normalized status (5c). Gate behind entitlement (Pro).
