@@ -4,8 +4,8 @@
 // pickMention/moveMention bare and reads mentionState directly, so these MUST
 // stay bare — pure relocation, zero call-site churn. toggleFullscreen is called
 // bare from app.js (openItem wiring / closePanel / initialBoot). Relies on other
-// bare globals resolved at call time: $, api, window.i18n, activeEditor,
-// descEditor, cy, window.LayerManager, htmlEsc.
+// bare globals resolved at call time: $, api, window.i18n, App.state.activeEditor,
+// App.state.descEditor, cy, window.LayerManager, htmlEsc.
 /* @mention typeahead: opens when the caret follows "@xxx" (no whitespace).
    Click / Enter inserts `@[Display](descriptor)` in markdown form, which
    mdToHtml then renders as an ADO mention anchor. */
@@ -104,16 +104,16 @@ function getCaretCoordinates(element, position) {
   return coordinates;
 }
 function positionMention(){
-  if(!activeEditor)return;
-  const ta=activeEditor.textarea,p=$('s_mention');if(!ta||!p)return;
+  if(!App.state.activeEditor)return;
+  const ta=App.state.activeEditor.textarea,p=$('s_mention');if(!ta||!p)return;
   
-  if (p.parentNode !== activeEditor.container) {
-    activeEditor.container.appendChild(p);
+  if (p.parentNode !== App.state.activeEditor.container) {
+    App.state.activeEditor.container.appendChild(p);
   }
 
   const caretPos=mentionState.start;
   const coords=getCaretCoordinates(ta,caretPos);
-  const r=ta.getBoundingClientRect(),cr=activeEditor.container.getBoundingClientRect();
+  const r=ta.getBoundingClientRect(),cr=App.state.activeEditor.container.getBoundingClientRect();
   
   const pWidth=p.offsetWidth||220;
   const maxLeft=r.right-cr.left-pWidth-8;
@@ -128,8 +128,8 @@ function positionMention(){
 async function openOrUpdateMention(){
   if(closeMentionTimeout){clearTimeout(closeMentionTimeout);closeMentionTimeout=null;}
   if(mentionDebounceTimeout){clearTimeout(mentionDebounceTimeout);mentionDebounceTimeout=null;}
-  if(!activeEditor)return;
-  const ta=activeEditor.textarea;if(!ta)return;
+  if(!App.state.activeEditor)return;
+  const ta=App.state.activeEditor.textarea;if(!ta)return;
   const trig=findMentionTrigger(ta);
   if(!trig){closeMention();return;}
   mentionState.start=trig.at;mentionState.query=trig.query;mentionState.open=true;
@@ -140,7 +140,7 @@ async function openOrUpdateMention(){
     p.id = 's_mention';
     p.className = 'mention-pop';
     p.style.display = 'none';
-    activeEditor.container.appendChild(p);
+    App.state.activeEditor.container.appendChild(p);
   }
   
   p.style.display='block';
@@ -163,9 +163,9 @@ async function openOrUpdateMention(){
   }, 150);
 }
 function pickMention(){
-  if(!activeEditor)return;
+  if(!App.state.activeEditor)return;
   const r=mentionState.rows[mentionState.idx];if(!r)return;
-  const ta=activeEditor.textarea,pos=ta.selectionStart,v=ta.value;
+  const ta=App.state.activeEditor.textarea,pos=ta.selectionStart,v=ta.value;
   
   let vsid = r.id || "";
   
@@ -183,7 +183,7 @@ function pickMention(){
   const at=mentionState.start+md.length;
   ta.selectionStart=ta.selectionEnd=at;
   closeMention();
-  activeEditor.fireChange();
+  App.state.activeEditor.fireChange();
 }
 function moveMention(d){if(!mentionState.rows.length)return;
   mentionState.idx=(mentionState.idx+d+mentionState.rows.length)%mentionState.rows.length;

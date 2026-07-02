@@ -460,7 +460,7 @@ const mdToHtml=AdoLib.mdToHtml;                     // pure, hardened renderer i
 /* editor: dirty/textDirty/setSaveChip/refreshDirty/discardChanges/editorValues -> app/editor.js (bare). */
 
 // Picker onChange: auto-save the field, then refresh dirty (which now only
-// tracks the manual text fields). quickSave reads orig vs editor so a no-op
+// tracks the manual text fields). quickSave reads App.state.orig vs editor so a no-op
 // commit (same value) is a cheap early-return.
 const onPick=field=>()=>{quickSave(field).finally(refreshDirty);};
 const parentEditor=createParentField('s_parent',{onChange:onPick('parent'),getExcludeId:()=>cur});
@@ -568,11 +568,11 @@ function wireSetup(){
     try{
       navigator.clipboard.writeText(i.value);
       const btn = $('oauth-copy');
-      const orig = btn.innerHTML;
+      const origHtml = btn.innerHTML;
       btn.innerHTML = '<ui-icon name="check"></ui-icon> Copied';
       btn.classList.add('copied');
       setTimeout(()=>{
-        btn.innerHTML = orig;
+        btn.innerHTML = origHtml;
         btn.classList.remove('copied');
       }, 1200);
     }catch(e){

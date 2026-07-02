@@ -196,28 +196,28 @@ function syncSidebarField(field, ids) {
   if (field === 'state') {
     const el = $('s_state');
     if (el) el.value = d.state || '';
-    if (orig) orig.state = d.state || '';
+    if (App.state.orig) App.state.orig.state = d.state || '';
   }
   else if (field === 'priority') {
     const el = $('s_prio');
     if (el) el.value = d.priority ? String(d.priority) : '';
-    if (orig) orig.priority = d.priority || '';
+    if (App.state.orig) App.state.orig.priority = d.priority || '';
   }
   else if (field === 'assigned') {
     if (typeof assignedEditor !== 'undefined') assignedEditor.set(d.assigned || '', true);
-    if (orig) orig.assigned = d.assigned || '';
+    if (App.state.orig) App.state.orig.assigned = d.assigned || '';
   }
   else if (field === 'iteration') {
     if (typeof sprintEditor !== 'undefined') sprintEditor.set(d.iteration || '', true);
-    if (orig) orig.iter = d.iteration || '';
+    if (App.state.orig) App.state.orig.iter = d.iteration || '';
   }
   else if (field === 'parent') {
     if (typeof parentEditor !== 'undefined') parentEditor.set(d.parent != null ? String(d.parent) : '', true);
-    if (orig) orig.parent = d.parent != null ? String(d.parent) : '';
+    if (App.state.orig) App.state.orig.parent = d.parent != null ? String(d.parent) : '';
   }
   else if (field.startsWith('tags_')) {
     if (typeof tagsEditor !== 'undefined') tagsEditor.set(d.tags || '', true);
-    if (orig) orig.tags = d.tags || '';
+    if (App.state.orig) App.state.orig.tags = d.tags || '';
   }
   else if (field === 'dates') {
     const startVal = (d.start || '').slice(0, 10);
@@ -227,9 +227,9 @@ function syncSidebarField(field, ids) {
     if (s_start) s_start.value = startVal;
     if (s_target) s_target.value = targetVal;
     syncSideDatePicker(startVal, targetVal);
-    if (orig) {
-      orig.start = startVal;
-      orig.target = targetVal;
+    if (App.state.orig) {
+      App.state.orig.start = startVal;
+      App.state.orig.target = targetVal;
     }
   }
   refreshDirty();

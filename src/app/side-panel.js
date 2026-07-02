@@ -5,7 +5,7 @@
 // command-palette/dependencies/card-picker/item-create), so the whole cluster
 // stays bare — pure relocation, zero call-site churn. customFieldsState /
 // LAZY_GROUPS / HEAVY_FIELD_MAP / currentTimelineId / currentTimelineData declared
-// here. Relies on bare globals resolved at call time: $, api, cur/orig/selRow/cy/
+// here. Relies on bare globals resolved at call time: $, api, cur/App.state.orig/App.state.selRow/cy/
 // App.state.activeItemData (state-globals), setStatus, customConfirm, refresh, dirty,
 // editorValues, refreshDirty, renderAttachments, clearAttBlobs, closeMention,
 // toggleFullscreen, depsState, parentEditor/assignedEditor/sprintEditor/tagsEditor,
@@ -42,7 +42,7 @@ function lockSidebar(lock){
     const popover = $('side-range-picker');
     if (popover) popover.classList.remove('show');
   }
-  if(descEditor)descEditor.setDisabled(lock);if(acEditor)acEditor.setDisabled(lock);
+  if(App.state.descEditor)App.state.descEditor.setDisabled(lock);if(App.state.acEditor)App.state.acEditor.setDisabled(lock);
   if(assignedEditor&&assignedEditor.setDisabled)assignedEditor.setDisabled(lock);
   if(sprintEditor&&sprintEditor.setDisabled)sprintEditor.setDisabled(lock);
   if(parentEditor&&parentEditor.setDisabled)parentEditor.setDisabled(lock);
@@ -73,8 +73,8 @@ function getCustomFieldElementId(refName) {
 function lockSidebarHeavy(lock, groupIds) {
   const targetGroups = groupIds || [...LAZY_GROUPS];
   targetGroups.forEach(g => {
-    if (g === 'desc' && descEditor) descEditor.setDisabled(lock);
-    if (g === 'ac' && acEditor) acEditor.setDisabled(lock);
+    if (g === 'desc' && App.state.descEditor) App.state.descEditor.setDisabled(lock);
+    if (g === 'ac' && App.state.acEditor) App.state.acEditor.setDisabled(lock);
     if (g === 'tags' && tagsEditor) tagsEditor.setDisabled(lock);
     if (g === 'area') { const el = $('s_area'); if (el) el.disabled = lock; }
     if (g === 'storypoints') { const el = $('s_storypoints'); if (el) el.disabled = lock; }
@@ -121,7 +121,7 @@ function lockSidebarHeavy(lock, groupIds) {
 }
 
 async function ensureFieldLoaded(groupId) {
-  if (cur == null || !orig) return;
+  if (cur == null || !App.state.orig) return;
   const id = cur;
   const myToken = App.state.openToken;                      // capture to detect stale responses
   const fieldKeyMap = {
@@ -130,10 +130,10 @@ async function ensureFieldLoaded(groupId) {
     activity: 'activity', risk: 'risk', valuearea: 'valuearea'
   };
   const key = fieldKeyMap[groupId];
-  if (key && orig[key] !== undefined && orig[key] !== '' && orig[key] !== null) return;
-  // For scalar fields that were initialized with '' or null in orig, check a flag
-  if (key && orig['_loaded_' + key]) return;
-  if ((groupId === 'deps' || groupId === 'attachments') && orig._relationsLoaded) return;
+  if (key && App.state.orig[key] !== undefined && App.state.orig[key] !== '' && App.state.orig[key] !== null) return;
+  // For scalar fields that were initialized with '' or null in App.state.orig, check a flag
+  if (key && App.state.orig['_loaded_' + key]) return;
+  if ((groupId === 'deps' || groupId === 'attachments') && App.state.orig._relationsLoaded) return;
   
   lockSidebarHeavy(true, [groupId]);
   if (groupId === 'desc') {
@@ -160,23 +160,23 @@ async function ensureFieldLoaded(groupId) {
     if (cur !== id || myToken !== App.state.openToken) return;  // switched items — discard stale data
     
     if (groupId === 'desc') {
-      if (descEditor) {
-        descEditor.value = d.desc || '';
-        descEditor.togglePreview(true);
+      if (App.state.descEditor) {
+        App.state.descEditor.value = d.desc || '';
+        App.state.descEditor.togglePreview(true);
       }
-      orig.desc = d.desc;
-      orig._loaded_desc = true;
+      App.state.orig.desc = d.desc;
+      App.state.orig._loaded_desc = true;
       const el = $('editor_desc_container');
       if (el) el.classList.remove('loading-skeleton');
     }
     if (groupId === 'ac') {
-      if (acEditor) {
-        acEditor.value = d.ac || '';
-        acEditor.togglePreview(true);
+      if (App.state.acEditor) {
+        App.state.acEditor.value = d.ac || '';
+        App.state.acEditor.togglePreview(true);
       }
-      orig.ac = d.ac;
-      orig.has_ac = d.has_ac;
-      orig._loaded_ac = true;
+      App.state.orig.ac = d.ac;
+      App.state.orig.has_ac = d.has_ac;
+      App.state.orig._loaded_ac = true;
       const el = $('editor_ac_container');
       if (el) {
         el.style.display = d.has_ac ? 'block' : 'none';
@@ -185,32 +185,32 @@ async function ensureFieldLoaded(groupId) {
     }
     if (groupId === 'tags') {
       if (tagsEditor) tagsEditor.set(d.tags || '', /*silent*/true);
-      orig.tags = d.tags;
-      orig._loaded_tags = true;
+      App.state.orig.tags = d.tags;
+      App.state.orig._loaded_tags = true;
     }
     if (groupId === 'area') {
       const el = $('s_area');
       if (el) el.value = d.area || '';
-      orig.area = d.area || '';
-      orig._loaded_area = true;
+      App.state.orig.area = d.area || '';
+      App.state.orig._loaded_area = true;
     }
     if (groupId === 'storypoints') {
       const el = $('s_storypoints');
       if (el) el.value = d.storypoints != null ? d.storypoints : '';
-      orig.storypoints = d.storypoints;
-      orig._loaded_storypoints = true;
+      App.state.orig.storypoints = d.storypoints;
+      App.state.orig._loaded_storypoints = true;
     }
     if (groupId === 'remaining') {
       const el = $('s_remaining');
       if (el) el.value = d.remaining != null ? d.remaining : '';
-      orig.remaining = d.remaining;
-      orig._loaded_remaining = true;
+      App.state.orig.remaining = d.remaining;
+      App.state.orig._loaded_remaining = true;
     }
     if (groupId === 'completed') {
       const el = $('s_completed');
       if (el) el.value = d.completed != null ? d.completed : '';
-      orig.completed = d.completed;
-      orig._loaded_completed = true;
+      App.state.orig.completed = d.completed;
+      App.state.orig._loaded_completed = true;
     }
     if (groupId === 'activity') {
       const el = $('s_activity_field');
@@ -218,8 +218,8 @@ async function ensureFieldLoaded(groupId) {
       const picker = window.dynamicPickers && window.dynamicPickers['s_activity_field'];
       if (picker) picker.set(val, true);
       else if (el) el.value = val;
-      orig.activity = val;
-      orig._loaded_activity = true;
+      App.state.orig.activity = val;
+      App.state.orig._loaded_activity = true;
     }
     if (groupId === 'risk') {
       const el = $('s_risk');
@@ -227,8 +227,8 @@ async function ensureFieldLoaded(groupId) {
       const picker = window.dynamicPickers && window.dynamicPickers['s_risk'];
       if (picker) picker.set(val, true);
       else if (el) el.value = val;
-      orig.risk = val;
-      orig._loaded_risk = true;
+      App.state.orig.risk = val;
+      App.state.orig._loaded_risk = true;
     }
     if (groupId === 'valuearea') {
       const el = $('s_valuearea');
@@ -236,17 +236,17 @@ async function ensureFieldLoaded(groupId) {
       const picker = window.dynamicPickers && window.dynamicPickers['s_valuearea'];
       if (picker) picker.set(val, true);
       else if (el) el.value = val;
-      orig.valuearea = val;
-      orig._loaded_valuearea = true;
+      App.state.orig.valuearea = val;
+      App.state.orig._loaded_valuearea = true;
     }
     if (groupId === 'attachments') {
       atchState.list = Array.isArray(d.attachments) ? d.attachments.slice() : [];
       renderAttachments();
-      orig._relationsLoaded = true;
+      App.state.orig._relationsLoaded = true;
     }
     if (groupId === 'deps') {
       App.deps.loadDeps(id, d.deps);
-      orig._relationsLoaded = true;
+      App.state.orig._relationsLoaded = true;
     }
     
     lockSidebarHeavy(false, [groupId]);
@@ -266,12 +266,12 @@ async function closePanel(force){
   parentEditor.close();App.deps.depBlockedByPicker.close();App.deps.depBlocksPicker.close();closeMention();
   if($('side').classList.contains('fullscreen'))toggleFullscreen(false);   // restore inline width before hiding
   $('side').classList.add('hidden');
-  $('resizer').style.display='none';cur=null;orig={};
+  $('resizer').style.display='none';cur=null;App.state.orig={};
   const cbtn = $('s_comment'); if (cbtn) cbtn.classList.remove('on');
   const chbtn = $('s_childbtn'); if (chbtn) chbtn.classList.remove('on');
   atchState.list=[];atchState.wid=null;atchState.uploading=0;renderAttachments();clearAttBlobs();
   depsState.blockedBy=[];depsState.blocks=[];App.deps.renderDeps();
-  if(selRow){selRow.classList.remove('sel');selRow=null;}
+  if(App.state.selRow){App.state.selRow.classList.remove('sel');App.state.selRow=null;}
   if(cy)cy.$(':selected').unselect();
 }
 
@@ -570,14 +570,14 @@ async function openItem(id){
   const signal=App.state.openItemAbortCtrl.signal;
 
   // ── Synchronous reset: block saves for the OLD item ──
-  cur=null;orig=null;                              // dirty()→false, quickSave()→early return
+  cur=null;App.state.orig=null;                              // dirty()→false, quickSave()→early return
   lockSidebar(true);                               // dim + disable all interactive fields
 
   // ── Clear stale field values so the user never sees the previous item's data ──
   $('s_title').value='';$('s_hdr').innerHTML='<span style="color:var(--muted)">loading…</span>';
   if($('s_time')) $('s_time').innerHTML='';
   $('s_ctx').innerHTML='';$('s_kidlist').innerHTML='';
-  if(descEditor)descEditor.value='';if(acEditor)acEditor.value='';
+  if(App.state.descEditor)App.state.descEditor.value='';if(App.state.acEditor)App.state.acEditor.value='';
   atchState.list=[];atchState.uploading=0;renderAttachments();
   depsState.blockedBy=[];depsState.blocks=[];App.deps.renderDeps();
   
@@ -588,9 +588,9 @@ async function openItem(id){
   closeMention();setSaveChip('idle');reactionCache.clear();
 
   // ── Highlight the target row in the tree ──
-  if(selRow)selRow.classList.remove('sel');
+  if(App.state.selRow)App.state.selRow.classList.remove('sel');
   const targetRow=document.querySelector(`#tree .trow[data-id="${id}"]`);
-  if(targetRow){targetRow.classList.add('sel');selRow=targetRow;}else{selRow=null;}
+  if(targetRow){targetRow.classList.add('sel');App.state.selRow=targetRow;}else{App.state.selRow=null;}
 
   // ── Show the sidebar shell + start the loading indicator ──
   $('side').classList.remove('hidden');$('resizer').style.display='block';
@@ -665,8 +665,8 @@ async function openItem(id){
     });
   }
   customFieldsState = [];
-  descEditor = null;
-  acEditor = null;
+  App.state.descEditor = null;
+  App.state.acEditor = null;
 
   const refNames = new Set(fields.map(f => f.referenceName));
 
@@ -699,7 +699,7 @@ async function openItem(id){
       div.id = 'editor_desc_container';
       side.appendChild(div);
 
-      descEditor = new MarkdownEditor('editor_desc_container', {
+      App.state.descEditor = new MarkdownEditor('editor_desc_container', {
         label: refNames.has("Microsoft.VSTS.TCM.ReproSteps") ? 'Repro Steps' : 'Description',
         placeholder: 'add description…',
         allowAttachments: true,
@@ -716,7 +716,7 @@ async function openItem(id){
       div.id = 'editor_ac_container';
       side.appendChild(div);
 
-      acEditor = new MarkdownEditor('editor_ac_container', {
+      App.state.acEditor = new MarkdownEditor('editor_ac_container', {
         label: 'Acceptance Criteria',
         placeholder: 'add acceptance criteria…',
         allowAttachments: false,
@@ -1161,7 +1161,7 @@ async function openItem(id){
   if ($('side-due-trigger')) syncSideDuePicker(d.due);
   if ($('s_est')) $('s_est').value=(d.est!=null?d.est:'');
 
-  orig={
+  App.state.orig={
     title:d.title,state:d.state,assigned:d.assigned,priority:d.priority,
     iter:curIt,parent:(d.parent!=null?String(d.parent):''),
     start: $('s_start') ? $('s_start').value : '',
@@ -1207,19 +1207,19 @@ async function openItem(id){
           }
         }
 
-        if (activeLazyGroups.includes('desc') && descEditor) {
-          descEditor.value = fullD.desc || '';
-          descEditor.togglePreview(true);
-          orig.desc = fullD.desc;
-          orig._loaded_desc = true;
+        if (activeLazyGroups.includes('desc') && App.state.descEditor) {
+          App.state.descEditor.value = fullD.desc || '';
+          App.state.descEditor.togglePreview(true);
+          App.state.orig.desc = fullD.desc;
+          App.state.orig._loaded_desc = true;
           if ($('editor_desc_container')) $('editor_desc_container').classList.remove('loading-skeleton');
         }
-        if (activeLazyGroups.includes('ac') && acEditor) {
-          acEditor.value = fullD.ac || '';
-          acEditor.togglePreview(true);
-          orig.ac = fullD.ac;
-          orig.has_ac = fullD.has_ac;
-          orig._loaded_ac = true;
+        if (activeLazyGroups.includes('ac') && App.state.acEditor) {
+          App.state.acEditor.value = fullD.ac || '';
+          App.state.acEditor.togglePreview(true);
+          App.state.orig.ac = fullD.ac;
+          App.state.orig.has_ac = fullD.has_ac;
+          App.state.orig._loaded_ac = true;
           if ($('editor_ac_container')) {
             $('editor_ac_container').style.display = fullD.has_ac ? 'block' : 'none';
             $('editor_ac_container').classList.remove('loading-skeleton');
@@ -1227,24 +1227,24 @@ async function openItem(id){
         }
         if (activeLazyGroups.includes('tags')) {
           tagsEditor.set(fullD.tags || '', /*silent*/true);
-          orig.tags = fullD.tags;
-          orig._loaded_tags = true;
+          App.state.orig.tags = fullD.tags;
+          App.state.orig._loaded_tags = true;
         }
         if (activeLazyGroups.includes('area') && $('s_area')) {
           $('s_area').value = fullD.area || '';
-          orig.area = fullD.area || '';
-          orig._loaded_area = true;
+          App.state.orig.area = fullD.area || '';
+          App.state.orig._loaded_area = true;
         }
         if (activeLazyGroups.includes('effort')) {
           if ($('s_storypoints')) $('s_storypoints').value = fullD.storypoints != null ? fullD.storypoints : '';
           if ($('s_remaining')) $('s_remaining').value = fullD.remaining != null ? fullD.remaining : '';
           if ($('s_completed')) $('s_completed').value = fullD.completed != null ? fullD.completed : '';
-          orig.storypoints = fullD.storypoints;
-          orig.remaining = fullD.remaining;
-          orig.completed = fullD.completed;
-          orig._loaded_storypoints = true;
-          orig._loaded_remaining = true;
-          orig._loaded_completed = true;
+          App.state.orig.storypoints = fullD.storypoints;
+          App.state.orig.remaining = fullD.remaining;
+          App.state.orig.completed = fullD.completed;
+          App.state.orig._loaded_storypoints = true;
+          App.state.orig._loaded_remaining = true;
+          App.state.orig._loaded_completed = true;
         }
         if (activeLazyGroups.includes('activity') && $('s_activity_field')) {
           const picker = window.dynamicPickers && window.dynamicPickers['s_activity_field'];
@@ -1253,8 +1253,8 @@ async function openItem(id){
           } else {
             $('s_activity_field').value = fullD.activity || '';
           }
-          orig.activity = fullD.activity || '';
-          orig._loaded_activity = true;
+          App.state.orig.activity = fullD.activity || '';
+          App.state.orig._loaded_activity = true;
         }
         if (activeLazyGroups.includes('classification')) {
           const rPicker = window.dynamicPickers && window.dynamicPickers['s_risk'];
@@ -1263,8 +1263,8 @@ async function openItem(id){
           } else {
             if ($('s_risk')) $('s_risk').value = fullD.risk || '';
           }
-          orig.risk = fullD.risk || '';
-          orig._loaded_risk = true;
+          App.state.orig.risk = fullD.risk || '';
+          App.state.orig._loaded_risk = true;
 
           const vaPicker = window.dynamicPickers && window.dynamicPickers['s_valuearea'];
           if (vaPicker) {
@@ -1272,8 +1272,8 @@ async function openItem(id){
           } else {
             if ($('s_valuearea')) $('s_valuearea').value = fullD.valuearea || '';
           }
-          orig.valuearea = fullD.valuearea || '';
-          orig._loaded_valuearea = true;
+          App.state.orig.valuearea = fullD.valuearea || '';
+          App.state.orig._loaded_valuearea = true;
         }
         if (activeLazyGroups.includes('attachments')) {
           atchState.list = Array.isArray(fullD.attachments) ? fullD.attachments.slice() : [];
@@ -1283,7 +1283,7 @@ async function openItem(id){
           App.deps.loadDeps(id, fullD.deps);
         }
         if (needRelations) {
-          orig._relationsLoaded = true;
+          App.state.orig._relationsLoaded = true;
         }
 
         // Dynamically build and render Custom Fields values
@@ -1324,11 +1324,11 @@ async function openItem(id){
             }
           }
           if (isHtml) {
-            orig[cf.referenceName] = AdoLib.htmlToMarkdown(val || '');
+            App.state.orig[cf.referenceName] = AdoLib.htmlToMarkdown(val || '');
           } else {
-            orig[cf.referenceName] = val;
+            App.state.orig[cf.referenceName] = val;
           }
-          orig['_loaded_' + cf.referenceName] = true;
+          App.state.orig['_loaded_' + cf.referenceName] = true;
         });
 
         lockSidebarHeavy(false, activeLazyGroups);

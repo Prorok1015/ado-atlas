@@ -58,7 +58,7 @@
       const bdg=document.createElement('span');bdg.className='badge';bdg.textContent=n.state;
       bdg.style.marginLeft='0';row.appendChild(bdg);
     }
-    if(n.id===cur){row.classList.add('sel');selRow=row;}   // keep highlight across re-renders
+    if(n.id===cur){row.classList.add('sel');App.state.selRow=row;}   // keep highlight across re-renders
     row.onclick=(e)=>{
       if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(n.id);return;}        // Ctrl/Cmd: toggle in selection
       if(e.shiftKey){e.preventDefault();bulkRange(n.id);return;}                    // Shift: select the range from the anchor
@@ -87,7 +87,7 @@
     catch(e){setStatus('ERROR: '+e.message,true);return [];}
   }
   function renderTree(){
-    const el=$('tree');el.innerHTML='';selRow=null;
+    const el=$('tree');el.innerHTML='';App.state.selRow=null;
     const ul=document.createElement('ul');ul.className='tree';
     (store.top||store.roots).forEach(id=>{if(store.nodes[id])ul.appendChild(treeNode(store.nodes[id]));});
     el.appendChild(ul);

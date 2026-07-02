@@ -7,37 +7,37 @@
 // (parentEditor/assignedEditor/sprintEditor/tagsEditor + onPick), the undo core
 // (undoStack/pushAction/afterUndo/runStep/updateUndoButtons/updateCreateButtons),
 // the shared create helpers (createChild/recordCreateUndo/denyOnForbidden), and
-// depsState/reactionCache. Other bare globals used at call time: $, api, cur/orig/
-// descEditor/acEditor (state-globals), customFieldsState (side-panel.js), setStatus,
+// depsState/reactionCache. Other bare globals used at call time: $, api, cur/App.state.orig/
+// App.state.descEditor/App.state.acEditor (state-globals), customFieldsState (side-panel.js), setStatus,
 // refresh, openItem, assignees, tagList, App.activity.*, App.deps.*, window.i18n.
 
 // ---- dirty-tracking / save-chip / discard / editorValues ----
 function dirty(){
-  if(cur==null||!orig)return false;
+  if(cur==null||!App.state.orig)return false;
   const v=editorValues();
   const numEq=(a,b)=>(a===''||a==null)&&(b===''||b==null) ? true : String(a)===String(b);
   // Phase 1 (always-loaded) fields
-  if(v.title!==orig.title||v.state!==orig.state||v.assigned!==orig.assigned
-    ||((orig.priority?String(orig.priority):'')!==v.prio)
-    ||v.iter!==orig.iter||v.parent!==orig.parent||v.start!==orig.start||v.target!==orig.target||v.due!==orig.due||v.est!==orig.est)
+  if(v.title!==App.state.orig.title||v.state!==App.state.orig.state||v.assigned!==App.state.orig.assigned
+    ||((App.state.orig.priority?String(App.state.orig.priority):'')!==v.prio)
+    ||v.iter!==App.state.orig.iter||v.parent!==App.state.orig.parent||v.start!==App.state.orig.start||v.target!==App.state.orig.target||v.due!==App.state.orig.due||v.est!==App.state.orig.est)
     return true;
-  // Lazy fields — only compare if they've actually been loaded into orig
-  if(orig._loaded_desc && v.desc!==orig.desc) return true;
-  if(orig._loaded_ac && orig.has_ac && v.ac!==orig.ac) return true;
-  if(orig._loaded_tags && v.tags!==orig.tags) return true;
-  if(orig._loaded_area && v.area!==orig.area) return true;
-  if(orig._loaded_storypoints && !numEq(v.storypoints,orig.storypoints)) return true;
-  if(orig._loaded_remaining && !numEq(v.remaining,orig.remaining)) return true;
-  if(orig._loaded_completed && !numEq(v.completed,orig.completed)) return true;
-  if(orig._loaded_activity && v.activity!==orig.activity) return true;
-  if(orig._loaded_risk && v.risk!==orig.risk) return true;
-  if(orig._loaded_valuearea && v.valuearea!==orig.valuearea) return true;
+  // Lazy fields — only compare if they've actually been loaded into App.state.orig
+  if(App.state.orig._loaded_desc && v.desc!==App.state.orig.desc) return true;
+  if(App.state.orig._loaded_ac && App.state.orig.has_ac && v.ac!==App.state.orig.ac) return true;
+  if(App.state.orig._loaded_tags && v.tags!==App.state.orig.tags) return true;
+  if(App.state.orig._loaded_area && v.area!==App.state.orig.area) return true;
+  if(App.state.orig._loaded_storypoints && !numEq(v.storypoints,App.state.orig.storypoints)) return true;
+  if(App.state.orig._loaded_remaining && !numEq(v.remaining,App.state.orig.remaining)) return true;
+  if(App.state.orig._loaded_completed && !numEq(v.completed,App.state.orig.completed)) return true;
+  if(App.state.orig._loaded_activity && v.activity!==App.state.orig.activity) return true;
+  if(App.state.orig._loaded_risk && v.risk!==App.state.orig.risk) return true;
+  if(App.state.orig._loaded_valuearea && v.valuearea!==App.state.orig.valuearea) return true;
 
   // Custom fields dirty check
   for (const cf of customFieldsState) {
-    if (orig['_loaded_' + cf.referenceName]) {
+    if (App.state.orig['_loaded_' + cf.referenceName]) {
       const currentVal = v[cf.referenceName];
-      const origVal = orig[cf.referenceName];
+      const origVal = App.state.orig[cf.referenceName];
       if (cf.type === 'double' || cf.type === 'integer') {
         if (!numEq(currentVal, origVal)) return true;
       } else {
@@ -54,9 +54,9 @@ function dirty(){
 // dirty() (full check) still drives the "discard unsaved" prompt so a failed
 // auto-save isn't silently lost.
 function textDirty(){
-  if(cur==null||!orig)return false;
+  if(cur==null||!App.state.orig)return false;
   const v=editorValues();
-  return v.title!==orig.title||v.desc!==orig.desc||(orig.has_ac&&v.ac!==orig.ac);
+  return v.title!==App.state.orig.title||v.desc!==App.state.orig.desc||(App.state.orig.has_ac&&v.ac!==App.state.orig.ac);
 }
 let _saveChipTimer=null;
 function setSaveChip(state,msg){
@@ -105,21 +105,21 @@ function refreshDirty(){
   }
 }
 function discardChanges(){
-  if(cur==null||!orig)return;
-  if ($('s_title')) $('s_title').value=orig.title;
-  if (descEditor) descEditor.value=orig.desc;
-  if(orig.has_ac && acEditor){
-    acEditor.value=orig.ac;
+  if(cur==null||!App.state.orig)return;
+  if ($('s_title')) $('s_title').value=App.state.orig.title;
+  if (App.state.descEditor) App.state.descEditor.value=App.state.orig.desc;
+  if(App.state.orig.has_ac && App.state.acEditor){
+    App.state.acEditor.value=App.state.orig.ac;
   }
-  if ($('s_area')) $('s_area').value=orig.area||'';
-  if ($('s_storypoints')) $('s_storypoints').value=orig.storypoints!=null?orig.storypoints:'';
-  if ($('s_remaining')) $('s_remaining').value=orig.remaining!=null?orig.remaining:'';
-  if ($('s_completed')) $('s_completed').value=orig.completed!=null?orig.completed:'';
+  if ($('s_area')) $('s_area').value=App.state.orig.area||'';
+  if ($('s_storypoints')) $('s_storypoints').value=App.state.orig.storypoints!=null?App.state.orig.storypoints:'';
+  if ($('s_remaining')) $('s_remaining').value=App.state.orig.remaining!=null?App.state.orig.remaining:'';
+  if ($('s_completed')) $('s_completed').value=App.state.orig.completed!=null?App.state.orig.completed:'';
 
   const fieldsToSync = [
-    { elId: 's_activity_field', val: orig.activity },
-    { elId: 's_risk', val: orig.risk },
-    { elId: 's_valuearea', val: orig.valuearea }
+    { elId: 's_activity_field', val: App.state.orig.activity },
+    { elId: 's_risk', val: App.state.orig.risk },
+    { elId: 's_valuearea', val: App.state.orig.valuearea }
   ];
   fieldsToSync.forEach(f => {
     if ($(f.elId)) {
@@ -131,7 +131,7 @@ function discardChanges(){
 
   // Restore custom fields
   customFieldsState.forEach(cf => {
-    const origVal = orig[cf.referenceName] || '';
+    const origVal = App.state.orig[cf.referenceName] || '';
     const isHtml = cf.type && (cf.type.toLowerCase() === 'html' || cf.type.toLowerCase() === 'plaintext');
     const editor = isHtml ? (window.customHtmlEditors && window.customHtmlEditors[cf.referenceName]) : null;
     const el = $(cf.elementId);
@@ -166,8 +166,8 @@ function editorValues(){
     title: $('s_title') ? $('s_title').value : '',
     state: $('s_state') ? $('s_state').value : '',
     assigned: $('s_assigned') ? $('s_assigned').value : '',
-    desc: descEditor ? descEditor.value : '',
-    ac: acEditor ? acEditor.value : '',
+    desc: App.state.descEditor ? App.state.descEditor.value : '',
+    ac: App.state.acEditor ? App.state.acEditor.value : '',
     prio: $('s_prio') ? $('s_prio').value : '',
     iter: $('s_iter') ? $('s_iter').value : '',
     parent: $('s_parent') ? $('s_parent').value.trim() : '',
@@ -245,10 +245,10 @@ function recordEditUndo(id,body,parentChanged,before,beforeParent,newParent){
 // sync with whatever fields the PATCH just touched. Used by both save() (full
 // manual save) and quickSave() (single-field auto-save).
 function applyVisualSync(id,body,v){
-  if(selRow&&body.title)selRow.querySelector('.lab').textContent=`#${id} ${body.title}`;
-  if(selRow&&body.state)selRow.querySelector('.badge').textContent=body.state;
-  if(selRow&&('priority'in body)){let pc=selRow.querySelector('.prio');if(!pc){pc=document.createElement('span');pc.className='prio';selRow.insertBefore(pc,selRow.querySelector('.badge'));}pc.textContent='P'+body.priority;pc.style.background=prioColor(body.priority);}
-  if(selRow&&('tags'in body)){selRow.querySelectorAll('.ttag').forEach(t=>t.remove());const bdg=selRow.querySelector('.badge');if(bdg){bdg.style.marginLeft='';const ts=tagList_(v.tags);if(ts.length){const show=ts.slice(0,3),extra=ts.length-show.length;bdg.style.marginLeft='0';show.forEach((t,i)=>{const tc=document.createElement('span');tc.className='ttag';tc.textContent=t;tc.style.background=personColor(t);tc.title=t;if(i===0)tc.style.marginLeft='auto';selRow.insertBefore(tc,bdg);});if(extra>0){const tc=document.createElement('span');tc.className='ttag';tc.textContent='+'+extra;tc.style.background='var(--muted)';selRow.insertBefore(tc,bdg);}}}}
+  if(App.state.selRow&&body.title)App.state.selRow.querySelector('.lab').textContent=`#${id} ${body.title}`;
+  if(App.state.selRow&&body.state)App.state.selRow.querySelector('.badge').textContent=body.state;
+  if(App.state.selRow&&('priority'in body)){let pc=App.state.selRow.querySelector('.prio');if(!pc){pc=document.createElement('span');pc.className='prio';App.state.selRow.insertBefore(pc,App.state.selRow.querySelector('.badge'));}pc.textContent='P'+body.priority;pc.style.background=prioColor(body.priority);}
+  if(App.state.selRow&&('tags'in body)){App.state.selRow.querySelectorAll('.ttag').forEach(t=>t.remove());const bdg=App.state.selRow.querySelector('.badge');if(bdg){bdg.style.marginLeft='';const ts=tagList_(v.tags);if(ts.length){const show=ts.slice(0,3),extra=ts.length-show.length;bdg.style.marginLeft='0';show.forEach((t,i)=>{const tc=document.createElement('span');tc.className='ttag';tc.textContent=t;tc.style.background=personColor(t);tc.title=t;if(i===0)tc.style.marginLeft='auto';App.state.selRow.insertBefore(tc,bdg);});if(extra>0){const tc=document.createElement('span');tc.className='ttag';tc.textContent='+'+extra;tc.style.background='var(--muted)';App.state.selRow.insertBefore(tc,bdg);}}}}
   if(store.nodes[id]){const s=store.nodes[id];s.title=v.title;s.state=v.state;
     if('assigned'in body)s.assigned=body.assigned;
     if('priority'in body)s.priority=body.priority;
@@ -348,11 +348,11 @@ function parseTimeExpr(str) {
 // Atomic single-field PATCH triggered by a picker / select / date input change.
 // `field` ∈ {state, assigned, priority, iteration, start, target, due, estimate, tags, parent}.
 // Concurrent calls for different fields don't conflict (independent body keys).
-// Concurrent calls for the SAME field race on the wire — to converge orig with
+// Concurrent calls for the SAME field race on the wire — to converge App.state.orig with
 // the latest editor value we re-read editorValues() at response time instead of
 // using the request-time snapshot.
 async function quickSave(field){
-  if(cur==null||!orig)return;
+  if(cur==null||!App.state.orig)return;
   const id=cur;
   
   // Perform math parsing for estimate (s_est), storypoints, remaining, completed
@@ -371,29 +371,29 @@ async function quickSave(field){
   let body={},parentChanged=false;
   const numEq=(a,b)=>(a===''||a==null)&&(b===''||b==null) ? true : String(a)===String(b);
   if(field==='parent'){
-    if(v.parent===orig.parent)return;
+    if(v.parent===App.state.orig.parent)return;
     if(v.parent!==''&&Number(v.parent)===id){setStatus(window.i18n.t('status.cannotParentSelf'),true);return;}
     parentChanged=true;
   } else if(field==='priority'){
-    const op=orig.priority?String(orig.priority):'';
+    const op=App.state.orig.priority?String(App.state.orig.priority):'';
     if(v.prio===op||v.prio==='')return;          // empty = "no change" (matches manual save)
     body.priority=Number(v.prio);
   } else if(field==='storypoints' || field==='remaining' || field==='completed') {
-    if(numEq(v[field], orig[field])) return;
+    if(numEq(v[field], App.state.orig[field])) return;
     body[field] = v[field] === '' ? '' : Number(v[field]);
   } else if(field.startsWith('cust:')) {
     const refName = field.substring(5);
-    if(v[refName] === orig[refName]) return;
+    if(v[refName] === App.state.orig[refName]) return;
     body[refName] = v[refName];
   } else {
     const keyMap={iteration:'iter',estimate:'est'};
     const k=keyMap[field]||field;
-    if(v[k]===orig[k])return;
+    if(v[k]===App.state.orig[k])return;
     if(field==='assigned')body.assigned=(v.assigned==='me'?(currentUser||v.assigned):v.assigned);
     else body[field]=v[k];
   }
   if(!Object.keys(body).length&&!parentChanged)return;
-  const before={...orig},beforeParent=orig.parent,newParent=v.parent;
+  const before={...orig},beforeParent=App.state.orig.parent,newParent=v.parent;
   setSaveChip('saving');
   let r;
   try{
@@ -405,38 +405,38 @@ async function quickSave(field){
   }
   if(cur!==id)return;                            // user navigated away mid-save
   recordEditUndo(id,body,parentChanged,before,beforeParent,newParent);
-  // Use the FRESH editor values for orig + visuals — a follow-up edit during
+  // Use the FRESH editor values for App.state.orig + visuals — a follow-up edit during
   // the in-flight PATCH has already fired its own quickSave; we just make sure
-  // orig converges to "whatever's in the editor right now".
+  // App.state.orig converges to "whatever's in the editor right now".
   const vNow=editorValues();
   applyVisualSync(id,body,vNow);
-  if('state'in body)orig.state=vNow.state;
-  if('assigned'in body){orig.assigned=vNow.assigned; registerNewAssignee(vNow.assigned);}
-  if('priority'in body)orig.priority=body.priority;
-  if('iteration'in body)orig.iter=vNow.iter;
-  if('start'in body)orig.start=vNow.start;
-  if('target'in body)orig.target=vNow.target;
-  if('due'in body)orig.due=vNow.due;
-  if('estimate'in body)orig.est=vNow.est;
-  if('tags'in body){orig.tags=vNow.tags; registerNewTags(vNow.tags);}
-  if('area'in body)orig.area=vNow.area;
-  if('storypoints'in body)orig.storypoints=body.storypoints === '' ? null : Number(body.storypoints);
-  if('remaining'in body)orig.remaining=body.remaining === '' ? null : Number(body.remaining);
-  if('completed'in body)orig.completed=body.completed === '' ? null : Number(body.completed);
-  if('activity'in body)orig.activity=vNow.activity;
-  if('risk'in body)orig.risk=vNow.risk;
-  if('valuearea'in body)orig.valuearea=vNow.valuearea;
-  if(parentChanged)orig.parent=vNow.parent;
+  if('state'in body)App.state.orig.state=vNow.state;
+  if('assigned'in body){App.state.orig.assigned=vNow.assigned; registerNewAssignee(vNow.assigned);}
+  if('priority'in body)App.state.orig.priority=body.priority;
+  if('iteration'in body)App.state.orig.iter=vNow.iter;
+  if('start'in body)App.state.orig.start=vNow.start;
+  if('target'in body)App.state.orig.target=vNow.target;
+  if('due'in body)App.state.orig.due=vNow.due;
+  if('estimate'in body)App.state.orig.est=vNow.est;
+  if('tags'in body){App.state.orig.tags=vNow.tags; registerNewTags(vNow.tags);}
+  if('area'in body)App.state.orig.area=vNow.area;
+  if('storypoints'in body)App.state.orig.storypoints=body.storypoints === '' ? null : Number(body.storypoints);
+  if('remaining'in body)App.state.orig.remaining=body.remaining === '' ? null : Number(body.remaining);
+  if('completed'in body)App.state.orig.completed=body.completed === '' ? null : Number(body.completed);
+  if('activity'in body)App.state.orig.activity=vNow.activity;
+  if('risk'in body)App.state.orig.risk=vNow.risk;
+  if('valuearea'in body)App.state.orig.valuearea=vNow.valuearea;
+  if(parentChanged)App.state.orig.parent=vNow.parent;
 
-  // Sync custom fields to orig
+  // Sync custom fields to App.state.orig
   customFieldsState.forEach(cf => {
     if (cf.referenceName in body) {
-      orig[cf.referenceName] = vNow[cf.referenceName];
+      App.state.orig[cf.referenceName] = vNow[cf.referenceName];
     }
   });
 
   if(r&&r.rev) {
-    FollowManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
+    FollowManager.updateItemRev(id,r.rev,App.state.orig.state,App.state.orig.title,App.state.orig.assigned);
     if(store.nodes[id]) store.nodes[id].rev = r.rev;
   }
   refreshDirty();setSaveChip('saved');
@@ -447,12 +447,12 @@ async function quickSave(field){
 async function save(){
   if(cur==null)return;const id=cur;const v=editorValues();const body={};
   // Text fields only — pickers/selects/dates are auto-saved by quickSave().
-  if(v.title!==orig.title)body.title=v.title;
-  if(v.desc!==orig.desc)body.desc=v.desc;
-  if(orig.has_ac&&v.ac!==orig.ac)body.ac=v.ac;
+  if(v.title!==App.state.orig.title)body.title=v.title;
+  if(v.desc!==App.state.orig.desc)body.desc=v.desc;
+  if(App.state.orig.has_ac&&v.ac!==App.state.orig.ac)body.ac=v.ac;
   customFieldsState.forEach(cf => {
     const isHtml = cf.type && (cf.type.toLowerCase() === 'html' || cf.type.toLowerCase() === 'plaintext');
-    if (isHtml && v[cf.referenceName] !== orig[cf.referenceName]) {
+    if (isHtml && v[cf.referenceName] !== App.state.orig[cf.referenceName]) {
       body[cf.referenceName] = v[cf.referenceName];
     }
   });
@@ -464,18 +464,18 @@ async function save(){
     r=await api.updateItem(id,body);
   }catch(e){setStatus('ERROR: '+e.message,true);setSaveChip('error',e.message);refreshDirty();loadEnd();return;}
   loadEnd();
-  recordEditUndo(id,body,false,before,orig.parent,orig.parent);
+  recordEditUndo(id,body,false,before,App.state.orig.parent,App.state.orig.parent);
   applyVisualSync(id,body,v);
-  if('title'in body)orig.title=v.title;
-  if('desc'in body)orig.desc=v.desc;
-  if('ac'in body)orig.ac=v.ac;
+  if('title'in body)App.state.orig.title=v.title;
+  if('desc'in body)App.state.orig.desc=v.desc;
+  if('ac'in body)App.state.orig.ac=v.ac;
   customFieldsState.forEach(cf => {
     if (cf.referenceName in body) {
-      orig[cf.referenceName] = v[cf.referenceName];
+      App.state.orig[cf.referenceName] = v[cf.referenceName];
     }
   });
   if(r&&r.rev) {
-    FollowManager.updateItemRev(id,r.rev,orig.state,orig.title,orig.assigned);
+    FollowManager.updateItemRev(id,r.rev,App.state.orig.state,App.state.orig.title,App.state.orig.assigned);
     if(store.nodes[id]) store.nodes[id].rev = r.rev;
   }
   refreshDirty();setSaveChip('saved');setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
@@ -485,9 +485,9 @@ function closeCommentForm(){
   const f=$('comment_editor_container');
   if(f){
     f.style.display='none';
-    if(commentEditor){
-      commentEditor.toggleFullscreen(false);
-      commentEditor.value='';
+    if(App.state.commentEditor){
+      App.state.commentEditor.toggleFullscreen(false);
+      App.state.commentEditor.value='';
     }
   }
   const btn=$('s_comment');
@@ -499,10 +499,10 @@ function toggleComment(){
   f.style.display=show?'flex':'none';
   const btn=$('s_comment');
   if(btn) btn.classList.toggle('on', show);
-  if(show) commentEditor.textarea.focus();
+  if(show) App.state.commentEditor.textarea.focus();
 }
 async function postComment(){
-  const t=commentEditor.value.trim();if(!t||cur==null)return;
+  const t=App.state.commentEditor.value.trim();if(!t||cur==null)return;
   try{await api.comment(cur,t);}catch(e){setStatus('ERROR: '+e.message,true);return;}
   closeCommentForm();
   setStatus('#'+cur+' comment added');

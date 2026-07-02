@@ -99,7 +99,7 @@ class MarkdownEditor {
     };
     this.textarea.addEventListener('keydown', (e) => {
       if (this.options.allowMentions) {
-        activeEditor = this;
+        App.state.activeEditor = this;
         if (mentionState.open) {
           if (e.key === 'ArrowDown') { e.preventDefault(); moveMention(1); return; }
           if (e.key === 'ArrowUp') { e.preventDefault(); moveMention(-1); return; }
@@ -158,12 +158,12 @@ class MarkdownEditor {
     }
 
     if (this.options.allowMentions) {
-      this.textarea.addEventListener('focus', () => { activeEditor = this; });
-      this.textarea.addEventListener('input', () => { activeEditor = this; openOrUpdateMention(); });
-      this.textarea.addEventListener('click', () => { activeEditor = this; openOrUpdateMention(); });
+      this.textarea.addEventListener('focus', () => { App.state.activeEditor = this; });
+      this.textarea.addEventListener('input', () => { App.state.activeEditor = this; openOrUpdateMention(); });
+      this.textarea.addEventListener('click', () => { App.state.activeEditor = this; openOrUpdateMention(); });
       this.textarea.addEventListener('keyup', e => {
         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') {
-          activeEditor = this; openOrUpdateMention();
+          App.state.activeEditor = this; openOrUpdateMention();
         }
       });
       this.textarea.addEventListener('blur', () => { scheduleCloseMention(); });
@@ -184,7 +184,7 @@ class MarkdownEditor {
     const on = forceOn !== undefined ? forceOn : (this.textarea.style.display !== 'none');
     this.isEditMode = !on;
     if (on) {
-      if (this.options.allowMentions && activeEditor === this) {
+      if (this.options.allowMentions && App.state.activeEditor === this) {
         closeMention();
       }
       this.renderPreview();

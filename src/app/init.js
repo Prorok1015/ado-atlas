@@ -393,11 +393,11 @@ async function initialBoot(postSetup){
     try {
       await navigator.clipboard.writeText(url);
       const btn = $('s_copy_link');
-      const orig = btn.innerHTML;
+      const origHtml = btn.innerHTML;
       btn.innerHTML = '<ui-icon name="check"></ui-icon>';
       btn.classList.add('copied');
       setTimeout(() => {
-        btn.innerHTML = orig;
+        btn.innerHTML = origHtml;
         btn.classList.remove('copied');
       }, 1500);
     } catch (err) {
@@ -431,12 +431,12 @@ async function initialBoot(postSetup){
       if (cur == null || !hasFiles(e)) return;
       e.preventDefault();
       const fs = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
-      if (fs.length && descEditor) {
-        descEditor.uploadFiles(fs, false);
+      if (fs.length && App.state.descEditor) {
+        App.state.descEditor.uploadFiles(fs, false);
       }
     });
   }
-  commentEditor = new MarkdownEditor('comment_editor_container', {
+  App.state.commentEditor = new MarkdownEditor('comment_editor_container', {
     placeholder: 'add a comment…',
     allowAttachments: false,
     allowMentions: true
@@ -454,7 +454,7 @@ async function initialBoot(postSetup){
 
   // Wire s_desc_attach and fullscreen from header
   $('s_desc_full').onclick=()=>toggleFullscreen();
-  $('s_desc_attach').onclick=e=>{e.preventDefault();if(cur!=null)descEditor.triggerAttachmentUpload();};  $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
+  $('s_desc_attach').onclick=e=>{e.preventDefault();if(cur!=null)App.state.descEditor.triggerAttachmentUpload();};  $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
   $('s_discard').onclick=discardChanges;
   parentEditor.wire();parentNew.wire();   // parent card + searchable picker (editor + New-item modal)
   assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker
@@ -467,7 +467,7 @@ async function initialBoot(postSetup){
   window.bulkTagsEditor = new TagsEditor('bulk_tag_container');
   bulkTagsEditor.render();
   // refreshDirty on every keystroke for ALL editable fields, so the chip flips
-  // to "● Unsaved" the moment anything diverges from orig.
+  // to "● Unsaved" the moment anything diverges from App.state.orig.
   ['s_title','s_state','s_prio','s_start','s_target','s_due','s_est','s_area','s_storypoints','s_remaining','s_completed','s_activity_field','s_risk','s_valuearea'].forEach(id=>{
     const el = $(id);
     if (el) { el.addEventListener('input',refreshDirty);el.addEventListener('change',refreshDirty); } });

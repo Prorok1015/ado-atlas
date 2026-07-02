@@ -4,7 +4,7 @@
 // activity.js call descRenderOpts/hydratePreviewImages/colorMentions/renderAttachments
 // bare, and read atchState directly — so these MUST stay bare. Relies on other
 // bare globals resolved at call time: $, api, setStatus, htmlEsc, customConfirm,
-// window.i18n, cur, descEditor, personColor, refreshDirty, App.state.openItemAbortCtrl.
+// window.i18n, cur, App.state.descEditor, personColor, refreshDirty, App.state.openItemAbortCtrl.
 // Description-preview renderer uses the project's work-item base URL so that
 // `#123` shorthand in the markdown gets auto-linked back to that work item.
 // descBase is derived from the open item's url (set by api.item()) — that way
@@ -119,7 +119,7 @@ function renderAttachments(){
         setStatus('download failed: '+err.message,true);
       }
     };
-    row.querySelector('.ains').onclick=e=>{e.preventDefault();if(descEditor){descEditor.insertAtCursor((isImageName(a.name)?'!':'')+`[${a.name}](${a.url})`);refreshDirty();}};
+    row.querySelector('.ains').onclick=e=>{e.preventDefault();if(App.state.descEditor){App.state.descEditor.insertAtCursor((isImageName(a.name)?'!':'')+`[${a.name}](${a.url})`);refreshDirty();}};
     row.querySelector('.axdel').onclick=e=>{e.preventDefault();removeAttachment(a);};
   });
 }
