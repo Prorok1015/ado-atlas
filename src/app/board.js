@@ -254,7 +254,7 @@
     suppressClick=true;setTimeout(()=>{suppressClick=false;},30);   // swallow the click that follows a drag
     const col=d.hot;if(!col)return;
     const bulk=App.state.bulkSel.has(d.id)&&App.state.bulkSel.size>1;                     // dragged a selected card → move the whole selection
-    const dropIds=bulk?[...bulkSel]:[d.id];
+    const dropIds=bulk?[...App.state.bulkSel]:[d.id];
     if(col.classList.contains('addcol')){                            // dropped on "＋ New sprint" → create, then move them in
       pendingSprintItems=dropIds;App.sprint.showSprintModal();return;
     }
@@ -263,7 +263,7 @@
     if(val===curVal&&!bulk)return;
     if(field==='iteration'){const it=_sprint(val),fin=it&&it.finish?it.finish.slice(0,10):null,today=new Date().toISOString().slice(0,10);
       if(fin&&fin<today&&!await customConfirm(window.i18n.t('move.sprintEndedConfirm', {sprint:it.name, date:fin, what:bulk?window.i18n.t('move.nItems',{count:App.state.bulkSel.size}):('#'+d.id)}), window.i18n.t('move.confirmTitle')))return;}
-    if(bulk)moveCards([...bulkSel],field,val);else moveCard(d.id,field,val);
+    if(bulk)moveCards([...App.state.bulkSel],field,val);else moveCard(d.id,field,val);
   });
 
   /* ---------- sprint detail (Gantt) ---------- */

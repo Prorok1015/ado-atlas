@@ -409,7 +409,7 @@ async function _refresh(){
     if(App.state.store.nodes[id])App.state.store.nodes[id].via=a.via;}
   App.state.store.top=items.filter(n=>!(n.parent&&inSet.has(n.parent))&&!anc[n.id]).map(n=>n.id);
   Object.keys(kidsOf).forEach(pid=>{App.state.store.kids[pid]=kidsOf[pid];if(firstLoad||prevExpanded.has(+pid))App.state.store.expanded.add(+pid);});  // auto-expand first load; otherwise preserve manual expand/collapse
-  for(const id of [...bulkSel])if(!inSet.has(id))App.state.bulkSel.delete(id);   // drop selections that no longer match the filter
+  for(const id of [...App.state.bulkSel])if(!inSet.has(id))App.state.bulkSel.delete(id);   // drop selections that no longer match the filter
   updateBulkBar();
   const ts=$('tree').scrollTop;
   App.tree.renderTree();                          // keep the tree DOM current (cheap, from App.state.store)

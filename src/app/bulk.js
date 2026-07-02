@@ -35,7 +35,7 @@ function clearBulk(){
   App.graph.syncGraphBulk();
 }
 function syncBulkBarValues() {
-  const ids = [...bulkSel];
+  const ids = [...App.state.bulkSel];
   if (!ids.length) return;
 
   const firstNode = App.state.store.nodes[ids[0]];
@@ -160,7 +160,7 @@ function wireTreeDnD(){
   t.addEventListener('dragstart',e=>{
     const row=e.target.closest&&e.target.closest('.trow[data-id]');if(!row)return;
     const id=+row.dataset.id;
-    dragIds=(App.state.bulkSel.has(id)&&App.state.bulkSel.size>1)?[...bulkSel]:[id];
+    dragIds=(App.state.bulkSel.has(id)&&App.state.bulkSel.size>1)?[...App.state.bulkSel]:[id];
     try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(id));}catch(_){}
     dragIds.forEach(d=>{const el=t.querySelector('.trow[data-id="'+d+'"]');if(el)el.classList.add('dragging');});
   });
@@ -236,7 +236,7 @@ function syncSidebarField(field, ids) {
 }
 
 async function bulkApply(field,val){
-  const ids=[...bulkSel];if(!ids.length)return;
+  const ids=[...App.state.bulkSel];if(!ids.length)return;
   if(field==='assigned'&&val==='me')val=currentUser||'me';
   
   let labelVal = val;

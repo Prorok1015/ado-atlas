@@ -393,7 +393,7 @@ async function quickSave(field){
     else body[field]=v[k];
   }
   if(!Object.keys(body).length&&!parentChanged)return;
-  const before={...orig},beforeParent=App.state.orig.parent,newParent=v.parent;
+  const before={...App.state.orig},beforeParent=App.state.orig.parent,newParent=v.parent;
   setSaveChip('saving');
   let r;
   try{
@@ -457,7 +457,7 @@ async function save(){
     }
   });
   if(!Object.keys(body).length){setStatus('no changes');return;}
-  const before={...orig};
+  const before={...App.state.orig};
   const sv=$('s_save');sv.disabled=true;sv.textContent='Saving…';setSaveChip('saving');loadStart('saving…');
   let r;
   try{

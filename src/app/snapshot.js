@@ -18,7 +18,7 @@
     try {
       if (App.state.store.roots.length > 1500 || Object.keys(App.state.store.nodes).length > 4000) return;   // skip very large views
       const key = await snapKey(); if (!key) return;
-      await chrome.storage.local.set({ [key]: { roots: App.state.store.roots, top: App.state.store.top || App.state.store.roots, nodes: App.state.store.nodes, kids: App.state.store.kids, expanded: [...store.expanded], ts: Date.now() } });
+      await chrome.storage.local.set({ [key]: { roots: App.state.store.roots, top: App.state.store.top || App.state.store.roots, nodes: App.state.store.nodes, kids: App.state.store.kids, expanded: [...App.state.store.expanded], ts: Date.now() } });
     } catch (e) { /* cache is best-effort */ }
   }
 

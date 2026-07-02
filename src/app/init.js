@@ -297,7 +297,7 @@ async function initialBoot(postSetup){
   $('bulk_clear').onclick=clearBulk;
   $('bulk_cust_btn').onclick=()=>{ showCustomize(); setCustomizeTab('bulk'); };
   $('bulk_follow_btn').onclick=async()=>{
-    const ids=[...bulkSel];
+    const ids=[...App.state.bulkSel];
     if(!ids.length)return;
     const { followedItems = {} } = await chrome.storage.local.get("followedItems");
     const { org, project } = await api.getConfig();
@@ -322,7 +322,7 @@ async function initialBoot(postSetup){
     syncBulkBarValues();
   };
   $('bulk_unfollow_btn').onclick=async()=>{
-    const ids=[...bulkSel];
+    const ids=[...App.state.bulkSel];
     if(!ids.length)return;
     const { followedItems = {} } = await chrome.storage.local.get("followedItems");
     ids.forEach(id=>{
