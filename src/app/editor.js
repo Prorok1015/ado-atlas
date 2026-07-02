@@ -241,7 +241,7 @@ function recordEditUndo(id,body,parentChanged,before,beforeParent,newParent){
     async()=>{if(hasFwd)await api.updateItem(id,body);if(parentChanged)await api.setParent(id,newParent);await afterUndo(id);});
 }
 
-// Shared post-PATCH visuals: keeps the tree row, store, and cytoscape node in
+// Shared post-PATCH visuals: keeps the tree row, App.state.store, and cytoscape node in
 // sync with whatever fields the PATCH just touched. Used by both save() (full
 // manual save) and quickSave() (single-field auto-save).
 function applyVisualSync(id,body,v){
@@ -249,7 +249,7 @@ function applyVisualSync(id,body,v){
   if(App.state.selRow&&body.state)App.state.selRow.querySelector('.badge').textContent=body.state;
   if(App.state.selRow&&('priority'in body)){let pc=App.state.selRow.querySelector('.prio');if(!pc){pc=document.createElement('span');pc.className='prio';App.state.selRow.insertBefore(pc,App.state.selRow.querySelector('.badge'));}pc.textContent='P'+body.priority;pc.style.background=prioColor(body.priority);}
   if(App.state.selRow&&('tags'in body)){App.state.selRow.querySelectorAll('.ttag').forEach(t=>t.remove());const bdg=App.state.selRow.querySelector('.badge');if(bdg){bdg.style.marginLeft='';const ts=tagList_(v.tags);if(ts.length){const show=ts.slice(0,3),extra=ts.length-show.length;bdg.style.marginLeft='0';show.forEach((t,i)=>{const tc=document.createElement('span');tc.className='ttag';tc.textContent=t;tc.style.background=personColor(t);tc.title=t;if(i===0)tc.style.marginLeft='auto';App.state.selRow.insertBefore(tc,bdg);});if(extra>0){const tc=document.createElement('span');tc.className='ttag';tc.textContent='+'+extra;tc.style.background='var(--muted)';App.state.selRow.insertBefore(tc,bdg);}}}}
-  if(store.nodes[id]){const s=store.nodes[id];s.title=v.title;s.state=v.state;
+  if(App.state.store.nodes[id]){const s=App.state.store.nodes[id];s.title=v.title;s.state=v.state;
     if('assigned'in body)s.assigned=body.assigned;
     if('priority'in body)s.priority=body.priority;
     if('iteration'in body)s.iteration=body.iteration;
@@ -258,7 +258,7 @@ function applyVisualSync(id,body,v){
     if('due'in body)s.due=v.due;
     if('estimate'in body)s.est=(v.est===''?null:Number(v.est));
     if('tags'in body)s.tags=v.tags;}
-  if(App.state.cy&&store.nodes[id]){const n=App.state.cy.getElementById(String(id));if(n.nonempty())n.data(Object.assign({},store.nodes[id]));}
+  if(App.state.cy&&App.state.store.nodes[id]){const n=App.state.cy.getElementById(String(id));if(n.nonempty())n.data(Object.assign({},App.state.store.nodes[id]));}
 }
 
 // Refresh the listing view if a saved field shifts WHERE the item appears.
@@ -437,7 +437,7 @@ async function quickSave(field){
 
   if(r&&r.rev) {
     FollowManager.updateItemRev(id,r.rev,App.state.orig.state,App.state.orig.title,App.state.orig.assigned);
-    if(store.nodes[id]) store.nodes[id].rev = r.rev;
+    if(App.state.store.nodes[id]) App.state.store.nodes[id].rev = r.rev;
   }
   refreshDirty();setSaveChip('saved');
   setStatus(`#${id} ${field} saved`+(r?` → rev ${r.rev}`:''));
@@ -476,7 +476,7 @@ async function save(){
   });
   if(r&&r.rev) {
     FollowManager.updateItemRev(id,r.rev,App.state.orig.state,App.state.orig.title,App.state.orig.assigned);
-    if(store.nodes[id]) store.nodes[id].rev = r.rev;
+    if(App.state.store.nodes[id]) App.state.store.nodes[id].rev = r.rev;
   }
   refreshDirty();setSaveChip('saved');setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
   postSaveRefresh(body,false);

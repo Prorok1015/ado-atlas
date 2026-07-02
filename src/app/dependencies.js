@@ -9,7 +9,7 @@
 // OUTSIDE this module (closePanel / openItem: `depsState.blockedBy=[];...`), so
 // the declaration cannot move here. We read/mutate it bare at call time.
 //
-// Reads/writes other bare globals at call time ($, store, App.state.cur, App.state.cy, App.state.mode,
+// Reads/writes other bare globals at call time ($, App.state.store, App.state.cur, App.state.cy, App.state.mode,
 // App.state.edgeMode, App.state.depCache, api, tyColor, htmlEsc, loadStart, loadEnd, setStatus,
 // openItem, pushAction, denyOnForbidden, createCardPicker, depsState) and the
 // bare picker helpers depAdderProvider / depPickerOnChange (card-picker.js).
@@ -34,7 +34,7 @@
   // hasn't loaded resolve lazily via api.item — same pattern as the parent card.
   function renderDeps(){
     const chip=(id,dir)=>{
-      const n=store.nodes[id];
+      const n=App.state.store.nodes[id];
       const ty=n?tyColor(n.type):'#95a5a6';
       const ttl=n?htmlEsc(n.title||''):'';
       return `<span class="depchip"><i class="dot" style="background:${ty}"></i>`+
@@ -48,10 +48,10 @@
     bk.innerHTML=depsState.blocks.length?depsState.blocks.map(id=>chip(id,'blocks')).join(''):'<span class="pcnone">(none)</span>';
     document.querySelectorAll('#s_deps .depchip b[data-dir]').forEach(x=>x.onclick=()=>removeDepLink(App.state.cur,+x.dataset.id,x.dataset.dir));
     document.querySelectorAll('#s_deps .depopen').forEach(a=>a.onclick=(e)=>{e.preventDefault();openItem(+a.dataset.id);});
-    // Lazy-load titles for ids not yet in the store (a single GET per id, cached on success)
-    const missing=[...depsState.blockedBy,...depsState.blocks].filter(id=>!store.nodes[id]);
+    // Lazy-load titles for ids not yet in the App.state.store (a single GET per id, cached on success)
+    const missing=[...depsState.blockedBy,...depsState.blocks].filter(id=>!App.state.store.nodes[id]);
     missing.forEach(id=>{api.item(id).then(it=>{
-      if(it&&it.id){store.nodes[it.id]=store.nodes[it.id]||it;if(App.state.cur!=null)renderDeps();}
+      if(it&&it.id){App.state.store.nodes[it.id]=App.state.store.nodes[it.id]||it;if(App.state.cur!=null)renderDeps();}
     }).catch(()=>{});});
     // Keep the adder pickers in sync with the current list (so they exclude linked items)
     depBlockedByPicker.render();depBlocksPicker.render();

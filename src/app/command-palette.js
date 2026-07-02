@@ -4,7 +4,7 @@
 // and the drawPalette/highlightPalette/paletteMatches helpers stay private.
 // Registry actions call already-namespaced modules (App.create/App.settings/
 // App.export/App.setup); other deps (runUndo/runRedo/refresh/clearBulk/openItem/
-// store/stateColor/htmlEsc/setStatus/$/LayerManager) are bare globals read at
+// App.state.store/stateColor/htmlEsc/setStatus/$/LayerManager) are bare globals read at
 // call time. Loads before src/app.js.
 (function (App) {
   'use strict';
@@ -33,7 +33,7 @@
     if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);out.push({kind:'open',title:'Open #'+id,run:()=>openItem(id)});}
     if(toks.length){                         // only match items once the user has typed something
       let n=0;
-      for(const node of Object.values(store.nodes)){
+      for(const node of Object.values(App.state.store.nodes)){
         const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
         if(toks.every(t=>hay.includes(t))){out.push({kind:node.type||'item',title:`#${node.id} ${node.title||''}`,state:node.state,run:()=>openItem(node.id)});if(++n>=40)break;}
       }

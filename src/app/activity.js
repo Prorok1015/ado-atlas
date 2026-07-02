@@ -10,7 +10,7 @@
 // panel close at app.js:2944) — referenced bare here, NOT declared.
 //
 // Reads/writes bare globals at call time: $, App.state.cur, currentComments, currentHistory,
-// activeCommentEditors, currentUser, api, store, refresh, setStatus, loadStart,
+// activeCommentEditors, currentUser, api, App.state.store, refresh, setStatus, loadStart,
 // loadEnd, htmlEsc, reactionCache, MarkdownEditor, personInitials, personColor,
 // mdToHtml, descRenderOpts, hydratePreviewImages, colorMentions, customConfirm,
 // pushAction, afterUndo, closePanel, updateCreateButtons, canCreateItem,

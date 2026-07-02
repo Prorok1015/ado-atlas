@@ -3,20 +3,20 @@
 // (selection sync) and by palette/filters (clearBulk/buildBulkControls) — so its
 // functions stay BARE globals (like loading/badges/sprint-utils), NOT namespaced,
 // to avoid churn at those bare call sites. Relocated from app.js (REFACTORING_PLAN.md).
-// Reads bare state (bulkSel/bulkAnchor/dragIds/store/App.state.mode/App.state.cur/…) + calls App.tree/
+// Reads bare state (App.state.bulkSel/bulkAnchor/dragIds/App.state.store/App.state.mode/App.state.cur/…) + calls App.tree/
 // App.graph/App.board render fns at call time. Loads before app.js.
 window.App = window.App || {};
 
 /* ---------- bulk multi-select (tree): Ctrl/Cmd-click toggles, Shift-click ranges ---------- */
 // Selectable elements of the active view (tree rows / board cards / timeline rows), in visual order.
 function bulkEls(){return [...document.querySelectorAll(App.state.mode==='board'?'#board .bcard[data-id]':App.state.mode==='timeline'?'#timeline .tlrow[data-id]':'#tree .trow[data-id]')];}
-function syncBulkRows(){                    // reflect bulkSel onto the rendered rows/cards (class + any checkbox)
+function syncBulkRows(){                    // reflect App.state.bulkSel onto the rendered rows/cards (class + any checkbox)
   document.querySelectorAll('#tree .trow[data-id], #board .bcard[data-id], #timeline .tlrow[data-id]').forEach(r=>{
-    const on=bulkSel.has(+r.dataset.id);r.classList.toggle('bulksel',on);
+    const on=App.state.bulkSel.has(+r.dataset.id);r.classList.toggle('bulksel',on);
     const cb=r.querySelector('.tcheck');if(cb)cb.checked=on;});
 }
-function bulkSet(ids,on){ids.forEach(id=>{if(on)bulkSel.add(id);else bulkSel.delete(id);});updateBulkBar();syncBulkRows();App.graph.syncGraphBulk();}
-function bulkToggle(id){const on=!bulkSel.has(id);bulkSet([id],on);bulkAnchor=id;bulkAnchorOn=on;}
+function bulkSet(ids,on){ids.forEach(id=>{if(on)App.state.bulkSel.add(id);else App.state.bulkSel.delete(id);});updateBulkBar();syncBulkRows();App.graph.syncGraphBulk();}
+function bulkToggle(id){const on=!App.state.bulkSel.has(id);bulkSet([id],on);bulkAnchor=id;bulkAnchorOn=on;}
 function bulkRange(toId){                    // apply the anchor's action (select OR deselect) to the whole range
   const ids=bulkEls().map(r=>+r.dataset.id);
   const b=ids.indexOf(toId);if(b<0)return;
@@ -24,7 +24,7 @@ function bulkRange(toId){                    // apply the anchor's action (selec
   bulkSet(ids.slice(Math.min(a,b),Math.max(a,b)+1),bulkAnchorOn);
 }
 function clearBulk(){
-  bulkSel.clear();
+  App.state.bulkSel.clear();
   bulkAnchor=null;
   if(window.bulkTagsEditor) bulkTagsEditor.set('', true);
   if($('bulk_start')) $('bulk_start').value='';
@@ -38,7 +38,7 @@ function syncBulkBarValues() {
   const ids = [...bulkSel];
   if (!ids.length) return;
 
-  const firstNode = store.nodes[ids[0]];
+  const firstNode = App.state.store.nodes[ids[0]];
   if (!firstNode) return;
 
   let commonState = firstNode.state;
@@ -50,7 +50,7 @@ function syncBulkBarValues() {
   let commonTarget = firstNode.target;
 
   for (let i = 1; i < ids.length; i++) {
-    const n = store.nodes[ids[i]];
+    const n = App.state.store.nodes[ids[i]];
     if (!n) continue;
     if (n.state !== commonState) commonState = null;
     if (n.priority !== commonPriority) commonPriority = null;
@@ -116,7 +116,7 @@ function syncBulkBarValues() {
 }
 
 function updateBulkBar(){
-  const n=bulkSel.size;
+  const n=App.state.bulkSel.size;
   $('bulkbar').style.display=n?'flex':'none';
   $('bulk_count').textContent=n+' selected';
   if (n) {
@@ -127,7 +127,7 @@ function updateBulkBar(){
 /* ---------- tree drag-to-re-parent (single or bulk) ---------- */
 function descendantsOf(ids){                 // loaded descendants of ids (to block cycles)
   const set=new Set(),stack=[...ids];
-  while(stack.length){const id=stack.pop();(store.kids[id]||[]).forEach(c=>{if(!set.has(c)){set.add(c);stack.push(c);}});}
+  while(stack.length){const id=stack.pop();(App.state.store.kids[id]||[]).forEach(c=>{if(!set.has(c)){set.add(c);stack.push(c);}});}
   return set;
 }
 function canDrop(ids,targetId){              // targetId==='' means drop to root
@@ -136,9 +136,9 @@ function canDrop(ids,targetId){              // targetId==='' means drop to root
   return !descendantsOf(ids).has(targetId);                     // …or under its own descendant (cycle)
 }
 async function doReparent(ids,targetId){     // targetId: an id, or '' for root
-  ids=ids.filter(id=>id!==targetId&&store.nodes[id]);
+  ids=ids.filter(id=>id!==targetId&&App.state.store.nodes[id]);
   if(!ids.length||!canDrop(ids,targetId))return;
-  const olds=ids.map(id=>({id,old:(store.nodes[id].parent!=null?store.nodes[id].parent:'')}));
+  const olds=ids.map(id=>({id,old:(App.state.store.nodes[id].parent!=null?App.state.store.nodes[id].parent:'')}));
   if(ids.every((id,i)=>String(olds[i].old)===String(targetId)))return;   // already there → no-op
   loadStart(`re-parenting ${ids.length} item(s)…`);
   const res=await api.pool(ids.map(id=>async()=>{try{await api.setParent(id,targetId);return true;}catch(e){return false;}}),6);
@@ -147,7 +147,7 @@ async function doReparent(ids,targetId){     // targetId: an id, or '' for root
   if(ok)pushAction(`re-parent ${ids.length} item(s)`,
     async()=>{await api.pool(olds.map(o=>async()=>{try{await api.setParent(o.id,o.old);}catch(e){}}),6);await afterUndo(null);},
     async()=>{await api.pool(ids.map(id=>async()=>{try{await api.setParent(id,targetId);}catch(e){}}),6);await afterUndo(null);});
-  if(targetId!=='')store.expanded.add(+targetId);              // reveal the moved items under the new parent
+  if(targetId!=='')App.state.store.expanded.add(+targetId);              // reveal the moved items under the new parent
   setStatus(`re-parented ${ok} item(s)`+(targetId!==''?` under #${targetId}`:' to root')+(fail?`, ${fail} failed`:''),!!fail);
   await refresh();
 }
@@ -160,7 +160,7 @@ function wireTreeDnD(){
   t.addEventListener('dragstart',e=>{
     const row=e.target.closest&&e.target.closest('.trow[data-id]');if(!row)return;
     const id=+row.dataset.id;
-    dragIds=(bulkSel.has(id)&&bulkSel.size>1)?[...bulkSel]:[id];
+    dragIds=(App.state.bulkSel.has(id)&&App.state.bulkSel.size>1)?[...bulkSel]:[id];
     try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(id));}catch(_){}
     dragIds.forEach(d=>{const el=t.querySelector('.trow[data-id="'+d+'"]');if(el)el.classList.add('dragging');});
   });
@@ -190,7 +190,7 @@ function buildBulkControls(){            // (re)fill the bar's dropdowns from lo
 }
 function syncSidebarField(field, ids) {
   if (App.state.cur == null || !ids.includes(App.state.cur)) return;
-  const d = store.nodes[App.state.cur];
+  const d = App.state.store.nodes[App.state.cur];
   if (!d) return;
 
   if (field === 'state') {
@@ -260,7 +260,7 @@ async function bulkApply(field,val){
   let htmlVal = `<span class="tagchip" style="background:var(--accent); margin:0 4px; display:inline-flex; vertical-align:middle; font-weight:600; border-radius:14px; padding:3px 10px; color:#fff;">${htmlEsc(labelVal)}</span>`;
   let itemsListHtml = '<div style="margin-top:10px; max-height:150px; overflow-y:auto; border:1px solid var(--line); border-radius:6px; padding:8px; background:var(--panel2); text-align:left;">';
   ids.forEach(id => {
-    const node = store.nodes[id];
+    const node = App.state.store.nodes[id];
     const title = node ? node.title : '';
     const type = node ? node.type : '';
     itemsListHtml += `<div style="margin-bottom:6px; font-size:12px; display:flex; align-items:center; gap:6px;">` +
@@ -297,7 +297,7 @@ async function bulkApply(field,val){
     const oldsList = [];
     
     for (const id of ids) {
-      const node = store.nodes[id];
+      const node = App.state.store.nodes[id];
       const itemOpsList = [];
       const itemUndoOpsList = [];
       

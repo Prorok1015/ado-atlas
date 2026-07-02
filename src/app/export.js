@@ -1,14 +1,14 @@
 // Export the current (filtered) view to CSV / JSON.
 // First Phase-1 leaf module of the App.* refactor (REFACTORING_PLAN.md):
 // IIFE that publishes its public API on App.export. Internal helpers stay
-// private. Reads bare globals `store` and `setStatus` at call time (still
+// private. Reads bare globals `App.state.store` and `setStatus` at call time (still
 // declared in app.js, loaded after this module). Loads before app.js.
 (function (App) {
   'use strict';
 
   const EXPORT_COLS = ['id','type','title','state','assigned','priority','iteration','parent','start','target','est','tags'];
 
-  function exportRows() { return store.roots.map(id => store.nodes[id]).filter(Boolean); }
+  function exportRows() { return App.state.store.roots.map(id => App.state.store.nodes[id]).filter(Boolean); }
 
   function downloadFile(name, mime, text) {
     const url = URL.createObjectURL(new Blob([text], { type: mime }));

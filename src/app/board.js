@@ -7,7 +7,7 @@
      hh, colMeta, _sprint, iterCache, DONE_STATES, BOARD_TIME_CAP
    - badges (app/badges.js): badgeOn, BADGE_FIELDS_BY_VIEW
    - core state / helpers (app.js): $, htmlEsc, setStatus, openItem, refresh, loadStart, loadEnd,
-     api, window.i18n, customConfirm, App.state.cy, mode, store, bulkSel, App.state.cur, boardBusy, pdrag, boardScroll,
+     api, window.i18n, customConfirm, App.state.cy, mode, App.state.store, App.state.bulkSel, App.state.cur, boardBusy, pdrag, boardScroll,
      boardGroup, openSprintPath, projectStates, sprintPaths, sprintNames, pinnedSprints,
      TYPE_COLOR, tyColor, stateColor, prioColor, orderStates, cmpBySort, hexToRgb,
      App.state.boardToken, tzOffset, capNote, projectName, newSprints, canCreateSprint, suppressClick,
@@ -56,7 +56,7 @@
     const el=$('board');el.innerHTML='';
     const today=new Date().toISOString().slice(0,10);
     const info={},finish={};iters.forEach(it=>{info[it.path]=it;finish[it.path]=it.finish;});
-    const items=store.roots.map(id=>store.nodes[id]).filter(Boolean);   // SAME data as tree/graph
+    const items=App.state.store.roots.map(id=>App.state.store.nodes[id]).filter(Boolean);   // SAME data as tree/graph
     if(boardGroup==='assignee'){renderBoardByAssignee(el,items);setStatus(`${items.length} items`+capNote());annotateBoardTimes();return;}
     if(boardGroup==='state'){renderBoardByState(el,items);setStatus(`${items.length} items`+capNote());annotateBoardTimes();return;}
     const groups=new Map();
@@ -158,7 +158,7 @@
   function boardCard(n,finish,today){
     const due=n.target?n.target.slice(0,10):(finish?finish.slice(0,10):null);
     const overdue=due&&due<today&&!DONE_STATES.includes(n.state);
-    const c=document.createElement('div');c.className='bcard'+(overdue?' overdue':'')+(bulkSel.has(n.id)?' bulksel':'');
+    const c=document.createElement('div');c.className='bcard'+(overdue?' overdue':'')+(App.state.bulkSel.has(n.id)?' bulksel':'');
     c.style.borderLeftColor=tyColor(n.type);   // left marker = item TYPE colour
     c.dataset.id=n.id;c.dataset.est=(n.est!=null?n.est:'');
     // Gate each badge by the board's per-field toggle (in the Controls header).
@@ -191,26 +191,26 @@
   async function moveCard(id,field,val){            // field: 'iteration' | 'assigned' | 'state'
     boardBusy=true;loadStart('moving #'+id+'…');
     const card=document.querySelector('.bcard[data-id="'+id+'"]');if(card)card.classList.add('moving');
-    const old=store.nodes[id]?store.nodes[id][field]:'';   // snapshot for undo (still the pre-move value here)
+    const old=App.state.store.nodes[id]?App.state.store.nodes[id][field]:'';   // snapshot for undo (still the pre-move value here)
     try{
       const body={};body[field]=val;
       const r=await api.updateItem(id,body);
-      if(store.nodes[id])store.nodes[id][field]=val;   // node uses the same key names (iteration/assigned/state)
+      if(App.state.store.nodes[id])App.state.store.nodes[id][field]=val;   // node uses the same key names (iteration/assigned/state)
       pushAction('move #'+id,
         async()=>{await api.updateItem(id,{[field]:(old==null?'':old)});await afterUndo(id);},
         async()=>{await api.updateItem(id,{[field]:val});await afterUndo(id);});
       setStatus('#'+id+' moved → rev '+r.rev);
     }catch(e){setStatus('ERROR: '+e.message,true);}
     boardBusy=false;loadEnd();
-    renderBoard();                                   // regroup from the (now updated) store
+    renderBoard();                                   // regroup from the (now updated) App.state.store
   }
   // Bulk move: drag a selected card → move every selected card to the dropped column.
   async function moveCards(ids,field,val){
-    ids=ids.filter(id=>store.nodes[id]&&String(store.nodes[id][field]||'')!==String(val));   // skip ones already there
+    ids=ids.filter(id=>App.state.store.nodes[id]&&String(App.state.store.nodes[id][field]||'')!==String(val));   // skip ones already there
     if(!ids.length)return;
-    const olds=ids.map(id=>({id,old:store.nodes[id][field]}));
+    const olds=ids.map(id=>({id,old:App.state.store.nodes[id][field]}));
     boardBusy=true;loadStart(`moving ${ids.length} item(s)…`);
-    const res=await api.pool(ids.map(id=>async()=>{try{await api.updateItem(id,{[field]:val});if(store.nodes[id])store.nodes[id][field]=val;return true;}catch(e){return false;}}),6);
+    const res=await api.pool(ids.map(id=>async()=>{try{await api.updateItem(id,{[field]:val});if(App.state.store.nodes[id])App.state.store.nodes[id][field]=val;return true;}catch(e){return false;}}),6);
     boardBusy=false;loadEnd();
     const ok=res.filter(Boolean).length,fail=res.length-ok;
     if(ok)pushAction(`move ${ids.length} item(s)`,
@@ -230,12 +230,12 @@
       if(Math.abs(e.clientX-pdrag.sx)+Math.abs(e.clientY-pdrag.sy)<5)return;   // movement threshold
       pdrag.active=true;
       const r=pdrag.card.getBoundingClientRect();
-      const bulk=bulkSel.has(pdrag.id)&&bulkSel.size>1;
+      const bulk=App.state.bulkSel.has(pdrag.id)&&App.state.bulkSel.size>1;
       const cl=pdrag.card.cloneNode(true);cl.className='bcard drag-ghost'+(bulk?' bulk':'');cl.style.width=r.width+'px';
-      if(bulk){const b=document.createElement('span');b.className='dgcount';b.textContent=bulkSel.size;cl.appendChild(b);}   // count badge
+      if(bulk){const b=document.createElement('span');b.className='dgcount';b.textContent=App.state.bulkSel.size;cl.appendChild(b);}   // count badge
       document.body.appendChild(cl);pdrag.clone=cl;
       // dim every card being moved (the whole selection on a bulk drag)
-      pdrag.dragEls=bulk?[...document.querySelectorAll('#board .bcard[data-id]')].filter(el=>bulkSel.has(+el.dataset.id)):[pdrag.card];
+      pdrag.dragEls=bulk?[...document.querySelectorAll('#board .bcard[data-id]')].filter(el=>App.state.bulkSel.has(+el.dataset.id)):[pdrag.card];
       pdrag.dragEls.forEach(el=>el.classList.add('dragging'));
       $('board').classList.add('drag');document.body.style.cursor='grabbing';
     }
@@ -253,16 +253,16 @@
     if(d.hot)d.hot.classList.remove('dropover');
     suppressClick=true;setTimeout(()=>{suppressClick=false;},30);   // swallow the click that follows a drag
     const col=d.hot;if(!col)return;
-    const bulk=bulkSel.has(d.id)&&bulkSel.size>1;                     // dragged a selected card → move the whole selection
+    const bulk=App.state.bulkSel.has(d.id)&&App.state.bulkSel.size>1;                     // dragged a selected card → move the whole selection
     const dropIds=bulk?[...bulkSel]:[d.id];
     if(col.classList.contains('addcol')){                            // dropped on "＋ New sprint" → create, then move them in
       pendingSprintItems=dropIds;App.sprint.showSprintModal();return;
     }
     const field=col.dataset.field,val=col.dataset.val||'';
-    const node=store.nodes[d.id],curVal=node?(node[field]||''):'';   // field: iteration | assigned | state
+    const node=App.state.store.nodes[d.id],curVal=node?(node[field]||''):'';   // field: iteration | assigned | state
     if(val===curVal&&!bulk)return;
     if(field==='iteration'){const it=_sprint(val),fin=it&&it.finish?it.finish.slice(0,10):null,today=new Date().toISOString().slice(0,10);
-      if(fin&&fin<today&&!await customConfirm(window.i18n.t('move.sprintEndedConfirm', {sprint:it.name, date:fin, what:bulk?window.i18n.t('move.nItems',{count:bulkSel.size}):('#'+d.id)}), window.i18n.t('move.confirmTitle')))return;}
+      if(fin&&fin<today&&!await customConfirm(window.i18n.t('move.sprintEndedConfirm', {sprint:it.name, date:fin, what:bulk?window.i18n.t('move.nItems',{count:App.state.bulkSel.size}):('#'+d.id)}), window.i18n.t('move.confirmTitle')))return;}
     if(bulk)moveCards([...bulkSel],field,val);else moveCard(d.id,field,val);
   });
 
@@ -274,7 +274,7 @@
     const N=Math.max(1,Math.round((f0-s0)/DAY)+1);
     const todayIdx=Math.round((Date.parse(new Date().toISOString().slice(0,10))-s0)/DAY);
     const showToday=todayIdx>=0&&todayIdx<N, todayLeft=(todayIdx+0.5)/N*100;
-    const items=store.roots.map(id=>store.nodes[id]).filter(n=>n&&n.iteration===path);
+    const items=App.state.store.roots.map(id=>App.state.store.nodes[id]).filter(n=>n&&n.iteration===path);
     const el=$('sprintview');el.innerHTML='';
     const se=items.reduce((s,n)=>s+(n.est||0),0);
     const top=document.createElement('div');top.className='gtop';

@@ -3,7 +3,7 @@
 // publishing App.timeline.render; tlDates/tlKey/tlMonths stay private. The
 // constants TL_DAY/TL_PX and the shared tlLabelWidth (also driven by the column
 // resizer) remain bare globals in app.js and are read here at call time, along
-// with store/$/_sprint/getIterations/badgeOn/colour helpers/etc. Loads before app.js.
+// with App.state.store/$/_sprint/getIterations/badgeOn/colour helpers/etc. Loads before app.js.
 (function (App) {
   'use strict';
 
@@ -37,7 +37,7 @@
     const iters=await getIterations();                // for the sprint-date fallback + sprint grouping
     if(token!==App.state.tlToken)return;
     const el=$('timeline');el.innerHTML='';
-    const items=store.roots.map(id=>store.nodes[id]).filter(Boolean);
+    const items=App.state.store.roots.map(id=>App.state.store.nodes[id]).filter(Boolean);
     const dated=[],undated=[];
     items.forEach(n=>{const d=tlDates(n);if(d){n._tl=d;dated.push(n);}else undated.push(n);});
     if(!dated.length){
@@ -88,7 +88,7 @@
     const rowHTML=(n,sp)=>{const t=n._tl,oos=sp&&(t.s<sp.s||t.e>sp.e);
       const tip=`${n.start?prettyDate(n.start):(t.soft?'sprint start':'?')} → ${(n.target||n.due)?prettyDate(n.target||n.due):(t.soft?'sprint finish':'?')}`+(oos?'  dates fall outside the sprint':'');
       const prefix=(showTlPrio&&n.priority)?('P'+n.priority+' '):'';
-      return `<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${htmlEsc(tip)}">${htmlEsc(prefix)}#${n.id} ${htmlEsc(n.title)}</div></div></div>`;};
+      return `<div class="tlrow${App.state.bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${htmlEsc(tip)}">${htmlEsc(prefix)}#${n.id} ${htmlEsc(n.title)}</div></div></div>`;};
     const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
     const groupHead=(k,arr,sp)=>{
       let label=htmlEsc(k)+' · '+arr.length,track;
@@ -105,7 +105,7 @@
       dated.sort(byStart).forEach(n=>{rows+=rowHTML(n);});
       if(undated.length){
         rows+=`<div class="tlgrouprow"><div class="tlgrouplabel" style="width:${LW}px">No dates · ${undated.length}</div><div class="tlgrouptrack" style="width:${W}px"></div></div>`;
-        undated.sort((a,b)=>a.id-b.id).forEach(n=>{rows+=`<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
+        undated.sort((a,b)=>a.id-b.id).forEach(n=>{rows+=`<div class="tlrow${App.state.bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
       }
     }else{
       const groups=new Map();
@@ -119,7 +119,7 @@
         if(App.state.tlGroup==='sprint'&&gDated.length){const it=_sprint(gDated[0].iteration);if(it&&it.start&&it.finish)sp={s:Date.parse(it.start.slice(0,10)),e:Date.parse(it.finish.slice(0,10))};}
         rows+=groupHead(k,arr,sp);
         gDated.forEach(n=>{rows+=rowHTML(n,sp);});
-        gUndated.forEach(n=>{rows+=`<div class="tlrow${bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
+        gUndated.forEach(n=>{rows+=`<div class="tlrow${App.state.bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><span class="tlnodate">— no dates —</span></div></div>`;});
       });
     }
     const prevScroll=el.scrollLeft;                  // preserve horizontal scroll across re-renders

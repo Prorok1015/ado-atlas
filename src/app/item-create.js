@@ -2,7 +2,7 @@
 // Phase-1 feature module of the App.* refactor (REFACTORING_PLAN.md): IIFE
 // publishing App.create. The card-picker instances parentNew/assignedNew/
 // sprintNew are created in the boot wiring and stay bare globals (read here at
-// call time), along with api/store/$/getIterations/refresh/openItem/etc.
+// call time), along with api/App.state.store/$/getIterations/refresh/openItem/etc.
 // App.types.fillTypeSelect is already namespaced. Loads before app.js.
 (function (App) {
   'use strict';
@@ -50,7 +50,7 @@
     let r; try { r = await api.createItem(body); }
     catch (e) { if (denyOnForbidden(e, 'create work items')) { closeNewItem(); } else $('newitem-err').textContent = 'ERROR: ' + e.message; btn.disabled = false; btn.textContent = 'Create'; loadEnd(); return; }
     btn.disabled = false; btn.textContent = 'Create'; loadEnd();
-    if (body.parent != null) delete store.kids[body.parent];   // parent's child list is now stale
+    if (body.parent != null) delete App.state.store.kids[body.parent];   // parent's child list is now stale
     recordCreateUndo(r.id, body);
     closeNewItem();
     setStatus(`created #${r.id} (${type})` + (body.parent != null ? ` under #${body.parent}` : ' (top-level)'));

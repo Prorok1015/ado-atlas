@@ -1,7 +1,7 @@
 // Last-snapshot cache for an instant first paint.
 // Phase-1 leaf module of the App.* refactor (REFACTORING_PLAN.md):
 // IIFE that publishes its public API on App.snapshot. The internal helper
-// `snapKey` stays private. Reads bare globals (`api`, `store`, `setStatus`,
+// `snapKey` stays private. Reads bare globals (`api`, `App.state.store`, `setStatus`,
 // `renderTree`, `chrome`) at call time — they remain declared in app.js,
 // which loads after this module.
 (function (App) {
@@ -16,9 +16,9 @@
 
   async function saveSnapshot() {
     try {
-      if (store.roots.length > 1500 || Object.keys(store.nodes).length > 4000) return;   // skip very large views
+      if (App.state.store.roots.length > 1500 || Object.keys(App.state.store.nodes).length > 4000) return;   // skip very large views
       const key = await snapKey(); if (!key) return;
-      await chrome.storage.local.set({ [key]: { roots: store.roots, top: store.top || store.roots, nodes: store.nodes, kids: store.kids, expanded: [...store.expanded], ts: Date.now() } });
+      await chrome.storage.local.set({ [key]: { roots: App.state.store.roots, top: App.state.store.top || App.state.store.roots, nodes: App.state.store.nodes, kids: App.state.store.kids, expanded: [...store.expanded], ts: Date.now() } });
     } catch (e) { /* cache is best-effort */ }
   }
 
@@ -28,10 +28,10 @@
       const r = await chrome.storage.local.get([key]); const d = r[key];
       if (!d || !d.roots || !d.roots.length) return false;
       if (d.ts && (Date.now() - d.ts) > 86400000) return false;   // ignore snapshots older than 24h
-      store.nodes = d.nodes || {}; store.roots = d.roots; store.top = d.top || d.roots; store.kids = d.kids || {}; store.expanded = new Set(d.expanded || []);
+      App.state.store.nodes = d.nodes || {}; App.state.store.roots = d.roots; App.state.store.top = d.top || d.roots; App.state.store.kids = d.kids || {}; App.state.store.expanded = new Set(d.expanded || []);
       App.tree.renderTree();                              // instant tree from the cached snapshot
       const age = Math.round((Date.now() - (d.ts || Date.now())) / 60000);
-      setStatus(store.roots.length + ' item(s) · cached' + (age > 0 ? (' ' + age + 'm ago') : '') + ' — refreshing…');
+      setStatus(App.state.store.roots.length + ' item(s) · cached' + (age > 0 ? (' ' + age + 'm ago') : '') + ' — refreshing…');
       return true;
     } catch (e) { return false; }
   }

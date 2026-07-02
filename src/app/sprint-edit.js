@@ -14,7 +14,7 @@ function updatePendingSprintItems() {
     container.style.display = 'block';
     list.innerHTML = '';
     pendingSprintItems.forEach(id => {
-      const n = store.nodes[id];
+      const n = App.state.store.nodes[id];
       if (!n) return;
       const row = document.createElement('div');
       row.style.cssText = 'display:flex; align-items:center; gap:6px; font-size:12px; margin-bottom:4px; padding:4px 6px; background:var(--panel2); border-radius:4px; border:1px solid var(--line);';
@@ -142,8 +142,8 @@ async function createSprintSubmit(){
       newSprints.add(newPath);                                    // keep the new column visible
       let moved=0;
       if(pend&&pend.length){                                      // move the dropped cards into the new sprint
-        const olds=pend.map(id=>({id,old:(store.nodes[id]?store.nodes[id].iteration:'')}));
-        const res=await api.pool(pend.map(id=>async()=>{try{await api.updateItem(id,{iteration:newPath});if(store.nodes[id])store.nodes[id].iteration=newPath;return true;}catch(e){return false;}}),6);
+        const olds=pend.map(id=>({id,old:(App.state.store.nodes[id]?App.state.store.nodes[id].iteration:'')}));
+        const res=await api.pool(pend.map(id=>async()=>{try{await api.updateItem(id,{iteration:newPath});if(App.state.store.nodes[id])App.state.store.nodes[id].iteration=newPath;return true;}catch(e){return false;}}),6);
         moved=res.filter(Boolean).length;
         if(moved)pushAction(`move ${moved} item(s) → ${name}`,
           async()=>{await api.pool(olds.map(o=>async()=>{try{await api.updateItem(o.id,{iteration:(o.old==null?'':o.old)});}catch(e){}}),6);await afterUndo(null);},

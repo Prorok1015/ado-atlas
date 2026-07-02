@@ -191,13 +191,13 @@ function itemPickerProvider(getExclude){
         }
         return;
       }
-      const n=store.nodes[v];
+      const n=App.state.store.nodes[v];
       if(n && n.title){card.innerHTML=parentCardHtml(n, isBulk);return;}
       card.innerHTML=`<i class="dot" style="background:#95a5a6"></i><span class="pcid">#${v}</span>` + (!isBulk ? `<span class="pctitle pcnone">${htmlEsc(CP_L('picker.loading', 'loading…'))}</span>` : '');
       const want=v;                               // resolve the title for an item that isn't in the loaded tree
       api.item(v).then(it=>{
         if(card.dataset.val!==want)return;
-        if (it) { store.nodes[it.id] = Object.assign(store.nodes[it.id] || {}, it); }
+        if (it) { App.state.store.nodes[it.id] = Object.assign(App.state.store.nodes[it.id] || {}, it); }
         card.innerHTML=parentCardHtml(it, isBulk);
       })
       .catch(()=>{
@@ -209,9 +209,9 @@ function itemPickerProvider(getExclude){
     localRows(q){
       q=(q||'').trim().toLowerCase();const toks=q.split(/\s+/).filter(Boolean),ex=getExclude();
       const out=[{value:'',html:`<span class="pkind">—</span><span class="ptitle pcnone">${htmlEsc(CP_L('picker.parent.none', '(no parent)'))}</span>`}];
-      if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);if(id!==ex&&!store.nodes[id])out.push({value:String(id),raw:true,html:`<span class="pkind">id</span><span class="ptitle">${htmlEsc(CP_L('picker.useId', 'Use #'+id, { id: id }))}</span>`});}
+      if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);if(id!==ex&&!App.state.store.nodes[id])out.push({value:String(id),raw:true,html:`<span class="pkind">id</span><span class="ptitle">${htmlEsc(CP_L('picker.useId', 'Use #'+id, { id: id }))}</span>`});}
       let n=0;
-      for(const node of Object.values(store.nodes)){
+      for(const node of Object.values(App.state.store.nodes)){
         if(ex!=null&&node.id===ex)continue;         // an item can't be its own parent
         const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
         if(!toks.length||toks.every(t=>hay.includes(t))){out.push(itemRow(node));if(++n>=40)break;}
@@ -226,7 +226,7 @@ function itemPickerProvider(getExclude){
         const found=await itemApiSearch(term);
         const have=new Set(rows.filter(r=>r.value&&!r.raw).map(r=>r.value)),extra=[];
         found.slice(0,30).forEach(it=>{if(!it||!it.id||it.id===ex)return;
-          store.nodes[it.id]=store.nodes[it.id]||it;
+          App.state.store.nodes[it.id]=App.state.store.nodes[it.id]||it;
           const k=String(it.id);if(!have.has(k)){extra.push(itemRow(it));have.add(k);}});
         return rows.filter(r=>!(r.raw&&have.has(r.value))).concat(extra);   // drop "Use #id" once it resolved
       };

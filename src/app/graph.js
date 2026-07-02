@@ -6,8 +6,8 @@
 // persistence, bulk-highlight sync, and the "drag a stub to create a dep link"
 // interaction.
 //
-// Reads/mutates bare globals at call time: App.state.cy, App.state.mode, App.state.edgeMode, App.state.rankDir, store,
-// App.state.depCache, App.state.renderToken, App.state.maxNodesLimit, projectName, bulkSel, api, TYPE_COLOR,
+// Reads/mutates bare globals at call time: App.state.cy, App.state.mode, App.state.edgeMode, App.state.rankDir, App.state.store,
+// App.state.depCache, App.state.renderToken, App.state.maxNodesLimit, projectName, App.state.bulkSel, api, TYPE_COLOR,
 // $, setStatus, openItem, loadStart, loadEnd, window.i18n, cytoscape (via
 // App.state.cy.layout dagre). Calls bare helpers defined elsewhere: ensureKids,
 // bulkToggle, customConfirm, reachable, and the card-picker.js badge helpers
@@ -25,13 +25,13 @@
   'use strict';
 
   async function expandNode(id){
-    // double-click a graph node -> toggle expansion in the shared store (same
+    // double-click a graph node -> toggle expansion in the shared App.state.store (same
     // api.children the tree uses); collapse if already expanded.
-    id=Number(id);                          // keep id numeric to match store keys
-    if(store.expanded.has(id)){store.expanded.delete(id);renderGraph({fit:true});return;}
+    id=Number(id);                          // keep id numeric to match App.state.store keys
+    if(App.state.store.expanded.has(id)){App.state.store.expanded.delete(id);renderGraph({fit:true});return;}
     loadStart('expanding #'+id+'…');
     try{const kids=await ensureKids(id);
-      store.expanded.add(id);renderGraph({fit:true});
+      App.state.store.expanded.add(id);renderGraph({fit:true});
       setStatus(`#${id}: +${kids.length} child(ren)`);
     }finally{loadEnd();}
   }
@@ -219,7 +219,7 @@
     if(!target||target===d.sourceId)return;
     await App.deps.addDepLink(d.sourceId,target,'blocks');   // source → target (source "blocks" target)
   });
-  function syncGraphBulk(){if(App.state.cy)App.state.cy.nodes().forEach(nd=>nd.toggleClass('bulk',bulkSel.has(Number(nd.data('id')))));}
+  function syncGraphBulk(){if(App.state.cy)App.state.cy.nodes().forEach(nd=>nd.toggleClass('bulk',App.state.bulkSel.has(Number(nd.data('id')))));}
   function saveNodePositions() {
     if (!App.state.cy || !projectName) return;
     const positions = {};
@@ -272,7 +272,7 @@
     if(!App.state.cy)initCy();
     App.state.cy.resize();
     const token=++App.state.renderToken;                    // newest render wins; stale async results bail out
-    let ids=[...reachable()].filter(id=>store.nodes[id]);
+    let ids=[...reachable()].filter(id=>App.state.store.nodes[id]);
     if(!ids.length){App.state.cy.elements().remove();setStatus(window.i18n.t('status.nothingMatches'));return;}
     const originalCount = ids.length;
     let isTruncated = false;
@@ -282,9 +282,9 @@
     }
     const idset=new Set(ids);
     // Compound nesting: each in-set parent becomes a container for its in-set children.
-    // Derived from store.kids (same source as the tree), so skip-resolved children also nest correctly.
+    // Derived from App.state.store.kids (same source as the tree), so skip-resolved children also nest correctly.
     const parentOf={};
-    ids.forEach(p=>(store.kids[p]||[]).forEach(c=>{if(idset.has(c))parentOf[c]=p;}));
+    ids.forEach(p=>(App.state.store.kids[p]||[]).forEach(c=>{if(idset.has(c))parentOf[c]=p;}));
     let edges=[];
     // hierarchy edges are now redundant — compound rectangles already show the parent/child
     // structure visually. We keep edges only for dependency modes.
@@ -316,18 +316,18 @@
         const el=App.state.cy.getElementById(String(id));
         const pid=parentOf[id]?String(parentOf[id]):null;
         if(el.nonempty()){
-          el.data(store.nodes[id]);                                // refresh fields
+          el.data(App.state.store.nodes[id]);                                // refresh fields
           const cp=el.parent().nonempty()?el.parent().id():null;
           if(cp!==pid){el.move({parent:pid});reparented++;}        // re-nest if hierarchy shifted
           return;
         }
-        const pe=App.state.cy.getElementById(String(store.parent[id]||''));  // seed near parent (no fly-from-0,0)
+        const pe=App.state.cy.getElementById(String(App.state.store.parent[id]||''));  // seed near parent (no fly-from-0,0)
         let pos = cachedPositions[id];
         if (!pos) {
           hasAllCached = false;
           pos = pe.nonempty()?{x:pe.position('x'),y:pe.position('y')+70}:undefined;
         }
-        const data=Object.assign({},store.nodes[id]);              // shallow copy so we don't mutate store
+        const data=Object.assign({},App.state.store.nodes[id]);              // shallow copy so we don't mutate App.state.store
         if(pid)data.parent=pid;else delete data.parent;            // normalize: only set if compound parent is in App.state.cy
         App.state.cy.add({group:'nodes',data,position:pos});added++;
       });

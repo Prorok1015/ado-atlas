@@ -378,7 +378,7 @@ async function loadTimeline(id){
 // ways without leaving the editor.
 function renderItemContext(d){
   const up=d.parent?`<a class="ctxnav" id="s_par" title="open parent">↑ #${d.parent}</a>`:'';
-  const n=store.nodes[d.id],cc=n?n.childCount:undefined;
+  const n=App.state.store.nodes[d.id],cc=n?n.childCount:undefined;
   $('s_ctx').innerHTML=up+`<a class="ctxnav" id="s_kidsbtn" title="show children">↓ children${cc!=null?' ('+cc+')':''}</a>`;
   if(d.parent)$('s_par').onclick=()=>openItem(d.parent);
   const kb=$('s_kidsbtn'),box=$('s_kidlist');
@@ -393,7 +393,7 @@ async function toggleSidebarKids(id,btn){
   box.style.display='block';btn&&btn.classList.add('ctxon');box.innerHTML='<div class="kidmsg">loading…</div>';
   let kids;try{kids=await ensureKids(id);}catch(e){kids=[];}
   if(App.state.cur!==id)return;                                    // user navigated away while loading
-  const nodes=kids.map(k=>store.nodes[k]).filter(Boolean);
+  const nodes=kids.map(k=>App.state.store.nodes[k]).filter(Boolean);
   if(!nodes.length){box.innerHTML='<div class="kidmsg">(no children)</div>';return;}
   box.innerHTML=nodes.map(k=>`<a class="kidrow" data-id="${k.id}"><i class="dot" style="background:${tyColor(k.type)}"></i>`+
     `<span class="kidttl">#${k.id} ${htmlEsc(k.title||'')}</span>`+
@@ -1201,9 +1201,9 @@ async function openItem(id){
         if (App.state.cur !== id || phase2Token !== App.state.openToken) return; // switched items — discard stale data
 
         if (fullD && fullD.rev) {
-          if (store.nodes[id]) {
-            store.nodes[id].rev = fullD.rev;
-            renderSidebarHeader(store.nodes[id]);
+          if (App.state.store.nodes[id]) {
+            App.state.store.nodes[id].rev = fullD.rev;
+            renderSidebarHeader(App.state.store.nodes[id]);
           }
         }
 

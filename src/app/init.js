@@ -26,7 +26,7 @@ async function initialBoot(postSetup){
   }
 
   App.types.fillTypeSelect('c_type','Task');App.types.fillTypeSelect('n_type','Task');   // seed with fallback now; App.types.loadTypes() refills from ADO
-  // switching view is render-only (no API): graph draws from the store, tree DOM persists
+  // switching view is render-only (no API): graph draws from the App.state.store, tree DOM persists
   $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>App.settings.switchMode(b.dataset.m));
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.graph.depHandleHide();App.graph.renderGraph();});
   $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.rankDir',App.state.rankDir);}catch(e){}App.graph.renderGraph({relayout:true,fit:true});});
@@ -302,7 +302,7 @@ async function initialBoot(postSetup){
     const { followedItems = {} } = await chrome.storage.local.get("followedItems");
     const { org, project } = await api.getConfig();
     ids.forEach(id=>{
-      const itemData = store.nodes[id];
+      const itemData = App.state.store.nodes[id];
       if (itemData) {
         followedItems[id] = {
           id: itemData.id,

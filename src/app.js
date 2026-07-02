@@ -1,5 +1,5 @@
 // Front-end of the extension. Port of the inline <script> from ado_web.py
-// PAGE — same store/refresh/tree/graph/board/sprint/editor logic, but every
+// PAGE — same App.state.store/refresh/tree/graph/board/sprint/editor logic, but every
 // fetch('/api/...') is now a direct call to api.* (no Flask in between).
 //
 // Boot sequence (different from the Flask version):
@@ -41,25 +41,24 @@ function togglePinSprint(path){
   App.board.renderBoard();
 }
 let treeEverLoaded=false;                // false only before the very first successful list load
-// client-side mirror of already-loaded data; BOTH views render from THIS store.
-// `expanded` is the shared expand/collapse state, so tree and graph stay in sync.
-const store={nodes:{},kids:{},roots:[],expanded:new Set(),parent:{}};
-const bulkSel=new Set();                  // ids checked in the tree for bulk edit
+/* App.state.store + App.state.bulkSel now live on App.state (state-globals.js): App.state.store is the
+   client-side data mirror (tree + graph render from it; shared `expanded` set), and
+   App.state.bulkSel is the tree bulk-edit selection. */
 let bulkAnchor=null,bulkAnchorOn=true;     // pivot for Shift-range + whether that action selected (true) or deselected (false)
 let dragIds=[],dropTargetEl=null;          // tree drag-to-reparent: ids being dragged + current drop-target row
-function reachable(){const out=new Set(),st=[...(store.top||store.roots)];
+function reachable(){const out=new Set(),st=[...(App.state.store.top||App.state.store.roots)];
   while(st.length){const id=st.pop();if(out.has(id))continue;out.add(id);
-    if(store.expanded.has(id))(store.kids[id]||[]).forEach(c=>st.push(c));}
+    if(App.state.store.expanded.has(id))(App.state.store.kids[id]||[]).forEach(c=>st.push(c));}
   return out;}
-async function ensureKids(id){            // load children once, cache in the store
-  if(store.kids[id])return store.kids[id];
+async function ensureKids(id){            // load children once, cache in the App.state.store
+  if(App.state.store.kids[id])return App.state.store.kids[id];
   const ord=$('f_sort').value||null;
   let kids;try{kids=await api.children(id,ord);}catch(e){setStatus('ERROR: '+e.message,true);return [];}
-  kids.forEach(k=>{store.nodes[k.id]=k;store.parent[k.id]=id;});store.kids[id]=kids.map(k=>k.id);
+  kids.forEach(k=>{App.state.store.nodes[k.id]=k;App.state.store.parent[k.id]=id;});App.state.store.kids[id]=kids.map(k=>k.id);
   // these were loaded outside the filtered set, so their own child counts are
   // unknown — fetch them so the carets/badges on the new rows resolve too.
-  fetchChildCounts(store.kids[id]).then(changed=>{if(changed)rerenderChildCounts();});
-  return store.kids[id];
+  fetchChildCounts(App.state.store.kids[id]).then(changed=>{if(changed)rerenderChildCounts();});
+  return App.state.store.kids[id];
 }
 
 function setStatus(t,err){const s=$('status');if(!s)return;if(t.includes('<ui-icon')){s.innerHTML=t;}else{s.textContent=t;}s.style.color=err?'#e06c75':'var(--muted)';}
@@ -199,7 +198,7 @@ function capNote(){return listCapped?' · capped, narrow the filters':'';}   // 
 
 function getContextPopular(key, allVals){
   const counts={};
-  const nodes=Object.values(store.nodes||{});
+  const nodes=Object.values(App.state.store.nodes||{});
   nodes.forEach(n=>{
     if(key==='tags'){
       const ts=tagList_(n.tags);
@@ -262,7 +261,7 @@ function setMode(m){
 // Per-view "what can I do here" legend, bottom-left. Each view has its own
 // non-obvious interactions (modifier-click to bulk-select, drag semantics, …);
 // this surfaces them. Collapsible, with the state remembered across sessions.
-// Rows store i18n key suffixes for the key-combo (k) and description (d); the
+// Rows App.state.store i18n key suffixes for the key-combo (k) and description (d); the
 // icon/symbol (i) is literal. Resolved to localized text in renderViewHelp().
 const VIEW_HELP={
   tree:[['<ui-icon name="mouse-pointer"></ui-icon>','click','openItem'],['▸','clickExpand','expandCollapse'],['<ui-icon name="check-square"></ui-icon>','ctrlClick','toggleSelect'],['<ui-icon name="arrow-up-down"></ui-icon>','shiftClick','selectRange'],['<ui-icon name="move"></ui-icon>','drag','reparentRow']],
@@ -389,16 +388,16 @@ async function refresh(){
 async function _refresh(){
   const items=await App.tree.currentItems();
   listCapped=!!items.truncated;          // list() hit LIST_CAP → status lines warn
-  store.roots=items.map(n=>n.id);        // flat list — board uses this
-  items.forEach(n=>{store.nodes[n.id]=n;delete n.via;});
+  App.state.store.roots=items.map(n=>n.id);        // flat list — board uses this
+  items.forEach(n=>{App.state.store.nodes[n.id]=n;delete n.via;});
   // RESET hierarchy caches — stale entries from a previous filter would leak via
   // auto-expand (e.g. cached Task children of an Epic when filter is "Epic only").
-  const prevExpanded=store.expanded;const firstLoad=!treeEverLoaded;treeEverLoaded=true;
-  store.kids={};store.expanded=new Set();
+  const prevExpanded=App.state.store.expanded;const firstLoad=!treeEverLoaded;treeEverLoaded=true;
+  App.state.store.kids={};App.state.store.expanded=new Set();
   // Build hierarchy WITHIN the filtered set so tree/graph nest correctly (no duplicates).
-  // store.top = items whose parent is NOT in the set (true roots); other items become
-  // children of their parent inside the set; pre-populated store.kids avoids API calls.
-  const inSet=new Set(store.roots);
+  // App.state.store.top = items whose parent is NOT in the set (true roots); other items become
+  // children of their parent inside the set; pre-populated App.state.store.kids avoids API calls.
+  const inSet=new Set(App.state.store.roots);
   const kidsOf={};
   items.forEach(n=>{if(n.parent&&inSet.has(n.parent))(kidsOf[n.parent]||(kidsOf[n.parent]=[])).push(n.id);});
   // Skipped levels: items whose direct parent is NOT in the set but an ancestor IS.
@@ -407,35 +406,35 @@ async function _refresh(){
   const anc=skippers.length?await resolveSkippedAncestors(skippers,inSet):{};
   for(const idStr in anc){const a=anc[idStr],id=+idStr;
     (kidsOf[a.target]||(kidsOf[a.target]=[])).push(id);
-    if(store.nodes[id])store.nodes[id].via=a.via;}
-  store.top=items.filter(n=>!(n.parent&&inSet.has(n.parent))&&!anc[n.id]).map(n=>n.id);
-  Object.keys(kidsOf).forEach(pid=>{store.kids[pid]=kidsOf[pid];if(firstLoad||prevExpanded.has(+pid))store.expanded.add(+pid);});  // auto-expand first load; otherwise preserve manual expand/collapse
-  for(const id of [...bulkSel])if(!inSet.has(id))bulkSel.delete(id);   // drop selections that no longer match the filter
+    if(App.state.store.nodes[id])App.state.store.nodes[id].via=a.via;}
+  App.state.store.top=items.filter(n=>!(n.parent&&inSet.has(n.parent))&&!anc[n.id]).map(n=>n.id);
+  Object.keys(kidsOf).forEach(pid=>{App.state.store.kids[pid]=kidsOf[pid];if(firstLoad||prevExpanded.has(+pid))App.state.store.expanded.add(+pid);});  // auto-expand first load; otherwise preserve manual expand/collapse
+  for(const id of [...bulkSel])if(!inSet.has(id))App.state.bulkSel.delete(id);   // drop selections that no longer match the filter
   updateBulkBar();
   const ts=$('tree').scrollTop;
-  App.tree.renderTree();                          // keep the tree DOM current (cheap, from store)
+  App.tree.renderTree();                          // keep the tree DOM current (cheap, from App.state.store)
   $('tree').scrollTop=ts;                // preserve scroll across the rebuild
   if(App.state.mode==='graph')App.graph.renderGraph({relayout:true,fit:true});
   else if(App.state.mode==='board')App.board.renderBoard();
   else if(App.state.mode==='timeline')App.timeline.render();
   if(openSprintPath&&$('sprintview').classList.contains('show'))App.board.renderSprint(openSprintPath);   // live-update open sprint
   App.snapshot.saveSnapshot();                        // cache this view for an instant first paint next session
-  loadChildCounts(store.roots.slice());  // fill in n.childCount → hides empty-tree arrows, badges graph nodes
+  loadChildCounts(App.state.store.roots.slice());  // fill in n.childCount → hides empty-tree arrows, badges graph nodes
 }
 // How many children each loaded item has (incl. ones the filter hides), fetched
 // cheaply via a links-only query. Stored on the node as n.childCount so it rides
 // along into the graph data and the snapshot.
-async function fetchChildCounts(ids,force){   // store counts on nodes; return true if anything changed
-  ids=(ids||[]).filter(id=>store.nodes[id]&&(force||store.nodes[id].childCount===undefined));   // force=refetch all; else only the not-yet-known
+async function fetchChildCounts(ids,force){   // App.state.store counts on nodes; return true if anything changed
+  ids=(ids||[]).filter(id=>App.state.store.nodes[id]&&(force||App.state.store.nodes[id].childCount===undefined));   // force=refetch all; else only the not-yet-known
   if(!ids.length)return false;
   let counts;try{counts=await api.childCounts(ids);}catch(e){return false;}
   let changed=false;
-  for(const idStr in counts){const n=store.nodes[idStr];if(n&&n.childCount!==counts[idStr]){n.childCount=counts[idStr];changed=true;}}
+  for(const idStr in counts){const n=App.state.store.nodes[idStr];if(n&&n.childCount!==counts[idStr]){n.childCount=counts[idStr];changed=true;}}
   return changed;
 }
 function rerenderChildCounts(){           // reflect freshly-learned counts in the current view
   if(App.state.mode==='tree'){const ts=$('tree').scrollTop;App.tree.renderTree();$('tree').scrollTop=ts;}
-  else if(App.state.mode==='graph'&&App.state.cy){App.state.cy.batch(()=>App.state.cy.nodes().forEach(nd=>{const n=store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));App.state.cy.style().update();}
+  else if(App.state.mode==='graph'&&App.state.cy){App.state.cy.batch(()=>App.state.cy.nodes().forEach(nd=>{const n=App.state.store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));App.state.cy.style().update();}
   App.snapshot.saveSnapshot();                         // persist the counts so next session's cached paint has them too
 }
 let childCountTok=0;
@@ -501,7 +500,7 @@ async function createChild(){
   loadStart('creating…');
   let r;try{r=await api.createItem(body);}catch(e){denyOnForbidden(e,'create work items');setStatus('ERROR: '+e.message,true);loadEnd();return;}
   loadEnd();
-  delete store.kids[App.state.cur];                          // parent's child list is now stale → reloads on next expand
+  delete App.state.store.kids[App.state.cur];                          // parent's child list is now stale → reloads on next expand
   recordCreateUndo(r.id,body);
   $('c_title').value='';$('c_title').focus();       // keep form open for rapid multi-create
   setStatus(`created #${r.id} (${type}) under #${App.state.cur}`);

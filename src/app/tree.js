@@ -1,7 +1,7 @@
 // Tree view rendering — the hierarchical work-item tree. Phase-1 view module of
 // the App.* refactor (REFACTORING_PLAN.md): IIFE publishing App.tree
 // {renderTree, currentItems}; childrenUl/treeNode/toggle/activeText stay private.
-// The bulk-select + drag-reparent subsystem (bulkSel/bulkSet/bulkToggle/bulkRange/
+// The bulk-select + drag-reparent subsystem (App.state.bulkSel/bulkSet/bulkToggle/bulkRange/
 // bulkAnchor/ensureKids/…) stays BARE in app.js (shared with board/graph/palette/
 // filters) and is read here at call time, along with const/state/badges/
 // sprint-utils helpers and card-picker's tagList_/personColor. Loads before app.js.
@@ -9,24 +9,24 @@
   'use strict';
 
   function childrenUl(id){
-    const ul=document.createElement('ul');const kids=store.kids[id]||[];
+    const ul=document.createElement('ul');const kids=App.state.store.kids[id]||[];
     if(!kids.length){const e=document.createElement('div');e.className='empty';e.textContent=window.i18n.t('tree.noChildren');ul.appendChild(e);}
-    kids.forEach(cid=>{if(store.nodes[cid])ul.appendChild(treeNode(store.nodes[cid]));});
+    kids.forEach(cid=>{if(App.state.store.nodes[cid])ul.appendChild(treeNode(App.state.store.nodes[cid]));});
     return ul;
   }
   function treeNode(n){
     const li=document.createElement('li');
     const row=document.createElement('div');row.className='trow';
-    if(bulkSel.has(n.id))row.classList.add('bulksel');
+    if(App.state.bulkSel.has(n.id))row.classList.add('bulksel');
     row.dataset.id=n.id;                                  // for Shift-click range selection
     row.draggable=true;                                   // drag onto another row to re-parent
-    const cb=document.createElement('input');cb.type='checkbox';cb.className='tcheck';cb.checked=bulkSel.has(n.id);
+    const cb=document.createElement('input');cb.type='checkbox';cb.className='tcheck';cb.checked=App.state.bulkSel.has(n.id);
     cb.title='select for bulk edit  (or Ctrl-click the row; Shift-click for a range)';
     cb.onclick=e=>{e.stopPropagation();bulkSet([n.id],cb.checked);bulkAnchor=n.id;bulkAnchorOn=cb.checked;};
-    const open=store.expanded.has(n.id);
+    const open=App.state.store.expanded.has(n.id);
     // Show the expand caret only when the item can have children: known in-set kids,
     // a positive child count, or an as-yet-unknown count (undefined → keep the caret).
-    const hasKids=(store.kids[n.id]||[]).length>0||n.childCount===undefined||n.childCount>0;
+    const hasKids=(App.state.store.kids[n.id]||[]).length>0||n.childCount===undefined||n.childCount>0;
     const tog=document.createElement('span');tog.className='tog';
     if(hasKids){tog.innerHTML=open?'<ui-icon name="chevron-down"></ui-icon>':'<ui-icon name="chevron-right"></ui-icon>';tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};}
     else{tog.classList.add('leaf');}     // childless → blank spacer keeps labels aligned
@@ -69,13 +69,13 @@
     return li;
   }
   async function toggle(li,n,tog){
-    if(store.expanded.has(n.id)){            // collapse (cached data stays)
-      store.expanded.delete(n.id);
+    if(App.state.store.expanded.has(n.id)){            // collapse (cached data stays)
+      App.state.store.expanded.delete(n.id);
       const u=li.querySelector('ul');if(u)u.remove();tog.innerHTML='<ui-icon name="chevron-right"></ui-icon>';return;
     }
     tog.innerHTML='<ui-icon name="clock"></ui-icon>';tog.classList.add('busy');loadStart();
     try{await ensureKids(n.id);
-      store.expanded.add(n.id);
+      App.state.store.expanded.add(n.id);
       li.appendChild(childrenUl(n.id));
     }finally{tog.classList.remove('busy');tog.innerHTML='<ui-icon name="chevron-down"></ui-icon>';loadEnd();}
   }
@@ -89,9 +89,9 @@
   function renderTree(){
     const el=$('tree');el.innerHTML='';App.state.selRow=null;
     const ul=document.createElement('ul');ul.className='tree';
-    (store.top||store.roots).forEach(id=>{if(store.nodes[id])ul.appendChild(treeNode(store.nodes[id]));});
+    (App.state.store.top||App.state.store.roots).forEach(id=>{if(App.state.store.nodes[id])ul.appendChild(treeNode(App.state.store.nodes[id]));});
     el.appendChild(ul);
-    setStatus(store.roots.length+' item(s)'+capNote());
+    setStatus(App.state.store.roots.length+' item(s)'+capNote());
   }
 
   App.tree = { renderTree, currentItems };
