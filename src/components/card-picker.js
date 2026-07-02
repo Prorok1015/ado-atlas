@@ -364,7 +364,7 @@ function createSprintField(base,opts){opts=opts||{};return createCardPicker(base
 // chosen direction and always renders the card as a "+ add" affordance (the
 // picker never holds a sticky value — every pick triggers an add and resets).
 function depAdderProvider(dir){
-  const base=itemPickerProvider(()=>cur);
+  const base=itemPickerProvider(()=>App.state.cur);
   const blocked=()=>new Set(depsArr(dir).map(Number));
   return {
     renderCard(v,card){const t=dir==='blocks'?CP_L('picker.dep.addBlocks','add a blocked link'):CP_L('picker.dep.addBlockedBy','add a blocked-by link');
@@ -383,7 +383,7 @@ function depPickerOnChange(dir){
     const baseId='s_deps_'+(dir==='blocks'?'blocks':'blockedby');
     const v=$(baseId).value.trim();
     $(baseId).value='';
-    if(!/^\d+$/.test(v)||cur==null)return;
-    addDepLink(cur,parseInt(v,10),dir);
+    if(!/^\d+$/.test(v)||App.state.cur==null)return;
+    addDepLink(App.state.cur,parseInt(v,10),dir);
   };
 }

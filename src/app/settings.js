@@ -3,7 +3,7 @@
 // the App.* refactor (REFACTORING_PLAN.md): IIFE publishing App.settings.
 // Internal helpers (systemDark, autoTick) and the autoTimer state stay private.
 // Reads/writes bare globals at call time ($, App.state.cy, window.ICONS, chrome,
-// updatePatBadge, pdrag, boardBusy, cur, dirty, refresh, setMode, renderGraph,
+// updatePatBadge, pdrag, boardBusy, App.state.cur, dirty, refresh, setMode, renderGraph,
 // renderBoard, renderTree) and calls App.timeline.render for the timeline view.
 // Loads before app.js.
 (function (App) {
@@ -62,7 +62,7 @@
   function autoTick(){
     App.setup.updatePatBadge();                          // keep the countdown fresh on long-lived tabs
     if(document.hidden||pdrag||boardBusy)return;   // don't refetch hidden, or yank the board mid-drag
-    if(cur!=null&&dirty())return;              // don't disrupt unsaved editor changes
+    if(App.state.cur!=null&&dirty())return;              // don't disrupt unsaved editor changes
     refresh();
   }
   function setAutoRefresh(sec){

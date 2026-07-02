@@ -4,7 +4,7 @@
 // sprint-edit; runStep is their shared engine; runUndo/runRedo are called bare
 // from command-palette.js and app.js (keyboard + toolbar buttons). So the whole
 // module stays bare — pure relocation, zero call-site churn. Relies on bare
-// globals resolved at call time: $, refresh, cur, openItem, setStatus,
+// globals resolved at call time: $, refresh, App.state.cur, openItem, setStatus,
 // loadStart, loadEnd.
 /* ---------- undo / redo (Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z or Ctrl+Y) ----------
    Each mutating action pushes a command with matching undo()/redo() functions,
@@ -16,7 +16,7 @@ function pushAction(label,undo,redo){
   undoStack.push({label,undo,redo});if(undoStack.length>50)undoStack.shift();
   redoStack.length=0;updateUndoButtons();
 }
-async function afterUndo(id){await refresh();if(id!=null&&cur===id)openItem(id);}
+async function afterUndo(id){await refresh();if(id!=null&&App.state.cur===id)openItem(id);}
 async function runStep(from,to,verb){
   if(undoBusy)return;
   const e=from.pop();

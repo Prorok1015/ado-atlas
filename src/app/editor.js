@@ -7,13 +7,13 @@
 // (parentEditor/assignedEditor/sprintEditor/tagsEditor + onPick), the undo core
 // (undoStack/pushAction/afterUndo/runStep/updateUndoButtons/updateCreateButtons),
 // the shared create helpers (createChild/recordCreateUndo/denyOnForbidden), and
-// depsState/reactionCache. Other bare globals used at call time: $, api, cur/App.state.orig/
+// depsState/reactionCache. Other bare globals used at call time: $, api, App.state.cur/App.state.orig/
 // App.state.descEditor/App.state.acEditor (state-globals), customFieldsState (side-panel.js), setStatus,
 // refresh, openItem, assignees, tagList, App.activity.*, App.deps.*, window.i18n.
 
 // ---- dirty-tracking / save-chip / discard / editorValues ----
 function dirty(){
-  if(cur==null||!App.state.orig)return false;
+  if(App.state.cur==null||!App.state.orig)return false;
   const v=editorValues();
   const numEq=(a,b)=>(a===''||a==null)&&(b===''||b==null) ? true : String(a)===String(b);
   // Phase 1 (always-loaded) fields
@@ -54,7 +54,7 @@ function dirty(){
 // dirty() (full check) still drives the "discard unsaved" prompt so a failed
 // auto-save isn't silently lost.
 function textDirty(){
-  if(cur==null||!App.state.orig)return false;
+  if(App.state.cur==null||!App.state.orig)return false;
   const v=editorValues();
   return v.title!==App.state.orig.title||v.desc!==App.state.orig.desc||(App.state.orig.has_ac&&v.ac!==App.state.orig.ac);
 }
@@ -105,7 +105,7 @@ function refreshDirty(){
   }
 }
 function discardChanges(){
-  if(cur==null||!App.state.orig)return;
+  if(App.state.cur==null||!App.state.orig)return;
   if ($('s_title')) $('s_title').value=App.state.orig.title;
   if (App.state.descEditor) App.state.descEditor.value=App.state.orig.desc;
   if(App.state.orig.has_ac && App.state.acEditor){
@@ -352,8 +352,8 @@ function parseTimeExpr(str) {
 // the latest editor value we re-read editorValues() at response time instead of
 // using the request-time snapshot.
 async function quickSave(field){
-  if(cur==null||!App.state.orig)return;
-  const id=cur;
+  if(App.state.cur==null||!App.state.orig)return;
+  const id=App.state.cur;
   
   // Perform math parsing for estimate (s_est), storypoints, remaining, completed
   if (field === 'estimate' || field === 'storypoints' || field === 'remaining' || field === 'completed') {
@@ -403,7 +403,7 @@ async function quickSave(field){
     setSaveChip('error',e.message);setStatus('save failed: '+e.message,true);refreshDirty();
     return;
   }
-  if(cur!==id)return;                            // user navigated away mid-save
+  if(App.state.cur!==id)return;                            // user navigated away mid-save
   recordEditUndo(id,body,parentChanged,before,beforeParent,newParent);
   // Use the FRESH editor values for App.state.orig + visuals — a follow-up edit during
   // the in-flight PATCH has already fired its own quickSave; we just make sure
@@ -445,7 +445,7 @@ async function quickSave(field){
 }
 
 async function save(){
-  if(cur==null)return;const id=cur;const v=editorValues();const body={};
+  if(App.state.cur==null)return;const id=App.state.cur;const v=editorValues();const body={};
   // Text fields only — pickers/selects/dates are auto-saved by quickSave().
   if(v.title!==App.state.orig.title)body.title=v.title;
   if(v.desc!==App.state.orig.desc)body.desc=v.desc;
@@ -502,9 +502,9 @@ function toggleComment(){
   if(show) App.state.commentEditor.textarea.focus();
 }
 async function postComment(){
-  const t=App.state.commentEditor.value.trim();if(!t||cur==null)return;
-  try{await api.comment(cur,t);}catch(e){setStatus('ERROR: '+e.message,true);return;}
+  const t=App.state.commentEditor.value.trim();if(!t||App.state.cur==null)return;
+  try{await api.comment(App.state.cur,t);}catch(e){setStatus('ERROR: '+e.message,true);return;}
   closeCommentForm();
-  setStatus('#'+cur+' comment added');
+  setStatus('#'+App.state.cur+' comment added');
   App.activity.loadActivity();
 }

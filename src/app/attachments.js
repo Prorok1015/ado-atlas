@@ -4,7 +4,7 @@
 // activity.js call descRenderOpts/hydratePreviewImages/colorMentions/renderAttachments
 // bare, and read atchState directly — so these MUST stay bare. Relies on other
 // bare globals resolved at call time: $, api, setStatus, htmlEsc, customConfirm,
-// window.i18n, cur, App.state.descEditor, personColor, refreshDirty, App.state.openItemAbortCtrl.
+// window.i18n, App.state.cur, App.state.descEditor, personColor, refreshDirty, App.state.openItemAbortCtrl.
 // Description-preview renderer uses the project's work-item base URL so that
 // `#123` shorthand in the markdown gets auto-linked back to that work item.
 // descBase is derived from the open item's url (set by api.item()) — that way
@@ -75,7 +75,7 @@ function renderAttachments(){
   const box=$('s_atch');if(!box)return;
   const group=$('s_atch_group');
   const arr=atchState.list||[];
-  if(cur==null || (group && group.classList.contains('sg-hidden'))){
+  if(App.state.cur==null || (group && group.classList.contains('sg-hidden'))){
     if(group)group.style.display='none';
     box.innerHTML='';
     return;
@@ -124,12 +124,12 @@ function renderAttachments(){
   });
 }
 async function removeAttachment(a){
-  if(cur==null)return;
-  const wid=cur;
+  if(App.state.cur==null)return;
+  const wid=App.state.cur;
   if(!await customConfirm(window.i18n.t('attach.removeConfirm', {name:a.name}), window.i18n.t('attach.removeTitle')))return;
   try{
     const res=await api.removeAttachmentLink(wid,a.url);
-    if(cur===wid){atchState.list=res.attachments||[];renderAttachments();}
+    if(App.state.cur===wid){atchState.list=res.attachments||[];renderAttachments();}
     setStatus('#'+wid+' detached '+a.name);
   }catch(e){setStatus('detach failed: '+e.message,true);}
 }

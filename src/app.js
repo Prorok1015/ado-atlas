@@ -463,7 +463,7 @@ const mdToHtml=AdoLib.mdToHtml;                     // pure, hardened renderer i
 // tracks the manual text fields). quickSave reads App.state.orig vs editor so a no-op
 // commit (same value) is a cheap early-return.
 const onPick=field=>()=>{quickSave(field).finally(refreshDirty);};
-const parentEditor=createParentField('s_parent',{onChange:onPick('parent'),getExcludeId:()=>cur});
+const parentEditor=createParentField('s_parent',{onChange:onPick('parent'),getExcludeId:()=>App.state.cur});
 const parentNew=createParentField('n_parent',{getExcludeId:()=>null});
 const assignedEditor=createAssigneeField('s_assigned',{onChange:onPick('assigned')});
 const assignedChild=createAssigneeField('c_assigned',{});
@@ -493,25 +493,25 @@ function updateCreateButtons(){
 const reactionCache=new Map();
 
 async function createChild(){
-  const type=$('c_type').value,title=$('c_title').value.trim();if(!title||cur==null)return;
+  const type=$('c_type').value,title=$('c_title').value.trim();if(!title||App.state.cur==null)return;
   const assigned=$('c_assigned').value.trim(),prio=$('c_prio').value;
-  const body={type,title,parent:cur};
+  const body={type,title,parent:App.state.cur};
   if(assigned)body.assigned=(assigned==='me'?(currentUser||assigned):assigned);
   if(prio)body.priority=Number(prio);
   loadStart('creating…');
   let r;try{r=await api.createItem(body);}catch(e){denyOnForbidden(e,'create work items');setStatus('ERROR: '+e.message,true);loadEnd();return;}
   loadEnd();
-  delete store.kids[cur];                          // parent's child list is now stale → reloads on next expand
+  delete store.kids[App.state.cur];                          // parent's child list is now stale → reloads on next expand
   recordCreateUndo(r.id,body);
   $('c_title').value='';$('c_title').focus();       // keep form open for rapid multi-create
-  setStatus(`created #${r.id} (${type}) under #${cur}`);
+  setStatus(`created #${r.id} (${type}) under #${App.state.cur}`);
   refresh();
 }
 // create undo/redo: undo deletes the item; redo re-creates it (new id, rebound).
 function recordCreateUndo(id,createBody){
   const ref={id},cbody={...createBody};
   pushAction(`create #${id}`,
-    async()=>{await api.deleteItem(ref.id);if(cur===ref.id)closePanel(true);await afterUndo(null);},
+    async()=>{await api.deleteItem(ref.id);if(App.state.cur===ref.id)closePanel(true);await afterUndo(null);},
     async()=>{const nn=await api.createItem(cbody);ref.id=nn.id;await afterUndo(null);});
 }
 // On an HTTP 403 from a create, remember the user lacks the right and hide the

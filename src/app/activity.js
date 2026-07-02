@@ -9,7 +9,7 @@
 // local. NOTE: reactionCache is a SHARED global declared in app.js (cleared on
 // panel close at app.js:2944) — referenced bare here, NOT declared.
 //
-// Reads/writes bare globals at call time: $, cur, currentComments, currentHistory,
+// Reads/writes bare globals at call time: $, App.state.cur, currentComments, currentHistory,
 // activeCommentEditors, currentUser, api, store, refresh, setStatus, loadStart,
 // loadEnd, htmlEsc, reactionCache, MarkdownEditor, personInitials, personColor,
 // mdToHtml, descRenderOpts, hydratePreviewImages, colorMentions, customConfirm,
@@ -382,7 +382,7 @@
   }
 
   async function toggleReaction(commentId, type) {
-    if (cur == null) return;
+    if (App.state.cur == null) return;
     const c = currentComments.find(x => x.id === commentId);
     if (!c) return;
 
@@ -408,9 +408,9 @@
 
     try {
       if (wasMe) {
-        await api.removeCommentReaction(cur, commentId, type);
+        await api.removeCommentReaction(App.state.cur, commentId, type);
       } else {
-        await api.addCommentReaction(cur, commentId, type);
+        await api.addCommentReaction(App.state.cur, commentId, type);
       }
     } catch (err) {
       setStatus('ERROR: ' + err.message, true);
@@ -468,7 +468,7 @@
 
     loadStart('saving…');
     try {
-      await api.updateComment(cur, commentId, text);
+      await api.updateComment(App.state.cur, commentId, text);
       setStatus('Comment updated');
       activeCommentEditors.delete(commentId);
     } catch (err) {
@@ -482,7 +482,7 @@
     if (!await customConfirm(window.i18n.t('comment.deleteConfirm'), window.i18n.t('comment.deleteTitle'))) return;
     loadStart('deleting…');
     try {
-      await api.deleteComment(cur, commentId);
+      await api.deleteComment(App.state.cur, commentId);
       setStatus('Comment deleted');
     } catch (err) {
       setStatus('ERROR: ' + err.message, true);
@@ -494,8 +494,8 @@
   /* ---------- activity: existing comments + field-change history ---------- */
   let _actId = null;
   async function loadActivity(){
-    if(cur==null)return;
-    const box=$('s_activity'),id=cur;_actId=id;
+    if(App.state.cur==null)return;
+    const box=$('s_activity'),id=App.state.cur;_actId=id;
     const arrow = document.querySelector('#activity_toggle_btn .toggle-arrow');
     if (arrow && arrow.textContent === '↻') {
       arrow.classList.add('spinning');
@@ -506,14 +506,14 @@
     if (arrow) {
       arrow.classList.remove('spinning');
     }
-    if(_actId!==id||cur!==id)return;                 // user switched items mid-load
+    if(_actId!==id||App.state.cur!==id)return;                 // user switched items mid-load
     currentComments = cs;
     currentHistory = hs;
     renderActivity(cs,hs);
   }
   async function copyCommentLink(commentId, btn) {
     try {
-      const base = await api.browserUrl(cur);
+      const base = await api.browserUrl(App.state.cur);
       const url = `${base}?_a=discussion&Anchor=comment-${commentId}`;
       await navigator.clipboard.writeText(url);
       setStatus('Comment link copied');
@@ -604,7 +604,7 @@
     if (chip.dataset.fetching) return;
     chip.dataset.fetching = 'true';
 
-    api.commentReactionUsers(cur, cid, type)
+    api.commentReactionUsers(App.state.cur, cid, type)
       .then(users => {
         reactionCache.set(cacheKey, users);
         chip.title = users.length ? users.join(', ') : 'No reactions';

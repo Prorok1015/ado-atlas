@@ -7,7 +7,7 @@
      hh, colMeta, _sprint, iterCache, DONE_STATES, BOARD_TIME_CAP
    - badges (app/badges.js): badgeOn, BADGE_FIELDS_BY_VIEW
    - core state / helpers (app.js): $, htmlEsc, setStatus, openItem, refresh, loadStart, loadEnd,
-     api, window.i18n, customConfirm, App.state.cy, mode, store, bulkSel, cur, boardBusy, pdrag, boardScroll,
+     api, window.i18n, customConfirm, App.state.cy, mode, store, bulkSel, App.state.cur, boardBusy, pdrag, boardScroll,
      boardGroup, openSprintPath, projectStates, sprintPaths, sprintNames, pinnedSprints,
      TYPE_COLOR, tyColor, stateColor, prioColor, orderStates, cmpBySort, hexToRgb,
      App.state.boardToken, tzOffset, capNote, projectName, newSprints, canCreateSprint, suppressClick,

@@ -34,7 +34,7 @@ async function initialBoot(postSetup){
   for(let o=-12;o<=14;o++)$('f_tz').appendChild(new Option('UTC'+(o>=0?'+':'')+o,o));
   {const s=localStorage.getItem('ado.tz');if(s!==null&&s!=='')tzOffset=parseInt(s);}
   $('f_tz').value=tzOffset;
-  $('f_tz').onchange=()=>{tzOffset=parseInt($('f_tz').value);try{localStorage.setItem('ado.tz',tzOffset);}catch(e){}if(mode==='board')App.board.renderBoard();if(cur!=null)loadTimeline(cur);};
+  $('f_tz').onchange=()=>{tzOffset=parseInt($('f_tz').value);try{localStorage.setItem('ado.tz',tzOffset);}catch(e){}if(mode==='board')App.board.renderBoard();if(App.state.cur!=null)loadTimeline(App.state.cur);};
   // working-hours window for the active-time calc (defaults 9–17)
   {let ws=9,we=17;const wh=localStorage.getItem('ado.workHours');
     if(wh&&/^\d+-\d+$/.test(wh)){const m=wh.split('-');ws=+m[0];we=+m[1];}
@@ -42,7 +42,7 @@ async function initialBoot(postSetup){
   const applyWH=()=>{const r=api.setWorkHours($('f_wh_start').value,$('f_wh_end').value);
     $('f_wh_start').value=r.start;$('f_wh_end').value=r.end;
     try{localStorage.setItem('ado.workHours',r.start+'-'+r.end);}catch(e){}
-    if(mode==='board')App.board.renderBoard();if(cur!=null)loadTimeline(cur);};
+    if(mode==='board')App.board.renderBoard();if(App.state.cur!=null)loadTimeline(App.state.cur);};
   $('f_wh_start').onchange=applyWH;$('f_wh_end').onchange=applyWH;
   $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);try{localStorage.setItem('ado.showEmpty',on?'1':'0');}catch(e){}
     if(mode==='board'&&boardGroup!=='sprint')App.board.renderBoard();};   // state/assignee add/remove empty columns in JS (sprints are CSS-only)
@@ -249,7 +249,7 @@ async function initialBoot(postSetup){
     const b=$('refreshbtn');b.classList.add('spinning');b.disabled=true;
     try{App.state.depCache={};iterCache=null;             // deps + sprints are cached per session
       await refresh();                          // refetch list + rebuild hierarchy from scratch
-      if(cur!=null)openItem(cur);               // reload the open editor so its fields match server
+      if(App.state.cur!=null)openItem(App.state.cur);               // reload the open editor so its fields match server
     }finally{b.classList.remove('spinning');b.disabled=false;}
   };
   $('fit').onclick=()=>App.state.cy&&App.state.cy.fit(undefined,40);
@@ -317,7 +317,7 @@ async function initialBoot(postSetup){
       }
     });
     await chrome.storage.local.set({ followedItems });
-    if(cur!=null)FollowManager.updateButtonState(cur);
+    if(App.state.cur!=null)FollowManager.updateButtonState(App.state.cur);
     updateFollowedBtnVisual();
     syncBulkBarValues();
   };
@@ -329,7 +329,7 @@ async function initialBoot(postSetup){
       delete followedItems[id];
     });
     await chrome.storage.local.set({ followedItems });
-    if(cur!=null)FollowManager.updateButtonState(cur);
+    if(App.state.cur!=null)FollowManager.updateButtonState(App.state.cur);
     updateFollowedBtnVisual();
     syncBulkBarValues();
   };
@@ -377,8 +377,8 @@ async function initialBoot(postSetup){
   // discard-confirm check inside closePanel).
   $('s_close').onclick=()=>closePanel();
   $('s_follow').onclick=async()=>{
-    if(cur==null||!App.state.activeItemData)return;
-    await FollowManager.toggleFollow(cur,App.state.activeItemData);
+    if(App.state.cur==null||!App.state.activeItemData)return;
+    await FollowManager.toggleFollow(App.state.cur,App.state.activeItemData);
   };
   // Native "leave site?" guard for page reload / tab close / Cmd+W. Modern
   // browsers ignore custom text — assigning any non-empty returnValue is enough
@@ -409,7 +409,7 @@ async function initialBoot(postSetup){
     const hasFiles = e => !!(e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files'));
     let atchDragDepth = 0;
     atchWrap.addEventListener('dragenter', e => {
-      if (!hasFiles(e) || cur == null) return;
+      if (!hasFiles(e) || App.state.cur == null) return;
       e.preventDefault();
       atchDragDepth++;
       atchWrap.classList.add('dragover');
@@ -428,7 +428,7 @@ async function initialBoot(postSetup){
     atchWrap.addEventListener('drop', e => {
       atchDragDepth = 0;
       atchWrap.classList.remove('dragover');
-      if (cur == null || !hasFiles(e)) return;
+      if (App.state.cur == null || !hasFiles(e)) return;
       e.preventDefault();
       const fs = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
       if (fs.length && App.state.descEditor) {
@@ -454,7 +454,7 @@ async function initialBoot(postSetup){
 
   // Wire s_desc_attach and fullscreen from header
   $('s_desc_full').onclick=()=>toggleFullscreen();
-  $('s_desc_attach').onclick=e=>{e.preventDefault();if(cur!=null)App.state.descEditor.triggerAttachmentUpload();};  $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
+  $('s_desc_attach').onclick=e=>{e.preventDefault();if(App.state.cur!=null)App.state.descEditor.triggerAttachmentUpload();};  $('s_me').onclick=()=>assignedEditor.set(currentUser||'me');
   $('s_discard').onclick=discardChanges;
   parentEditor.wire();parentNew.wire();   // parent card + searchable picker (editor + New-item modal)
   assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker

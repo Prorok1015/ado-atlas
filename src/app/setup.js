@@ -6,7 +6,7 @@
 // preserving move from app.js.
 //
 // Reads bare globals at call time (still declared in app.js / lib.js, loaded
-// after this module): $, api, currentUser, projectName, htmlEsc, AdoLib, cur,
+// after this module): $, api, currentUser, projectName, htmlEsc, AdoLib, App.state.cur,
 // dirty, setStatus, initialBoot, syncSetupExpiryPicker, window.LayerManager.
 //
 // Two module-local state vars used by the boot wiring in app.js (setupAuthMode,
@@ -89,7 +89,7 @@
     if($('setup-overlay').classList.contains('show'))return;   // already prompting — don't stack
     showSetup(true);
     $('setup-err').textContent='Authentication failed (HTTP 401) — your token/session is invalid. Re-connect below'
-      +((cur!=null&&dirty())?(' (your unsaved changes to #'+cur+' are preserved).'):'.');
+      +((App.state.cur!=null&&dirty())?(' (your unsaved changes to #'+App.state.cur+' are preserved).'):'.');
   }
   // One-time nudge when the recorded PAT expiry is within 3 days (or already past).
   async function warnIfPatExpiring(){

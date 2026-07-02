@@ -5,7 +5,7 @@
 // command-palette/dependencies/card-picker/item-create), so the whole cluster
 // stays bare — pure relocation, zero call-site churn. customFieldsState /
 // LAZY_GROUPS / HEAVY_FIELD_MAP / currentTimelineId / currentTimelineData declared
-// here. Relies on bare globals resolved at call time: $, api, cur/App.state.orig/App.state.selRow/App.state.cy/
+// here. Relies on bare globals resolved at call time: $, api, App.state.cur/App.state.orig/App.state.selRow/App.state.cy/
 // App.state.activeItemData (state-globals), setStatus, customConfirm, refresh, dirty,
 // editorValues, refreshDirty, renderAttachments, clearAttBlobs, closeMention,
 // toggleFullscreen, depsState, parentEditor/assignedEditor/sprintEditor/tagsEditor,
@@ -121,8 +121,8 @@ function lockSidebarHeavy(lock, groupIds) {
 }
 
 async function ensureFieldLoaded(groupId) {
-  if (cur == null || !App.state.orig) return;
-  const id = cur;
+  if (App.state.cur == null || !App.state.orig) return;
+  const id = App.state.cur;
   const myToken = App.state.openToken;                      // capture to detect stale responses
   const fieldKeyMap = {
     desc: 'desc', ac: 'ac', tags: 'tags', area: 'area',
@@ -157,7 +157,7 @@ async function ensureFieldLoaded(groupId) {
   try {
     const signal = App.state.openItemAbortCtrl ? App.state.openItemAbortCtrl.signal : undefined;
     const d = await api.item(id, { fields: fieldsToFetch.length > 0 ? fieldsToFetch : undefined, expandRelations: needRelations, signal });
-    if (cur !== id || myToken !== App.state.openToken) return;  // switched items — discard stale data
+    if (App.state.cur !== id || myToken !== App.state.openToken) return;  // switched items — discard stale data
     
     if (groupId === 'desc') {
       if (App.state.descEditor) {
@@ -253,7 +253,7 @@ async function ensureFieldLoaded(groupId) {
     refreshDirty();
   } catch(e) {
     if (e.name === 'AbortError') return;           // silently exit — a newer openItem() is running
-    if (cur !== id || myToken !== App.state.openToken) return; // stale — discard
+    if (App.state.cur !== id || myToken !== App.state.openToken) return; // stale — discard
     setStatus('Failed to load lazy field: ' + e.message, true);
     lockSidebarHeavy(false, [groupId]);
   }
@@ -266,7 +266,7 @@ async function closePanel(force){
   parentEditor.close();App.deps.depBlockedByPicker.close();App.deps.depBlocksPicker.close();closeMention();
   if($('side').classList.contains('fullscreen'))toggleFullscreen(false);   // restore inline width before hiding
   $('side').classList.add('hidden');
-  $('resizer').style.display='none';cur=null;App.state.orig={};
+  $('resizer').style.display='none';App.state.cur=null;App.state.orig={};
   const cbtn = $('s_comment'); if (cbtn) cbtn.classList.remove('on');
   const chbtn = $('s_childbtn'); if (chbtn) chbtn.classList.remove('on');
   atchState.list=[];atchState.wid=null;atchState.uploading=0;renderAttachments();clearAttBlobs();
@@ -290,7 +290,7 @@ async function loadTimeline(id){
     el.innerHTML = '<span style="font-size:0.846rem; color:var(--muted);"><ui-icon name="clock"></ui-icon> loading timeline…</span>';
     try {
       t = await api.timeline(id, tzOffset);
-      if (cur !== id) return;
+      if (App.state.cur !== id) return;
       currentTimelineId = id;
       currentTimelineData = t;
     } catch(e) {
@@ -385,14 +385,14 @@ function renderItemContext(d){
   box.style.display='none';box.innerHTML='';
   if(cc===0)kb.classList.add('ctxoff');                 // known childless → inert chip
   else kb.onclick=()=>toggleSidebarKids(d.id,kb);
-  if(cc===undefined&&n)fetchChildCounts([d.id]).then(ch=>{if(ch&&cur===d.id)renderItemContext(d);});   // learn + refresh the (N)
+  if(cc===undefined&&n)fetchChildCounts([d.id]).then(ch=>{if(ch&&App.state.cur===d.id)renderItemContext(d);});   // learn + refresh the (N)
 }
 async function toggleSidebarKids(id,btn){
   const box=$('s_kidlist');
   if(box.style.display!=='none'){box.style.display='none';btn&&btn.classList.remove('ctxon');return;}
   box.style.display='block';btn&&btn.classList.add('ctxon');box.innerHTML='<div class="kidmsg">loading…</div>';
   let kids;try{kids=await ensureKids(id);}catch(e){kids=[];}
-  if(cur!==id)return;                                    // user navigated away while loading
+  if(App.state.cur!==id)return;                                    // user navigated away while loading
   const nodes=kids.map(k=>store.nodes[k]).filter(Boolean);
   if(!nodes.length){box.innerHTML='<div class="kidmsg">(no children)</div>';return;}
   box.innerHTML=nodes.map(k=>`<a class="kidrow" data-id="${k.id}"><i class="dot" style="background:${tyColor(k.type)}"></i>`+
@@ -560,7 +560,7 @@ async function openItem(id){
   const myToken=++App.state.openToken;
   // Always ask before clobbering edits — including reopening the SAME dirty
   // item (which would otherwise silently reload from server and wipe the work).
-  if(cur!=null&&dirty()&&!await customConfirm(window.i18n.t('editor.discardItemConfirm', {id:cur}), window.i18n.t('editor.discardTitle')))return;
+  if(App.state.cur!=null&&dirty()&&!await customConfirm(window.i18n.t('editor.discardItemConfirm', {id:App.state.cur}), window.i18n.t('editor.discardTitle')))return;
   // After the async confirm another openItem() may have started — bail if superseded.
   if(myToken!==App.state.openToken)return;
 
@@ -570,7 +570,7 @@ async function openItem(id){
   const signal=App.state.openItemAbortCtrl.signal;
 
   // ── Synchronous reset: block saves for the OLD item ──
-  cur=null;App.state.orig=null;                              // dirty()→false, quickSave()→early return
+  App.state.cur=null;App.state.orig=null;                              // dirty()→false, quickSave()→early return
   lockSidebar(true);                               // dim + disable all interactive fields
 
   // ── Clear stale field values so the user never sees the previous item's data ──
@@ -628,11 +628,11 @@ async function openItem(id){
   if(myToken!==App.state.openToken)return;                   // a newer openItem() superseded this one
 
   // ── Populate the sidebar with fresh data ──
-  cur=id;
+  App.state.cur=id;
   App.state.activeItemData=d;
   FollowManager.updateButtonState(id);
   api.comments(id).then(cs => {
-    if (cur !== id) return;
+    if (App.state.cur !== id) return;
     const badge = $('s_activity_count');
     if (badge) {
       badge.textContent = cs.length;
@@ -1198,7 +1198,7 @@ async function openItem(id){
     } else {
       const phase2Token = App.state.openToken;                  // capture for stale-detection
       api.item(id, { fields: fieldsToFetch.length > 0 ? fieldsToFetch : undefined, expandRelations: needRelations, signal }).then(fullD => {
-        if (cur !== id || phase2Token !== App.state.openToken) return; // switched items — discard stale data
+        if (App.state.cur !== id || phase2Token !== App.state.openToken) return; // switched items — discard stale data
 
         if (fullD && fullD.rev) {
           if (store.nodes[id]) {
@@ -1336,7 +1336,7 @@ async function openItem(id){
         setStatus('#'+id+' loaded');
       }).catch(err => {
         if (err.name === 'AbortError') return;        // silently exit — a newer openItem() is running
-        if (cur !== id || phase2Token !== App.state.openToken) return; // stale
+        if (App.state.cur !== id || phase2Token !== App.state.openToken) return; // stale
         setStatus('Failed to load details: ' + err.message, true);
         lockSidebarHeavy(false, activeLazyGroups);
       });

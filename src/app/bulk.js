@@ -3,7 +3,7 @@
 // (selection sync) and by palette/filters (clearBulk/buildBulkControls) — so its
 // functions stay BARE globals (like loading/badges/sprint-utils), NOT namespaced,
 // to avoid churn at those bare call sites. Relocated from app.js (REFACTORING_PLAN.md).
-// Reads bare state (bulkSel/bulkAnchor/dragIds/store/mode/cur/…) + calls App.tree/
+// Reads bare state (bulkSel/bulkAnchor/dragIds/store/mode/App.state.cur/…) + calls App.tree/
 // App.graph/App.board render fns at call time. Loads before app.js.
 window.App = window.App || {};
 
@@ -189,8 +189,8 @@ function buildBulkControls(){            // (re)fill the bar's dropdowns from lo
     sprintPaths.map(p=>`<option value="${htmlEsc(p)}">${htmlEsc(sprintNames[p]||p)}</option>`).join('');}
 }
 function syncSidebarField(field, ids) {
-  if (cur == null || !ids.includes(cur)) return;
-  const d = store.nodes[cur];
+  if (App.state.cur == null || !ids.includes(App.state.cur)) return;
+  const d = store.nodes[App.state.cur];
   if (!d) return;
 
   if (field === 'state') {

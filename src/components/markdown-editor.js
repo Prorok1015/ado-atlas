@@ -123,7 +123,7 @@ class MarkdownEditor {
         if (f.length) this.uploadFiles(f, false);
       };
       this.textarea.addEventListener('paste', (e) => {
-        if (cur == null) return;
+        if (App.state.cur == null) return;
         const items = (e.clipboardData && e.clipboardData.items) || [], files = [];
         for (const it of items) {
           if (it.kind === 'file') {
@@ -140,7 +140,7 @@ class MarkdownEditor {
       const hasFiles = e => ! ! (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files'));
       let dragDepth = 0;
       this.wrap.addEventListener('dragenter', e => {
-        if (!hasFiles(e) || cur == null) return;
+        if (!hasFiles(e) || App.state.cur == null) return;
         e.preventDefault(); dragDepth++; this.wrap.classList.add('dragover');
       });
       this.wrap.addEventListener('dragleave', e => {
@@ -150,7 +150,7 @@ class MarkdownEditor {
       this.wrap.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
       this.wrap.addEventListener('drop', e => {
         dragDepth = 0; this.wrap.classList.remove('dragover');
-        if (cur == null || !hasFiles(e)) return;
+        if (App.state.cur == null || !hasFiles(e)) return;
         e.preventDefault();
         const fs = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
         if (fs.length) this.uploadFiles(fs, true);
@@ -422,8 +422,8 @@ class MarkdownEditor {
   }
 
   async uploadFiles(files, insertIntoEditor = false) {
-    if (!files || !files.length || cur == null) return;
-    const wid = cur;
+    if (!files || !files.length || App.state.cur == null) return;
+    const wid = App.state.cur;
     for (const f of files) {
       atchState.uploading++; renderAttachments();
       let up;
@@ -433,7 +433,7 @@ class MarkdownEditor {
       try { res = await api.addAttachmentLink(wid, up.url, up.name, ''); }
       catch (e) { atchState.uploading--; renderAttachments(); setStatus(MD_L('md.attachFailed', 'attach failed: ' + e.message, { error: e.message }), true); continue; }
       atchState.uploading--;
-      if (cur !== wid) { renderAttachments(); continue; }
+      if (App.state.cur !== wid) { renderAttachments(); continue; }
       atchState.list = res.attachments || [];
       if (insertIntoEditor) {
         const md = (isImageMime(f.type) || isImageName(f.name) ? '!' : '') + `[${up.name}](${up.url})`;

@@ -458,7 +458,7 @@ function applySideLayout(wtype) {
       if (el) {
         el.classList.remove('sg-hidden');
         parentEl.appendChild(el);
-        if (cur != null) ensureFieldLoaded(node);
+        if (App.state.cur != null) ensureFieldLoaded(node);
       }
       return;
     }
@@ -470,7 +470,7 @@ function applySideLayout(wtype) {
       if (el) {
         el.classList.remove('sg-hidden');
         parentEl.appendChild(el);
-        if (cur != null) ensureFieldLoaded(node.ref);
+        if (App.state.cur != null) ensureFieldLoaded(node.ref);
       }
       return;
     }
