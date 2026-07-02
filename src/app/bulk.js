@@ -3,13 +3,13 @@
 // (selection sync) and by palette/filters (clearBulk/buildBulkControls) — so its
 // functions stay BARE globals (like loading/badges/sprint-utils), NOT namespaced,
 // to avoid churn at those bare call sites. Relocated from app.js (REFACTORING_PLAN.md).
-// Reads bare state (bulkSel/bulkAnchor/dragIds/store/mode/App.state.cur/…) + calls App.tree/
+// Reads bare state (bulkSel/bulkAnchor/dragIds/store/App.state.mode/App.state.cur/…) + calls App.tree/
 // App.graph/App.board render fns at call time. Loads before app.js.
 window.App = window.App || {};
 
 /* ---------- bulk multi-select (tree): Ctrl/Cmd-click toggles, Shift-click ranges ---------- */
 // Selectable elements of the active view (tree rows / board cards / timeline rows), in visual order.
-function bulkEls(){return [...document.querySelectorAll(mode==='board'?'#board .bcard[data-id]':mode==='timeline'?'#timeline .tlrow[data-id]':'#tree .trow[data-id]')];}
+function bulkEls(){return [...document.querySelectorAll(App.state.mode==='board'?'#board .bcard[data-id]':App.state.mode==='timeline'?'#timeline .tlrow[data-id]':'#tree .trow[data-id]')];}
 function syncBulkRows(){                    // reflect bulkSel onto the rendered rows/cards (class + any checkbox)
   document.querySelectorAll('#tree .trow[data-id], #board .bcard[data-id], #timeline .tlrow[data-id]').forEach(r=>{
     const on=bulkSel.has(+r.dataset.id);r.classList.toggle('bulksel',on);

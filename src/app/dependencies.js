@@ -9,7 +9,7 @@
 // OUTSIDE this module (closePanel / openItem: `depsState.blockedBy=[];...`), so
 // the declaration cannot move here. We read/mutate it bare at call time.
 //
-// Reads/writes other bare globals at call time ($, store, App.state.cur, App.state.cy, mode,
+// Reads/writes other bare globals at call time ($, store, App.state.cur, App.state.cy, App.state.mode,
 // App.state.edgeMode, App.state.depCache, api, tyColor, htmlEsc, loadStart, loadEnd, setStatus,
 // openItem, pushAction, denyOnForbidden, createCardPicker, depsState) and the
 // bare picker helpers depAdderProvider / depPickerOnChange (card-picker.js).
@@ -78,7 +78,7 @@
     if(App.state.cur===from){const a=depsState.blocks;if(op==='add'){if(!a.includes(to))a.push(to);}else depsState.blocks=a.filter(x=>x!==to);}
     if(App.state.cur===to){const a=depsState.blockedBy;if(op==='add'){if(!a.includes(from))a.push(from);}else depsState.blockedBy=a.filter(x=>x!==from);}
     if(App.state.cur===from||App.state.cur===to)renderDeps();
-    if(App.state.cy&&mode==='graph'&&App.state.edgeMode!=='hierarchy'){
+    if(App.state.cy&&App.state.mode==='graph'&&App.state.edgeMode!=='hierarchy'){
       const eid='d_'+from+'_'+to;
       const existing=App.state.cy.getElementById(eid);
       if(op==='add'){if(existing.empty()&&App.state.cy.getElementById(String(from)).nonempty()&&App.state.cy.getElementById(String(to)).nonempty())

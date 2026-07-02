@@ -34,7 +34,7 @@ async function initialBoot(postSetup){
   for(let o=-12;o<=14;o++)$('f_tz').appendChild(new Option('UTC'+(o>=0?'+':'')+o,o));
   {const s=localStorage.getItem('ado.tz');if(s!==null&&s!=='')tzOffset=parseInt(s);}
   $('f_tz').value=tzOffset;
-  $('f_tz').onchange=()=>{tzOffset=parseInt($('f_tz').value);try{localStorage.setItem('ado.tz',tzOffset);}catch(e){}if(mode==='board')App.board.renderBoard();if(App.state.cur!=null)loadTimeline(App.state.cur);};
+  $('f_tz').onchange=()=>{tzOffset=parseInt($('f_tz').value);try{localStorage.setItem('ado.tz',tzOffset);}catch(e){}if(App.state.mode==='board')App.board.renderBoard();if(App.state.cur!=null)loadTimeline(App.state.cur);};
   // working-hours window for the active-time calc (defaults 9–17)
   {let ws=9,we=17;const wh=localStorage.getItem('ado.workHours');
     if(wh&&/^\d+-\d+$/.test(wh)){const m=wh.split('-');ws=+m[0];we=+m[1];}
@@ -42,10 +42,10 @@ async function initialBoot(postSetup){
   const applyWH=()=>{const r=api.setWorkHours($('f_wh_start').value,$('f_wh_end').value);
     $('f_wh_start').value=r.start;$('f_wh_end').value=r.end;
     try{localStorage.setItem('ado.workHours',r.start+'-'+r.end);}catch(e){}
-    if(mode==='board')App.board.renderBoard();if(App.state.cur!=null)loadTimeline(App.state.cur);};
+    if(App.state.mode==='board')App.board.renderBoard();if(App.state.cur!=null)loadTimeline(App.state.cur);};
   $('f_wh_start').onchange=applyWH;$('f_wh_end').onchange=applyWH;
   $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);try{localStorage.setItem('ado.showEmpty',on?'1':'0');}catch(e){}
-    if(mode==='board'&&boardGroup!=='sprint')App.board.renderBoard();};   // state/assignee add/remove empty columns in JS (sprints are CSS-only)
+    if(App.state.mode==='board'&&boardGroup!=='sprint')App.board.renderBoard();};   // state/assignee add/remove empty columns in JS (sprints are CSS-only)
   $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.boardGroup',boardGroup);}catch(e){}App.board.renderBoard();});
   // timeline: zoom segment, group select, row click → editor
   $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.tlZoom',App.state.tlZoom);}catch(e){}App.timeline.render();});
@@ -714,7 +714,7 @@ async function initialBoot(postSetup){
   renderViewHelp();                          // show the controls legend for the initial view
   const p=new URLSearchParams(location.search),root=p.get('root');
   if(root){await openItem(parseInt(root));}
-  if(mode==='tree')await App.snapshot.loadSnapshot();   // paint last session's tree instantly while the network refresh runs
+  if(App.state.mode==='tree')await App.snapshot.loadSnapshot();   // paint last session's tree instantly while the network refresh runs
   refresh().then(App.setup.warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
   try {
     const tm = new TutorialManager();

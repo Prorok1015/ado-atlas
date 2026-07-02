@@ -159,7 +159,7 @@ async function createSprintSubmit(){
       closeSprintModal();
       if(sprintMode==='edit'){canEditSprint=false;setStatus("you don't have permission to edit sprint dates",true);
         if(openSprintPath)App.board.renderSprint(openSprintPath);}
-      else{canCreateSprint=false;setStatus("you don't have permission to create sprints",true);if(mode==='board')App.board.renderBoard();}
+      else{canCreateSprint=false;setStatus("you don't have permission to create sprints",true);if(App.state.mode==='board')App.board.renderBoard();}
     }else $('sprint-err').textContent='ERROR: '+e.message;
   }finally{btn.disabled=false;$('sp_create').textContent=sprintMode==='edit'?'Save dates':'Create sprint';loadEnd();}
 }

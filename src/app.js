@@ -240,11 +240,11 @@ try {
 } catch(e) {}
 // timeline render (tlDates/tlKey/tlMonths/renderTimeline) -> app/timeline.js (App.timeline.render)
 
-/* ---------- mode / refresh ---------- */
+/* ---------- App.state.mode / refresh ---------- */
 function setMode(m){
   $('sprintview').classList.remove('show');openSprintPath=null;   // leaving board closes the sprint detail
   if(m!=='graph')App.graph.depHandleHide();             // dep drag-handle is graph-only
-  mode=m;$('mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  App.state.mode=m;$('mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   $('tree').classList.toggle('show',m==='tree');$('cy').classList.toggle('show',m==='graph');
   $('board').classList.toggle('show',m==='board');$('timeline').classList.toggle('show',m==='timeline');
   $('emode').style.display=$('dir').style.display=(m==='graph')?'inline-flex':'none';
@@ -272,7 +272,7 @@ const VIEW_HELP={
 };
 function viewHelpCollapsed(){try{return localStorage.getItem('ado.viewhelp')==='0';}catch(e){return false;}}
 function renderViewHelp(){
-  const box=$('viewhelp'),rows=VIEW_HELP[mode];
+  const box=$('viewhelp'),rows=VIEW_HELP[App.state.mode];
   const show=!!rows&&!$('sprintview').classList.contains('show');   // hide over the sprint detail
   box.classList.toggle('show',show);
   if(!show){
@@ -284,7 +284,7 @@ function renderViewHelp(){
   box.classList.toggle('collapsed',collapsed);
   // The gear in the Controls header is per-view: every view that defines a
   // BADGE_FIELDS_BY_VIEW entry gets a popover ("Show on nodes / cards / rows / bars").
-  const hasFields=!!(BADGE_FIELDS_BY_VIEW[mode]&&BADGE_FIELDS_BY_VIEW[mode].length);
+  const hasFields=!!(BADGE_FIELDS_BY_VIEW[App.state.mode]&&BADGE_FIELDS_BY_VIEW[App.state.mode].length);
   const gear=hasFields?`<button class="vhbadge" id="vhbadge" title="${htmlEsc(window.i18n.t('viewHelp.toggleFields'))}"><ui-icon name="settings"></ui-icon></button>`:'';
   const bugBtn=`<a class="icon-btn" href="https://github.com/Prorok1015/ado-atlas/issues" target="_blank" title="${htmlEsc(window.i18n.t('viewHelp.reportBug'))}">
     <ui-icon name="bug"></ui-icon>
@@ -295,7 +295,7 @@ function renderViewHelp(){
   // Clicking the "Controls" label collapses/expands; the gear is its own button.
   $('vhh').querySelector('.vhctrl').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
   const gb=$('vhbadge');if(gb)gb.onclick=e=>{e.stopPropagation();toggleBadgePanel();};
-  // If the gear vanished (mode without fields, but somehow panel is open), hide the popover.
+  // If the gear vanished (App.state.mode without fields, but somehow panel is open), hide the popover.
   if(!hasFields){
     $('badgepanel').style.display='none';
     if (window.LayerManager) window.LayerManager.close($('badgepanel'));
@@ -308,7 +308,7 @@ if(window.i18n&&window.i18n.onChange)window.i18n.onChange(()=>{ if($('viewhelp')
 // Toggling a checkbox re-renders the matching view so the change shows immediately.
 const BADGE_PANEL_HEADER={graph:'badgePanel.graph',board:'badgePanel.board',tree:'badgePanel.tree',timeline:'badgePanel.timeline'};
 function renderBadgePanel(){
-  const view=mode,fields=BADGE_FIELDS_BY_VIEW[view]||[];
+  const view=App.state.mode,fields=BADGE_FIELDS_BY_VIEW[view]||[];
   const p=$('badgepanel');
   if(!fields.length){
     p.style.display='none';
@@ -415,9 +415,9 @@ async function _refresh(){
   const ts=$('tree').scrollTop;
   App.tree.renderTree();                          // keep the tree DOM current (cheap, from store)
   $('tree').scrollTop=ts;                // preserve scroll across the rebuild
-  if(mode==='graph')App.graph.renderGraph({relayout:true,fit:true});
-  else if(mode==='board')App.board.renderBoard();
-  else if(mode==='timeline')App.timeline.render();
+  if(App.state.mode==='graph')App.graph.renderGraph({relayout:true,fit:true});
+  else if(App.state.mode==='board')App.board.renderBoard();
+  else if(App.state.mode==='timeline')App.timeline.render();
   if(openSprintPath&&$('sprintview').classList.contains('show'))App.board.renderSprint(openSprintPath);   // live-update open sprint
   App.snapshot.saveSnapshot();                        // cache this view for an instant first paint next session
   loadChildCounts(store.roots.slice());  // fill in n.childCount → hides empty-tree arrows, badges graph nodes
@@ -434,8 +434,8 @@ async function fetchChildCounts(ids,force){   // store counts on nodes; return t
   return changed;
 }
 function rerenderChildCounts(){           // reflect freshly-learned counts in the current view
-  if(mode==='tree'){const ts=$('tree').scrollTop;App.tree.renderTree();$('tree').scrollTop=ts;}
-  else if(mode==='graph'&&App.state.cy){App.state.cy.batch(()=>App.state.cy.nodes().forEach(nd=>{const n=store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));App.state.cy.style().update();}
+  if(App.state.mode==='tree'){const ts=$('tree').scrollTop;App.tree.renderTree();$('tree').scrollTop=ts;}
+  else if(App.state.mode==='graph'&&App.state.cy){App.state.cy.batch(()=>App.state.cy.nodes().forEach(nd=>{const n=store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));App.state.cy.style().update();}
   App.snapshot.saveSnapshot();                         // persist the counts so next session's cached paint has them too
 }
 let childCountTok=0;

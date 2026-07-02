@@ -265,8 +265,8 @@ function applyVisualSync(id,body,v){
 function postSaveRefresh(body,parentChanged){
   if('iteration'in body||'assigned'in body||parentChanged)refresh();
   else{
-    if(mode==='board')App.board.renderBoard();
-    else if(mode==='timeline')App.timeline.render();
+    if(App.state.mode==='board')App.board.renderBoard();
+    else if(App.state.mode==='timeline')App.timeline.render();
     if(openSprintPath&&$('sprintview').classList.contains('show'))App.board.renderSprint(openSprintPath);
   }
 }

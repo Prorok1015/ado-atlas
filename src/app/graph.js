@@ -6,7 +6,7 @@
 // persistence, bulk-highlight sync, and the "drag a stub to create a dep link"
 // interaction.
 //
-// Reads/mutates bare globals at call time: App.state.cy, mode, App.state.edgeMode, App.state.rankDir, store,
+// Reads/mutates bare globals at call time: App.state.cy, App.state.mode, App.state.edgeMode, App.state.rankDir, store,
 // App.state.depCache, App.state.renderToken, App.state.maxNodesLimit, projectName, bulkSel, api, TYPE_COLOR,
 // $, setStatus, openItem, loadStart, loadEnd, window.i18n, cytoscape (via
 // App.state.cy.layout dagre). Calls bare helpers defined elsewhere: ensureKids,
@@ -127,9 +127,9 @@
       if(tapTimer&&tapId===id){clearTimeout(tapTimer);tapTimer=null;tapId=null;expandNode(id);return;}
       tapId=id;clearTimeout(tapTimer);
       tapTimer=setTimeout(()=>{tapTimer=null;tapId=null;openItem(id);},250);});
-    // Hover handle for drag-to-create dep links (only in +Deps mode).
+    // Hover handle for drag-to-create dep links (only in +Deps App.state.mode).
     App.state.cy.on('mouseover','node',e=>{const nd=e.target;if(nd.isParent&&nd.isParent())return;
-      if(mode==='graph'&&App.state.edgeMode!=='hierarchy')depHandleShow(nd);});
+      if(App.state.mode==='graph'&&App.state.edgeMode!=='hierarchy')depHandleShow(nd);});
     App.state.cy.on('mouseout','node',e=>{
       if(depDrag)return;                          // mid-drag → keep target highlights
       const rel=e.originalEvent&&e.originalEvent.relatedTarget;
@@ -149,7 +149,7 @@
   }
 
   /* ---- graph: drag a stub from a node to create a Dependency link ----
-     Active only in +Deps mode. The handle is a small DOM bubble pinned to the
+     Active only in +Deps App.state.mode. The handle is a small DOM bubble pinned to the
      hovered node's right edge (cheaper than another canvas layer, and stays
      accurate under pan/zoom via depHandlePlace()). Mousedown starts a custom
      drag with an SVG line ghost; mouseup hit-tests against App.state.cy nodes. */

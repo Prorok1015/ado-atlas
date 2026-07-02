@@ -4,7 +4,7 @@
 // (graph, board, tree, timeline) and the badge popover, so these stay BARE
 // globals — like the loading indicator — rather than a namespace: the already-
 // extracted timeline module and the board/tree sections call badgeOn() bare.
-// Relocated from app.js (REFACTORING_PLAN.md). Reads bare `mode` at call time.
+// Relocated from app.js (REFACTORING_PLAN.md). Reads bare `App.state.mode` at call time.
 // Loads after app/state-globals.js, before app.js.
 window.App = window.App || {};
 
@@ -43,10 +43,10 @@ const badgesOn={
   tree:{priority:true,state:true,tags:true},
   timeline:{priority:true,state:false,assigned:false},
 };
-// True iff the (view, key) toggle is on. View defaults to the current mode
+// True iff the (view, key) toggle is on. View defaults to the current App.state.mode
 // — pass an explicit view when the call site renders for a specific view
 // regardless of what's focused (e.g., gstyle is always 'graph').
-function badgeOn(k,view){view=view||mode;const m=badgesOn[view];return !m||m[k]!==false;}
+function badgeOn(k,view){view=view||App.state.mode;const m=badgesOn[view];return !m||m[k]!==false;}
 function loadBadgesOn(){
   try{
     const s=localStorage.getItem('ado.badges');
