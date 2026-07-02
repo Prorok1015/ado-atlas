@@ -29,7 +29,7 @@
       if (!d || !d.roots || !d.roots.length) return false;
       if (d.ts && (Date.now() - d.ts) > 86400000) return false;   // ignore snapshots older than 24h
       store.nodes = d.nodes || {}; store.roots = d.roots; store.top = d.top || d.roots; store.kids = d.kids || {}; store.expanded = new Set(d.expanded || []);
-      renderTree();                              // instant tree from the cached snapshot
+      App.tree.renderTree();                              // instant tree from the cached snapshot
       const age = Math.round((Date.now() - (d.ts || Date.now())) / 60000);
       setStatus(store.roots.length + ' item(s) · cached' + (age > 0 ? (' ' + age + 'm ago') : '') + ' — refreshing…');
       return true;
