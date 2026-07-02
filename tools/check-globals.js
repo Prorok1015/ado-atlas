@@ -60,7 +60,8 @@ const files = [
   "src/app/layout.js",
   "src/app/sprint-edit.js",
   "src/app/init.js",
-  "src/app.js"
+  "src/app.js",
+  "src/app/boot.js"
 ];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
 
