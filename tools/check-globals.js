@@ -54,6 +54,7 @@ const files = [
   "src/app/date-pickers.js",
   "src/app/attachments.js",
   "src/app/mention.js",
+  "src/app/side-panel.js",
   "src/app/sprint-edit.js",
   "src/app.js"
 ];
