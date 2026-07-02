@@ -1,0 +1,134 @@
+/* app.css split (loading indicator, settings popover, filter panel, bulk action bar, command palette). Loaded in original order; concatenation reproduces the original app.css. */
+/* loading indicator: top progress bar + tiny inline spinner for buttons/togs */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes loadbar{0%{background-position:200% 0}100%{background-position:-200% 0}}
+#loading{position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 0%,var(--accent) 50%,transparent 100%);background-size:50% 100%;background-repeat:no-repeat;background-position:200% 0;z-index:9999;pointer-events:none;opacity:0;transition:opacity .15s}
+#loading.on{opacity:1;animation:loadbar 1.1s linear infinite}
+.spin{display:inline-block;width:0.846rem;height:0.846rem;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px}
+.tog.busy{display:inline-block;animation:spin .8s linear infinite;color:var(--accent)}
+.btn.busy{position:relative;color:transparent}
+.btn.busy::after{content:'';position:absolute;left:50%;top:50%;width:0.846rem;height:0.846rem;margin:-0.462rem 0 0 -0.462rem;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+#refreshbtn.spinning .ricon{display:inline-block;animation:spin .8s linear infinite}
+a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
+.legend{display:flex;gap:0.769rem;flex-wrap:wrap;font-size:0.846rem;color:var(--muted)}
+.barspacer{flex:1 1 0;min-width:0;align-self:center;height:0.077rem}   /* flexible gap: pushes everything after it to the right, regardless of which buttons are hidden */
+.legend i{display:inline-block;width:0.769rem;height:0.769rem;border-radius:0.231rem;margin-right:0.308rem;vertical-align:-1px}
+/* ---- combined settings popover (theme, auto-refresh, timezone, work hours, connection) ---- */
+.popwrap{position:relative;display:inline-flex}
+#morepanel{position:absolute;top:calc(100% + 0.462rem);right:0;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:0.615rem;padding:0.769rem 0.923rem;display:flex;flex-direction:column;gap:0.692rem;min-width:17.692rem;box-shadow:0 0.462rem 1.692rem rgba(0,0,0,.4)}
+#morepanel .mrow{display:flex;align-items:center;justify-content:space-between;gap:0.923rem}
+#morepanel .ml{color:var(--muted);font-size:0.846rem;text-transform:uppercase;letter-spacing:.0.308rem;white-space:nowrap}
+#morepanel select{min-width:7.077rem}
+#morepanel #theme{min-width:7.077rem;text-align:left}
+#morepanel #theme #theme_label{text-transform:capitalize}
+#morepanel .mrow-full{margin-top:2px;padding-top:0.692rem;border-top:1px solid var(--line)}
+#morepanel .mrow-full .btn{width:100%}
+#morebtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+#filterpanel{background:var(--panel);border-bottom:1px solid var(--line);padding:0.615rem 0.923rem;display:flex;flex-direction:column;gap:0.462rem}
+.frow{display:flex;align-items:center;gap:0.462rem;flex-wrap:wrap}
+.frow .fl{width:5.692rem;color:var(--muted);font-size:0.846rem;text-transform:uppercase;letter-spacing:.0.308rem;flex:none}
+/* search + sort row at the top of the filter panel */
+#filter-query{padding-bottom:0.462rem;border-bottom:1px solid var(--line);margin-bottom:2px}
+.fsearch-container{position:relative;display:inline-block;flex:1;min-width:12.308rem;max-width:26.154rem}
+#filter-query .fsearch{width:100%;padding-right:1.692rem !important}
+#filter-query .fl-sort{width:auto;margin-left:0.462rem}
+#filter-query #refreshbtn{margin-left:auto}   /* park Refresh at the right end of the row */
+.chip{border:1px solid var(--line);border-radius:1.077rem;padding:2px 0.769rem;margin:0.231rem 0;font-size:0.923rem;cursor:pointer;background:var(--field);color:var(--txt);user-select:none}
+.chip.in{background:#1e7a44;border-color:#1e7a44;color:#fff}
+.chip.out{background:#9b2c2c;border-color:#9b2c2c;color:#fff;text-decoration:line-through}
+#filt_count{color:var(--accent);font-weight:700}
+#filt_btn.on #filt_count{color:#fff}   /* button is accent-filled when filters are active → use white for contrast */
+/* per-row "x" clear button — only rendered when that filter has a selection */
+.fclear{width:1.692rem;background:transparent;border:0;color:#e0524d;cursor:pointer;font:inherit;font-size:1rem;line-height:1;padding:0.154rem 0;border-radius:0.462rem;font-weight:700;flex:none;text-align:center}
+.fclear:hover{background:rgba(224,82,77,0.16)}
+.tag-search{border:0;border-radius:1.077rem;padding:0.231rem 1.692rem 0.231rem 0.769rem;margin:0.231rem 0;font-size:0.923rem;background:rgba(127,127,127,0.15);color:var(--txt);width:8.462rem;transition:width .15s ease,background-color .15s ease}
+.tag-search:focus{width:13.846rem;background:rgba(127,127,127,0.25);outline:none}
+.f-dropdown-container{position:relative;display:inline-block}
+.search-clear-btn {
+  position: absolute;
+  right: 0.615rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px;
+  font-size: 0.846rem;
+  line-height: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+.search-clear-btn:hover {
+  color: var(--txt);
+}
+@keyframes slideUpFade{from{opacity:0;transform:translateY(0.615rem)}to{opacity:1;transform:translateY(0)}}
+.f-dropdown{position:absolute;top:100%;left:0;z-index:2000;width:max-content;max-width:21.538rem;max-height:13.846rem;overflow-y:auto;background:rgba(127, 127, 127, 0.08);backdrop-filter:blur(0.615rem);-webkit-backdrop-filter:blur(0.615rem);border:1px solid var(--line);border-radius:0.615rem;box-shadow:0 0.308rem 0.923rem rgba(0,0,0,0.2);margin-top:0.308rem;padding:0.615rem;display:flex;flex-wrap:wrap;gap:0.462rem;animation:slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1)}
+.f-dropdown-item{border:1px solid var(--line);border-radius:1.077rem;padding:2px 0.769rem;font-size:0.923rem;cursor:pointer;background:var(--field);color:var(--txt);user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f-dropdown-item:hover{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
+.f-dropdown-item.empty{border:0;background:transparent;color:var(--muted);cursor:default;width:100%;text-align:center}
+.f-dropdown-item.empty:hover{background:transparent;color:var(--muted)}
+/* "Clear all" — appears above the rows when any filter is active */
+
+/* ---- bulk action bar (tree multi-select) ---- */
+#bulkbar{background:var(--panel);border-bottom:1px solid var(--line);padding:0.538rem 0.923rem;display:flex;align-items:center;gap:0.615rem;flex-wrap:wrap}
+#bulkbar #bulk_count{font-weight:700;color:var(--accent)}
+#bulkbar .bulk-label{color:var(--muted);font-size:0.769rem;text-transform:uppercase;letter-spacing:.0.385rem;margin-right:0.154rem;user-select:none}
+#bulkbar select,#bulkbar input,#bulkbar .btn,#bulkbar .pcard,#bulkbar .seg button{font-size:0.923rem;width:auto;min-height:2.154rem !important;height:2.154rem !important;padding-top:0.231rem !important;padding-bottom:0.231rem !important;line-height:1.538rem !important;box-sizing:border-box !important}
+#bulkbar #bulk_tag_op_seg button{padding:0 0.462rem !important;font-size:0.846rem !important}
+#bulkbar .ppick{margin-top:0.308rem;margin-bottom:0;box-shadow:0 0.308rem 1.385rem rgba(0,0,0,0.25)}
+.bulk-group{display:inline-flex;align-items:center;gap:0.308rem;margin-right:0.308rem}
+#bulkbar .tagchip{min-height:2.154rem !important;height:2.154rem !important;line-height:1.692rem !important;box-sizing:border-box !important;font-size:0.923rem;border-radius:1.077rem !important;padding:0.231rem 0.462rem 0.231rem 0.769rem !important}
+#bulkbar .tagchip.add { border: 0.115rem solid #2ea44f !important; }
+#bulkbar .tagchip.remove { border: 0.115rem solid #cb2431 !important; }
+#bulkbar .tagadd {
+  width: 2.154rem !important;
+  height: 2.154rem !important;
+  font-size: 1.231rem !important;
+  margin: 0 !important;
+  align-self: center !important;
+}
+#bulkbar .tagok {
+  width: 2.154rem !important;
+  height: 2.154rem !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  align-self: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#bulkbar .tagadd-wrap {
+  align-self: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+#bulkbar .tagedit {
+  margin: 0 !important;
+}
+/* native checkbox size — opt out of the generic full-width `input` rule above */
+/* checkbox is revealed only on row hover or when the row is selected (slot is reserved → no layout shift) */
+.tcheck{flex:none;cursor:pointer;width:1.077rem;height:1.077rem;margin:0 0.308rem 0 0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox;opacity:0;transition:opacity .12s}
+.trow:hover .tcheck,.trow.bulksel .tcheck{opacity:1}
+.trow.bulksel{background:rgba(47,111,237,0.14)}
+.trow.dragging{opacity:.4}                                  /* row(s) being dragged to re-parent */
+.trow.droptarget{outline:2px dashed var(--accent);outline-offset:-2px;background:rgba(47,111,237,0.12)}
+#tree.droproot{box-shadow:inset 0 0 0 2px var(--accent)}    /* dropping on empty area = make root */
+
+/* ---- command palette (Ctrl/Cmd+K) ---- */
+#palette{position:fixed;inset:0;background:rgba(8,11,15,0.6);z-index:10001;display:none;justify-content:center;align-items:flex-start}
+#palette.show{display:flex}
+#palette-box{background:var(--panel);border:1px solid var(--line);border-radius:0.769rem;margin-top:12vh;width:46.154rem;max-width:92vw;box-shadow:0 0.923rem 3.077rem rgba(0,0,0,.5);overflow:hidden}
+#palette-input{width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--txt);font-size:1.154rem;padding:1rem 1.231rem;outline:none}
+#palette-list{max-height:46vh;overflow:auto}
+.prow{display:flex;align-items:center;gap:0.615rem;padding:0.615rem 1.231rem;cursor:pointer;font-size:1rem}
+.prow.on{background:rgba(47,111,237,0.18)}
+.prow .pkind{font-size:0.769rem;text-transform:uppercase;letter-spacing:.0.308rem;color:var(--muted);flex:none;width:3.538rem}
+.prow .ptitle{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .pbadge{font-size:0.769rem;border-radius:0.769rem;padding:1px 0.538rem;color:#fff;flex:none}
+#palette-foot{border-top:1px solid var(--line);padding:0.462rem 1.231rem;color:var(--muted);font-size:0.846rem}
+

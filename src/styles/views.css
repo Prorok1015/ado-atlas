@@ -1,0 +1,188 @@
+/* app.css split (graph canvas/legend/badges, board cards, bulk-drag, timeline, sprint headers). Loaded in original order; concatenation reproduces the original app.css. */
+/* Excalidraw-style canvas: warm background + dot grid (JS keeps the grid in
+   sync with cytoscape pan/zoom so the dots move and scale with the graph) */
+#cy.show{display:block;background-color:var(--cy-bg);
+  background-image:radial-gradient(var(--cy-dot) 1.4px,transparent 1.5px);
+  background-size:1.846rem 1.846rem;background-position:0 0}
+/* per-view controls legend (bottom-left), collapsible — styled as an
+   Excalidraw "island": rounded card, soft layered shadow, hand-drawn font */
+#viewhelp{position:absolute;left:1.077rem;bottom:1.077rem;z-index:5;display:none;flex-direction:column-reverse;background:var(--panel);
+  border:1px solid var(--line);border-radius:0.923rem;box-shadow:0 1px 0.308rem rgba(0,0,0,.12),0 0.462rem 1.385rem rgba(0,0,0,.14);
+  font-family:'Segoe Print','Bradley Hand','Comic Sans MS',cursive;font-size:0.923rem;color:var(--muted);max-width:23.077rem;overflow:hidden}
+#viewhelp.show{display:flex}   /* column-reverse: header pinned at the bottom, body expands upward when shown */
+.vhh{padding:0.385rem 0.769rem 0.385rem 0.462rem;font-weight:700;color:var(--txt);user-select:none;display:flex;align-items:center;gap:0.308rem}
+.vhh .vhctrl{flex:1;cursor:pointer;padding:2px 0.308rem;border-radius:0.462rem}
+.vhh .vhctrl:hover{background:var(--panel2)}
+/* Badges trigger embedded in the Controls header (graph mode only) — flush-left of the ▸ caret */
+.vhh .vhbadge{flex:none;display:inline-flex;align-items:center;justify-content:center;width:1.692rem;height:1.692rem;padding:0;border:1px solid var(--line);border-radius:0.462rem;background:var(--panel2);color:var(--txt);font:inherit;font-size:1rem;cursor:pointer;line-height:1}
+.vhh .vhbadge:hover{border-color:var(--accent);color:var(--accent)}
+.icon-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:1.692rem;height:1.692rem;padding:0;background:transparent;text-decoration:none;font-size:1.1rem;cursor:pointer;filter:grayscale(100%);opacity:0.7;transition:all 0.2s}
+.icon-btn:hover{filter:grayscale(0%);opacity:1;color:var(--accent)}
+.vhb{padding:0.308rem 0.923rem 0.769rem;display:flex;flex-direction:column;gap:0.385rem}
+#viewhelp.collapsed .vhb{display:none}
+.vhrow{display:flex;gap:0.615rem;align-items:center}
+.vi{flex:none;width:1.385rem;text-align:center;font-size:1rem;line-height:1}
+.vk{flex:none;min-width:7.692rem;color:var(--txt);font-weight:700}
+.vd{flex:1}
+.vhnote{margin-top:0.385rem;padding-top:0.462rem;border-top:1px dashed var(--line);font-style:italic;opacity:.85}
+/* "What to show on nodes" popover — pops up above the Controls box (anchored on the same bottom-left corner) */
+#badgepanel{position:absolute;left:1.077rem;bottom:4.615rem;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:0.769rem;box-shadow:0 1px 0.308rem rgba(0,0,0,.12),0 0.462rem 1.385rem rgba(0,0,0,.14);padding:0.615rem 0.308rem;min-width:13.077rem}
+#badgepanel .bph{padding:0.154rem 0.923rem 0.462rem;font-size:0.846rem;color:var(--muted);text-transform:uppercase;letter-spacing:.0.308rem}
+#badgepanel label{display:flex;align-items:center;gap:0.615rem;padding:0.308rem 0.923rem;cursor:pointer;font-size:0.923rem;color:var(--txt);user-select:none}
+#badgepanel label:hover{background:var(--panel2)}
+#badgepanel label input{width:1.077rem;height:1.077rem;margin:0;padding:0;border:0;border-radius:0;background:none;appearance:auto;-webkit-appearance:checkbox;flex:none}
+#board{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden;display:none;gap:0.769rem;padding:0.769rem}
+#board.show{display:flex}
+.bcol{min-width:18.462rem;max-width:20rem;flex:none;background:var(--panel);border:1px solid var(--line);border-radius:0.769rem;display:flex;flex-direction:column;max-height:100%}
+.bcol.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.bhead{padding:0.615rem 0.769rem;border-bottom:1px solid var(--line);font-weight:600;font-size:0.923rem}
+.bhead small{color:var(--muted);font-weight:400}
+.bcards{padding:0.615rem;display:flex;flex-direction:column;gap:0.462rem;overflow:auto}
+.bcard{background:var(--panel2);border:1px solid var(--line);border-left:0.308rem solid #5b6b7d;border-radius:0.615rem;padding:0.538rem 0.692rem;cursor:pointer}
+.bcard:hover{border-color:var(--accent)}
+.bcard.overdue{box-shadow:inset 0 0 0 1px #e74c3c}
+.bcard.bulksel{outline:2px solid var(--accent);outline-offset:-1px}   /* bulk-selected (Ctrl/Shift-click) */
+.bttl{font-size:0.923rem;margin-bottom:0.308rem;display:flex;align-items:center;gap:0.385rem}
+.btxt{min-width:0}   /* let the title text ellipsize next to the assignee avatar */
+.bmeta{display:flex;align-items:center;gap:0.462rem;flex-wrap:wrap;font-size:0.769rem;color:var(--muted)}
+/* board card tag row — sits below .bmeta, above the est/foot */
+.btags{display:flex;flex-wrap:wrap;gap:0.308rem;margin-top:0.308rem}
+.btags .ttag{max-width:9.231rem}
+.bfoot{display:flex;gap:0.462rem;align-items:center;font-size:0.769rem;color:var(--muted);margin-top:0.308rem}
+.tbar{flex:1;height:0.462rem;min-width:2.769rem;border-radius:0.308rem;background:var(--line);overflow:hidden}
+.tbar.over{box-shadow:inset 0 0 0 1px #e74c3c}
+.tfill{height:100%;width:0;background:var(--accent);transition:width .2s}
+.tlabel{white-space:nowrap}
+.cbar{height:0.538rem}
+.od{color:#fff;background:#e74c3c;border-radius:0.615rem;padding:0 0.462rem;font-weight:700}
+.bcard{cursor:grab;user-select:none;-webkit-user-select:none}
+.bcard.dragging{opacity:.4}
+.bcard.moving{opacity:.5;pointer-events:none;cursor:default}
+.drag-ghost{position:fixed;pointer-events:none;opacity:.92;z-index:1000;box-shadow:0 0.615rem 1.846rem rgba(0,0,0,.45);transform:rotate(1.5deg);max-width:20rem}
+/* bulk drag: stack of cards behind the ghost + a count badge */
+.drag-ghost.bulk{box-shadow:0.385rem 0.385rem 0 -1px var(--panel2),0.385rem 0.385rem 0 0 var(--line),0.769rem 0.769rem 0 -1px var(--panel2),0.769rem 0.769rem 0 0 var(--line),0 0.769rem 2.154rem rgba(0,0,0,.45)}
+.drag-ghost .dgcount{position:absolute;top:-0.692rem;right:-0.692rem;min-width:1.538rem;height:1.538rem;line-height:1.538rem;padding:0 0.385rem;border-radius:0.846rem;background:var(--accent);color:#fff;font-size:0.846rem;font-weight:700;text-align:center;box-shadow:0 1px 0.385rem rgba(0,0,0,.45)}
+#sprintview{position:absolute;inset:0;overflow:auto;display:none;padding:0.769rem}
+#sprintview.show{display:block}
+.gtop{display:flex;align-items:center;gap:0.615rem;margin-bottom:0.615rem}
+.curdot{display:inline-block;width:0.692rem;height:0.692rem;border-radius:50%;background:var(--accent);flex:none}   /* current-sprint marker */
+.ghead{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+.glabel{width:16.923rem;flex:none;padding:0.308rem 0.615rem;font-size:0.923rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gdays{display:flex;flex:1}
+.gdays>div{flex:1;text-align:center;font-size:0.769rem;color:var(--muted);border-left:1px solid var(--line);padding:2px 0}
+.grow{display:flex;align-items:center;border-top:1px solid var(--line);min-height:2.308rem}
+.grow:hover{background:var(--panel2)}
+.gtrack{position:relative;flex:1;height:2rem;background-image:linear-gradient(90deg,var(--line) 1px,transparent 1px);background-repeat:repeat}
+.gbar{position:absolute;top:0.231rem;bottom:0.231rem;border-radius:0.385rem;color:#fff;font-size:0.846rem;line-height:1.538rem;padding:0 0.538rem;overflow:hidden;white-space:nowrap;cursor:pointer;box-shadow:0 1px 0.231rem rgba(0,0,0,.3)}
+.gbar:hover{filter:brightness(1.1)}
+.gbar.soft{opacity:.6;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0 0.385rem,transparent 0.385rem 0.769rem)}
+.gtoday{position:absolute;top:0;bottom:0;width:0.154rem;margin-left:-0.077rem;background:#e74c3c;opacity:.7;pointer-events:none;z-index:3}
+.gdays>div.gtodaycol{color:#e74c3c;font-weight:700}
+.gright{width:9.231rem;flex:none;font-size:0.769rem;color:var(--muted);text-align:right;padding:0 0.462rem;white-space:nowrap}
+.gright .gact{color:var(--accent);font-weight:600}
+.ggroup{display:flex;justify-content:space-between;align-items:center;gap:0.615rem;background:var(--panel2);font-weight:600;font-size:0.923rem;padding:0.308rem 0.769rem;border-top:1px solid var(--line)}
+.ggroup .gact{color:var(--accent)}
+
+/* ---- Timeline (project-wide Gantt: sticky labels + axis, horizontal scroll) ---- */
+#timeline{position:absolute;inset:0;overflow:auto;display:none;background:var(--bg)}
+#timeline.show{display:block}
+.tlempty{padding:1.231rem;color:var(--muted)}
+.tlcanvas{display:inline-block;min-width:100%}
+.tlhead{position:sticky;top:0;z-index:3;display:flex;background:var(--panel);border-bottom:1px solid var(--line)}
+.tlcorner{position:sticky;left:0;z-index:4;flex:none;background:var(--panel);border-right:1px solid var(--line);font-size:0.846rem;color:var(--muted);padding:0.462rem 0.615rem;display:flex;align-items:center}
+.tlaxis{position:relative;flex:none;height:3.077rem}
+.tlmonth{position:absolute;top:0;bottom:0;border-left:1px solid var(--line);font-size:0.846rem;font-weight:600;color:var(--txt);padding:0.308rem 0 0 0.385rem;white-space:nowrap;overflow:hidden;box-sizing:border-box}
+.tltick{position:absolute;bottom:0;height:1.308rem;border-left:1px solid var(--line);font-size:0.692rem;line-height:1.231rem;color:var(--muted);text-align:center;overflow:hidden;white-space:nowrap;box-sizing:border-box;opacity:.85}
+.tltick.we{color:#8a93a0}
+.tltick.now{color:#e74c3c;font-weight:700;opacity:1}
+.tlbody{position:relative}
+.tlgrid{position:absolute;top:0;bottom:0;z-index:0;pointer-events:none}
+.tlvline{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.tlvline.wk{opacity:.45}
+.tlweekend{position:absolute;top:0;bottom:0;background:rgba(127,127,127,.07)}
+.tltoday{position:absolute;top:0;bottom:0;width:0.154rem;margin-left:-0.077rem;background:#e74c3c;opacity:.75;z-index:1}
+.tlrow{display:flex;align-items:center;border-top:1px solid var(--line);min-height:2.154rem;position:relative;z-index:1}
+.tlrow:hover{background:var(--panel2)}
+.tlrow.bulksel{background:rgba(47,111,237,0.14)}
+/* the sticky label must stay opaque (covers scrolled bars) → tint over panel */
+.tlrow.bulksel .tllabel{background:linear-gradient(rgba(47,111,237,0.14),rgba(47,111,237,0.14)),var(--panel)}
+.tllabel{position:sticky;left:0;z-index:2;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;align-items:center;gap:0.462rem;padding:0.231rem 0.615rem;font-size:0.923rem;white-space:nowrap;overflow:hidden;cursor:pointer}
+.tllabel .tlst{font-size:0.692rem;padding:1px 0.462rem;margin-left:auto;flex:none}   /* timeline-row state pill: right-aligned, compact */
+.tlrow:hover .tllabel{background:var(--panel2)}
+.tllab{overflow:hidden;text-overflow:ellipsis}
+.tltrack{position:relative;flex:none;height:2.154rem}
+.tlbar{position:absolute;top:0.385rem;bottom:0.385rem;border-radius:0.385rem;color:#fff;font-size:0.846rem;line-height:1.385rem;padding:0 0.462rem;overflow:hidden;white-space:nowrap;cursor:pointer;box-shadow:0 1px 0.231rem rgba(0,0,0,.3)}
+.tlbar:hover{filter:brightness(1.12)}
+.tlbar.soft{opacity:.6;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0 0.385rem,transparent 0.385rem 0.769rem)}
+.tlbar.oos{box-shadow:0 0 0 2px #e0a13c,0 1px 0.231rem rgba(0,0,0,.35)}   /* dates fall outside the group's sprint */
+.tlgrouprow{display:flex;align-items:center;position:relative;z-index:1;border-top:1px solid var(--line)}
+.tlgrouplabel{position:sticky;left:0;z-index:2;flex:none;background:var(--panel2);border-right:1px solid var(--line);font-weight:600;font-size:0.923rem;padding:0.308rem 0.615rem;white-space:nowrap;overflow:hidden}
+.tlgrouptrack{position:relative;flex:none;height:1.846rem;background:var(--panel2)}
+.tlgroupbar{position:absolute;top:0.692rem;height:0.462rem;border-radius:0.231rem;background:var(--muted);opacity:.35}
+/* sprint window line in a by-Sprint group header — the reference for spotting mis-scheduled items */
+.tlsprintspan{position:absolute;top:0.692rem;height:0.385rem;border-radius:0.231rem;background:var(--accent);opacity:.9}
+.tlsprintspan::before,.tlsprintspan::after{content:'';position:absolute;top:-0.308rem;width:2px;height:1rem;border-radius:1px;background:var(--accent)}
+.tlsprintspan::before{left:0}
+.tlsprintspan::after{right:0}
+.tlnodate{color:var(--muted);font-size:0.846rem;padding-left:0.462rem}
+.bcard.moving .bttl::after{content:' \23F3 moving\2026';color:var(--accent);font-weight:600}
+.bcol.dropover{outline:2px dashed var(--accent);outline-offset:-2px}
+/* phantom "add sprint" column on Board → By Sprint */
+.bcol.addcol{min-width:10rem;max-width:11.538rem;background:transparent;border:0.115rem dashed var(--line);align-items:center;justify-content:center;cursor:pointer}
+.bcol.addcol:hover{border-color:var(--accent)}
+.bcol.addcol .addinner{color:var(--muted);font-size:0.923rem;text-align:center;padding:1.077rem}
+.bcol.addcol:hover .addinner{color:var(--accent)}
+.bcol.addcol .plus{display:block;font-size:1.846rem;line-height:1;margin-bottom:0.308rem}
+.bcol{transition:min-width .15s ease,max-width .15s ease}
+.bcol.empty-sprint{display:none;opacity:.9}
+/* empty sprints appear when showempty is toggled; narrow by default, expand on hover or drag-over */
+#board.showempty .bcol.empty-sprint{display:flex;min-width:3.385rem;max-width:3.385rem;overflow:hidden}
+#board.showempty .bcol.empty-sprint.dropover,
+#board.showempty .bcol.empty-sprint:hover{min-width:18.462rem;max-width:20rem;overflow:visible}
+#board.showempty .bcol.empty-sprint .bhead{color:var(--muted)}
+#board.showempty .bcol.empty-sprint:not(.dropover):not(:hover) .bhead{writing-mode:vertical-rl;white-space:nowrap;border:0;padding:0.462rem 2px;font-size:0.846rem}
+#board.showempty .bcol.empty-sprint:not(.dropover):not(:hover) .bcards{display:none}
+/* dateless sprint header yellow-black stripe indicator (always) */
+.bcol.dateless::before {
+  content: '';
+  height: 0.462rem;
+  width: 100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    #e0a13c,
+    #e0a13c 0.385rem,
+    #171c23 0.385rem,
+    #171c23 0.769rem
+  );
+  border-top-left-radius: 0.692rem;
+  border-top-right-radius: 0.692rem;
+  flex: none;
+}
+body.light .bcol.dateless::before {
+  background: repeating-linear-gradient(
+    -45deg,
+    #e0a13c,
+    #e0a13c 0.385rem,
+    #fff 0.385rem,
+    #fff 0.769rem
+  );
+}
+/* empty "No sprint": always visible but narrow, expands when a drag hovers it */
+.bcol.collapsed{min-width:3.385rem;max-width:3.385rem;overflow:hidden;opacity:.9}
+.bcol.collapsed:not(.dropover) .bhead{writing-mode:vertical-rl;white-space:nowrap;border:0;padding:0.462rem 2px;font-size:0.846rem;color:var(--muted)}
+.bcol.collapsed:not(.dropover) .bcards{display:none}
+.bcol.collapsed.dropover{min-width:18.462rem;max-width:20rem;overflow:visible;opacity:1}
+.btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;padding-left:1.385rem}
+.trow{display:flex;align-items:center;gap:0.462rem;padding:0.308rem 0.462rem;border-radius:0.462rem;cursor:pointer;white-space:nowrap;user-select:none}
+.trow:hover{background:var(--panel2)}.trow.sel{background:var(--sel)}
+.tog{width:1.077rem;text-align:center;color:var(--muted);cursor:pointer;user-select:none}
+.tog.leaf{cursor:default}                                   /* childless item: blank caret slot, keeps labels aligned */
+.dot{width:0.769rem;height:0.769rem;border-radius:0.231rem;flex:none}
+.lab{overflow:hidden;text-overflow:ellipsis}
+.badge{margin-left:auto;font-size:0.769rem;color:var(--muted);border:1px solid var(--line);border-radius:0.769rem;padding:1px 0.538rem}
+.prio{font-size:0.769rem;font-weight:700;color:#111;border-radius:0.769rem;padding:1px 0.462rem;flex:none}
+.ttag{font-size:0.769rem;font-weight:600;color:#fff;border-radius:0.769rem;padding:1px 0.462rem;flex:none;max-width:5.538rem;overflow:hidden;text-overflow:ellipsis}
+.empty{color:var(--muted);font-size:0.923rem;padding:0.154rem 0.615rem}
+.skip{color:var(--accent);font-weight:600;cursor:help}
+#side{width:26.154rem;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:0.769rem 0.923rem 0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:0.615rem;position:relative}

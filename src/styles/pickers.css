@@ -1,0 +1,269 @@
+/* app.css split (visual date-range picker, time-math indicator, type chips). Loaded in original order; concatenation reproduces the original app.css. */
+/* ---- Visual Date Range Picker ---- */
+.drp-wrapper {
+  position: relative;
+}
+.drp-popover, #sprint-range-picker, #side-range-picker, #side-due-picker {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 9500;
+  margin-top: 0.308rem;
+}
+.drp-popover.show, #sprint-range-picker.show, #side-range-picker.show, #side-due-picker.show {
+  display: block;
+}
+.drp-container {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 0.615rem;
+  padding: 0.769rem;
+  user-select: none;
+  font-family: inherit;
+  width: 18.462rem;
+  box-sizing: border-box;
+  box-shadow: 0 0.308rem 1.385rem rgba(0, 0, 0, 0.25);
+}
+.drp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.615rem;
+}
+.drp-month-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--txt);
+}
+.drp-month-select, .drp-year-select {
+  background: transparent;
+  border: none;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--txt);
+  cursor: pointer;
+  padding: 0 2px;
+  outline: none;
+  font-family: inherit;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  text-align: center;
+}
+.drp-month-select:hover, .drp-year-select:hover {
+  color: var(--accent);
+}
+.drp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.846rem;
+  color: var(--muted);
+  margin-bottom: 0.308rem;
+}
+.drp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.154rem;
+}
+.drp-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.923rem;
+  border-radius: 0.308rem;
+  cursor: pointer;
+  color: var(--txt);
+  transition: background-color 0.1s, color 0.1s;
+}
+.drp-day:hover:not(.drp-empty) {
+  background-color: var(--line);
+}
+.drp-day.drp-empty {
+  cursor: default;
+}
+.drp-day.drp-today {
+  box-shadow: inset 0 0 0 0.115rem var(--accent);
+  font-weight: 700;
+}
+.drp-day.drp-selected {
+  background-color: var(--accent) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+.drp-day.drp-in-range {
+  background-color: rgba(76, 139, 245, 0.18);
+  border-radius: 0;
+}
+.drp-day.drp-hover-range {
+  background-color: rgba(76, 139, 245, 0.12);
+  border-radius: 0;
+}
+.drp-day.drp-hover-finish {
+  background-color: rgba(76, 139, 245, 0.3);
+  font-weight: 700;
+}
+.drp-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.769rem;
+  padding-top: 0.615rem;
+  border-top: 1px dashed var(--line);
+}
+.drp-range-summary {
+  font-size: 0.846rem;
+  color: var(--muted);
+}
+.drp-clear {
+  padding: 2px 0.615rem;
+  font-size: 0.846rem;
+  min-height: 1.538rem;
+  line-height: 1.2;
+}
+.drp-grid-large {
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 0.615rem 0.308rem;
+}
+.drp-item-large {
+  padding: 0.923rem 0;
+  text-align: center;
+  font-size: 0.923rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 0.308rem;
+  color: var(--txt);
+  transition: background-color 0.1s, color 0.1s;
+}
+.drp-item-large:hover {
+  background-color: var(--line);
+}
+.drp-item-large.active {
+  background-color: var(--accent) !important;
+  color: #fff !important;
+}
+
+/* Time Input Math Indicator styling */
+.time-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.time-input-wrap input {
+  padding-right: 1.538rem !important;
+}
+.time-input-wrap .time-hint-icon {
+  position: absolute;
+  right: 0.462rem;
+  color: var(--muted);
+  font-size: 0.846rem;
+  cursor: help;
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s;
+  user-select: none;
+}
+.time-input-wrap:focus-within .time-hint-icon {
+  opacity: 1;
+  color: var(--accent);
+}
+.time-input-wrap:hover .time-hint-icon {
+  opacity: 0.9;
+}
+.time-preview-text {
+  position: absolute;
+  top: calc(100% + 0.308rem);
+  right: 0;
+  white-space: nowrap;
+  z-index: 2000;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.308rem;
+  padding: 0.308rem 0.462rem;
+  box-shadow: 0 0.308rem 0.769rem rgba(0,0,0,0.25);
+  font-size: 0.769rem;
+  color: var(--accent);
+  display: none;
+  font-weight: 500;
+  user-select: none;
+  line-height: 1.2;
+}
+
+#confirm-box {
+  width: 33.846rem !important;
+}
+
+.tl-col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background-color 0.1s;
+}
+.tl-col-resizer:hover, .tl-col-resizer.active {
+  background: var(--accent);
+}
+
+#cy-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: 1.15rem;
+  font-weight: bold;
+  gap: 0.8rem;
+}
+#cy-loading .spinner-ring {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent, #3b7de0);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+#cy-loading-text {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.5px;
+}
+
+/* type chips for customization */
+.type-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.385rem;
+}
+.type-chip {
+  background: var(--panel2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 0.846rem;
+  padding: 0.308rem 0.692rem;
+  font-size: 0.846rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.type-chip:hover {
+  background: var(--panel3);
+  color: var(--txt);
+  border-color: var(--muted);
+}
+.type-chip.on {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
