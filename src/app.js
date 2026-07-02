@@ -243,7 +243,7 @@ async function ensureFieldLoaded(groupId) {
       orig._relationsLoaded = true;
     }
     if (groupId === 'deps') {
-      loadDeps(id, d.deps);
+      App.deps.loadDeps(id, d.deps);
       orig._relationsLoaded = true;
     }
     
@@ -463,223 +463,7 @@ function getContextPopular(key, allVals){
   });
   return sorted.slice(0,10);
 }
-/* ---------- extensible chip filters (data-driven) ----------
-   Add a field: one entry here + one in FILTER_FIELDS in api.js. */
-const FILTERS=[
-  {key:'state',label:'State',values:()=>projectStates.length?projectStates:['New','Active','Resolved','Closed','Removed']},
-  {key:'type',label:'Type',values:()=>typeNames()},
-  {key:'priority',label:'Priority',values:()=>[1,2,3,4],fmt:v=>'P'+v},
-  {key:'assigned',label:'Assigned',values:()=>['me',...assignees],fmt:v=>v==='me'?(currentUser?`${currentUser} (me)`:'me'):v},
-  {key:'iteration',label:'Sprint',values:()=>sprintPaths,fmt:p=>sprintNames[p]||p},
-  {key:'tags',label:'Tags',values:()=>tagList},
-];
-function filterCount(){
-  if (!window.filterManager) return 0;
-  const ir = window.filterManager.getIR();
-  let count = 0;
-  const countRules = (rule) => {
-    if (!rule) return 0;
-    if (rule.kind === 'group') {
-      return (rule.rules || []).reduce((acc, r) => acc + countRules(r), 0);
-    }
-    if (rule.kind === 'condition') {
-      if (rule.value !== undefined && rule.value !== null) {
-        if (Array.isArray(rule.value)) {
-          return rule.value.length;
-        }
-        return String(rule.value).trim() !== '' ? 1 : 0;
-      }
-    }
-    return 0;
-  };
-  count += countRules(ir.where);
-  if (window.filterManager.isFollowed()) count++;
-  return count;
-}
-function updateFilterCount(){const n=filterCount();const el=$('filt_count');if(el)el.textContent=n?('('+n+')'):'';}
-function renderFilters(){
-  const chipsEl = $('filterchips');
-  const indEl = $('advanced-filter-indicator');
-  
-  if (!window.filterManager) return;
-  const isAdv = window.filterManager.isAdvanced();
-
-  if (isAdv) {
-    if (chipsEl) chipsEl.style.display = 'none';
-    if (indEl) indEl.style.display = 'flex';
-    const all=$('filt_clear_all');if(all)all.style.visibility='visible';
-    return;
-  }
-  
-  if (chipsEl) chipsEl.style.display = 'block';
-  if (indEl) indEl.style.display = 'none';
-
-  const el=$('filterchips');el.innerHTML='';
-  // toggle the static "Clear all" in the Find row — visibility (not display)
-  // keeps its slot reserved so the search input never shifts when filters appear
-  const all=$('filt_clear_all');if(all)all.style.visibility=filterCount()>0?'visible':'hidden';
-  FILTERS.forEach(f=>{
-    const allVals=f.values()||[];
-    if(!allVals.length&&!window.filterManager.hasFieldFilters(f.key))return;   // skip empty rows (e.g. tags/sprints not loaded yet)
-    
-    const limit = 10;
-    const isLarge = allVals.length > limit;
-    let valsToShow = allVals;
-    if(isLarge){
-      const selected = allVals.filter(v => window.filterManager.getChipState(f.key, v) === 'in');
-      const popular=getContextPopular(f.key, allVals);
-      const union=new Set([...selected,...popular]);
-      if(f.key==='assigned')union.add('me');
-      valsToShow=allVals.filter(v=>union.has(String(v)));
-    }
-
-    const row=document.createElement('div');row.className='frow';
-    const lab=document.createElement('span');lab.className='fl';lab.textContent=f.label;row.appendChild(lab);
-    // per-row clear "x" sits left of the chips. ALWAYS rendered so the chip
-    // alignment doesn't jump when it appears/disappears; visibility:hidden
-    // keeps the slot reserved when this filter has no selection.
-    const x=document.createElement('button');
-    x.className='fclear';x.title='clear this filter';x.innerHTML='<ui-icon name="x"></ui-icon>';
-    if(window.filterManager.hasFieldFilters(f.key))
-      x.onclick=()=>{window.filterManager.clearField(f.key);};
-    else{x.style.visibility='hidden';x.tabIndex=-1;}
-    row.appendChild(x);
-    valsToShow.forEach(v=>{
-      const ch=document.createElement('span');ch.className='chip';
-      const st=window.filterManager.getChipState(f.key, v);if(st)ch.classList.add(st);
-      ch.textContent=f.fmt?f.fmt(v):v;
-      ch.onclick=()=>{
-        const curSt = window.filterManager.getChipState(f.key, v);
-        if (curSt === 'out') {
-          window.filterManager.removeChip(f.key, v);
-        } else {
-          window.filterManager.toggleChip(f.key, v, !curSt ? 'in' : 'out');
-        }
-      };
-      row.appendChild(ch);
-    });
-    if(isLarge){
-      const wrap=document.createElement('div');
-      wrap.className='f-dropdown-container';
-
-      const inp=document.createElement('input');
-      inp.type='text';
-      inp.className='tag-search';
-      inp.placeholder='Search ' + f.label.toLowerCase() + '...';
-      inp.autocomplete='off';
-      wrap.appendChild(inp);
-
-      const clearBtn=document.createElement('button');
-      clearBtn.type='button';
-      clearBtn.className='search-clear-btn';
-      clearBtn.innerHTML='<ui-icon name="x"></ui-icon>';
-      clearBtn.style.display='none';
-      wrap.appendChild(clearBtn);
-
-      const updateClearBtn=()=>{
-        clearBtn.style.display=inp.value?'inline-flex':'none';
-      };
-
-      const dropdown=document.createElement('div');
-      dropdown.className='f-dropdown';
-      dropdown.style.display='none';
-      wrap.appendChild(dropdown);
-
-      const showMatches=(q)=>{
-        const query=q.toLowerCase().trim();
-        const shownSet=new Set(valsToShow.map(String));
-        const matches=allVals.filter(v=>{
-          if(shownSet.has(String(v)))return false;
-          return String(f.fmt?f.fmt(v):v).toLowerCase().includes(query);
-        });
-        dropdown.innerHTML='';
-        if(!matches.length){
-          const empty=document.createElement('div');
-          empty.className='f-dropdown-item empty';
-          empty.textContent=window.i18n.t('filter.noMatches');
-          dropdown.appendChild(empty);
-        } else {
-          matches.forEach(val=>{
-            const item=document.createElement('div');
-            item.className='f-dropdown-item';
-            item.textContent=f.fmt?f.fmt(val):val;
-            item.onmousedown=(e)=>{
-              e.preventDefault();
-              window.filterManager.toggleChip(f.key, val, 'in');
-              inp.value='';
-              updateClearBtn();
-              dropdown.style.display='none';
-              if (window.LayerManager) window.LayerManager.close(dropdown);
-            };
-            dropdown.appendChild(item);
-          });
-        }
-        dropdown.style.display='flex';
-        if (window.LayerManager) window.LayerManager.open(dropdown, null, { isPopover: true });
-        dropdown.style.left='0';
-        dropdown.style.right='auto';
-        dropdown.style.top='100%';
-        dropdown.style.bottom='auto';
-        dropdown.style.marginTop='4px';
-        dropdown.style.marginBottom='0';
-        const rect=dropdown.getBoundingClientRect();
-        if(rect.right>window.innerWidth){
-          dropdown.style.left='auto';
-          dropdown.style.right='0';
-        }
-        if(rect.bottom>window.innerHeight){
-          dropdown.style.top='auto';
-          dropdown.style.bottom='100%';
-          dropdown.style.marginTop='0';
-          dropdown.style.marginBottom='4px';
-        }
-      };
-
-      inp.onfocus=()=>{
-        updateClearBtn();
-        showMatches(inp.value);
-      };
-      inp.oninput=()=>{
-        updateClearBtn();
-        showMatches(inp.value);
-      };
-      inp.onblur=()=>{
-        dropdown.style.display='none';
-        if (window.LayerManager) window.LayerManager.close(dropdown);
-        clearBtn.style.display='none';
-      };
-      clearBtn.onmousedown=e=>{
-        e.preventDefault();
-      };
-      clearBtn.onclick=e=>{
-        e.stopPropagation();
-        inp.value='';
-        updateClearBtn();
-        showMatches('');
-        inp.focus();
-      };
-      inp.onkeydown=e=>{
-        if(e.key==='Escape'){
-          dropdown.style.display='none';
-          if (window.LayerManager) window.LayerManager.close(dropdown);
-          clearBtn.style.display='none';
-          inp.blur();
-        } else if(e.key==='Enter'){
-          e.preventDefault();
-          const firstItem=dropdown.querySelector('.f-dropdown-item:not(.empty)');
-          if(firstItem){
-            firstItem.dispatchEvent(new MouseEvent('mousedown'));
-          }
-        }
-      };
-      row.appendChild(wrap);
-    }
-    el.appendChild(row);
-  });
-  buildBulkControls();                      // keep the bulk-bar dropdowns in sync with loaded data
-}
-let applyTimer=null;
-function scheduleApply(){clearTimeout(applyTimer);applyTimer=setTimeout(refresh,500);}  // debounce (long enough to click several chips)
+/* chip filters (data-driven) -> app/filters.js (App.filters.*) */
 
 /* ---------- tree ---------- */
 function childrenUl(id){
@@ -1488,7 +1272,7 @@ function initCy(){
   cy.on('tap','edge[kind="dep"]',async e=>{
     const ed=e.target,s=Number(ed.data('source')),t=Number(ed.data('target'));
     if(!await customConfirm(window.i18n.t('dep.removeConfirm', {source:s, target:t}), window.i18n.t('dep.removeTitle')))return;
-    await removeDepLink(s,t,'blocks');
+    await App.deps.removeDepLink(s,t,'blocks');
   });
   cy.on('mouseover','edge[kind="dep"]',e=>e.target.addClass('hot'));
   cy.on('mouseout','edge[kind="dep"]',e=>e.target.removeClass('hot'));
@@ -1563,7 +1347,7 @@ document.addEventListener('mouseup',async()=>{
   if(d.hot)d.hot.removeClass('dep-hot');
   const target=d.hot?Number(d.hot.data('id')):null;
   if(!target||target===d.sourceId)return;
-  await addDepLink(d.sourceId,target,'blocks');   // source → target (source "blocks" target)
+  await App.deps.addDepLink(d.sourceId,target,'blocks');   // source → target (source "blocks" target)
 });
 function syncGraphBulk(){if(cy)cy.nodes().forEach(nd=>nd.toggleClass('bulk',bulkSel.has(Number(nd.data('id')))));}
 function saveNodePositions() {
@@ -2267,14 +2051,14 @@ async function loadChildCounts(ids){      // top-level refresh path: guarded so 
 async function closePanel(force){
   if(!force&&dirty()&&!await customConfirm(window.i18n.t('editor.discardConfirm'), window.i18n.t('editor.discardTitle')))return;
   document.querySelectorAll('.sidebar-backdrop, .activity-backdrop, .editor-backdrop').forEach(el => el.remove());
-  parentEditor.close();depBlockedByPicker.close();depBlocksPicker.close();closeMention();
+  parentEditor.close();App.deps.depBlockedByPicker.close();App.deps.depBlocksPicker.close();closeMention();
   if($('side').classList.contains('fullscreen'))toggleFullscreen(false);   // restore inline width before hiding
   $('side').classList.add('hidden');
   $('resizer').style.display='none';cur=null;orig={};
   const cbtn = $('s_comment'); if (cbtn) cbtn.classList.remove('on');
   const chbtn = $('s_childbtn'); if (chbtn) chbtn.classList.remove('on');
   atchState.list=[];atchState.wid=null;atchState.uploading=0;renderAttachments();clearAttBlobs();
-  depsState.blockedBy=[];depsState.blocks=[];renderDeps();
+  depsState.blockedBy=[];depsState.blocks=[];App.deps.renderDeps();
   if(selRow){selRow.classList.remove('sel');selRow=null;}
   if(cy)cy.$(':selected').unselect();
 }
@@ -2935,7 +2719,7 @@ async function openItem(id){
   $('s_ctx').innerHTML='';$('s_kidlist').innerHTML='';
   if(descEditor)descEditor.value='';if(acEditor)acEditor.value='';
   atchState.list=[];atchState.uploading=0;renderAttachments();
-  depsState.blockedBy=[];depsState.blocks=[];renderDeps();
+  depsState.blockedBy=[];depsState.blocks=[];App.deps.renderDeps();
   
   // Clear all custom field elements from the sidebar root and reset state
   document.querySelectorAll('#side .sgroup[data-sg^="cust:"]').forEach(el => el.remove());
@@ -2952,7 +2736,7 @@ async function openItem(id){
   $('side').classList.remove('hidden');$('resizer').style.display='block';
   $('child_form').style.display='none';closeCommentForm();
   const chbtn=$('s_childbtn');if(chbtn)chbtn.classList.remove('on');
-  toggleActivityExpand(false);
+  App.activity.toggleActivityExpand(false);
   loadStart('loading #'+id+'…');
 
   const LIGHT_FIELDS = [
@@ -3636,7 +3420,7 @@ async function openItem(id){
           renderAttachments();
         }
         if (activeLazyGroups.includes('deps')) {
-          loadDeps(id, fullD.deps);
+          App.deps.loadDeps(id, fullD.deps);
         }
         if (needRelations) {
           orig._relationsLoaded = true;
@@ -3913,107 +3697,8 @@ const bulkAssignedPicker=createAssigneeField('bulk_assigned',{onChange:()=>{cons
 const bulkSprintPicker=createSprintField('bulk_iter',{getNone:sprintRoot,onChange:()=>{const v=$('bulk_iter').value.trim();if(v!==undefined)bulkApply('iteration',v);}});
 const bulkParentPicker=createParentField('bulk_parent',{getExcludeId:()=>null,onChange:()=>{const v=$('bulk_parent').value.trim();if(v!==undefined)bulkApply('parent',v);}});
 
-/* ---------- dependency links (sidebar Blocked-by / Blocks + the graph) ----------
-   The editor shows two chip rows + an item picker for adding. Mutations also fire
-   from the graph (drag a stub between nodes, or click an edge to delete). Both
-   paths share the same state + undo plumbing so the views stay consistent. */
+/* dependency links -> app/dependencies.js (App.deps.*); depsState stays bare (reset externally) */
 const depsState={blockedBy:[],blocks:[]};
-// Pick the per-direction array on the open item's deps state.
-function depsArr(dir){return dir==='blocks'?depsState.blocks:depsState.blockedBy;}
-function setDepsArr(dir,arr){if(dir==='blocks')depsState.blocks=arr;else depsState.blockedBy=arr;}
-
-const depBlockedByPicker=createCardPicker('s_deps_blockedby',{provider:depAdderProvider('blockedBy'),onChange:depPickerOnChange('blockedBy')});
-const depBlocksPicker=createCardPicker('s_deps_blocks',{provider:depAdderProvider('blocks'),onChange:depPickerOnChange('blocks')});
-
-// Render Blocked-by / Blocks chip rows from depsState. Titles for items the tree
-// hasn't loaded resolve lazily via api.item — same pattern as the parent card.
-function renderDeps(){
-  const chip=(id,dir)=>{
-    const n=store.nodes[id];
-    const ty=n?tyColor(n.type):'#95a5a6';
-    const ttl=n?htmlEsc(n.title||''):'';
-    return `<span class="depchip"><i class="dot" style="background:${ty}"></i>`+
-      `<a class="depopen" data-id="${id}">#${id}</a>`+
-      (ttl?`<span class="depttl">${ttl}</span>`:'')+
-      `<b data-dir="${dir}" data-id="${id}" title="remove">×</b></span>`;
-  };
-  const bb=$('s_deps_blockedby_chips'),bk=$('s_deps_blocks_chips');
-  if(!bb||!bk)return;
-  bb.innerHTML=depsState.blockedBy.length?depsState.blockedBy.map(id=>chip(id,'blockedBy')).join(''):'<span class="pcnone">(none)</span>';
-  bk.innerHTML=depsState.blocks.length?depsState.blocks.map(id=>chip(id,'blocks')).join(''):'<span class="pcnone">(none)</span>';
-  document.querySelectorAll('#s_deps .depchip b[data-dir]').forEach(x=>x.onclick=()=>removeDepLink(cur,+x.dataset.id,x.dataset.dir));
-  document.querySelectorAll('#s_deps .depopen').forEach(a=>a.onclick=(e)=>{e.preventDefault();openItem(+a.dataset.id);});
-  // Lazy-load titles for ids not yet in the store (a single GET per id, cached on success)
-  const missing=[...depsState.blockedBy,...depsState.blocks].filter(id=>!store.nodes[id]);
-  missing.forEach(id=>{api.item(id).then(it=>{
-    if(it&&it.id){store.nodes[it.id]=store.nodes[it.id]||it;if(cur!=null)renderDeps();}
-  }).catch(()=>{});});
-  // Keep the adder pickers in sync with the current list (so they exclude linked items)
-  depBlockedByPicker.render();depBlocksPicker.render();
-}
-async function loadDeps(id,seed){
-  depsState.blockedBy=seed&&seed.blockedBy?seed.blockedBy.slice():[];
-  depsState.blocks=seed&&seed.blocks?seed.blocks.slice():[];
-  renderDeps();
-  if(seed)return;                                  // openItem already has fresh data from api.item()
-  let d;try{d=await api.dependencies(id);}catch(e){return;}
-  if(cur!==id)return;
-  depsState.blockedBy=d.blockedBy||[];depsState.blocks=d.blocks||[];
-  renderDeps();
-}
-// Map a UI direction relative to the focused item to the underlying (from, to)
-// pair: edge always flows from → to ("from blocks to"). 'blocks' = focused
-// blocks other; 'blockedBy' = other blocks focused.
-function depPair(focusId,otherId,dir){
-  return dir==='blocks'?{from:focusId,to:otherId}:{from:otherId,to:focusId};
-}
-// Sync local view-state (sidebar deps + graph edge) for a link that just changed
-// on the server. `op` is 'add' | 'remove'.
-function applyDepLocal(from,to,op){
-  if(cur===from){const a=depsState.blocks;if(op==='add'){if(!a.includes(to))a.push(to);}else depsState.blocks=a.filter(x=>x!==to);}
-  if(cur===to){const a=depsState.blockedBy;if(op==='add'){if(!a.includes(from))a.push(from);}else depsState.blockedBy=a.filter(x=>x!==from);}
-  if(cur===from||cur===to)renderDeps();
-  if(cy&&mode==='graph'&&edgeMode!=='hierarchy'){
-    const eid='d_'+from+'_'+to;
-    const existing=cy.getElementById(eid);
-    if(op==='add'){if(existing.empty()&&cy.getElementById(String(from)).nonempty()&&cy.getElementById(String(to)).nonempty())
-      cy.add({group:'edges',data:{id:eid,source:String(from),target:String(to),kind:'dep'}});}
-    else{if(existing.nonempty())existing.remove();}
-  }
-}
-async function addDepLink(focusId,otherId,dir){
-  const {from,to}=depPair(focusId,otherId,dir);
-  if(from===to){setStatus(window.i18n.t('status.cannotDependSelf'),true);return;}
-  // Local dup-check only when the sidebar's open item IS the focus (else we have no fresh state)
-  if(cur===focusId&&depsArr(dir).includes(otherId))return;
-  loadStart('linking #'+from+' → #'+to+'…');
-  try{
-    await api.addDependency(from,to);
-    depCache={};                                   // graph cache is per id-set; nuke wholesale
-    applyDepLocal(from,to,'add');
-    pushAction(`link #${from} → #${to}`,
-      async()=>{try{await api.removeDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'remove');if(cur===focusId)await loadDeps(focusId);},
-      async()=>{try{await api.addDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'add');if(cur===focusId)await loadDeps(focusId);});
-    setStatus(`linked #${from} → #${to}`);
-  }catch(e){
-    if(!denyOnForbidden(e,'add dependencies'))setStatus('ERROR: '+e.message,true);
-  }finally{loadEnd();}
-}
-async function removeDepLink(focusId,otherId,dir){
-  const {from,to}=depPair(focusId,otherId,dir);
-  loadStart('unlinking #'+from+' → #'+to+'…');
-  try{
-    await api.removeDependency(from,to);
-    depCache={};
-    applyDepLocal(from,to,'remove');
-    pushAction(`unlink #${from} → #${to}`,
-      async()=>{try{await api.addDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'add');if(cur===focusId)await loadDeps(focusId);},
-      async()=>{try{await api.removeDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'remove');if(cur===focusId)await loadDeps(focusId);});
-    setStatus(`unlinked #${from} → #${to}`);
-  }catch(e){
-    if(!denyOnForbidden(e,'remove dependencies'))setStatus('ERROR: '+e.message,true);
-  }finally{loadEnd();}
-}
 
 /* ---------- undo / redo (Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z or Ctrl+Y) ----------
    Each mutating action pushes a command with matching undo()/redo() functions,
@@ -4113,7 +3798,7 @@ function registerNewAssignee(name) {
     assignees.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     const dl = $('assignees');
     if (dl) dl.innerHTML = ['me', ...assignees].map(a => `<option value="${String(a).replace(/"/g,'&quot;')}">`).join('');
-    renderFilters();
+    App.filters.renderFilters();
   }
 }
 function registerNewTags(tagsStr) {
@@ -4129,7 +3814,7 @@ function registerNewTags(tagsStr) {
     tagList.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     const dl = $('tagsdl');
     if (dl) dl.innerHTML = tagList.map(x => `<option value="${htmlEsc(x)}">`).join('');
-    renderFilters();
+    App.filters.renderFilters();
   }
 }
 
@@ -4343,742 +4028,12 @@ async function postComment(){
   try{await api.comment(cur,t);}catch(e){setStatus('ERROR: '+e.message,true);return;}
   closeCommentForm();
   setStatus('#'+cur+' comment added');
-  loadActivity();
+  App.activity.loadActivity();
 }
 
-/* ---------- activity reactions, expansion, inline edits ---------- */
-function getEmojiMap() {
-  const defaults = {
-    like: 'icons/reactions/like.png',
-    dislike: 'icons/reactions/dislike.png',
-    heart: 'icons/reactions/heart.png',
-    hooray: 'icons/reactions/hooray.png',
-    smile: 'icons/reactions/smile.png',
-    confused: 'icons/reactions/confused.png'
-  };
-  try {
-    const custom = JSON.parse(localStorage.getItem('ado.custom_emojis') || '{}');
-    return { ...defaults, ...custom };
-  } catch (e) {
-    return defaults;
-  }
-}
-
-function renderEmojiMarkup(type, emojiVal) {
-  const isUrl = /^(https?:\/\/|chrome-extension:\/\/|icons\/|data:image\/)/.test(emojiVal);
-  if (isUrl) {
-    return `<img class="emoji-img" src="${emojiVal}" alt="${type}">`;
-  }
-  return emojiVal;
-}
-
-function showEmojisModal() {
-  const m = $('morepanel');
-  if (m) {
-    m.style.display = 'none';
-    $('morebtn').classList.remove('on');
-  }
-  const current = getEmojiMap();
-  const defaults = {
-    like: 'icons/reactions/like.png',
-    dislike: 'icons/reactions/dislike.png',
-    heart: 'icons/reactions/heart.png',
-    hooray: 'icons/reactions/hooray.png',
-    smile: 'icons/reactions/smile.png',
-    confused: 'icons/reactions/confused.png'
-  };
-  for (const [type, val] of Object.entries(current)) {
-    const input = $(`emoji_override_${type}`);
-    if (input) {
-      if (val === defaults[type]) {
-        input.value = '';
-      } else {
-        input.value = val;
-      }
-      updateEmojiInputPreview(type);
-    }
-  }
-  const overlay = $('emojis-overlay');
-  overlay.classList.add('show');
-  if (window.LayerManager) {
-    window.LayerManager.open(overlay);
-  }
-}
-
-function updateEmojiInputPreview(type) {
-  const input = $(`emoji_override_${type}`);
-  const previewDiv = $(`emoji_preview_${type}`);
-  if (!input || !previewDiv) return;
-  const val = input.value.trim();
-  const defaults = {
-    like: 'icons/reactions/like.png',
-    dislike: 'icons/reactions/dislike.png',
-    heart: 'icons/reactions/heart.png',
-    hooray: 'icons/reactions/hooray.png',
-    smile: 'icons/reactions/smile.png',
-    confused: 'icons/reactions/confused.png'
-  };
-  const displayVal = val || defaults[type];
-  previewDiv.innerHTML = renderEmojiMarkup(type, displayVal);
-}
-
-function showEmojiRowError(type, message) {
-  const inputEl = $(`emoji_override_${type}`);
-  if (!inputEl) return;
-  const row = inputEl.closest('.emoji-config-row');
-  if (!row) return;
-  
-  const existing = document.querySelector(`.emoji-row-error[data-row-type="${type}"]`);
-  if (existing) {
-    if (window.LayerManager) window.LayerManager.close(existing);
-    existing.remove();
-  }
-  
-  const err = document.createElement('div');
-  err.className = 'emoji-row-error';
-  err.dataset.rowType = type;
-  err.textContent = message;
-  
-  const overlay = $('emojis-overlay');
-  overlay.appendChild(err);
-  
-  const rRect = row.getBoundingClientRect();
-  const oRect = overlay.getBoundingClientRect();
-  
-  const top = rRect.top - oRect.top - 32;
-  const right = oRect.right - rRect.right + 10;
-  
-  err.style.top = `${top}px`;
-  err.style.right = `${right}px`;
-  
-  if (window.LayerManager) {
-    window.LayerManager.open(err, null, { isPopover: true });
-  }
-  
-  setTimeout(() => {
-    err.style.opacity = '0';
-    setTimeout(() => {
-      if (window.LayerManager) window.LayerManager.close(err);
-      err.remove();
-    }, 200);
-  }, 4000);
-}
-
-function closeEmojisModal() {
-  const overlay = $('emojis-overlay');
-  overlay.classList.remove('show');
-  if (window.LayerManager) {
-    window.LayerManager.close(overlay);
-  }
-}
-
-function resetEmojis() {
-  localStorage.removeItem('ado.custom_emojis');
-  closeEmojisModal();
-  loadActivity();
-}
-
-function saveEmojis() {
-  const custom = {};
-  const types = ['like', 'dislike', 'heart', 'hooray', 'smile', 'confused'];
-  for (const type of types) {
-    const val = $(`emoji_override_${type}`).value.trim();
-    if (val) {
-      custom[type] = val;
-    }
-  }
-  localStorage.setItem('ado.custom_emojis', JSON.stringify(custom));
-  closeEmojisModal();
-  loadActivity();
-}
-
-function updateCommentReactionsUI(commentId, reactions) {
-  const card = document.querySelector(`.comment-card[data-cid="${commentId}"]`);
-  if (!card) return;
-  const reactionsDiv = card.querySelector('.comment-reactions');
-  if (!reactionsDiv) return;
-
-  const emojiMap = getEmojiMap();
-  let reactHtml = '';
-  Object.entries(emojiMap).forEach(([type, emojiVal]) => {
-    const data = reactions[type];
-    if (data && data.count > 0) {
-      const active = data.me ? 'active' : '';
-      reactHtml += `<span class="reaction-chip ${active}" data-cid="${commentId}" data-type="${type}"><span class="emoji-symbol">${renderEmojiMarkup(type, emojiVal)}</span> <span class="rc-count">${data.count}</span></span>`;
-    }
-  });
-  reactionsDiv.innerHTML = reactHtml;
-}
-
-function toggleActivityExpand(forceState) {
-  const actionsGroup = document.querySelector('.sgroup[data-sg="actions"]');
-  const arrow = document.querySelector('#activity_toggle_btn .toggle-arrow');
-  const content = $('activity-content');
-  if (!actionsGroup || !content) return;
-  
-  const isFullscreen = actionsGroup.classList.contains('fullscreen');
-  const isExpanded = forceState !== undefined ? forceState : content.classList.contains('hidden');
-  if (isExpanded) {
-    const alreadyExpanded = !content.classList.contains('hidden');
-    content.classList.remove('hidden');
-    if (arrow) {
-      arrow.innerHTML = isFullscreen ? '<ui-icon name="refresh-cw"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>';
-      if (isFullscreen) arrow.title = 'Reload activity content';
-      else arrow.title = '';
-    }
-    actionsGroup.classList.add('expanded');
-    if (!alreadyExpanded) {
-      loadActivity();
-    }
-  } else {
-    content.classList.add('hidden');
-    if (arrow) {
-      arrow.innerHTML = isFullscreen ? '<ui-icon name="refresh-cw"></ui-icon>' : '<ui-icon name="chevron-right"></ui-icon>';
-      if (isFullscreen) arrow.title = 'Reload activity content';
-      else arrow.title = '';
-    }
-    actionsGroup.classList.remove('expanded');
-  }
-}
-
-let _actionsOrigParent = null;
-let _actionsOrigNextSibling = null;
-function toggleActivityFullscreen(forceOn) {
-  const actionsGroup = document.querySelector('.sgroup[data-sg="actions"]');
-  const btn = $('s_act_full');
-  if (!actionsGroup) return;
-  
-  const on = forceOn !== undefined ? forceOn : !actionsGroup.classList.contains('fullscreen');
-  const arrow = document.querySelector('#activity_toggle_btn .toggle-arrow');
-  const atb = $('activity_toggle_btn');
-  
-  if (on) {
-    actionsGroup.classList.add('fullscreen');
-    toggleActivityExpand(true);
-    if (btn) btn.classList.add('on');
-    if (arrow) {
-      arrow.innerHTML = '<ui-icon name="refresh-cw"></ui-icon>';
-      arrow.title = 'Reload activity content';
-    }
-    if (atb) {
-      atb.title = 'Reload activity content';
-    }
-    let bd = $('act-backdrop');
-    if (!bd) {
-      bd = document.createElement('div');
-      bd.id = 'act-backdrop';
-      bd.className = 'modal-backdrop activity-backdrop';
-      bd.onclick = () => toggleActivityFullscreen(false);
-      const sideEl = $('side');
-      if (sideEl) {
-        sideEl.appendChild(bd);
-      } else {
-        document.body.appendChild(bd);
-      }
-    }
-    
-    // Move actionsGroup to document.body to break stacking context bugs
-    if (!_actionsOrigParent) {
-      _actionsOrigParent = actionsGroup.parentNode;
-      _actionsOrigNextSibling = actionsGroup.nextSibling;
-    }
-    document.body.appendChild(actionsGroup);
-
-    if (window.LayerManager) {
-      window.LayerManager.open(actionsGroup, bd);
-    }
-  } else {
-    if (window.LayerManager) {
-      window.LayerManager.close(actionsGroup);
-    }
-    
-    // Restore actionsGroup to original parent
-    const sideEl = $('side');
-    if (sideEl && _actionsOrigParent) {
-      if (_actionsOrigNextSibling) {
-        _actionsOrigParent.insertBefore(actionsGroup, _actionsOrigNextSibling);
-      } else {
-        _actionsOrigParent.appendChild(actionsGroup);
-      }
-      _actionsOrigParent = null;
-      _actionsOrigNextSibling = null;
-    }
-
-    actionsGroup.classList.remove('fullscreen');
-    if (btn) btn.classList.remove('on');
-    if (arrow) {
-      arrow.textContent = '▼'; // Since it's still expanded
-      arrow.title = '';
-    }
-    if (atb) {
-      atb.title = 'Click to collapse/expand activity';
-    }
-    const bd = $('act-backdrop');
-    if (bd) bd.remove();
-  }
-}
-
-function initActivityResizer() {
-  const rz = $('activity-resizer');
-  const act = $('s_activity');
-  if (!rz || !act) return;
-  let drag = false;
-  let startY, startH;
-  
-  rz.onmousedown = e => {
-    const content = $('activity-content');
-    if (content && content.classList.contains('hidden')) {
-      toggleActivityExpand(true);
-      startH = 200;
-    } else {
-      startH = act.offsetHeight;
-    }
-    drag = true;
-    startY = e.clientY;
-    rz.classList.add('active');
-    document.body.style.cursor = 'ns-resize';
-    e.preventDefault();
-  };
-  
-  document.addEventListener('mousemove', e => {
-    if (!drag) return;
-    const dy = startY - e.clientY;
-    const h = Math.max(100, Math.min(600, startH + dy));
-    act.style.maxHeight = h + 'px';
-  });
-  
-  document.addEventListener('mouseup', () => {
-    if (drag) {
-      drag = false;
-      rz.classList.remove('active');
-      document.body.style.cursor = '';
-      try {
-        localStorage.setItem('ado.activityHeight', act.style.maxHeight);
-      } catch (err) {}
-    }
-  });
-  
-  try {
-    const savedH = localStorage.getItem('ado.activityHeight');
-    if (savedH) act.style.maxHeight = savedH;
-  } catch (err) {}
-}
-
-let activeEmojiPicker = null;
-function showEmojiPicker(btn, commentId) {
-  const isAlreadyOpen = activeEmojiPicker && activeEmojiPicker.parentElement === btn.parentElement;
-  closeEmojiPicker();
-  if (isAlreadyOpen) {
-    return;
-  }
-  
-  const pop = document.createElement('div');
-  pop.className = 'reactions-popover';
-  const emojiMap = getEmojiMap();
-  
-  Object.entries(emojiMap).forEach(([type, emojiVal]) => {
-    const emojiBtn = document.createElement('button');
-    emojiBtn.className = 'reaction-emoji-btn';
-    emojiBtn.type = 'button';
-    emojiBtn.innerHTML = renderEmojiMarkup(type, emojiVal);
-    emojiBtn.title = type;
-    emojiBtn.onclick = (ev) => {
-      ev.stopPropagation();
-      toggleReaction(commentId, type);
-      closeEmojiPicker();
-    };
-    pop.appendChild(emojiBtn);
-  });
-  
-  btn.parentElement.appendChild(pop);
-  activeEmojiPicker = pop;
-  if (window.LayerManager) window.LayerManager.open(pop, null, { isPopover: true });
-  
-  document.addEventListener('click', closeEmojiPickerOutside);
-}
-function closeEmojiPicker() {
-  if (activeEmojiPicker) {
-    if (window.LayerManager) window.LayerManager.close(activeEmojiPicker);
-    activeEmojiPicker.remove();
-    activeEmojiPicker = null;
-  }
-  document.removeEventListener('click', closeEmojiPickerOutside);
-}
-function closeEmojiPickerOutside(e) {
-  if (activeEmojiPicker && !activeEmojiPicker.contains(e.target)) {
-    closeEmojiPicker();
-  }
-}
-
-async function toggleReaction(commentId, type) {
-  if (cur == null) return;
-  const c = currentComments.find(x => x.id === commentId);
-  if (!c) return;
-
-  const cacheKey = `${commentId}_${type}`;
-  reactionCache.delete(cacheKey);
-
-  if (!c.reactions) c.reactions = {};
-  if (!c.reactions[type]) c.reactions[type] = { count: 0, me: false };
-
-  const wasMe = c.reactions[type].me;
-  
-  // Optimistic update
-  if (wasMe) {
-    c.reactions[type].me = false;
-    c.reactions[type].count = Math.max(0, c.reactions[type].count - 1);
-  } else {
-    c.reactions[type].me = true;
-    c.reactions[type].count++;
-  }
-
-  // Update specific comment reactions UI
-  updateCommentReactionsUI(commentId, c.reactions);
-
-  try {
-    if (wasMe) {
-      await api.removeCommentReaction(cur, commentId, type);
-    } else {
-      await api.addCommentReaction(cur, commentId, type);
-    }
-  } catch (err) {
-    setStatus('ERROR: ' + err.message, true);
-    // Revert optimistic update
-    if (wasMe) {
-      c.reactions[type].me = true;
-      c.reactions[type].count++;
-    } else {
-      c.reactions[type].me = false;
-      c.reactions[type].count = Math.max(0, c.reactions[type].count - 1);
-    }
-    updateCommentReactionsUI(commentId, c.reactions);
-  }
-}
-
-function editCommentInline(commentId) {
-  const card = document.querySelector(`.comment-card[data-cid="${commentId}"]`);
-  if (!card) return;
-  const bodyEl = card.querySelector('.atext');
-  if (!bodyEl) return;
-  
-  if (card.classList.contains('editing-comment')) return;
-  card.classList.add('editing-comment');
-  
-  const rawText = card.dataset.rawMarkdown || '';
-  
-  bodyEl.innerHTML = `
-    <div class="inline-comment-edit-container" id="inline_comment_editor_${commentId}"></div>
-    <div class="inline-comment-edit-actions" style="margin-top: 8px;">
-      <button type="button" class="btn btn-sm cancel-comment-edit-btn" data-cid="${commentId}">Cancel</button>
-      <button type="button" class="btn btn-sm save save-comment-edit-btn" data-cid="${commentId}">Save</button>
-    </div>
-  `;
-
-  const editorContainer = document.getElementById(`inline_comment_editor_${commentId}`);
-  const ed = new MarkdownEditor(editorContainer, {
-    placeholder: 'Edit your comment...',
-    allowAttachments: false,
-    allowMentions: true
-  });
-  ed.value = rawText;
-  activeCommentEditors.set(commentId, ed);
-}
-function cancelEditComment(e, commentId) {
-  e.stopPropagation();
-  activeCommentEditors.delete(commentId);
-  loadActivity();
-}
-async function saveEditComment(e, commentId) {
-  e.stopPropagation();
-  const ed = activeCommentEditors.get(commentId);
-  if (!ed) return;
-  const text = ed.value.trim();
-  if (!text) return;
-  
-  loadStart('saving…');
-  try {
-    await api.updateComment(cur, commentId, text);
-    setStatus('Comment updated');
-    activeCommentEditors.delete(commentId);
-  } catch (err) {
-    setStatus('ERROR: ' + err.message, true);
-  }
-  loadEnd();
-  loadActivity();
-}
-
-async function deleteCommentAction(commentId) {
-  if (!await customConfirm(window.i18n.t('comment.deleteConfirm'), window.i18n.t('comment.deleteTitle'))) return;
-  loadStart('deleting…');
-  try {
-    await api.deleteComment(cur, commentId);
-    setStatus('Comment deleted');
-  } catch (err) {
-    setStatus('ERROR: ' + err.message, true);
-  }
-  loadEnd();
-  loadActivity();
-}
-
-/* ---------- activity: existing comments + field-change history ---------- */
-let _actId=null;
+/* activity feed -> app/activity.js (App.activity.*); reactionCache stays bare (reset externally) */
 const reactionCache=new Map();
-async function loadActivity(){
-  if(cur==null)return;
-  const box=$('s_activity'),id=cur;_actId=id;
-  const arrow = document.querySelector('#activity_toggle_btn .toggle-arrow');
-  if (arrow && arrow.textContent === '↻') {
-    arrow.classList.add('spinning');
-  }
-  box.innerHTML='<div class="asec">loading…</div>';
-  let cs=[],hs=[];
-  try{[cs,hs]=await Promise.all([api.comments(id),api.history(id)]);}catch(e){/* render whatever we got */}
-  if (arrow) {
-    arrow.classList.remove('spinning');
-  }
-  if(_actId!==id||cur!==id)return;                 // user switched items mid-load
-  currentComments = cs;
-  currentHistory = hs;
-  renderActivity(cs,hs);
-}
-async function copyCommentLink(commentId, btn) {
-  try {
-    const base = await api.browserUrl(cur);
-    const url = `${base}?_a=discussion&Anchor=comment-${commentId}`;
-    await navigator.clipboard.writeText(url);
-    setStatus('Comment link copied');
-    if (btn) {
-      const oldHtml = btn.innerHTML;
-      btn.innerHTML = '<ui-icon name="check"></ui-icon>';
-      btn.classList.add('copied');
-      setTimeout(() => {
-        btn.innerHTML = oldHtml;
-        btn.classList.remove('copied');
-      }, 1000);
-    }
-  } catch(e) {
-    setStatus('Failed to copy link: ' + e.message, true);
-  }
-}
-function handleActivityClick(e) {
-  const copylinkBtn = e.target.closest('.copylink-btn');
-  if (copylinkBtn) {
-    e.stopPropagation();
-    const cid = parseInt(copylinkBtn.dataset.cid, 10);
-    copyCommentLink(cid, copylinkBtn);
-    return;
-  }
-  const chip = e.target.closest('.reaction-chip');
-  if (chip) {
-    e.stopPropagation();
-    const cid = parseInt(chip.dataset.cid, 10);
-    const type = chip.dataset.type;
-    toggleReaction(cid, type);
-    return;
-  }
-  const reactBtn = e.target.closest('.react-btn');
-  if (reactBtn) {
-    e.stopPropagation();
-    const cid = parseInt(reactBtn.dataset.cid, 10);
-    showEmojiPicker(reactBtn, cid);
-    return;
-  }
-  const editBtn = e.target.closest('.edit-btn');
-  if (editBtn) {
-    e.stopPropagation();
-    const cid = parseInt(editBtn.dataset.cid, 10);
-    editCommentInline(cid);
-    return;
-  }
-  const deleteBtn = e.target.closest('.delete-btn');
-  if (deleteBtn) {
-    e.stopPropagation();
-    const cid = parseInt(deleteBtn.dataset.cid, 10);
-    deleteCommentAction(cid);
-    return;
-  }
-  const cancelBtn = e.target.closest('.cancel-comment-edit-btn');
-  if (cancelBtn) {
-    e.stopPropagation();
-    const cid = parseInt(cancelBtn.dataset.cid, 10);
-    cancelEditComment(e, cid);
-    return;
-  }
-  const saveBtn = e.target.closest('.save-comment-edit-btn');
-  if (saveBtn) {
-    e.stopPropagation();
-    const cid = parseInt(saveBtn.dataset.cid, 10);
-    saveEditComment(e, cid);
-    return;
-  }
-}
 
-function handleActivityMouseOver(e) {
-  const chip = e.target.closest('.reaction-chip');
-  if (!chip) return;
-  const cid = parseInt(chip.dataset.cid, 10);
-  const type = chip.dataset.type;
-  if (!cid || !type) return;
-  
-  const cacheKey = `${cid}_${type}`;
-  if (reactionCache.has(cacheKey)) {
-    const names = reactionCache.get(cacheKey);
-    chip.title = names.length ? names.join(', ') : 'No reactions';
-    return;
-  }
-  
-  // Set temporary loading title
-  chip.title = 'Loading...';
-  
-  // Mark as fetching to avoid duplicate requests
-  if (chip.dataset.fetching) return;
-  chip.dataset.fetching = 'true';
-  
-  api.commentReactionUsers(cur, cid, type)
-    .then(users => {
-      reactionCache.set(cacheKey, users);
-      chip.title = users.length ? users.join(', ') : 'No reactions';
-      delete chip.dataset.fetching;
-    })
-    .catch(err => {
-      chip.title = 'Failed to load';
-      delete chip.dataset.fetching;
-    });
-}
-
-function renderActivity(cs,hs){
-  const fd=s=>s?String(s).slice(0,16).replace('T',' '):'';
-  
-  const countBadge = $('s_activity_count');
-  if (countBadge) {
-    countBadge.textContent = cs.length;
-    countBadge.style.display = cs.length > 0 ? 'inline-block' : 'none';
-  }
-  
-  const commentsCollapsed = localStorage.getItem('ado.activityCommentsCollapsed') === 'true';
-  const historyCollapsed = localStorage.getItem('ado.activityHistoryCollapsed') === 'true';
-  
-  let h = `
-    <div class="asec" id="activity_comments_header" style="cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center;">
-      <span>Comments (${cs.length})</span>
-      <span class="toggle-arrow" style="font-size:10px; color:var(--muted); transition:transform 0.1s ease">${commentsCollapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>'}</span>
-    </div>
-    <div id="activity_comments_list" class="${commentsCollapsed ? 'hidden' : ''}" style="display:${commentsCollapsed ? 'none' : 'flex'}; flex-direction:column; gap:8px;">
-  `;
-  if(!cs.length)h+='<div class="achg">no comments</div>';
-  
-  const emojiMap = getEmojiMap();
-  
-  cs.forEach(c => {
-    const initials = personInitials(c.by);
-    const avColor = personColor(c.by);
-    const reacts = c.reactions || {};
-    let reactHtml = '';
-    Object.entries(emojiMap).forEach(([type, emoji]) => {
-      const data = reacts[type];
-      if (data && data.count > 0) {
-        const active = data.me ? 'active' : '';
-        reactHtml += `<span class="reaction-chip ${active}" data-cid="${c.id}" data-type="${type}" title="Show who reacted"><span class="emoji-symbol">${renderEmojiMarkup(type, emoji)}</span> <span class="rc-count">${data.count}</span></span>`;
-      }
-    });
-    
-    const isAuthor = currentUser && c.by && (c.by.trim().toLowerCase() === currentUser.trim().toLowerCase());
-    const actionsHtml = isAuthor ? `
-              <button type="button" class="c-action-btn edit-btn" title="Edit comment" data-cid="${c.id}"><ui-icon name="edit"></ui-icon></button>
-              <button type="button" class="c-action-btn delete-btn" title="Delete comment" data-cid="${c.id}"><ui-icon name="trash"></ui-icon></button>
-    ` : '';
-    
-    h += `
-      <div class="comment-card" data-cid="${c.id}" data-raw-markdown="${htmlEsc(c.text)}">
-        <div class="comment-avatar" style="background:${avColor}">${htmlEsc(initials)}</div>
-        <div class="comment-main">
-          <div class="comment-header">
-            <span class="comment-author">${htmlEsc(c.by)}</span>
-            <span class="comment-time">${fd(c.date)}</span>
-            <div class="comment-actions">
-              <button type="button" class="c-action-btn copylink-btn" title="Copy link to comment" data-cid="${c.id}"><ui-icon name="link"></ui-icon></button>
-              <button type="button" class="c-action-btn react-btn" title="Add reaction" data-cid="${c.id}"><ui-icon name="smile"></ui-icon></button>
-              ${actionsHtml}
-            </div>
-          </div>
-          <div class="atext">${mdToHtml(c.text, descRenderOpts())}</div>
-          <div class="comment-reactions">${reactHtml}</div>
-        </div>
-      </div>
-    `;
-  });
-  h += '</div>';
-  
-  h += `
-    <div class="asec" id="activity_history_header" style="cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-      <span>History (${hs.length})</span>
-      <span class="toggle-arrow" style="font-size:10px; color:var(--muted); transition:transform 0.1s ease">${historyCollapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>'}</span>
-    </div>
-    <div id="activity_history_list" class="${historyCollapsed ? 'hidden' : ''}" style="display:${historyCollapsed ? 'none' : 'flex'}; flex-direction:column; gap:6px;">
-  `;
-  if(!hs.length)h+='<div class="achg">no recorded changes</div>';
-  
-  hs.forEach(u => {
-    const chg = u.changes.map(c => `
-      <div class="achg-row">
-        <span class="achg-field">${htmlEsc(c.field)}:</span>
-        <span class="achg-from">${htmlEsc(String(c.from)||'∅')}</span>
-        <span class="achg-arrow">→</span>
-        <span class="achg-to">${htmlEsc(String(c.to)||'∅')}</span>
-      </div>
-    `).join('');
-    
-    h += `
-      <div class="history-item">
-        <div class="history-avatar"><ui-icon name="tool"></ui-icon></div>
-        <div class="history-main">
-          <div class="history-header">
-            <span class="history-author">${htmlEsc(u.by)}</span>
-            <span class="history-time">${fd(u.date)}</span>
-          </div>
-          <div class="history-changes">${chg}</div>
-        </div>
-      </div>
-    `;
-  });
-  h += '</div>';
-  
-  const box = $('s_activity');
-  box.innerHTML=h;
-  hydratePreviewImages(box);
-  colorMentions(box);
-  
-  if (box && !box.dataset.wired) {
-    box.dataset.wired = 'true';
-    box.addEventListener('click', handleActivityClick);
-    box.addEventListener('mouseover', handleActivityMouseOver);
-  }
-  
-  const ach = $('activity_comments_header');
-  if (ach) {
-    ach.onclick = () => {
-      const list = $('activity_comments_list');
-      const arrow = ach.querySelector('.toggle-arrow');
-      const collapsed = !list.classList.contains('hidden');
-      list.classList.toggle('hidden', collapsed);
-      list.style.display = collapsed ? 'none' : 'flex';
-      arrow.innerHTML = collapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>';
-      localStorage.setItem('ado.activityCommentsCollapsed', collapsed);
-    };
-  }
-  const ahh = $('activity_history_header');
-  if (ahh) {
-    ahh.onclick = () => {
-      const list = $('activity_history_list');
-      const arrow = ahh.querySelector('.toggle-arrow');
-      const collapsed = !list.classList.contains('hidden');
-      list.classList.toggle('hidden', collapsed);
-      list.style.display = collapsed ? 'none' : 'flex';
-      arrow.innerHTML = collapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>';
-      localStorage.setItem('ado.activityHistoryCollapsed', collapsed);
-    };
-  }
-}
 async function createChild(){
   const type=$('c_type').value,title=$('c_title').value.trim();if(!title||cur==null)return;
   const assigned=$('c_assigned').value.trim(),prio=$('c_prio').value;
@@ -5569,7 +4524,7 @@ function closeSprintModal(){
 async function reloadSprintFilter(){
   try{const its=await getIterations();sprintPaths=its.map(i=>i.path);sprintNames={};its.forEach(i=>{sprintNames[i.path]=i.name;});}
   catch(e){/* keep whatever we had */}
-  renderFilters();                                 // also rebuilds the bulk Sprint dropdown
+  App.filters.renderFilters();                                 // also rebuilds the bulk Sprint dropdown
 }
 async function createSprintSubmit(){
   const start=$('sp_start').value,finish=$('sp_finish').value;
@@ -7691,7 +6646,7 @@ async function initialBoot(postSetup){
     document.addEventListener('mouseup',()=>{if(drag){drag=false;rz.classList.remove('active');document.body.style.cursor='';if(cy)cy.resize();try{localStorage.setItem('ado.sideWidth',side.style.width);}catch(e){}}});
   })();
   $('s_save').onclick=save;
-  $('s_comment').onclick=()=>{toggleActivityExpand(true);toggleComment();};
+  $('s_comment').onclick=()=>{App.activity.toggleActivityExpand(true);toggleComment();};
   // Wrap so the click Event isn't passed as `force` (which would skip the
   // discard-confirm check inside closePanel).
   $('s_close').onclick=()=>closePanel();
@@ -7778,10 +6733,10 @@ async function initialBoot(postSetup){
   parentEditor.wire();parentNew.wire();   // parent card + searchable picker (editor + New-item modal)
   assignedEditor.wire();assignedChild.wire();assignedNew.wire();   // assignee card + people picker
   sprintEditor.wire();sprintNew.wire();                           // sprint card + iteration picker
-  depBlockedByPicker.wire();depBlocksPicker.wire();               // dependency adders (Blocked-by / Blocks)
+  App.deps.depBlockedByPicker.wire();App.deps.depBlocksPicker.wire();               // dependency adders (Blocked-by / Blocks)
   bulkAssignedPicker.wire();bulkSprintPicker.wire();bulkParentPicker.wire();
   assignedEditor.render();assignedChild.render();assignedNew.render();sprintEditor.render();sprintNew.render();tagsEditor.render();   // placeholder cards before first use
-  depBlockedByPicker.render();depBlocksPicker.render();renderDeps();   // dep card stubs + empty chip rows
+  App.deps.depBlockedByPicker.render();App.deps.depBlocksPicker.render();App.deps.renderDeps();   // dep card stubs + empty chip rows
   bulkAssignedPicker.render();bulkSprintPicker.render();bulkParentPicker.render();
   window.bulkTagsEditor = new TagsEditor('bulk_tag_container');
   bulkTagsEditor.render();
@@ -7846,14 +6801,14 @@ async function initialBoot(postSetup){
         }
         if (el.classList.contains('ppick')) {
           e.preventDefault(); e.stopPropagation();
-          [parentEditor, assignedEditor, assignedChild, assignedNew, sprintEditor, sprintNew, parentNew, depBlockedByPicker, depBlocksPicker].forEach(p => {
+          [parentEditor, assignedEditor, assignedChild, assignedNew, sprintEditor, sprintNew, parentNew, App.deps.depBlockedByPicker, App.deps.depBlocksPicker].forEach(p => {
             if (p && p.isOpen && p.isOpen()) p.close();
           });
           return;
         }
         if (el.classList.contains('reactions-popover')) {
           e.preventDefault(); e.stopPropagation();
-          closeEmojiPicker();
+          App.activity.closeEmojiPicker();
           return;
         }
         if (el.classList.contains('fullscreen') || el.id === 'side') {
@@ -7862,7 +6817,7 @@ async function initialBoot(postSetup){
             const btn = el.querySelector('.dbtn-full');
             if(btn)btn.click();
           } else if (el.dataset.sg === 'actions') {
-            toggleActivityFullscreen(false);
+            App.activity.toggleActivityFullscreen(false);
           } else if (el.id === 'side') {
             toggleFullscreen(false);
           }
@@ -7874,8 +6829,8 @@ async function initialBoot(postSetup){
         else if(assignedEditor.isOpen())assignedEditor.close();
         else if(assignedChild.isOpen())assignedChild.close();
         else if(sprintEditor.isOpen())sprintEditor.close();
-        else if(depBlockedByPicker.isOpen())depBlockedByPicker.close();
-        else if(depBlocksPicker.isOpen())depBlocksPicker.close();
+        else if(App.deps.depBlockedByPicker.isOpen())App.deps.depBlockedByPicker.close();
+        else if(App.deps.depBlocksPicker.isOpen())App.deps.depBlocksPicker.close();
         else if($('comment_editor_container').style.display==='flex'){closeCommentForm();}
         else if($('child_form').style.display==='flex'){$('child_form').style.display='none';const cb=$('s_childbtn');if(cb)cb.classList.remove('on');}
         else if($('side').classList.contains('fullscreen'))toggleFullscreen(false);
@@ -7883,24 +6838,24 @@ async function initialBoot(postSetup){
       }
     }
   });
-  $('s_childbtn').onclick=()=>{toggleActivityExpand(true);const f=$('child_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';f.style.flexDirection='column';$('s_childbtn').classList.toggle('on', show);if(show){$('c_prio').value = $('s_prio').value || '';$('c_title').focus();}};
+  $('s_childbtn').onclick=()=>{App.activity.toggleActivityExpand(true);const f=$('child_form');const show=f.style.display!=='flex';f.style.display=show?'flex':'none';f.style.flexDirection='column';$('s_childbtn').classList.toggle('on', show);if(show){$('c_prio').value = $('s_prio').value || '';$('c_title').focus();}};
   const atb = $('activity_toggle_btn');
   if (atb) {
     atb.onclick = () => {
       const actionsGroup = document.querySelector('.sgroup[data-sg="actions"]');
       if (actionsGroup && actionsGroup.classList.contains('fullscreen')) {
-        loadActivity();
+        App.activity.loadActivity();
         return;
       }
       const hidden = $('activity-content').classList.contains('hidden');
-      toggleActivityExpand(hidden);
+      App.activity.toggleActivityExpand(hidden);
     };
   }
   const saf = $('s_act_full');
   if (saf) {
-    saf.onclick = () => toggleActivityFullscreen();
+    saf.onclick = () => App.activity.toggleActivityFullscreen();
   }
-  initActivityResizer();
+  App.activity.initActivityResizer();
   $('c_create').onclick=createChild;$('c_cancel').onclick=()=>{$('child_form').style.display='none';$('s_childbtn').classList.remove('on');};
   $('c_me').onclick=()=>assignedChild.set(currentUser||'me');
   $('c_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createChild();}});
@@ -7924,16 +6879,16 @@ async function initialBoot(postSetup){
   // customize-toolbar dialog
   $('cz_open').onclick=showCustomize;$('cz_done').onclick=closeCustomize;$('cz_reset').onclick=resetCustomize;
   // customize-emojis dialog
-  $('emojis_open').onclick=showEmojisModal;$('emojis_save').onclick=saveEmojis;$('emojis_cancel').onclick=closeEmojisModal;$('emojis_reset').onclick=resetEmojis;
-  $('emojis-overlay').addEventListener('mousedown',e=>{if(e.target===$('emojis-overlay'))closeEmojisModal();});
-  $('emojis-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeEmojisModal();}});
+  $('emojis_open').onclick=App.activity.showEmojisModal;$('emojis_save').onclick=App.activity.saveEmojis;$('emojis_cancel').onclick=App.activity.closeEmojisModal;$('emojis_reset').onclick=App.activity.resetEmojis;
+  $('emojis-overlay').addEventListener('mousedown',e=>{if(e.target===$('emojis-overlay'))App.activity.closeEmojisModal();});
+  $('emojis-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();App.activity.closeEmojisModal();}});
   
   // Wire dynamic preview updates and file uploads for customize emojis overlay
   const emojiTypes = ['like', 'dislike', 'heart', 'hooray', 'smile', 'confused'];
   emojiTypes.forEach(type => {
     const input = $(`emoji_override_${type}`);
     if (input) {
-      input.addEventListener('input', () => updateEmojiInputPreview(type));
+      input.addEventListener('input', () => App.activity.updateEmojiInputPreview(type));
     }
   });
   document.querySelectorAll('.emoji-file-input').forEach(fileIn => {
@@ -7942,7 +6897,7 @@ async function initialBoot(postSetup){
       const file = e.target.files[0];
       if (file) {
         if (file.size > 256 * 1024) {
-          showEmojiRowError(type, 'File too large! Choose an image under 256KB.');
+          App.activity.showEmojiRowError(type, 'File too large! Choose an image under 256KB.');
           fileIn.value = '';
           return;
         }
@@ -7951,7 +6906,7 @@ async function initialBoot(postSetup){
           const input = $(`emoji_override_${type}`);
           if (input) {
             input.value = ev.target.result;
-            updateEmojiInputPreview(type);
+            App.activity.updateEmojiInputPreview(type);
           }
         };
         reader.readAsDataURL(file);
@@ -7966,16 +6921,16 @@ async function initialBoot(postSetup){
   loadBulkLayout();applyBulkLayout();            // apply the saved bulk edit bar order / hidden set
   wireTreeDnD();                                  // drag tree rows to re-parent
   try {
-    window.filterManager = new FilterManager({ quickFilterFields: FILTERS.map(f => f.key) });
+    window.filterManager = new FilterManager({ quickFilterFields: App.filters.FILTERS.map(f => f.key) });
     window.filterManager.load();
-    renderFilters();
-    updateFilterCount();
+    App.filters.renderFilters();
+    App.filters.updateFilterCount();
     window.filterManager.onChange(() => {
       window.filterManager.save();
       updateFollowedBtnVisual();
-      renderFilters();
-      updateFilterCount();
-      scheduleApply();
+      App.filters.renderFilters();
+      App.filters.updateFilterCount();
+      App.filters.scheduleApply();
     });
     updateFollowedBtnVisual();
     chrome.storage.local.get(["followNotify", "mentionNotify", "notifyAge"]).then(({followNotify, mentionNotify, notifyAge})=>{
@@ -8021,7 +6976,7 @@ async function initialBoot(postSetup){
     }
     const mn=localStorage.getItem('ado.maxNodes');if(mn!==null){maxNodesLimit=parseInt(mn,10);}
     const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
-  App.types.buildLegend();renderFilters();updateFilterCount();App.setup.updatePatBadge();updateUndoButtons();updateCreateButtons();
+  App.types.buildLegend();App.filters.renderFilters();App.filters.updateFilterCount();App.setup.updatePatBadge();updateUndoButtons();updateCreateButtons();
   setInterval(App.setup.updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
   await loadIdentity();
   try{
@@ -8084,8 +7039,8 @@ async function loadIdentity(){
   try{const asg=await api.assignees();assignees=(asg||[]).filter(a=>a!==currentUser);}
   catch(e){assignees=[];}
   $('assignees').innerHTML=['me',...assignees].map(a=>`<option value="${String(a).replace(/"/g,'&quot;')}">`).join('');
-  renderFilters();                          // re-render so Assigned chips include people
-  loadFilterData().then(renderFilters);     // states/tags/sprints fill in async (don't block first paint)
+  App.filters.renderFilters();                          // re-render so Assigned chips include people
+  loadFilterData().then(App.filters.renderFilters);     // states/tags/sprints fill in async (don't block first paint)
   if(currentUser)$('s_me').title='assign to me ('+currentUser+')';
 }
 // Populate the data-driven filter chips from the project itself (in parallel):
