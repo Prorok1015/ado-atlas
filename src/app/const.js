@@ -48,9 +48,12 @@ function cmpBySort(a,b){
 const TYPES=['Epic','Feature','User Story','Bug','Task','Issue'];
 let typeList=[];                          // [{name,color}] of the project's real work-item types
 const typeNames=()=>typeList.length?typeList.map(t=>t.name):TYPES;
+// Shared colour util: hex -> [r,g,b]. Used by the graph canvas styling AND by
+// src/components/card-picker.js (idealText/hexToRgba) — must be a bare global.
+function hexToRgb(h){h=String(h||'').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h||'0',16)||0;return [(n>>16)&255,(n>>8)&255,n&255];}
 const $=id=>document.getElementById(id);
 
 // Forward namespace API (bare names above stay valid for current callers).
 // `$` and the mutable `typeList` are intentionally left as bare globals —
 // `$` is the universal DOM alias; `typeList` migrates to App.state later.
-App.const = { TYPE_COLOR, tyVar, tyColor, PRIO_COLOR, prioColor, STATE_COLOR, stateColor, STATE_ORDER, orderStates, cmpBySort, TYPES, typeNames };
+App.const = { TYPE_COLOR, tyVar, tyColor, PRIO_COLOR, prioColor, STATE_COLOR, stateColor, STATE_ORDER, orderStates, cmpBySort, TYPES, typeNames, hexToRgb };
