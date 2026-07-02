@@ -98,6 +98,181 @@ async function initialBoot(postSetup){
   }
 
   App.types.fillTypeSelect('c_type','Task');App.types.fillTypeSelect('n_type','Task');   // seed with fallback now; App.types.loadTypes() refills from ADO
+  wireControls();
+  wireBulkBar();
+  wireEditorAndKeys();
+  wireModals();
+  loadBarLayout();applyBarLayout();              // apply the saved toolbar order / hidden set
+  loadBulkLayout();applyBulkLayout();            // apply the saved bulk edit bar order / hidden set
+  wireTreeDnD();                                  // drag tree rows to re-parent
+  try {
+    window.filterManager = new FilterManager({ quickFilterFields: App.filters.FILTERS.map(f => f.key) });
+    window.filterManager.load();
+    App.filters.renderFilters();
+    App.filters.updateFilterCount();
+    window.filterManager.onChange(() => {
+      window.filterManager.save();
+      updateFollowedBtnVisual();
+      App.filters.renderFilters();
+      App.filters.updateFilterCount();
+      App.filters.scheduleApply();
+    });
+    updateFollowedBtnVisual();
+    chrome.storage.local.get(["followNotify", "mentionNotify", "notifyAge"]).then(({followNotify, mentionNotify, notifyAge})=>{
+      App.settings.applyFollowNotify(followNotify||'on');
+      App.settings.applyMentionNotify(mentionNotify||'on');
+      const ageSel = $('f_notify_age');
+      if (ageSel) ageSel.value = notifyAge || '172800';
+    });
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      setTimeout(() => {
+        try {
+          chrome.runtime.sendMessage({ action: "checkMentionsAndFollows" })
+            .then(() => {
+              const err = chrome.runtime.lastError;
+              if (err) console.warn("Could not check notifications on startup:", err.message);
+            })
+            .catch(err => {
+              console.warn("Could not establish connection to background worker on startup:", err.message);
+            });
+        } catch (_) {}
+      }, 500);
+    }
+    const ageSelect = $('f_notify_age');
+    if (ageSelect) {
+      ageSelect.onchange = () => {
+        chrome.storage.local.set({ notifyAge: ageSelect.value });
+      };
+    }
+    const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
+    if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
+    const bg=localStorage.getItem('ado.boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
+    const tz2=localStorage.getItem('ado.tlZoom');if(tz2&&TL_PX[tz2]){App.state.tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.z===tz2));}
+    const tg=localStorage.getItem('ado.tlGroup');if(tg){App.state.tlGroup=tg;$('tl_group').value=tg;}
+    const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
+    const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;App.settings.setAutoRefresh(au);}
+    const sc=localStorage.getItem('ado.uiScale');
+    if(sc!==null){
+      const num=parseFloat(sc);
+      if(!isNaN(num)){
+        $('f_scale').value=num.toFixed(1);
+        updateUiScale(num);
+      }
+    }
+    const mn=localStorage.getItem('ado.maxNodes');if(mn!==null){App.state.maxNodesLimit=parseInt(mn,10);}
+    const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){App.state.rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
+  App.types.buildLegend();App.filters.renderFilters();App.filters.updateFilterCount();App.setup.updatePatBadge();updateUndoButtons();updateCreateButtons();
+  setInterval(App.setup.updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
+  await loadIdentity();
+  try{
+    const savedWidth=localStorage.getItem('ado.sideWidth');
+    if(savedWidth)$('side').style.width=savedWidth;
+    const savedMode=localStorage.getItem('ado.mode');
+    if(savedMode&&savedMode!=='tree')setMode(savedMode);
+  }catch(e){}
+  renderViewHelp();                          // show the controls legend for the initial view
+  const p=new URLSearchParams(location.search),root=p.get('root');
+  if(root){await openItem(parseInt(root));}
+  if(App.state.mode==='tree')await App.snapshot.loadSnapshot();   // paint last session's tree instantly while the network refresh runs
+  refresh().then(App.setup.warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
+  try {
+    const tm = new TutorialManager();
+    window.tutorialManagerInstance = tm;
+    await tm.init();
+  } catch (e) {
+    console.error('Failed to initialize TutorialManager:', e);
+  }
+  setupSettingsTooltips();
+}
+
+function setupSettingsTooltips() {
+  let globalTooltip = document.getElementById('fb-global-logic-tooltip');
+  if (!globalTooltip) {
+    globalTooltip = document.createElement('div');
+    globalTooltip.id = 'fb-global-logic-tooltip';
+    globalTooltip.className = 'logic-tooltip';
+    globalTooltip.style.display = 'none';
+    document.body.appendChild(globalTooltip);
+  }
+
+  const panel = document.getElementById('morepanel');
+  if (panel) {
+    panel.querySelectorAll('.logic-hint').forEach(hint => {
+      hint.onmouseenter = () => {
+        if (window.LayerManager) {
+          globalTooltip.innerHTML = hint.getAttribute('data-tooltip-html');
+          const rect = hint.getBoundingClientRect();
+          globalTooltip.style.position = 'absolute';
+          globalTooltip.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+          globalTooltip.style.left = (rect.left + window.scrollX - 10) + 'px';
+          globalTooltip.style.display = 'block';
+          window.LayerManager.open(globalTooltip, hint, { isPopover: true, direction: 'bottom' });
+        }
+      };
+      hint.onmouseleave = () => {
+        if (window.LayerManager) {
+          globalTooltip.style.display = 'none';
+          window.LayerManager.close(globalTooltip);
+        }
+      };
+    });
+  }
+}
+
+async function loadIdentity(){
+  if(!currentUser){try{currentUser=await api.me();}catch(e){currentUser='';}}
+  try{const asg=await api.assignees();assignees=(asg||[]).filter(a=>a!==currentUser);}
+  catch(e){assignees=[];}
+  $('assignees').innerHTML=['me',...assignees].map(a=>`<option value="${String(a).replace(/"/g,'&quot;')}">`).join('');
+  App.filters.renderFilters();                          // re-render so Assigned chips include people
+  loadFilterData().then(App.filters.renderFilters);     // states/tags/sprints fill in async (don't block first paint)
+  if(currentUser)$('s_me').title='assign to me ('+currentUser+')';
+}
+// Populate the data-driven filter chips from the project itself (in parallel):
+//   - State: union of states across all work-item types (falls back to a static list)
+//   - Tags:  distinct tags sampled from recent items
+//   - Sprint: dated iterations (chip value = path, label = short name)
+async function loadFilterData(){
+  await App.types.loadTypes();                          // real work-item types first (drives the lines below + create dropdowns)
+  await Promise.all([
+    (async()=>{try{
+      const allTypes = typeNames();
+      const per = [];
+      for (let i = 0; i < allTypes.length; i += 4) {
+        const chunk = allTypes.slice(i, i + 4);
+        const results = await Promise.all(chunk.map(t => api.states(t).catch(() => [])));
+        per.push(...results);
+      }
+      const all=[];per.forEach(arr=>arr.forEach(s=>{if(!all.includes(s))all.push(s);}));
+      projectStates=all.length?orderStates(all):[];
+    }catch(e){projectStates=[];}})(),
+    (async()=>{try{tagList=await api.tags();$('tagsdl').innerHTML=tagList.map(x=>`<option value="${htmlEsc(x)}">`).join('');}catch(e){tagList=[];}})(),
+    (async()=>{try{const its=await getIterations();sprintPaths=its.map(i=>i.path);
+      sprintNames={};its.forEach(i=>{sprintNames[i.path]=i.name;});}
+      catch(e){sprintPaths=[];sprintNames={};}})(),
+  ]);
+}
+
+// Delegated handler for any Pro feature entry point. Mark a clickable element
+// with `data-pro-feature="<key>"` (key must exist in PremiumPaywall.FEATURES) and
+// a click opens the paywall for Free users, or shows a "coming soon" placeholder
+// for Pro users until the real feature ships (Stage 3+).
+function wirePremiumPlaceholders(){
+  document.addEventListener('click',(e)=>{
+    const el=e.target.closest('[data-pro-feature]');
+    if(!el)return;
+    e.preventDefault();
+    const feature=el.dataset.proFeature;
+    if(window.EntitlementManager && !window.EntitlementManager.gate(feature))return; // Free → paywall shown
+    if(window.customAlert)window.customAlert(window.i18n.t('pro.comingSoon'),window.i18n.t('pro.title'));
+  });
+  // "Explore ADO Atlas Pro" — opens the full premium feature catalog.
+  const explore=$('pro_explore_btn');
+  if(explore)explore.addEventListener('click',()=>{ if(window.ProFeaturesPanel)window.ProFeaturesPanel.open(); });
+}
+
+// ---- wiring helpers (extracted verbatim from initialBoot; order preserved) ----
+function wireControls(){
   // switching view is render-only (no API): graph draws from the App.state.store, tree DOM persists
   $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>App.settings.switchMode(b.dataset.m));
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.graph.depHandleHide();App.graph.renderGraph();});
@@ -279,6 +454,8 @@ async function initialBoot(postSetup){
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
   if(window.i18n&&$('f_lang')){$('f_lang').value=window.i18n.getLang();$('f_lang').onchange=()=>{window.i18n.setLang($('f_lang').value);};}
   $('f_follow_notify').onclick=App.settings.cycleFollowNotify;
+}
+function wireBulkBar(){
   $('f_mention_notify').onclick=App.settings.cycleMentionNotify;
   // bulk action bar (tree multi-select)
   $('bulk_state').onchange=e=>{const v=e.target.value;if(v)bulkApply('state',v);};
@@ -345,6 +522,8 @@ async function initialBoot(postSetup){
     syncBulkBarValues();
   };
   syncBulkDatePicker(null, null);
+}
+function wireEditorAndKeys(){
   // command palette (Ctrl/Cmd+K)
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.code==='KeyK'&&!e.altKey){e.preventDefault();
     $('palette').classList.contains('show')?App.palette.closePalette():App.palette.openPalette();}});
@@ -596,6 +775,8 @@ async function initialBoot(postSetup){
   $('c_create').onclick=createChild;$('c_cancel').onclick=()=>{$('child_form').style.display='none';$('s_childbtn').classList.remove('on');};
   $('c_me').onclick=()=>assignedChild.set(currentUser||'me');
   $('c_title').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();createChild();}});
+}
+function wireModals(){
   // new-item modal (create from scratch)
   $('newbtn').onclick=()=>App.create.showNewItem();
   $('undobtn').onclick=runUndo;$('redobtn').onclick=runRedo;
@@ -654,171 +835,4 @@ async function initialBoot(postSetup){
   loadSideLayout(activeWType);applySideLayout(activeWType);          // restore the saved sidebar group order / hidden set
   $('customize-overlay').addEventListener('mousedown',e=>{if(e.target===$('customize-overlay'))closeCustomize();});
   $('customize-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeCustomize();}});
-  loadBarLayout();applyBarLayout();              // apply the saved toolbar order / hidden set
-  loadBulkLayout();applyBulkLayout();            // apply the saved bulk edit bar order / hidden set
-  wireTreeDnD();                                  // drag tree rows to re-parent
-  try {
-    window.filterManager = new FilterManager({ quickFilterFields: App.filters.FILTERS.map(f => f.key) });
-    window.filterManager.load();
-    App.filters.renderFilters();
-    App.filters.updateFilterCount();
-    window.filterManager.onChange(() => {
-      window.filterManager.save();
-      updateFollowedBtnVisual();
-      App.filters.renderFilters();
-      App.filters.updateFilterCount();
-      App.filters.scheduleApply();
-    });
-    updateFollowedBtnVisual();
-    chrome.storage.local.get(["followNotify", "mentionNotify", "notifyAge"]).then(({followNotify, mentionNotify, notifyAge})=>{
-      App.settings.applyFollowNotify(followNotify||'on');
-      App.settings.applyMentionNotify(mentionNotify||'on');
-      const ageSel = $('f_notify_age');
-      if (ageSel) ageSel.value = notifyAge || '172800';
-    });
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-      setTimeout(() => {
-        try {
-          chrome.runtime.sendMessage({ action: "checkMentionsAndFollows" })
-            .then(() => {
-              const err = chrome.runtime.lastError;
-              if (err) console.warn("Could not check notifications on startup:", err.message);
-            })
-            .catch(err => {
-              console.warn("Could not establish connection to background worker on startup:", err.message);
-            });
-        } catch (_) {}
-      }, 500);
-    }
-    const ageSelect = $('f_notify_age');
-    if (ageSelect) {
-      ageSelect.onchange = () => {
-        chrome.storage.local.set({ notifyAge: ageSelect.value });
-      };
-    }
-    const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
-    if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
-    const bg=localStorage.getItem('ado.boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
-    const tz2=localStorage.getItem('ado.tlZoom');if(tz2&&TL_PX[tz2]){App.state.tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.z===tz2));}
-    const tg=localStorage.getItem('ado.tlGroup');if(tg){App.state.tlGroup=tg;$('tl_group').value=tg;}
-    const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
-    const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;App.settings.setAutoRefresh(au);}
-    const sc=localStorage.getItem('ado.uiScale');
-    if(sc!==null){
-      const num=parseFloat(sc);
-      if(!isNaN(num)){
-        $('f_scale').value=num.toFixed(1);
-        updateUiScale(num);
-      }
-    }
-    const mn=localStorage.getItem('ado.maxNodes');if(mn!==null){App.state.maxNodesLimit=parseInt(mn,10);}
-    const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){App.state.rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
-  App.types.buildLegend();App.filters.renderFilters();App.filters.updateFilterCount();App.setup.updatePatBadge();updateUndoButtons();updateCreateButtons();
-  setInterval(App.setup.updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
-  await loadIdentity();
-  try{
-    const savedWidth=localStorage.getItem('ado.sideWidth');
-    if(savedWidth)$('side').style.width=savedWidth;
-    const savedMode=localStorage.getItem('ado.mode');
-    if(savedMode&&savedMode!=='tree')setMode(savedMode);
-  }catch(e){}
-  renderViewHelp();                          // show the controls legend for the initial view
-  const p=new URLSearchParams(location.search),root=p.get('root');
-  if(root){await openItem(parseInt(root));}
-  if(App.state.mode==='tree')await App.snapshot.loadSnapshot();   // paint last session's tree instantly while the network refresh runs
-  refresh().then(App.setup.warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
-  try {
-    const tm = new TutorialManager();
-    window.tutorialManagerInstance = tm;
-    await tm.init();
-  } catch (e) {
-    console.error('Failed to initialize TutorialManager:', e);
-  }
-  setupSettingsTooltips();
-}
-
-function setupSettingsTooltips() {
-  let globalTooltip = document.getElementById('fb-global-logic-tooltip');
-  if (!globalTooltip) {
-    globalTooltip = document.createElement('div');
-    globalTooltip.id = 'fb-global-logic-tooltip';
-    globalTooltip.className = 'logic-tooltip';
-    globalTooltip.style.display = 'none';
-    document.body.appendChild(globalTooltip);
-  }
-
-  const panel = document.getElementById('morepanel');
-  if (panel) {
-    panel.querySelectorAll('.logic-hint').forEach(hint => {
-      hint.onmouseenter = () => {
-        if (window.LayerManager) {
-          globalTooltip.innerHTML = hint.getAttribute('data-tooltip-html');
-          const rect = hint.getBoundingClientRect();
-          globalTooltip.style.position = 'absolute';
-          globalTooltip.style.top = (rect.bottom + window.scrollY + 6) + 'px';
-          globalTooltip.style.left = (rect.left + window.scrollX - 10) + 'px';
-          globalTooltip.style.display = 'block';
-          window.LayerManager.open(globalTooltip, hint, { isPopover: true, direction: 'bottom' });
-        }
-      };
-      hint.onmouseleave = () => {
-        if (window.LayerManager) {
-          globalTooltip.style.display = 'none';
-          window.LayerManager.close(globalTooltip);
-        }
-      };
-    });
-  }
-}
-
-async function loadIdentity(){
-  if(!currentUser){try{currentUser=await api.me();}catch(e){currentUser='';}}
-  try{const asg=await api.assignees();assignees=(asg||[]).filter(a=>a!==currentUser);}
-  catch(e){assignees=[];}
-  $('assignees').innerHTML=['me',...assignees].map(a=>`<option value="${String(a).replace(/"/g,'&quot;')}">`).join('');
-  App.filters.renderFilters();                          // re-render so Assigned chips include people
-  loadFilterData().then(App.filters.renderFilters);     // states/tags/sprints fill in async (don't block first paint)
-  if(currentUser)$('s_me').title='assign to me ('+currentUser+')';
-}
-// Populate the data-driven filter chips from the project itself (in parallel):
-//   - State: union of states across all work-item types (falls back to a static list)
-//   - Tags:  distinct tags sampled from recent items
-//   - Sprint: dated iterations (chip value = path, label = short name)
-async function loadFilterData(){
-  await App.types.loadTypes();                          // real work-item types first (drives the lines below + create dropdowns)
-  await Promise.all([
-    (async()=>{try{
-      const allTypes = typeNames();
-      const per = [];
-      for (let i = 0; i < allTypes.length; i += 4) {
-        const chunk = allTypes.slice(i, i + 4);
-        const results = await Promise.all(chunk.map(t => api.states(t).catch(() => [])));
-        per.push(...results);
-      }
-      const all=[];per.forEach(arr=>arr.forEach(s=>{if(!all.includes(s))all.push(s);}));
-      projectStates=all.length?orderStates(all):[];
-    }catch(e){projectStates=[];}})(),
-    (async()=>{try{tagList=await api.tags();$('tagsdl').innerHTML=tagList.map(x=>`<option value="${htmlEsc(x)}">`).join('');}catch(e){tagList=[];}})(),
-    (async()=>{try{const its=await getIterations();sprintPaths=its.map(i=>i.path);
-      sprintNames={};its.forEach(i=>{sprintNames[i.path]=i.name;});}
-      catch(e){sprintPaths=[];sprintNames={};}})(),
-  ]);
-}
-
-// Delegated handler for any Pro feature entry point. Mark a clickable element
-// with `data-pro-feature="<key>"` (key must exist in PremiumPaywall.FEATURES) and
-// a click opens the paywall for Free users, or shows a "coming soon" placeholder
-// for Pro users until the real feature ships (Stage 3+).
-function wirePremiumPlaceholders(){
-  document.addEventListener('click',(e)=>{
-    const el=e.target.closest('[data-pro-feature]');
-    if(!el)return;
-    e.preventDefault();
-    const feature=el.dataset.proFeature;
-    if(window.EntitlementManager && !window.EntitlementManager.gate(feature))return; // Free → paywall shown
-    if(window.customAlert)window.customAlert(window.i18n.t('pro.comingSoon'),window.i18n.t('pro.title'));
-  });
-  // "Explore ADO Atlas Pro" — opens the full premium feature catalog.
-  const explore=$('pro_explore_btn');
-  if(explore)explore.addEventListener('click',()=>{ if(window.ProFeaturesPanel)window.ProFeaturesPanel.open(); });
 }
