@@ -478,33 +478,8 @@ const bulkParentPicker=createParentField('bulk_parent',{getExcludeId:()=>null,on
 /* dependency links -> app/dependencies.js (App.deps.*); depsState stays bare (reset externally) */
 const depsState={blockedBy:[],blocks:[]};
 
-/* ---------- undo / redo (Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z or Ctrl+Y) ----------
-   Each mutating action pushes a command with matching undo()/redo() functions,
-   run via the raw api (so they never re-record themselves). A new action clears
-   the redo stack. Undoing a create deletes the item (ADO Recycle Bin — still
-   recoverable); redoing it re-creates it (new id, rebound for a later undo). */
-const undoStack=[],redoStack=[];let undoBusy=false;
-function pushAction(label,undo,redo){
-  undoStack.push({label,undo,redo});if(undoStack.length>50)undoStack.shift();
-  redoStack.length=0;updateUndoButtons();
-}
-async function afterUndo(id){await refresh();if(id!=null&&cur===id)openItem(id);}
-async function runStep(from,to,verb){
-  if(undoBusy)return;
-  const e=from.pop();
-  if(!e){setStatus('nothing to '+verb);return;}
-  undoBusy=true;loadStart(verb+'ing: '+e.label+'…');
-  try{await (verb==='undo'?e.undo:e.redo)();to.push(e);setStatus((verb==='undo'?'undid: ':'redid: ')+e.label);}
-  catch(err){from.push(e);setStatus(verb+' failed ('+e.label+'): '+err.message,true);}
-  finally{undoBusy=false;loadEnd();updateUndoButtons();}
-}
-const runUndo=()=>runStep(undoStack,redoStack,'undo');
-const runRedo=()=>runStep(redoStack,undoStack,'redo');
-function updateUndoButtons(){
-  const u=$('undobtn'),r=$('redobtn');
-  if(u)u.disabled=!undoStack.length;
-  if(r)r.disabled=!redoStack.length;
-}
+/* undo/redo stack (undoStack/pushAction/afterUndo/runStep/runUndo/runRedo/updateUndoButtons)
+   -> app/undo.js (bare). Called bare from board/bulk/deps/editor/sprint-edit/palette + app.js. */
 // Hide the create affordances (toolbar New, editor + Child) when the user has
 // been shown to lack work-item create permission (a create returned HTTP 403).
 function updateCreateButtons(){
