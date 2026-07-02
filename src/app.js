@@ -1109,21 +1109,8 @@ async function undoParentBatch(oldsList) {
 /* ---------- board (sprints) ---------- */
 
 // ISO date/datetime -> "30 May 2026" (UTC, so it never drifts a day across timezones)
-function prettyDate(s){if(!s)return '';const m=String(s).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return String(s).slice(0,10);
-  return (+m[3])+' '+new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).toLocaleString(window.i18n.getLang(),{month:'short',timeZone:'UTC'})+' '+m[1];}
-const DONE_STATES=['Closed','Resolved','Removed','Done'];
-let iterCache=null;
-async function getIterations(){                     // sprint dates — fetched once, cached
-  if(!iterCache){try{iterCache=await api.iterations();}catch(e){iterCache=[];setStatus('ERROR: '+e.message,true);}}
-  return iterCache;
-}
-function isCurrentSprint(it){const t=new Date().toISOString().slice(0,10);return !!(it.start&&it.finish&&t>=it.start.slice(0,10)&&t<=it.finish.slice(0,10));}
-const BOARD_TIME_CAP=200;
-function hh(h){return h>=24?(Math.floor(h/24)+'d '+Math.round(h%24)+'h'):(Math.round(h*10)/10+'h');}
-function colMeta(items){const se=items.reduce((s,n)=>s+(n.est||0),0);
-  return `<small>${items.length} items</small>`+
-    `<div class="bfoot">`+(se?`<div class="tbar cbar"><div class="tfill"></div></div>`:'')+
-    `<span class="tlabel colact">${se?'Σest '+(Math.round(se*10)/10)+'h':''}</span></div>`;}
+/* shared sprint/date helpers (prettyDate/getIterations/isCurrentSprint/hh/colMeta/_sprint/iterCache/DONE_STATES/BOARD_TIME_CAP) -> app/sprint-utils.js (bare) */
+
 async function annotateBoardTimes(){      // fill actual (active wall-clock) time per card + column Σ
   const token=boardToken;                 // current render's token — bail if a newer render starts
   const cards=[...document.querySelectorAll('#board .bcard[data-id]')];
@@ -1324,7 +1311,6 @@ function startCardDrag(e,id,card){
   if(boardBusy)return;
   pdrag={id,sx:e.clientX,sy:e.clientY,card,active:false,hot:null,clone:null};
 }
-function _sprint(path){return (iterCache||[]).find(x=>x.path===path)||null;}
 document.addEventListener('mousemove',e=>{
   if(!pdrag)return;
   if(!pdrag.active){
