@@ -71,7 +71,7 @@
     if(sec>0)autoTimer=setInterval(autoTick,sec*1000);
   }
   function switchMode(m){setMode(m);try{localStorage.setItem('ado.mode',m);}catch(e){}
-    if(m==='graph')renderGraph({fit:true});else if(m==='board')renderBoard();else if(m==='timeline')App.timeline.render();else renderTree();}
+    if(m==='graph')App.graph.renderGraph({fit:true});else if(m==='board')renderBoard();else if(m==='timeline')App.timeline.render();else renderTree();}
 
   App.settings = { applyTheme, cycleTheme, applyFollowNotify, cycleFollowNotify, applyMentionNotify, cycleMentionNotify, setAutoRefresh, switchMode };
 })(window.App);

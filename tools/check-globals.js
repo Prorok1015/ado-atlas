@@ -46,6 +46,7 @@ const files = [
   "src/app/filters.js",
   "src/app/dependencies.js",
   "src/app/activity.js",
+  "src/app/graph.js",
   "src/app.js"
 ];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
