@@ -343,10 +343,10 @@ function renderBadgePanel(){
   if(view==='graph'){
     const mn=$('f_max_nodes');
     if(mn){
-      mn.value=String(maxNodesLimit);
+      mn.value=String(App.state.maxNodesLimit);
       mn.onchange=()=>{
-        maxNodesLimit=parseInt(mn.value,10);
-        try{localStorage.setItem('ado.maxNodes',maxNodesLimit);}catch(e){}
+        App.state.maxNodesLimit=parseInt(mn.value,10);
+        try{localStorage.setItem('ado.maxNodes',App.state.maxNodesLimit);}catch(e){}
         App.graph.renderGraph({relayout:true,fit:true});
       };
     }

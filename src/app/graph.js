@@ -6,8 +6,8 @@
 // persistence, bulk-highlight sync, and the "drag a stub to create a dep link"
 // interaction.
 //
-// Reads/mutates bare globals at call time: cy, mode, edgeMode, rankDir, store,
-// depCache, renderToken, maxNodesLimit, projectName, bulkSel, api, TYPE_COLOR,
+// Reads/mutates bare globals at call time: cy, mode, App.state.edgeMode, App.state.rankDir, store,
+// App.state.depCache, App.state.renderToken, App.state.maxNodesLimit, projectName, bulkSel, api, TYPE_COLOR,
 // $, setStatus, openItem, loadStart, loadEnd, window.i18n, cytoscape (via
 // cy.layout dagre). Calls bare helpers defined elsewhere: ensureKids,
 // bulkToggle, customConfirm, reachable, and the card-picker.js badge helpers
@@ -129,7 +129,7 @@
       tapTimer=setTimeout(()=>{tapTimer=null;tapId=null;openItem(id);},250);});
     // Hover handle for drag-to-create dep links (only in +Deps mode).
     cy.on('mouseover','node',e=>{const nd=e.target;if(nd.isParent&&nd.isParent())return;
-      if(mode==='graph'&&edgeMode!=='hierarchy')depHandleShow(nd);});
+      if(mode==='graph'&&App.state.edgeMode!=='hierarchy')depHandleShow(nd);});
     cy.on('mouseout','node',e=>{
       if(depDrag)return;                          // mid-drag → keep target highlights
       const rel=e.originalEvent&&e.originalEvent.relatedTarget;
@@ -250,7 +250,7 @@
 
     const animate=cy.nodes().length<200;
     console.time("Graph: Layout execution");
-    const l=cy.layout({name:'dagre',rankDir,ranker:'tight-tree',
+    const l=cy.layout({name:'dagre',rankDir:App.state.rankDir,ranker:'tight-tree',
       nodeSep:55,rankSep:110,edgeSep:25,animate,animationDuration:250,fit:false,padding:40});
     return new Promise(resolve => {
       l.one('layoutstop', () => {
@@ -271,13 +271,13 @@
     opts=opts||{};
     if(!cy)initCy();
     cy.resize();
-    const token=++renderToken;                    // newest render wins; stale async results bail out
+    const token=++App.state.renderToken;                    // newest render wins; stale async results bail out
     let ids=[...reachable()].filter(id=>store.nodes[id]);
     if(!ids.length){cy.elements().remove();setStatus(window.i18n.t('status.nothingMatches'));return;}
     const originalCount = ids.length;
     let isTruncated = false;
-    if (ids.length > maxNodesLimit) {
-      ids = ids.slice(0, maxNodesLimit);
+    if (ids.length > App.state.maxNodesLimit) {
+      ids = ids.slice(0, App.state.maxNodesLimit);
       isTruncated = true;
     }
     const idset=new Set(ids);
@@ -288,19 +288,19 @@
     let edges=[];
     // hierarchy edges are now redundant — compound rectangles already show the parent/child
     // structure visually. We keep edges only for dependency modes.
-    if(edgeMode!=='hierarchy'){                     // dependencies: on-demand, cached
+    if(App.state.edgeMode!=='hierarchy'){                     // dependencies: on-demand, cached
       const key=ids.slice().sort((a,b)=>a-b).join(',');
-      let d=depCache[key];
+      let d=App.state.depCache[key];
       if(!d){
         loadStart('loading dependencies…');
-        try{d=await api.deps(ids);depCache[key]=d;}
+        try{d=await api.deps(ids);App.state.depCache[key]=d;}
         catch(e){d=[];setStatus('ERROR: '+e.message,true);}
         finally{loadEnd();}
-        if(token!==renderToken)return;
+        if(token!==App.state.renderToken)return;
       }
       d.forEach(e=>edges.push({id:'d_'+e.source+'_'+e.target,source:String(e.source),target:String(e.target),kind:'dep'}));
     }
-    if(token!==renderToken)return;
+    if(token!==App.state.renderToken)return;
     // --- incremental diff: keep existing nodes (and their positions); no full rebuild ---
     const want=new Set(ids.map(String));
     let added=0,removed=0,reparented=0;

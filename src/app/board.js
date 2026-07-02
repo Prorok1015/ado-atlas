@@ -10,7 +10,7 @@
      api, window.i18n, customConfirm, cy, mode, store, bulkSel, cur, boardBusy, pdrag, boardScroll,
      boardGroup, openSprintPath, projectStates, sprintPaths, sprintNames, pinnedSprints,
      TYPE_COLOR, tyColor, stateColor, prioColor, orderStates, cmpBySort, hexToRgb,
-     boardToken, tzOffset, capNote, projectName, newSprints, canCreateSprint, suppressClick,
+     App.state.boardToken, tzOffset, capNote, projectName, newSprints, canCreateSprint, suppressClick,
      pendingSprintItems, App.sprint.showSprintModal, App.sprint.showSprintEdit, togglePinSprint, currentUser, assignees,
      bulkToggle, bulkRange, pushAction, afterUndo, canEditSprint, sprintGroup, renderViewHelp
    - component-defined globals (components/card-picker.js): personColor, personChipT, tagList_
@@ -25,7 +25,7 @@
   /* shared sprint/date helpers (prettyDate/getIterations/isCurrentSprint/hh/colMeta/_sprint/iterCache/DONE_STATES/BOARD_TIME_CAP) -> app/sprint-utils.js (bare) */
 
   async function annotateBoardTimes(){      // fill actual (active wall-clock) time per card + column Σ
-    const token=boardToken;                 // current render's token — bail if a newer render starts
+    const token=App.state.boardToken;                 // current render's token — bail if a newer render starts
     const cards=[...document.querySelectorAll('#board .bcard[data-id]')];
     if(!cards.length)return;
     const ids=cards.map(c=>+c.dataset.id);
@@ -39,7 +39,7 @@
     if(ids.length>BOARD_TIME_CAP){setStatus(cards.length+' cards — filter to ≤'+BOARD_TIME_CAP+' to load actual time');
       cards.forEach(c=>setCard(c,null));return;}
     let t;try{t=await api.times(ids,tzOffset);}catch(e){return;}
-    if(token!==boardToken)return;            // a newer renderBoard superseded us — don't write stale times
+    if(token!==App.state.boardToken)return;            // a newer renderBoard superseded us — don't write stale times
     cards.forEach(c=>{const sec=t[c.dataset.id];if(sec==null){setCard(c,null);return;}c.dataset.act=sec;setCard(c,sec/3600);});
     document.querySelectorAll('#board .bcol').forEach(col=>{let sa=0,se=0;
       col.querySelectorAll('.bcard[data-id]').forEach(c=>{sa+=+(c.dataset.act||0);se+=(c.dataset.est?+c.dataset.est:0);});
@@ -50,9 +50,9 @@
       else if(lab&&sa>0)lab.innerHTML='Σ<ui-icon name="clock"></ui-icon> '+hh(ah);});
   }
   async function renderBoard(){
-    const token=++boardToken;
+    const token=++App.state.boardToken;
     const iters=await getIterations();
-    if(token!==boardToken)return;                     // a newer renderBoard started — bail out
+    if(token!==App.state.boardToken)return;                     // a newer renderBoard started — bail out
     const el=$('board');el.innerHTML='';
     const today=new Date().toISOString().slice(0,10);
     const info={},finish={};iters.forEach(it=>{info[it.path]=it;finish[it.path]=it.finish;});

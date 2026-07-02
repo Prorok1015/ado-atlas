@@ -4,7 +4,7 @@
 // activity.js call descRenderOpts/hydratePreviewImages/colorMentions/renderAttachments
 // bare, and read atchState directly — so these MUST stay bare. Relies on other
 // bare globals resolved at call time: $, api, setStatus, htmlEsc, customConfirm,
-// window.i18n, cur, descEditor, personColor, refreshDirty, openItemAbortCtrl.
+// window.i18n, cur, descEditor, personColor, refreshDirty, App.state.openItemAbortCtrl.
 // Description-preview renderer uses the project's work-item base URL so that
 // `#123` shorthand in the markdown gets auto-linked back to that work item.
 // descBase is derived from the open item's url (set by api.item()) — that way
@@ -27,7 +27,7 @@ function clearAttBlobs(){
 async function hydratePreviewImages(container){
   const pv=container||$('s_desc_prev');if(!pv)return;
   const imgs=Array.from(pv.querySelectorAll('img[data-src], img[src]'));
-  const signal=openItemAbortCtrl?.signal;
+  const signal=App.state.openItemAbortCtrl?.signal;
   for(const img of imgs){
     if(signal?.aborted)return;
     // Prefer data-src (set by renderPreview to avoid unauthenticated browser fetch)

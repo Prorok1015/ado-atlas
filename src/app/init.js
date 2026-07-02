@@ -12,7 +12,7 @@ async function initialBoot(postSetup){
   try{App.settings.applyTheme(localStorage.getItem('ado.theme')||'dark');}catch(e){}
   App.setup.updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
-    iterCache=null;depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canEditSprint=true;canCreateItem=true;newSprints.clear();
+    iterCache=null;App.state.depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canEditSprint=true;canCreateItem=true;newSprints.clear();
     updateUndoButtons();updateCreateButtons();
     if (window.FilterBuilderModal && typeof window.FilterBuilderModal.preLoad === 'function') {
       window.FilterBuilderModal.preLoad(true);
@@ -28,8 +28,8 @@ async function initialBoot(postSetup){
   App.types.fillTypeSelect('c_type','Task');App.types.fillTypeSelect('n_type','Task');   // seed with fallback now; App.types.loadTypes() refills from ADO
   // switching view is render-only (no API): graph draws from the store, tree DOM persists
   $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>App.settings.switchMode(b.dataset.m));
-  $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.graph.depHandleHide();App.graph.renderGraph();});
-  $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.rankDir',rankDir);}catch(e){}App.graph.renderGraph({relayout:true,fit:true});});
+  $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.graph.depHandleHide();App.graph.renderGraph();});
+  $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.rankDir',App.state.rankDir);}catch(e){}App.graph.renderGraph({relayout:true,fit:true});});
   $('f_sort').onchange=()=>{try{localStorage.setItem('ado.sort',$('f_sort').value);}catch(e){}refresh();};
   for(let o=-12;o<=14;o++)$('f_tz').appendChild(new Option('UTC'+(o>=0?'+':'')+o,o));
   {const s=localStorage.getItem('ado.tz');if(s!==null&&s!=='')tzOffset=parseInt(s);}
@@ -48,8 +48,8 @@ async function initialBoot(postSetup){
     if(mode==='board'&&boardGroup!=='sprint')App.board.renderBoard();};   // state/assignee add/remove empty columns in JS (sprints are CSS-only)
   $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.boardGroup',boardGroup);}catch(e){}App.board.renderBoard();});
   // timeline: zoom segment, group select, row click → editor
-  $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.tlZoom',tlZoom);}catch(e){}App.timeline.render();});
-  $('tl_group').onchange=()=>{tlGroup=$('tl_group').value;try{localStorage.setItem('ado.tlGroup',tlGroup);}catch(e){}App.timeline.render();};
+  $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.tlZoom',App.state.tlZoom);}catch(e){}App.timeline.render();});
+  $('tl_group').onchange=()=>{App.state.tlGroup=$('tl_group').value;try{localStorage.setItem('ado.tlGroup',App.state.tlGroup);}catch(e){}App.timeline.render();};
   $('timeline').addEventListener('click',e=>{const r=e.target.closest&&e.target.closest('.tlrow[data-id]');if(!r)return;
     const id=+r.dataset.id;
     if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(id);return;}        // Ctrl/Cmd: toggle in selection
@@ -247,7 +247,7 @@ async function initialBoot(postSetup){
   // hard refresh: drop every per-session cache and re-fetch everything from the server
   $('refreshbtn').onclick=async()=>{
     const b=$('refreshbtn');b.classList.add('spinning');b.disabled=true;
-    try{depCache={};iterCache=null;             // deps + sprints are cached per session
+    try{App.state.depCache={};iterCache=null;             // deps + sprints are cached per session
       await refresh();                          // refetch list + rebuild hierarchy from scratch
       if(cur!=null)openItem(cur);               // reload the open editor so its fields match server
     }finally{b.classList.remove('spinning');b.disabled=false;}
@@ -377,8 +377,8 @@ async function initialBoot(postSetup){
   // discard-confirm check inside closePanel).
   $('s_close').onclick=()=>closePanel();
   $('s_follow').onclick=async()=>{
-    if(cur==null||!activeItemData)return;
-    await FollowManager.toggleFollow(cur,activeItemData);
+    if(cur==null||!App.state.activeItemData)return;
+    await FollowManager.toggleFollow(cur,App.state.activeItemData);
   };
   // Native "leave site?" guard for page reload / tab close / Cmd+W. Modern
   // browsers ignore custom text — assigning any non-empty returnValue is enough
@@ -688,8 +688,8 @@ async function initialBoot(postSetup){
     const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
     if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
     const bg=localStorage.getItem('ado.boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
-    const tz2=localStorage.getItem('ado.tlZoom');if(tz2&&TL_PX[tz2]){tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.z===tz2));}
-    const tg=localStorage.getItem('ado.tlGroup');if(tg){tlGroup=tg;$('tl_group').value=tg;}
+    const tz2=localStorage.getItem('ado.tlZoom');if(tz2&&TL_PX[tz2]){App.state.tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.z===tz2));}
+    const tg=localStorage.getItem('ado.tlGroup');if(tg){App.state.tlGroup=tg;$('tl_group').value=tg;}
     const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
     const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;App.settings.setAutoRefresh(au);}
     const sc=localStorage.getItem('ado.uiScale');
@@ -700,8 +700,8 @@ async function initialBoot(postSetup){
         updateUiScale(num);
       }
     }
-    const mn=localStorage.getItem('ado.maxNodes');if(mn!==null){maxNodesLimit=parseInt(mn,10);}
-    const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
+    const mn=localStorage.getItem('ado.maxNodes');if(mn!==null){App.state.maxNodesLimit=parseInt(mn,10);}
+    const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){App.state.rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
   App.types.buildLegend();App.filters.renderFilters();App.filters.updateFilterCount();App.setup.updatePatBadge();updateUndoButtons();updateCreateButtons();
   setInterval(App.setup.updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
   await loadIdentity();

@@ -10,7 +10,7 @@
 // the declaration cannot move here. We read/mutate it bare at call time.
 //
 // Reads/writes other bare globals at call time ($, store, cur, cy, mode,
-// edgeMode, depCache, api, tyColor, htmlEsc, loadStart, loadEnd, setStatus,
+// App.state.edgeMode, App.state.depCache, api, tyColor, htmlEsc, loadStart, loadEnd, setStatus,
 // openItem, pushAction, denyOnForbidden, createCardPicker, depsState) and the
 // bare picker helpers depAdderProvider / depPickerOnChange (card-picker.js).
 //
@@ -78,7 +78,7 @@
     if(cur===from){const a=depsState.blocks;if(op==='add'){if(!a.includes(to))a.push(to);}else depsState.blocks=a.filter(x=>x!==to);}
     if(cur===to){const a=depsState.blockedBy;if(op==='add'){if(!a.includes(from))a.push(from);}else depsState.blockedBy=a.filter(x=>x!==from);}
     if(cur===from||cur===to)renderDeps();
-    if(cy&&mode==='graph'&&edgeMode!=='hierarchy'){
+    if(cy&&mode==='graph'&&App.state.edgeMode!=='hierarchy'){
       const eid='d_'+from+'_'+to;
       const existing=cy.getElementById(eid);
       if(op==='add'){if(existing.empty()&&cy.getElementById(String(from)).nonempty()&&cy.getElementById(String(to)).nonempty())
@@ -94,11 +94,11 @@
     loadStart('linking #'+from+' → #'+to+'…');
     try{
       await api.addDependency(from,to);
-      depCache={};                                   // graph cache is per id-set; nuke wholesale
+      App.state.depCache={};                                   // graph cache is per id-set; nuke wholesale
       applyDepLocal(from,to,'add');
       pushAction(`link #${from} → #${to}`,
-        async()=>{try{await api.removeDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'remove');if(cur===focusId)await loadDeps(focusId);},
-        async()=>{try{await api.addDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'add');if(cur===focusId)await loadDeps(focusId);});
+        async()=>{try{await api.removeDependency(from,to);}catch(e){}App.state.depCache={};applyDepLocal(from,to,'remove');if(cur===focusId)await loadDeps(focusId);},
+        async()=>{try{await api.addDependency(from,to);}catch(e){}App.state.depCache={};applyDepLocal(from,to,'add');if(cur===focusId)await loadDeps(focusId);});
       setStatus(`linked #${from} → #${to}`);
     }catch(e){
       if(!denyOnForbidden(e,'add dependencies'))setStatus('ERROR: '+e.message,true);
@@ -109,11 +109,11 @@
     loadStart('unlinking #'+from+' → #'+to+'…');
     try{
       await api.removeDependency(from,to);
-      depCache={};
+      App.state.depCache={};
       applyDepLocal(from,to,'remove');
       pushAction(`unlink #${from} → #${to}`,
-        async()=>{try{await api.addDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'add');if(cur===focusId)await loadDeps(focusId);},
-        async()=>{try{await api.removeDependency(from,to);}catch(e){}depCache={};applyDepLocal(from,to,'remove');if(cur===focusId)await loadDeps(focusId);});
+        async()=>{try{await api.addDependency(from,to);}catch(e){}App.state.depCache={};applyDepLocal(from,to,'add');if(cur===focusId)await loadDeps(focusId);},
+        async()=>{try{await api.removeDependency(from,to);}catch(e){}App.state.depCache={};applyDepLocal(from,to,'remove');if(cur===focusId)await loadDeps(focusId);});
       setStatus(`unlinked #${from} → #${to}`);
     }catch(e){
       if(!denyOnForbidden(e,'remove dependencies'))setStatus('ERROR: '+e.message,true);
