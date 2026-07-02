@@ -1,4 +1,14 @@
-importScripts('src/core/lib.js', 'src/core/api.js');
+importScripts(
+  'src/core/lib.js',
+  'src/core/api/core.js',
+  'src/core/api/http-auth.js',
+  'src/core/api/query.js',
+  'src/core/api/endpoints.js',
+  'src/core/api/graph.js',
+  'src/core/api/items.js',
+  'src/core/api/time.js',
+  'src/core/api/facade.js'
+);
 
 // ---- Self-contained notification i18n (service worker has no window.i18n) ----
 // Keyed by short message ids. Use {token} placeholders resolved via AdoLib.formatMessage.
