@@ -33,7 +33,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/components/tutorials*.json", "src/locales/*.json"],
+      "resources": ["src/components/tutorials/*.json", "src/locales/*.json"],
       "matches": ["<all_urls>"]
     }
   ]
