@@ -33,6 +33,7 @@ const files = [
   "src/app/namespace.js",
   "src/app/const.js",
   "src/app/loading.js",
+  "src/app/badges.js",
   "src/app/state-globals.js",
   "src/app/export.js",
   "src/app/types.js",

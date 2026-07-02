@@ -1127,56 +1127,8 @@ const nodeStroke=type=>TYPE_COLOR[type]||'#95a5a6';
 // through the popover anchored on the Controls box. Choices persist as one
 // nested object under `ado.badges`; the legacy `ado.graphBadges` flat key is
 // migrated on first load.
-const BADGE_FIELDS_BY_VIEW={
-  graph:[
-    {key:'childCount',label:'Child count'},
-    {key:'priority',label:'Priority'},
-    {key:'assigned',label:'Assignee'},
-    {key:'state',label:'State'},
-    {key:'est',label:'Estimate (h)'},
-    {key:'tags',label:'Tags'},
-    {key:'iteration',label:'Sprint'},
-  ],
-  board:[
-    {key:'assigned',label:'Assignee'},
-    {key:'type',label:'Type'},
-    {key:'priority',label:'Priority'},
-    {key:'state',label:'State'},
-    {key:'est',label:'Estimate / time bar'},
-    {key:'tags',label:'Tags'},
-  ],
-  tree:[
-    {key:'priority',label:'Priority'},
-    {key:'state',label:'State'},
-    {key:'tags',label:'Tags'},
-  ],
-  timeline:[
-    {key:'priority',label:'Priority (bar prefix)'},
-    {key:'state',label:'State pill on label'},
-    {key:'assigned',label:'Assignee chip'},
-  ],
-};
-const badgesOn={
-  graph:{childCount:true,priority:true,assigned:true,state:true,est:true,tags:true,iteration:true},
-  board:{assigned:true,type:true,priority:true,state:true,est:true,tags:true},
-  tree:{priority:true,state:true,tags:true},
-  timeline:{priority:true,state:false,assigned:false},
-};
-// True iff the (view, key) toggle is on. View defaults to the current mode
-// — pass an explicit view when the call site renders for a specific view
-// regardless of what's focused (e.g., gstyle is always 'graph').
-function badgeOn(k,view){view=view||mode;const m=badgesOn[view];return !m||m[k]!==false;}
-function loadBadgesOn(){
-  try{
-    const s=localStorage.getItem('ado.badges');
-    if(s){const p=JSON.parse(s);Object.keys(badgesOn).forEach(v=>{
-      if(p[v]&&typeof p[v]==='object')Object.keys(badgesOn[v]).forEach(k=>{if(typeof p[v][k]==='boolean')badgesOn[v][k]=p[v][k];});
-    });}
-    const legacy=localStorage.getItem('ado.graphBadges');   // migrate v1 single-view format
-    if(legacy){const op=JSON.parse(legacy);Object.keys(badgesOn.graph).forEach(k=>{if(typeof op[k]==='boolean')badgesOn.graph[k]=op[k];});}
-  }catch(e){}
-}
-function saveBadgesOn(){try{localStorage.setItem('ado.badges',JSON.stringify(badgesOn));}catch(e){}}
+/* badge fields/state + badgeOn/loadBadgesOn/saveBadgesOn -> app/badges.js (bare, shared across views) */
+
 // Short alias used by cytoscape style mappers — always read the graph's set, since
 // mappers may evaluate at any time (e.g. after a theme change while another view is up).
 const gOn=k=>badgeOn(k,'graph');
