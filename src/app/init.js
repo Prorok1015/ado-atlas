@@ -8,6 +8,78 @@
 // setMode, renderViewHelp, createChild, wireSetup, and the shared state globals).
 /* ---------- main init (runs after PAT is verified) ---------- */
 let _booted=false;
+
+// Hoisted to module scope because more than one wire* helper (below) references
+// them: the followed-filter star reflects state from both the bulk bar and the
+// filter-manager onChange; the AI button state is also refreshed via a registry
+// callback + exposed on window; closeMore is dismissed from the Escape handler.
+function updateFollowedBtnVisual() {
+  const btn = $('followed_btn');
+  if (!btn) return;
+  const active = window.filterManager ? window.filterManager.isFollowed() : false;
+  btn.classList.toggle('on', active);
+  btn.innerHTML = active ? '<ui-icon name="star-filled"></ui-icon>' : '<ui-icon name="star"></ui-icon>';
+}
+function toggleFollowedFilter(active) {
+  if (window.filterManager) {
+    window.filterManager.toggleFollowed(active);
+  }
+}
+async function updateAIFilterButtonState() {
+  const btn = $('ai_filter_btn');
+  if (!btn) return;
+
+  const wrapper = btn.closest('.fsearch-group-wrapper');
+  const badge = wrapper ? wrapper.querySelector('.ai-beta-badge-tiny') : null;
+
+  if (!window.aiProviderRegistry) {
+    btn.setAttribute('disabled', 'true');
+    btn.title = "AI Service Layer is not initialized.";
+    if (badge) badge.style.display = 'none';
+    return;
+  }
+
+  try {
+    btn.removeAttribute('disabled');
+    if (badge) badge.style.display = 'inline-block';
+
+    const provider = await window.aiProviderRegistry.getActive();
+    if (!provider) {
+      btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
+      btn.title = "Configure AI Search settings.";
+      return;
+    }
+
+    const avail = await provider.getAvailability();
+
+    if (avail === 'unsupported') {
+      btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
+      btn.title = "Built-in AI is unsupported on this device. Click to configure cloud models.";
+    } else if (avail === 'downloadable') {
+      btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;"><ui-icon name="download"></ui-icon></span>`;
+      btn.title = provider.id === 'chrome-prompt-api' ? "Download AI model and search." : "Configure API Key and search.";
+    } else if (avail === 'downloading') {
+      btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;"><ui-icon name="clock"></ui-icon></span>`;
+      btn.title = "Downloading model... Click to view progress.";
+    } else {
+      btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
+      btn.title = "AI Search over work items.";
+    }
+  } catch (e) {
+    btn.setAttribute('disabled', 'true');
+    btn.title = "Failed checking AI status: " + e.message;
+    if (badge) badge.style.display = 'none';
+  }
+}
+window.updateAIFilterButtonState = updateAIFilterButtonState;
+function closeMore() {
+  const mp = $('morepanel'), mb = $('morebtn');
+  if (!mp || !mb) return;
+  mp.style.display = 'none';
+  mb.classList.remove('on');
+  if (window.LayerManager) window.LayerManager.close(mp);
+}
+
 async function initialBoot(postSetup){
   try{App.settings.applyTheme(localStorage.getItem('ado.theme')||'dark');}catch(e){}
   App.setup.updateProjectBadge();                  // reflect the active org/project in the title bar
@@ -96,18 +168,6 @@ async function initialBoot(postSetup){
       }
     });
   })();
-  function updateFollowedBtnVisual() {
-    const btn = $('followed_btn');
-    if (!btn) return;
-    const active = window.filterManager ? window.filterManager.isFollowed() : false;
-    btn.classList.toggle('on', active);
-    btn.innerHTML = active ? '<ui-icon name="star-filled"></ui-icon>' : '<ui-icon name="star"></ui-icon>';
-  }
-  function toggleFollowedFilter(active) {
-    if (window.filterManager) {
-      window.filterManager.toggleFollowed(active);
-    }
-  }
   $('followed_btn').onclick=()=>{
     const active = !$('followed_btn').classList.contains('on');
     toggleFollowedFilter(active);
@@ -128,54 +188,6 @@ async function initialBoot(postSetup){
       }
     };
   }
-
-  async function updateAIFilterButtonState() {
-    const btn = $('ai_filter_btn');
-    if (!btn) return;
-
-    const wrapper = btn.closest('.fsearch-group-wrapper');
-    const badge = wrapper ? wrapper.querySelector('.ai-beta-badge-tiny') : null;
-
-    if (!window.aiProviderRegistry) {
-      btn.setAttribute('disabled', 'true');
-      btn.title = "AI Service Layer is not initialized.";
-      if (badge) badge.style.display = 'none';
-      return;
-    }
-
-    try {
-      btn.removeAttribute('disabled');
-      if (badge) badge.style.display = 'inline-block';
-
-      const provider = await window.aiProviderRegistry.getActive();
-      if (!provider) {
-        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
-        btn.title = "Configure AI Search settings.";
-        return;
-      }
-
-      const avail = await provider.getAvailability();
-
-      if (avail === 'unsupported') {
-        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
-        btn.title = "Built-in AI is unsupported on this device. Click to configure cloud models.";
-      } else if (avail === 'downloadable') {
-        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;"><ui-icon name="download"></ui-icon></span>`;
-        btn.title = provider.id === 'chrome-prompt-api' ? "Download AI model and search." : "Configure API Key and search.";
-      } else if (avail === 'downloading') {
-        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span><span style="font-size: 0.75rem; margin-left: 2px; color: #a855f7; position: relative; z-index: 2;"><ui-icon name="clock"></ui-icon></span>`;
-        btn.title = "Downloading model... Click to view progress.";
-      } else {
-        btn.innerHTML = `<span class="ricon" style="display:flex; align-items:center; margin:0;"><ui-icon name="sparkles"></ui-icon></span>`;
-        btn.title = "AI Search over work items.";
-      }
-    } catch (e) {
-      btn.setAttribute('disabled', 'true');
-      btn.title = "Failed checking AI status: " + e.message;
-      if (badge) badge.style.display = 'none';
-    }
-  }
-  window.updateAIFilterButtonState = updateAIFilterButtonState;
 
   if (window.aiProviderRegistry) {
     window.aiProviderRegistry.onAvailabilityChange(() => {
@@ -212,7 +224,6 @@ async function initialBoot(postSetup){
   };
   // overflow "⋯" display-options popover — toggle + dismiss on outside click / Esc
   const moreP=$('morepanel'),moreB=$('morebtn');
-  const closeMore=()=>{moreP.style.display='none';moreB.classList.remove('on');if (window.LayerManager) window.LayerManager.close(moreP);};
   moreB.onclick=e=>{e.stopPropagation();const show=moreP.style.display==='none';moreP.style.display=show?'flex':'none';moreB.classList.toggle('on',show);
     if (window.LayerManager) {
       if (show) window.LayerManager.open(moreP, null, { isPopover: true });
