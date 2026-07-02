@@ -11,7 +11,7 @@
      boardGroup, openSprintPath, projectStates, sprintPaths, sprintNames, pinnedSprints,
      TYPE_COLOR, tyColor, stateColor, prioColor, orderStates, cmpBySort, hexToRgb,
      boardToken, tzOffset, capNote, projectName, newSprints, canCreateSprint, suppressClick,
-     pendingSprintItems, showSprintModal, showSprintEdit, togglePinSprint, currentUser, assignees,
+     pendingSprintItems, App.sprint.showSprintModal, App.sprint.showSprintEdit, togglePinSprint, currentUser, assignees,
      bulkToggle, bulkRange, pushAction, afterUndo, canEditSprint, sprintGroup, renderViewHelp
    - component-defined globals (components/card-picker.js): personColor, personChipT, tagList_
 
@@ -103,7 +103,7 @@
     if(canCreateSprint){                              // phantom "add sprint" column at the right end
       const add=document.createElement('div');add.className='bcol addcol';add.title='create a new sprint';
       add.innerHTML='<div class="addinner"><span class="plus">＋</span>New sprint</div>';
-      add.onclick=()=>{if(suppressClick)return;pendingSprintItems=null;showSprintModal();};fragment.appendChild(add);   // plain click (not a drop)
+      add.onclick=()=>{if(suppressClick)return;pendingSprintItems=null;App.sprint.showSprintModal();};fragment.appendChild(add);   // plain click (not a drop)
     }
     el.appendChild(fragment);
     setStatus(`${items.length} items`+capNote());annotateBoardTimes();
@@ -256,7 +256,7 @@
     const bulk=bulkSel.has(d.id)&&bulkSel.size>1;                     // dragged a selected card → move the whole selection
     const dropIds=bulk?[...bulkSel]:[d.id];
     if(col.classList.contains('addcol')){                            // dropped on "＋ New sprint" → create, then move them in
-      pendingSprintItems=dropIds;showSprintModal();return;
+      pendingSprintItems=dropIds;App.sprint.showSprintModal();return;
     }
     const field=col.dataset.field,val=col.dataset.val||'';
     const node=store.nodes[d.id],curVal=node?(node[field]||''):'';   // field: iteration | assigned | state
@@ -328,7 +328,7 @@
       });
     } else items.forEach(n=>el.appendChild(mkRow(n)));
     $('g_back').onclick=backToBoard;
-    {const eb=$('g_editdates');if(eb)eb.onclick=()=>showSprintEdit(path);}
+    {const eb=$('g_editdates');if(eb)eb.onclick=()=>App.sprint.showSprintEdit(path);}
     $('g_group').onclick=()=>{sprintGroup=sprintGroup==='assignee'?'none':'assignee';
       try{localStorage.setItem('ado.sprintGroup',sprintGroup);}catch(e){}renderSprint(path);};
     annotateSprintTimes(items.map(n=>n.id),path);
@@ -353,7 +353,7 @@
     if(!_sprint(path))return;
     boardScroll={l:$('board').scrollLeft,t:$('board').scrollTop};
     if(renderSprint(path)){openSprintPath=path;$('board').classList.remove('show');$('sprintview').classList.add('show');renderViewHelp();}
-    else{showSprintEdit(path);}
+    else{App.sprint.showSprintEdit(path);}
   }
   function backToBoard(){
     openSprintPath=null;$('sprintview').classList.remove('show');$('board').classList.add('show');

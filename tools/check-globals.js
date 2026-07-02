@@ -52,6 +52,7 @@ const files = [
   "src/app/tree.js",
   "src/app/bulk.js",
   "src/app/date-pickers.js",
+  "src/app/sprint-edit.js",
   "src/app.js"
 ];
 const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
