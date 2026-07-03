@@ -20,13 +20,28 @@ is **done**. This doc records the final architecture and how to keep working wit
   `wireModals` (in `src/app/init.js`); boot orchestration tail stays inline.
 - Tutorials JSON moved to `src/components/tutorials/`.
 
-## Settings layer — `App.prefs` (SETTINGS_SYNC_SPEC Phase 1, done)
+## Settings layer — `App.prefs` (SETTINGS_SYNC_SPEC Phase 1 + Phase 2a done)
 
 - `src/app/prefs.js` (`App.prefs`, loaded right after `state-globals.js`) is now the
   single canonical store for persisted prefs: a registry-driven, localStorage-shaped
-  (string values) SYNC cache over `chrome.storage.local`, hydrated via
-  `await App.prefs.load()` (awaited in `boot.js` DOMContentLoaded + top of `initialBoot`).
-  API: `load/get/set/remove/getAll/onChange/export/import` + `REGISTRY`.
+  (string values) SYNC cache, hydrated via `await App.prefs.load()` (awaited in `boot.js`
+  DOMContentLoaded + top of `initialBoot`). API: `load/get/set/remove/getAll/onChange/
+  export/import` + `REGISTRY`.
+- **Phase 2a (cross-device roaming) shipped:** StorageAdapter seam — LocalArea
+  (`chrome.storage.local`), ChromeSyncArea (`chrome.storage.sync`, Free roaming),
+  CloudArea (Pro, **stub** — Go backend not live). `_syncAdapter()` picks tier-aware
+  (Pro+cloud→Cloud future; else chrome.storage.sync; else Local offline). `area:'sync'`
+  keys are DUAL-WRITTEN (immediate local copy + debounced per-key push to the sync
+  adapter); `load()` prefers the roamed value, falls back to local (Phase-1 installs lose
+  nothing, promoted to sync on first boot). Live pull via `chrome.storage.onChanged`
+  (area 'sync') → cache+mirror+onChange (applies on next render/reload). Per-key `ts` meta
+  (`ado.__prefsMeta`) + `export()`→`{v,ts,values,meta}`; `import()` = per-key LWW by ts
+  (or whole-blob adopt when no meta). Roaming is AUTOMATIC (no opt-in toggle). No manifest
+  change (`storage` permission already covers `.sync`).
+- **Phase 2 remaining:** wire `CloudArea` to the Go backend (+ its explicit ts-LWW push/
+  pull) when live; roam notify prefs (needs `background.js` to read `chrome.storage.sync`);
+  optional Pro sync toggle in settings/paywall; `followedItems` own user-data channel;
+  dynamic-key facility for the deferred families below.
 - Every **static** `ado.*` pref is routed through `App.prefs.get/set` (theme, lang,
   uiScale, tz, workHours, sort, auto, showEmpty, board/sprint group, tl zoom/group,
   timelineView, rankDir, maxNodes, viewhelp, badges, custom_emojis, mode, bar/bulk
