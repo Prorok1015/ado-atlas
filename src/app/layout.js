@@ -612,10 +612,10 @@ const BULK_ITEMS=[
 const BULK_LOCKED=new Set();
 let bulkOrder=BULK_ITEMS.map(i=>i.id), bulkHidden=new Set(['parent', 'dates', 'followed']);
 function loadBulkLayout(){
-  try{const o=JSON.parse(localStorage.getItem('ado.bulkOrder')||'null');if(Array.isArray(o))bulkOrder=o;}catch(e){}
-  try{const h=JSON.parse(localStorage.getItem('ado.bulkHidden')||'null');if(Array.isArray(h))bulkHidden=new Set(h);}catch(e){}
+  try{const o=JSON.parse(App.prefs.get('bulkOrder')||'null');if(Array.isArray(o))bulkOrder=o;}catch(e){}
+  try{const h=JSON.parse(App.prefs.get('bulkHidden')||'null');if(Array.isArray(h))bulkHidden=new Set(h);}catch(e){}
 }
-function saveBulkLayout(){try{localStorage.setItem('ado.bulkOrder',JSON.stringify(bulkOrderedIds()));localStorage.setItem('ado.bulkHidden',JSON.stringify([...bulkHidden]));}catch(e){}}
+function saveBulkLayout(){App.prefs.set('bulkOrder',JSON.stringify(bulkOrderedIds()));App.prefs.set('bulkHidden',JSON.stringify([...bulkHidden]));}
 function bulkOrderedIds(){
   const def=BULK_ITEMS.map(i=>i.id),defSet=new Set(def);
   const result=bulkOrder.filter((id,i)=>defSet.has(id)&&bulkOrder.indexOf(id)===i);
@@ -645,10 +645,10 @@ function applyBulkLayout(){
 }
 
 function loadBarLayout(){
-  try{const o=JSON.parse(localStorage.getItem('ado.barOrder')||'null');if(Array.isArray(o))barOrder=o;}catch(e){}
-  try{const h=JSON.parse(localStorage.getItem('ado.barHidden')||'null');if(Array.isArray(h))barHidden=new Set(h.filter(id=>!BAR_LOCKED.has(id)));}catch(e){}
+  try{const o=JSON.parse(App.prefs.get('barOrder')||'null');if(Array.isArray(o))barOrder=o;}catch(e){}
+  try{const h=JSON.parse(App.prefs.get('barHidden')||'null');if(Array.isArray(h))barHidden=new Set(h.filter(id=>!BAR_LOCKED.has(id)));}catch(e){}
 }
-function saveBarLayout(){try{localStorage.setItem('ado.barOrder',JSON.stringify(barOrderedIds()));localStorage.setItem('ado.barHidden',JSON.stringify([...barHidden]));}catch(e){}}
+function saveBarLayout(){App.prefs.set('barOrder',JSON.stringify(barOrderedIds()));App.prefs.set('barHidden',JSON.stringify([...barHidden]));}
 // Ordered id list = the saved order, with any default id missing from it (new in
 // a later version) re-inserted near its default neighbours rather than dumped at
 // the end — so e.g. the spacer lands in the right place for pre-existing layouts.
@@ -1652,9 +1652,7 @@ function renderCustomizeList(){
 }
 
 function updateUiScale(scaleFactor) {
-  try {
-    localStorage.setItem('ado.uiScale', parseFloat(scaleFactor).toFixed(1));
-  } catch(e) {}
+  App.prefs.set('uiScale', parseFloat(scaleFactor).toFixed(1));   // mirrored to localStorage for theme-init.js
   document.documentElement.style.fontSize = (13 * scaleFactor) + 'px';
   if (typeof App.state.cy !== 'undefined' && App.state.cy && typeof App.state.cy.resize === 'function') {
     App.state.cy.resize();

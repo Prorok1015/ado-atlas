@@ -64,9 +64,10 @@
     graphBadges:  { default: null, scope: 'sync',   area: 'sync',  type: 'json'   }, // legacy v1 badges; read-only migration source in badges.js
     custom_emojis:{ default: null, scope: 'sync',   area: 'sync',  type: 'json'   },
     // ---- Layouts (sync) ----
-    layout:       { default: null, scope: 'sync',   area: 'sync',  type: 'string' },
-    sideOrder:    { default: null, scope: 'sync',   area: 'sync',  type: 'json'   },
-    sideHidden:   { default: null, scope: 'sync',   area: 'sync',  type: 'json'   },
+    // NOTE: the side-panel layout (ado.layout / ado.sideOrder / ado.sideHidden) is a
+    // DYNAMIC per-work-item-type key family (ado.layout, ado.layout.Bug, ...) read
+    // synchronously in the deep side-panel path — it stays direct localStorage for now
+    // (see the dynamic-key note below). Only the static bar/bulk layout keys live here.
     barOrder:     { default: null, scope: 'sync',   area: 'sync',  type: 'json'   },
     barHidden:    { default: null, scope: 'sync',   area: 'sync',  type: 'json'   },
     bulkOrder:    { default: null, scope: 'sync',   area: 'sync',  type: 'json'   },
@@ -97,6 +98,10 @@
   //  * `ado.collapsed.<groupId>` — dynamic-key, device-scoped collapse state; device
   //    prefs never roam, so it stays direct localStorage until a Phase 2 dynamic-key
   //    facility (if ever needed).
+  //  * Side-panel layout `ado.layout[.<wtype>]` (+ legacy `ado.sideOrder`/`ado.sideHidden`
+  //    [.<wtype>]) — a sync-scoped layout, but a DYNAMIC per-type key family read
+  //    synchronously in the deep side-panel path. Deferred to the Phase 2 dynamic-key
+  //    facility so the static-registry model (and its export/import blob) stays clean.
 
   const MIGRATED_FLAG = 'ado.__prefsMigrated';
   const SCHEMA_VERSION = 1;
