@@ -41,11 +41,14 @@ is **done**. This doc records the final architecture and how to keep working wit
 - **Phase 2b done:** notify prefs (followNotify/mentionNotify/notifyAge) now roam
   (area 'local'→'sync'); `background.js` `getSyncedPref()` reads chrome.storage.sync
   first, falls back to local — so the worker sees roams even when the page is closed.
-- **Phase 2 remaining:** wire `CloudArea` to the Go backend (+ its explicit ts-LWW push/
-  pull) when live [BLOCKED — backend stub]; optional Pro sync toggle in settings/paywall
-  (Free is automatic, no toggle); `followedItems` own user-data channel; dynamic-key
-  facility for the side-panel layout (`ado.layout[.<wtype>]` — must be per-key, not a
-  consolidated map, to stay under the 8KB/item sync quota; deep side-panel path — smoke).
+- **Phase 2c done:** dynamic-key facility (`getDynamic/setDynamic/removeDynamic` + prefix
+  registry `DYNAMIC` + roamed index `ado.__dynKeys`) → the per-wtype side-panel layout
+  (`ado.layout[.<wtype>]`) roams (per-key, under the 8KB quota). loadSideLayout stays sync.
+  **Free-tier roaming is now complete** (UI prefs, layouts incl. side-panel, filters, notify).
+- **Phase 2 remaining (blocked/cloud-only):** wire `CloudArea` to the Go backend
+  [BLOCKED — stub; and no `/api/prefs/*` contract exists yet, only `/api/license|ai/*`];
+  optional Pro sync toggle (Free is automatic); `followedItems` own user-data channel
+  (wants the cloud backend — too big for chrome.storage.sync).
 - Every **static** `ado.*` pref is routed through `App.prefs.get/set` (theme, lang,
   uiScale, tz, workHours, sort, auto, showEmpty, board/sprint group, tl zoom/group,
   timelineView, rankDir, maxNodes, viewhelp, badges, custom_emojis, mode, bar/bulk
