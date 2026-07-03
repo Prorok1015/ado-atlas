@@ -86,6 +86,8 @@
           <option value="172800" selected data-i18n="settings.dur.2days">2 days</option>
           <option value="604800" data-i18n="settings.dur.1week">1 week</option>
         </select></div>
+      <div class="mrow"><span><span data-i18n="settings.telemetry">Usage analytics</span><span class="logic-hint" data-i18n-tooltip="help.telemetry" data-tooltip-html="<b>Usage Analytics</b><br/>Send anonymous usage stats (which views/features are used) to help improve the extension. No work-item data, credentials, or personal info is ever sent."><ui-icon name="help"></ui-icon></span></span>
+        <button class="btn" id="f_telemetry" data-i18n-title="settings.telemetry.title" title="toggle anonymous usage analytics"><ui-icon name="bar-chart"></ui-icon> <span id="f_telemetry_label">on</span></button></div>
       <div class="mrow mrow-full" style="display:flex;gap:6px;align-items:stretch">
         <button class="btn" id="cz_open" style="flex:1" data-i18n-title="settings.customizeLayout.title" title="reorder / show-hide toolbar buttons and work-item panel fields"><ui-icon name="layout"></ui-icon> <span data-i18n="settings.customizeLayout">Customize layout…</span></button>
         <button class="btn" id="emojis_open" style="width:32px;padding:0;display:inline-flex;align-items:center;justify-content:center" data-i18n-title="settings.customizeEmojis.title" title="Customize reactions emojis or images"><ui-icon name="smile"></ui-icon></button>
@@ -697,6 +699,7 @@
 <script src="src/ai/ai-search-service.js"></script>
 <script src="src/components/ai-search-dialog.js"></script>
 <script src="src/app/namespace.js"></script>
+<script src="src/app/analytics.js"></script>
 <script src="src/app/const.js"></script>
 <script src="src/app/loading.js"></script>
 <script src="src/app/badges.js"></script>

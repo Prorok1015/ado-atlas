@@ -38,6 +38,7 @@ const files = [
   "src/ai/ai-search-service.js",
   "src/components/ai-search-dialog.js",
   "src/app/namespace.js",
+  "src/app/analytics.js",
   "src/app/const.js",
   "src/app/loading.js",
   "src/app/badges.js",

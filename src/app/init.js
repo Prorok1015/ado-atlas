@@ -121,6 +121,7 @@ async function initialBoot(postSetup){
     updateFollowedBtnVisual();
     App.settings.applyFollowNotify(App.prefs.get('followNotify')||'on');
     App.settings.applyMentionNotify(App.prefs.get('mentionNotify')||'on');
+    App.settings.applyTelemetry(App.prefs.get('telemetry')||'on');
     {const ageSel = $('f_notify_age');
      if (ageSel) ageSel.value = App.prefs.get('notifyAge') || '172800';}
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
@@ -454,6 +455,7 @@ function wireControls(){
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
   if(window.i18n&&$('f_lang')){$('f_lang').value=window.i18n.getLang();$('f_lang').onchange=()=>{window.i18n.setLang($('f_lang').value);};}
   $('f_follow_notify').onclick=App.settings.cycleFollowNotify;
+  {const tb=$('f_telemetry');if(tb)tb.onclick=App.settings.cycleTelemetry;}
 }
 function wireBulkBar(){
   $('f_mention_notify').onclick=App.settings.cycleMentionNotify;

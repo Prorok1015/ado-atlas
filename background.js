@@ -7,7 +7,8 @@ importScripts(
   'src/core/api/graph.js',
   'src/core/api/items.js',
   'src/core/api/time.js',
-  'src/core/api/facade.js'
+  'src/core/api/facade.js',
+  'src/core/analytics.js'
 );
 
 // ---- Self-contained notification i18n (service worker has no window.i18n) ----
@@ -159,10 +160,18 @@ async function validateLicenseBackground() {
 }
 
 // Alarms to check for updates
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   chrome.alarms.create("check-notifications", { periodInMinutes: 5 });
   chrome.alarms.create("validate-license", { periodInMinutes: 1440 }); // daily
   ensureInstallationId();
+  // Telemetry: distinguish first install from a version update (GA4 lifecycle).
+  try {
+    if (details.reason === "install") {
+      globalThis.AdoAnalytics.collect("extension_install");
+    } else if (details.reason === "update") {
+      globalThis.AdoAnalytics.collect("extension_update", { previous_version: details.previousVersion });
+    }
+  } catch (_) {}
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -201,6 +210,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (sendResponse) sendResponse({ error: err.message });
       });
     return true; // Keep channel open for async response
+  }
+  if (msg.action === "ga") {
+    // Telemetry event forwarded from a page via App.analytics.track(). Fire-and-forget:
+    // ack immediately so the sender's sendMessage promise resolves and the channel closes.
+    try { globalThis.AdoAnalytics.collect(msg.name, msg.params); } catch (_) {}
+    if (sendResponse) sendResponse({ ok: true });
+    return false; // synchronous ack; the GA POST runs detached
   }
   if (msg.action === "fetchHostedAI") {
     // STUB (Stage 2): forward { license_key, installation_id, prompt, context } to

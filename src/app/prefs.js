@@ -98,6 +98,10 @@
     followNotify:  { default: null, scope: 'sync', area: 'sync', type: 'string', storageKey: 'followNotify', worker: true },
     mentionNotify: { default: null, scope: 'sync', area: 'sync', type: 'string', storageKey: 'mentionNotify', worker: true },
     notifyAge:     { default: null, scope: 'sync', area: 'sync', type: 'number', storageKey: 'notifyAge',    worker: true },
+    // Anonymous usage telemetry (GA4). Opt-out: null/'on' = enabled, 'off' = disabled.
+    // Bare storageKey + worker:true because the service worker's GA client reads it
+    // directly (src/core/analytics.js enabled()); area:'sync' so the choice roams.
+    telemetry:     { default: null, scope: 'sync', area: 'sync', type: 'string', storageKey: 'telemetry',   worker: true },
     // ---- Device-scoped (screen/device specific — never roams) ----
     mode:                     { default: null, scope: 'device', area: 'local', type: 'string' }, // last active view
     sideWidth:                { default: null, scope: 'device', area: 'local', type: 'string' },

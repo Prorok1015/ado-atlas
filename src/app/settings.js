@@ -56,6 +56,17 @@
     App.prefs.set('mentionNotify', next);
     applyMentionNotify(next);
   }
+  function applyTelemetry(status) {
+    const btn = $('f_telemetry');
+    if (!btn) return;
+    btn.title = 'usage analytics: ' + status + ' — click to change';
+    btn.innerHTML = (status === 'on' ? '<ui-icon name="bar-chart"></ui-icon> ' : '<ui-icon name="slash"></ui-icon> ') + `<span id="f_telemetry_label">${status}</span>`;
+  }
+  function cycleTelemetry() {
+    const next = (App.prefs.get('telemetry') || 'on') === 'on' ? 'off' : 'on';
+    App.prefs.set('telemetry', next);
+    applyTelemetry(next);
+  }
   let autoTimer=null;
   function autoTick(){
     App.setup.updatePatBadge();                          // keep the countdown fresh on long-lived tabs
@@ -69,7 +80,8 @@
     if(sec>0)autoTimer=setInterval(autoTick,sec*1000);
   }
   function switchMode(m){setMode(m);App.prefs.set('mode',m);
+    if(App.analytics)App.analytics.track('view_change',{mode:m});
     if(m==='graph')App.graph.renderGraph({fit:true});else if(m==='board')App.board.renderBoard();else if(m==='timeline')App.timeline.render();else App.tree.renderTree();}
 
-  App.settings = { applyTheme, cycleTheme, applyFollowNotify, cycleFollowNotify, applyMentionNotify, cycleMentionNotify, setAutoRefresh, switchMode };
+  App.settings = { applyTheme, cycleTheme, applyFollowNotify, cycleFollowNotify, applyMentionNotify, cycleMentionNotify, applyTelemetry, cycleTelemetry, setAutoRefresh, switchMode };
 })(window.App);
