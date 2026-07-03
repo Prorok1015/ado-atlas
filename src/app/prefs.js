@@ -1,38 +1,51 @@
-// App.prefs — the single canonical preferences layer (SETTINGS_SYNC_SPEC Phase 1).
+// App.prefs — the single canonical preferences layer (SETTINGS_SYNC_SPEC).
 //
 // Replaces the ~35 scattered `ado.*` localStorage keys (and the notify keys the
-// service worker reads) with ONE registry-driven store, so that later enabling
-// cross-device roaming is an adapter swap rather than a call-site rewrite.
+// service worker reads) with ONE registry-driven store. Phase 1 routed every pref
+// through here over chrome.storage.local; Phase 2 (this file) adds cross-device
+// roaming for sync-scoped keys via a StorageAdapter — no call-site change.
 //
 // Contract (kept deliberately localStorage-shaped so existing call-sites are a
 // pure swap — `localStorage.getItem('ado.x')` -> `App.prefs.get('x')`):
-//   await load()      hydrate the in-memory cache from chrome.storage (once, early in boot)
+//   await load()      hydrate the in-memory cache from the backend(s) (once, early in boot)
 //   get(key)          SYNC read from cache; value is a STRING (or the registry default, null)
-//   set(key,val)      update cache + async write-through + fire onChange
+//   set(key,val)      update cache + write-through + fire onChange
 //   remove(key)       delete a key (mirrors localStorage.removeItem)
 //   getAll()          shallow snapshot of the cache
-//   onChange(cb)      (key,val) notifications — infra for Phase 2 sync-dirty marking
-//   export()          { v, ts, values } containing ONLY scope:'sync' keys (the sync payload)
-//   import(blob)      merge sync-scoped keys from a payload (Phase 2 adds per-key LWW by ts)
+//   onChange(cb)      (key,val) notifications — fires on local set AND on remote roam
+//   export()          { v, ts, values, meta } containing ONLY scope:'sync' keys (sync/backup payload)
+//   import(blob)      merge sync-scoped keys — per-key LWW by ts when blob.meta present, else whole-blob adopt
 //   REGISTRY          the single source of truth: { key: { default, scope, area, type, ... } }
 //
-// DESIGN NOTES
-// - Values are strings, exactly like localStorage: get() returns the cached string
-//   (or REGISTRY[key].default, which is null for every key so call-sites keep their
-//   own `||fallback` / `!==null` logic and behaviour stays byte-identical). `type` is
-//   metadata for Phase 2 (de)serialization, not applied here.
-// - Backend is chrome.storage.local for BOTH areas in Phase 1 (see `area`): device
-//   keys never roam; sync keys will move to a StorageAdapter (chrome.storage.sync /
-//   cloud) in Phase 2. The `_area()`/`_backend` seam below is where that slots in.
-// - SECRETS FIREWALL: PAT / OAuth tokens / org·project config / ai_custom_config* /
+// PHASE 2 — cross-device sync
+// - Two storage areas, chosen per key by REGISTRY.area:
+//     area:'local' -> chrome.storage.local  (device-scoped keys + notify keys the worker reads; never roams)
+//     area:'sync'  -> the ACTIVE sync adapter (see _syncAdapter): chrome.storage.sync for
+//                     Free roaming, CloudAdapter for Pro (stub — Go backend not live yet),
+//                     LocalArea when sync is unavailable/offline (still works, no roam).
+// - sync-area keys are DUAL-WRITTEN: chrome.storage.local (immediate, always-durable local
+//   copy) + a debounced push to the sync adapter (rate-limit friendly). load() prefers the
+//   sync value and falls back to the local copy — so a Phase-1 install (all keys in local)
+//   loses nothing and is promoted into the sync area on first Phase-2 boot.
+// - PULL is live: chrome.storage.onChanged (area 'sync') updates the cache + local mirror +
+//   fires onChange, so a change on device A lands on device B. chrome.storage.sync already
+//   does per-key last-writer-wins across devices; the per-key `ts` meta (ado.__prefsMeta)
+//   is what the CloudAdapter's explicit LWW + export/import round-tripping use.
+// - Roaming is AUTOMATIC (per spec): as soon as Chrome Sync is on, sync-scoped prefs roam.
+//   No opt-in toggle (a Pro sync toggle can gate the CloudAdapter later).
+//
+// SECRETS FIREWALL: PAT / OAuth tokens / org·project config / ai_custom_config* /
 //   license_key / __dev_force_pro are NOT in the REGISTRY and never pass through here.
-//   export() emits only scope:'sync' keys, so secrets can't leak into a payload.
-// - Boot-critical prefs (theme/uiScale/lang) additionally MIRROR to localStorage
-//   (mirrorLS) because theme-init.js / i18n-init.js read them synchronously before
-//   App (and before chrome.storage, which is async) exists — that avoids FOUC.
-// - Notify prefs (followNotify/mentionNotify/notifyAge) keep their BARE chrome.storage
-//   .local key names (storageKey) because background.js reads them there; routing the
-//   page through App.prefs must not change where the service worker looks.
+//   export() emits only scope:'sync' keys, so secrets can't leak into a payload; the sync
+//   area only ever receives area:'sync' keys, so secrets never reach chrome.storage.sync.
+// - Boot-critical prefs (theme/uiScale/lang) additionally MIRROR to localStorage (mirrorLS)
+//   because theme-init.js / i18n-init.js read them synchronously before App (and before
+//   chrome.storage, which is async) exists — that avoids FOUC, and remote roams update the
+//   mirror too so the next reload's boot scripts see the roamed value.
+// - Notify prefs (followNotify/mentionNotify/notifyAge) keep their BARE chrome.storage.local
+//   key names (storageKey) + area:'local' because background.js reads them there. They are
+//   scope:'sync' (exportable) but do NOT roam via chrome.storage.sync in this pass — roaming
+//   them would require the worker to read chrome.storage.sync (deferred).
 // Loaded right after state-globals.js, before feature modules that read prefs at boot.
 (function () {
   const g = (typeof window !== 'undefined') ? window : globalThis;
@@ -40,8 +53,8 @@
 
   // Every persisted preference lives here. storageKey defaults to `ado.<key>` (the
   // legacy localStorage name, kept for continuity + one-time migration); notify keys
-  // override it to their bare chrome.storage name. scope = sync|device (roaming intent,
-  // Phase 2); area = sync|local (physical backend; both are chrome.storage.local now).
+  // override it to their bare chrome.storage name. scope = sync|device (roaming intent);
+  // area = sync|local (which chrome.storage area / adapter backs it).
   const REGISTRY = {
     // ---- UI preferences (sync) ----
     theme:        { default: null, scope: 'sync',   area: 'sync',  type: 'string', mirrorLS: true },
@@ -100,71 +113,252 @@
   //    facility (if ever needed).
   //  * Side-panel layout `ado.layout[.<wtype>]` (+ legacy `ado.sideOrder`/`ado.sideHidden`
   //    [.<wtype>]) — a sync-scoped layout, but a DYNAMIC per-type key family read
-  //    synchronously in the deep side-panel path. Deferred to the Phase 2 dynamic-key
-  //    facility so the static-registry model (and its export/import blob) stays clean.
+  //    synchronously in the deep side-panel path. Deferred to the dynamic-key facility
+  //    so the static-registry model (and its export/import blob) stays clean.
 
   const MIGRATED_FLAG = 'ado.__prefsMigrated';
+  const META_KEY = 'ado.__prefsMeta';   // { logicalKey: ts } — per-key last-write time (roams in the sync area)
   const SCHEMA_VERSION = 1;
+  const SYNC_FLUSH_MS = 800;            // debounce window for pushing sync-area writes (chrome.storage.sync rate limits)
 
   const _cache = {};        // logical key -> string value (only keys that are set)
+  const _meta = {};         // logical key -> ts (sync-scoped keys)
+  const _dirty = new Set(); // sync-scoped keys changed locally since the last flush
   const _listeners = [];
   let _loadPromise = null;
+  let _flushTimer = null;
+  let _listenerWired = false;
 
   function storageKeyFor(key) { return REGISTRY[key].storageKey || ('ado.' + key); }
 
-  // ---- backend seam: Phase 1 = chrome.storage.local for every area. Phase 2 routes
-  // area:'sync' keys through the active StorageAdapter (chrome.storage.sync / cloud).
-  function _hasChrome() {
-    return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
+  // Reverse map (sync-area storageKey -> logical key) for the onChanged roam handler.
+  const _skToKey = {};
+  for (const key of Object.keys(REGISTRY)) {
+    if (REGISTRY[key].area === 'sync') _skToKey[storageKeyFor(key)] = key;
   }
-  const _mem = {};          // fallback store when chrome.storage is unavailable (tests/degraded)
-  async function _get(keys) {
-    if (_hasChrome()) { try { return await chrome.storage.local.get(keys); } catch (e) { return {}; } }
-    const out = {}; (Array.isArray(keys) ? keys : [keys]).forEach(k => { if (k in _mem) out[k] = _mem[k]; }); return out;
+
+  function _now() { return Date.now(); }
+
+  // ---------------------------------------------------------------------------
+  // Storage adapters. Each = { get(keys)->Promise<obj>, set(obj)->Promise, remove(keys)->Promise }.
+  // ---------------------------------------------------------------------------
+  function _hasChromeLocal() { return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local; }
+  function _hasChromeSync()  { return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync; }
+
+  const _mem = {};   // in-memory fallback (tests / degraded environments without chrome.storage)
+  const LocalArea = {
+    name: 'local',
+    async get(keys) {
+      if (_hasChromeLocal()) { try { return await chrome.storage.local.get(keys); } catch (e) { return {}; } }
+      const out = {}; (Array.isArray(keys) ? keys : [keys]).forEach(k => { if (k in _mem) out[k] = _mem[k]; }); return out;
+    },
+    async set(obj) {
+      if (_hasChromeLocal()) { try { return await chrome.storage.local.set(obj); } catch (e) { return; } }
+      Object.assign(_mem, obj);
+    },
+    async remove(keys) {
+      if (_hasChromeLocal()) { try { return await chrome.storage.local.remove(keys); } catch (e) { return; } }
+      (Array.isArray(keys) ? keys : [keys]).forEach(k => { delete _mem[k]; });
+    },
+  };
+  const ChromeSyncArea = {
+    name: 'sync',
+    available() { return _hasChromeSync(); },
+    async get(keys)   { try { return await chrome.storage.sync.get(keys); } catch (e) { return {}; } },
+    async set(obj)    { try { return await chrome.storage.sync.set(obj);  } catch (e) { return; } },
+    async remove(keys){ try { return await chrome.storage.sync.remove(keys); } catch (e) { return; } },
+  };
+  // Pro cloud backend keyed to the subscription identity. STUB — the Go API is not live
+  // yet (EntitlementManager.activate() throws "not available"). Slots in behind the same
+  // interface + the explicit ts-LWW in export/import when the backend ships.
+  const CloudArea = {
+    name: 'cloud',
+    available() { return false; },
+    async get()    { return {}; },
+    async set()    {},
+    async remove() {},
+  };
+
+  // Active adapter for area:'sync' keys. Tier-aware for the future cloud path; today the
+  // cloud stub is unavailable, so Free AND Pro roam via chrome.storage.sync (or LocalArea
+  // when sync is off/unavailable — still durable, just no roaming).
+  function _syncAdapter() {
+    const em = g.EntitlementManager;
+    const pro = !!(em && typeof em.isPro === 'function' && em.isPro());
+    if (pro && CloudArea.available()) return CloudArea;
+    if (ChromeSyncArea.available()) return ChromeSyncArea;
+    return LocalArea;
   }
-  async function _set(obj) {
-    if (_hasChrome()) { try { return await chrome.storage.local.set(obj); } catch (e) { return; } }
-    Object.assign(_mem, obj);
-  }
-  async function _remove(keys) {
-    if (_hasChrome()) { try { return await chrome.storage.local.remove(keys); } catch (e) { return; } }
-    (Array.isArray(keys) ? keys : [keys]).forEach(k => { delete _mem[k]; });
-  }
+  function _areaAdapter(key) { return REGISTRY[key].area === 'sync' ? _syncAdapter() : LocalArea; }
+  function _syncIsRemote() { return _syncAdapter() !== LocalArea; }
 
   function _emit(key, val) {
     for (const cb of _listeners) { try { cb(key, val); } catch (e) {} }
   }
 
+  function _parseMeta(raw) {
+    if (!raw) return null;
+    try { const m = JSON.parse(raw); return (m && typeof m === 'object') ? m : null; } catch (e) { return null; }
+  }
+  function _syncMeta() {   // meta snapshot for the sync-scoped keys only
+    const m = {};
+    for (const key of Object.keys(REGISTRY)) {
+      if (REGISTRY[key].area === 'sync' && key in _meta) m[key] = _meta[key];
+    }
+    return m;
+  }
+
+  // Immediate local durability + (for sync-area keys) a debounced push to the sync adapter.
+  function _persist(key) {
+    const sk = storageKeyFor(key);
+    LocalArea.set({ [sk]: _cache[key] });
+    if (REGISTRY[key].area === 'sync' && _syncIsRemote()) { _dirty.add(key); _scheduleFlush(); }
+  }
+  function _persistRemove(key) {
+    const sk = storageKeyFor(key);
+    LocalArea.remove(sk);
+    if (REGISTRY[key].area === 'sync' && _syncIsRemote()) { _dirty.add(key); _scheduleFlush(); }
+  }
+
+  function _scheduleFlush() {
+    if (_flushTimer) return;
+    if (typeof setTimeout === 'undefined') { _flushSync(); return; }
+    _flushTimer = setTimeout(_flushSync, SYNC_FLUSH_MS);
+  }
+  function _flushSync() {
+    _flushTimer = null;
+    const adapter = _syncAdapter();
+    if (adapter === LocalArea) { _dirty.clear(); return; }   // nothing to roam
+    const keys = [..._dirty]; _dirty.clear();
+    const removeKeys = [];
+    // Write each key on its own set() call: chrome.storage.sync enforces an 8KB/item
+    // quota, so an oversized value (e.g. a big filterIR) fails ALONE instead of blocking
+    // the whole batch. Its always-present local copy keeps it working; a Pro CloudAdapter
+    // (no cap) removes the limit. Writes are debounced + pref changes are infrequent, so
+    // this stays well under chrome.storage.sync's write-op rate limit.
+    for (const key of keys) {
+      const r = REGISTRY[key];
+      if (!r || r.area !== 'sync') continue;
+      const sk = storageKeyFor(key);
+      if (key in _cache) adapter.set({ [sk]: _cache[key] }); else removeKeys.push(sk);
+    }
+    if (removeKeys.length) adapter.remove(removeKeys);
+    adapter.set({ [META_KEY]: JSON.stringify(_syncMeta()) });
+  }
+
+  // Apply a value that came FROM a remote source (import / roam) WITHOUT bumping ts to now:
+  // adopt the remote ts so subsequent LWW comparisons are correct.
+  function _applyRemote(key, val, ts) {
+    _cache[key] = val;
+    if (ts != null) _meta[key] = ts;
+    LocalArea.set({ [storageKeyFor(key)]: val });
+    if (REGISTRY[key].area === 'sync' && _syncIsRemote()) { _dirty.add(key); _scheduleFlush(); }
+    if (REGISTRY[key].mirrorLS) { try { localStorage.setItem('ado.' + key, val); } catch (e) {} }
+    _emit(key, val);
+  }
+
   // One-time, non-destructive import of legacy `ado.*` localStorage values into the
   // new store, mapped through the registry. Leaves localStorage untouched.
   function _migrateLegacy() {
-    const patch = {};
     for (const key of Object.keys(REGISTRY)) {
       if (REGISTRY[key].worker) continue;   // notify keys were never in localStorage (already bare in chrome.storage.local)
       if (key in _cache) continue;          // already hydrated from the new store
       let v = null;
       try { v = localStorage.getItem('ado.' + key); } catch (e) {}
-      if (v !== null) { _cache[key] = v; patch[storageKeyFor(key)] = v; }
+      if (v !== null) {
+        _cache[key] = v;
+        LocalArea.set({ [storageKeyFor(key)]: v });
+        if (REGISTRY[key].scope === 'sync' && !(key in _meta)) _meta[key] = _now();
+      }
     }
-    patch[MIGRATED_FLAG] = true;
-    _set(patch);   // async write-through; fire-and-forget
+    LocalArea.set({ [MIGRATED_FLAG]: true });
+  }
+
+  // Promote sync-scoped values that exist locally (Phase-1 install / legacy migration)
+  // but are not yet in the sync area — the first-boot local->sync lift.
+  function _promoteToSync(syncStored) {
+    for (const key of Object.keys(REGISTRY)) {
+      if (REGISTRY[key].area !== 'sync') continue;
+      if (!(key in _cache)) continue;
+      if (storageKeyFor(key) in syncStored) continue;   // already roamed
+      if (!(key in _meta)) _meta[key] = _now();
+      _dirty.add(key);
+    }
+    if (_dirty.size) _scheduleFlush();
+  }
+
+  // Live pull: react to sync-area changes from other devices (chrome already resolved the
+  // per-key merge). Updates the cache + local mirror + mirrorLS + fires onChange.
+  function _wireOnChanged() {
+    if (_listenerWired) return;
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.onChanged) return;
+    if (_syncAdapter() !== ChromeSyncArea) return;   // only meaningful when roaming via chrome.storage.sync
+    _listenerWired = true;
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'sync') return;
+      for (const sk in changes) {
+        if (sk === META_KEY) {
+          const m = _parseMeta(changes[sk].newValue);
+          if (m) for (const k in m) { if ((m[k] || 0) > (_meta[k] || 0)) _meta[k] = m[k]; }
+          continue;
+        }
+        const key = _skToKey[sk];
+        if (!key) continue;
+        const nv = changes[sk].newValue;
+        if (nv === undefined) {                        // removed on another device
+          if (key in _cache) { delete _cache[key]; LocalArea.remove(sk); if (REGISTRY[key].mirrorLS) { try { localStorage.removeItem('ado.' + key); } catch (e) {} } _emit(key, null); }
+          continue;
+        }
+        if (_cache[key] === nv) continue;              // our own write echoed back
+        _cache[key] = nv;
+        LocalArea.set({ [sk]: nv });
+        if (REGISTRY[key].mirrorLS) { try { localStorage.setItem('ado.' + key, nv); } catch (e) {} }
+        _emit(key, nv);
+      }
+    });
+  }
+
+  // Pure per-key LWW merge (exported for tests): remote wins only when strictly newer.
+  function reconcile(localValues, localMeta, remoteValues, remoteMeta) {
+    const values = Object.assign({}, localValues);
+    const meta = Object.assign({}, localMeta);
+    for (const k of Object.keys(remoteValues || {})) {
+      const rts = (remoteMeta && remoteMeta[k]) || 0;
+      if (rts > (meta[k] || 0)) { values[k] = remoteValues[k]; meta[k] = rts; }
+    }
+    return { values, meta };
   }
 
   const prefs = {
     REGISTRY,
+    _reconcile: reconcile,   // test hook
 
     // Hydrate the cache once. Memoised: safe to await from multiple boot entry points.
     load() {
       if (_loadPromise) return _loadPromise;
       _loadPromise = (async () => {
-        const keys = Object.keys(REGISTRY).map(storageKeyFor);
-        keys.push(MIGRATED_FLAG);
-        const stored = await _get(keys);
+        const localKeys = [MIGRATED_FLAG], syncKeys = [];
+        for (const key of Object.keys(REGISTRY)) {
+          (REGISTRY[key].area === 'sync' ? syncKeys : localKeys).push(storageKeyFor(key));
+        }
+        const adapter = _syncAdapter();
+        const [localStored, syncStored] = await Promise.all([
+          LocalArea.get([...localKeys, ...syncKeys, META_KEY]),   // sync keys' local copy is the fallback
+          (adapter !== LocalArea) ? adapter.get([...syncKeys, META_KEY]) : Promise.resolve({}),
+        ]);
         for (const key of Object.keys(REGISTRY)) {
           const sk = storageKeyFor(key);
-          if (sk in stored) _cache[key] = stored[sk];
+          if (REGISTRY[key].area === 'sync') {
+            if (sk in syncStored) _cache[key] = syncStored[sk];          // roamed value wins
+            else if (sk in localStored) _cache[key] = localStored[sk];   // Phase-1 leftover / offline
+          } else if (sk in localStored) {
+            _cache[key] = localStored[sk];
+          }
         }
-        if (!stored[MIGRATED_FLAG]) _migrateLegacy();
+        Object.assign(_meta, _parseMeta(localStored[META_KEY]) || {}, _parseMeta(syncStored[META_KEY]) || {});
+        if (!localStored[MIGRATED_FLAG]) _migrateLegacy();
+        if (adapter !== LocalArea) _promoteToSync(syncStored);
+        _wireOnChanged();
       })();
       return _loadPromise;
     },
@@ -180,7 +374,8 @@
       if (!r) { console.warn('App.prefs.set: unknown key', key); return; }
       const s = String(val);           // localStorage-style coercion (numbers/bools -> string)
       _cache[key] = s;
-      _set({ [storageKeyFor(key)]: s });
+      if (r.scope === 'sync') _meta[key] = _now();
+      _persist(key);
       if (r.mirrorLS) { try { localStorage.setItem('ado.' + key, s); } catch (e) {} }
       _emit(key, s);
     },
@@ -189,7 +384,8 @@
       const r = REGISTRY[key];
       if (!r) { console.warn('App.prefs.remove: unknown key', key); return; }
       delete _cache[key];
-      _remove(storageKeyFor(key));
+      if (r.scope === 'sync') _meta[key] = _now();   // tombstone ts so a stale remote set can't resurrect it
+      _persistRemove(key);
       if (r.mirrorLS) { try { localStorage.removeItem('ado.' + key); } catch (e) {} }
       _emit(key, null);
     },
@@ -201,25 +397,32 @@
       return () => { const i = _listeners.indexOf(cb); if (i >= 0) _listeners.splice(i, 1); };
     },
 
-    // The sync payload: ONLY scope:'sync' keys that are actually set. Device-scoped
-    // keys and (by construction) secrets are excluded.
+    // The sync/backup payload: ONLY scope:'sync' keys that are set, with their per-key ts.
+    // Device-scoped keys and (by construction) secrets are excluded.
     export() {
-      const values = {};
+      const values = {}, meta = {};
       for (const key of Object.keys(REGISTRY)) {
         if (REGISTRY[key].scope !== 'sync') continue;
-        if (key in _cache) values[key] = _cache[key];
+        if (key in _cache) { values[key] = _cache[key]; meta[key] = _meta[key] || 0; }
       }
-      return { v: SCHEMA_VERSION, ts: Date.now(), values };
+      return { v: SCHEMA_VERSION, ts: _now(), values, meta };
     },
 
-    // Merge a sync payload. Unknown or non-sync keys are ignored (secret firewall).
-    // Phase 2 will resolve conflicts with per-key last-write-wins by ts.
+    // Merge a sync payload. Unknown / non-sync keys are ignored (secret firewall).
+    // With blob.meta -> per-key last-write-wins by ts; without meta -> whole-blob adopt
+    // (a fresh device / manual restore).
     import(blob) {
       if (!blob || typeof blob !== 'object' || !blob.values) return;
+      const useLWW = blob.meta && typeof blob.meta === 'object';
       for (const key of Object.keys(blob.values)) {
         const r = REGISTRY[key];
         if (!r || r.scope !== 'sync') continue;
-        this.set(key, blob.values[key]);
+        if (useLWW) {
+          const rts = blob.meta[key] || 0;
+          if (rts > (_meta[key] || 0)) _applyRemote(key, String(blob.values[key]), rts);
+        } else {
+          _applyRemote(key, String(blob.values[key]), blob.ts || _now());
+        }
       }
     },
   };

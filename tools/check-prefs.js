@@ -44,11 +44,28 @@ prefs.import(blob);
 const blob2 = prefs.export();
 assert.deepStrictEqual(blob2.values, blob.values, "import(export()) round-trip is stable");
 
-// ---- 4. import ignores device-scoped + unknown/secret keys ----
+// ---- 4. import WITHOUT meta = whole-blob adopt; still ignores device + unknown keys ----
 prefs.import({ v: 1, ts: 0, values: { theme: "dark", sideWidth: "999px", license_key: "SECRET" } });
-assert.strictEqual(prefs.get("theme"), "dark", "sync key theme is imported");
+assert.strictEqual(prefs.get("theme"), "dark", "sync key theme is adopted (no-meta whole-blob import)");
 assert.strictEqual(prefs.get("sideWidth"), "360px", "device key sideWidth is NOT overwritten by import");
 assert.ok(!("license_key" in prefs.REGISTRY) && !("license_key" in prefs.getAll()), "unknown secret key is ignored by import");
 
+// ---- 5. import WITH meta = per-key last-write-wins by ts ----
+prefs.import({ v: 1, values: { theme: "should-be-ignored" }, meta: { theme: 1 } });
+assert.strictEqual(prefs.get("theme"), "dark", "older ts (1) must NOT overwrite the local value");
+const future = Date.now() + 1e7;
+prefs.import({ v: 1, values: { theme: "roamed" }, meta: { theme: future } });
+assert.strictEqual(prefs.get("theme"), "roamed", "newer ts must overwrite (roam wins)");
+
+// ---- 6. pure reconcile() LWW helper ----
+const merged = prefs._reconcile(
+  { a: "1", b: "2" }, { a: 10, b: 10 },        // local values + meta
+  { a: "A", b: "B", c: "C" }, { a: 5, b: 20 }  // remote values + meta (c has no ts -> 0)
+);
+assert.strictEqual(merged.values.a, "1", "reconcile: older remote a (5<10) rejected");
+assert.strictEqual(merged.values.b, "B", "reconcile: newer remote b (20>10) adopted");
+assert.strictEqual(merged.values.c, undefined, "reconcile: remote c with ts 0 rejected (0 not > 0)");
+assert.strictEqual(merged.meta.b, 20, "reconcile: adopted key takes remote ts");
+
 console.log("prefs export/import check OK (" + Object.keys(blob.values).length +
-            " sync keys exported; device keys + secrets firewalled; round-trip stable)");
+            " sync keys exported; device keys + secrets firewalled; round-trip stable; per-key LWW verified)");
