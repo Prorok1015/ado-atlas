@@ -40,6 +40,22 @@
     get active() { return _activeId ? _providers[_activeId] : null; },
     get activeId() { return _activeId; },
     setActive(id) { if (_providers[id]) { _activeId = id; return true; } return false; },
+
+    // Composite/global work-item id helpers (BACKEND_PROVIDER_SPEC §13.1), delegating to
+    // the pure lib.js encoders. The app treats an item id as an OPAQUE STRING
+    // ("<provider>:<native>"); use these at the two edges only:
+    //   gid(native) — wrap a user-typed / URL / notification NATIVE id into the active
+    //                 provider's global id (tolerant: already-composite passes through).
+    //   nid(gid)    — the native id, for DISPLAY ("#123", not "#ado:123") and any place a
+    //                 raw native id is needed. (API calls take the composite id directly;
+    //                 the provider strips it internally.)
+    gid(native) {
+      const s = String(native);
+      if (s.indexOf(':') >= 0) return s;
+      const L = global.AdoLib;
+      return L ? L.gidMake(_activeId || 'ado', s) : ((_activeId || 'ado') + ':' + s);
+    },
+    nid(gid) { const L = global.AdoLib; return L ? L.gidNative(gid) : (function(){ const s=String(gid); const i=s.indexOf(':'); return i>=0?s.slice(i+1):s; })(); },
   };
   App.backend = Backend;
 

@@ -837,5 +837,16 @@ test("timeExprToMath and evaluateMath", () => {
   assert.ok(isNaN(lib.evaluateMath(lib.timeExprToMath("invalid", 8))));
 });
 
+test("gid: composite work-item id encode/decode (BACKEND_PROVIDER §13.1)", () => {
+  assert.strictEqual(lib.gidMake("ado", 123), "ado:123");
+  assert.strictEqual(lib.gidMake("jira", "PROJ-45"), "jira:PROJ-45");
+  assert.strictEqual(lib.gidNative("ado:123"), "123");
+  assert.strictEqual(lib.gidNative("jira:PROJ-45"), "PROJ-45");   // native may contain no extra colon
+  assert.strictEqual(lib.gidNative("123"), "123");                 // tolerant: bare native passes through
+  assert.strictEqual(lib.gidProvider("ado:123"), "ado");
+  assert.strictEqual(lib.gidProvider("123"), null);                // bare native has no provider
+  assert.strictEqual(lib.gidNative(lib.gidMake("ado", 7)), "7");   // round-trip
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

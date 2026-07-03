@@ -452,6 +452,17 @@
     return result;
   }
 
+  // ---- Global / composite work-item ids (BACKEND_PROVIDER_SPEC §13.1) ----
+  // A global id is "<providerId>:<nativeId>" (e.g. "ado:123", "jira:PROJ-45") so ids from
+  // different providers never collide. The app treats an item id as an OPAQUE STRING; only
+  // the owning provider parses its native id out (at the REST boundary). These helpers are
+  // the single source of truth for that encoding. Tolerant on decode: a bare native id
+  // (no ':') passes through unchanged, so user-typed "123" and legacy URLs still work.
+  function gidMake(provider, native) { return String(provider) + ':' + String(native); }
+  function gidNative(gid) { const s = String(gid); const i = s.indexOf(':'); return i >= 0 ? s.slice(i + 1) : s; }
+  function gidProvider(gid) { const s = String(gid); const i = s.indexOf(':'); return i >= 0 ? s.slice(0, i) : null; }
+
   return { formatMessage, wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml,
-           base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath };
+           base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath,
+           gidMake, gidNative, gidProvider };
 });
