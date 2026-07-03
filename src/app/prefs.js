@@ -42,10 +42,11 @@
 //   because theme-init.js / i18n-init.js read them synchronously before App (and before
 //   chrome.storage, which is async) exists — that avoids FOUC, and remote roams update the
 //   mirror too so the next reload's boot scripts see the roamed value.
-// - Notify prefs (followNotify/mentionNotify/notifyAge) keep their BARE chrome.storage.local
-//   key names (storageKey) + area:'local' because background.js reads them there. They are
-//   scope:'sync' (exportable) but do NOT roam via chrome.storage.sync in this pass — roaming
-//   them would require the worker to read chrome.storage.sync (deferred).
+// - Notify prefs (followNotify/mentionNotify/notifyAge) keep their BARE storageKey (no
+//   ado. prefix) because background.js reads them. They are area:'sync' so they roam;
+//   the worker reads chrome.storage.sync with a chrome.storage.local fallback (background.js
+//   getSyncedPref) — the dual-write keeps that local copy for the fallback. followedItems/
+//   mentionedItems are NOT prefs — they stay in chrome.storage.local (own channel, later).
 // Loaded right after state-globals.js, before feature modules that read prefs at boot.
 (function () {
   const g = (typeof window !== 'undefined') ? window : globalThis;
@@ -89,10 +90,13 @@
     filters:         { default: null, scope: 'sync', area: 'sync', type: 'json' }, // legacy flat filters (migration source)
     filterIR:        { default: null, scope: 'sync', area: 'sync', type: 'json' },
     filtersAdvanced: { default: null, scope: 'sync', area: 'sync', type: 'json' }, // legacy advanced filters (migration source)
-    // ---- Notifications (sync intent, but MUST live in chrome.storage.local for the worker) ----
-    followNotify:  { default: null, scope: 'sync', area: 'local', type: 'string', storageKey: 'followNotify', worker: true },
-    mentionNotify: { default: null, scope: 'sync', area: 'local', type: 'string', storageKey: 'mentionNotify', worker: true },
-    notifyAge:     { default: null, scope: 'sync', area: 'local', type: 'number', storageKey: 'notifyAge',    worker: true },
+    // ---- Notifications (sync + roaming). Bare storageKey (no ado. prefix) because the
+    // service worker reads them. area:'sync' so they roam via chrome.storage.sync; the
+    // worker reads chrome.storage.sync (with a chrome.storage.local fallback) — see
+    // background.js getSyncedPref. The dual-write keeps a local copy for that fallback.
+    followNotify:  { default: null, scope: 'sync', area: 'sync', type: 'string', storageKey: 'followNotify', worker: true },
+    mentionNotify: { default: null, scope: 'sync', area: 'sync', type: 'string', storageKey: 'mentionNotify', worker: true },
+    notifyAge:     { default: null, scope: 'sync', area: 'sync', type: 'number', storageKey: 'notifyAge',    worker: true },
     // ---- Device-scoped (screen/device specific — never roams) ----
     mode:                     { default: null, scope: 'device', area: 'local', type: 'string' }, // last active view
     sideWidth:                { default: null, scope: 'device', area: 'local', type: 'string' },

@@ -53,14 +53,26 @@ const NOTIFY_I18N = {
 
 const NOTIFY_LANGS = ["en", "ru", "es", "de"];
 
-// Read active language mirrored by the app into chrome.storage.local under 'ado.lang'.
-async function getNotifyLang() {
+// Read a synced preference (followNotify/mentionNotify/notifyAge/ado.lang) written by
+// the app through App.prefs. Prefer the roamed chrome.storage.sync value; fall back to
+// chrome.storage.local — App.prefs dual-writes both, so local covers the migration
+// window (before the page first promotes to sync) and the case where Chrome Sync is off.
+async function getSyncedPref(key, dflt) {
   try {
-    const { ["ado.lang"]: lang } = await chrome.storage.local.get("ado.lang");
-    return NOTIFY_LANGS.includes(lang) ? lang : "en";
-  } catch (_) {
-    return "en";
-  }
+    const s = await chrome.storage.sync.get(key);
+    if (s && s[key] !== undefined) return s[key];
+  } catch (_) {}
+  try {
+    const l = await chrome.storage.local.get(key);
+    if (l && l[key] !== undefined) return l[key];
+  } catch (_) {}
+  return dflt;
+}
+
+// Read the active language (roams via App.prefs under 'ado.lang').
+async function getNotifyLang() {
+  const lang = await getSyncedPref("ado.lang", "en");
+  return NOTIFY_LANGS.includes(lang) ? lang : "en";
 }
 
 // Resolve a notification string: dict[lang][id] -> dict.en[id] -> id, then interpolate {token}s.
@@ -201,14 +213,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 async function runAllNotificationChecks() {
   try {
-    const { 
-      followedItems = {}, followNotify = "on", 
-      mentionedItems = {}, mentionNotify = "on", mentionCacheInitialized = false,
-      notifyAge = "172800"
+    // User-data (followed/mentioned caches) stay in chrome.storage.local; the notify
+    // preferences roam, so read them sync-first via getSyncedPref.
+    const {
+      followedItems = {}, mentionedItems = {}, mentionCacheInitialized = false
     } = await chrome.storage.local.get([
-      "followedItems", "followNotify", 
-      "mentionedItems", "mentionNotify", "mentionCacheInitialized", "notifyAge"
+      "followedItems", "mentionedItems", "mentionCacheInitialized"
     ]);
+    const followNotify = await getSyncedPref("followNotify", "on");
+    const mentionNotify = await getSyncedPref("mentionNotify", "on");
+    const notifyAge = await getSyncedPref("notifyAge", "172800");
 
     const maxAgeMs = parseInt(notifyAge, 10) * 1000;
 
