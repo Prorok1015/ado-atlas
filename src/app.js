@@ -367,9 +367,13 @@ async function resolveSkippedAncestors(skippers,inSet){
     let r;try{r=await api.parents(ids);}catch(e){break;}
     const next=[];
     frontier.forEach(f=>{
-      if(inSet.has(f.cur)){result[f.leaf]={target:f.cur,via:f.via};return;}
-      const pp=r[f.cur];if(pp==null)return;                       // chain ends → leaf stays a root
-      next.push({leaf:f.leaf,cur:pp,via:[...f.via,f.cur]});
+      let cur = f.cur;
+      if (cur && typeof cur === 'string' && !cur.includes(':')) cur = 'ado:' + cur;
+      else if (typeof cur === 'number') cur = 'ado:' + cur;
+
+      if(inSet.has(cur)){result[f.leaf]={target:cur,via:f.via};return;}
+      const pp=r[cur];if(pp==null)return;                       // chain ends → leaf stays a root
+      next.push({leaf:f.leaf,cur:pp,via:[...f.via,cur]});
     });
     frontier=next;
   }

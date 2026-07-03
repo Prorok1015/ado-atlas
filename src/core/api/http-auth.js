@@ -184,6 +184,7 @@ function mapWorkItem(rawItem, descField) {
   // Map fields dynamically based on FIELD_REGISTRY
   for (const [key, val] of Object.entries(FIELD_REGISTRY)) {
     if (!val || !val.ref) continue;
+    if (key === 'id') continue;
     const refName = val.ref;
     
     // Default fallback value check
@@ -225,7 +226,18 @@ function mapWorkItem(rawItem, descField) {
   }
   mapped.fields = f;
 
-  if (mapped.parent != null && mapped.parent !== '') mapped.parent = AdoLib.gidMake('ado', mapped.parent);
+  if (mapped.parent) {
+    const parentId = Number(mapped.parent);
+    if (Number.isInteger(parentId) && parentId > 0) {
+      mapped.parent = AdoLib.gidMake('ado', parentId);
+    } else if (typeof mapped.parent === 'string' && mapped.parent.includes(':')) {
+      mapped.parent = mapped.parent;
+    } else {
+      mapped.parent = null;
+    }
+  } else {
+    mapped.parent = null;
+  }
   return mapped;
 }
 
