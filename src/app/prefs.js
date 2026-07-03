@@ -21,8 +21,9 @@
 // - Two storage areas, chosen per key by REGISTRY.area:
 //     area:'local' -> chrome.storage.local  (device-scoped keys + notify keys the worker reads; never roams)
 //     area:'sync'  -> the ACTIVE sync adapter (see _syncAdapter): chrome.storage.sync for
-//                     Free roaming, CloudAdapter for Pro (stub — Go backend not live yet),
-//                     LocalArea when sync is unavailable/offline (still works, no roam).
+//                     roaming (Free + Pro), LocalArea when sync is unavailable/offline
+//                     (still works, no roam). Pro cloud sync is an ENGINE on top (push/pull
+//                     of export() blobs with ts-LWW), not an area — contract: SPEC §9.
 // - sync-area keys are DUAL-WRITTEN: chrome.storage.local (immediate, always-durable local
 //   copy) + a debounced push to the sync adapter (rate-limit friendly). load() prefers the
 //   sync value and falls back to the local copy — so a Phase-1 install (all keys in local)
@@ -192,28 +193,18 @@
     async set(obj)    { try { return await chrome.storage.sync.set(obj);  } catch (e) { return; } },
     async remove(keys){ try { return await chrome.storage.sync.remove(keys); } catch (e) { return; } },
   };
-  // Pro cloud backend keyed to the subscription identity. STUB — the Go API is not live
-  // yet (EntitlementManager.activate() throws "not available"). Slots in behind the same
-  // interface + the explicit ts-LWW in export/import when the backend ships.
-  const CloudArea = {
-    name: 'cloud',
-    available() { return false; },
-    async get()    { return {}; },
-    async set()    {},
-    async remove() {},
-  };
+  // NOTE — Pro cloud sync is NOT a get/set storage area: the custom backend is a
+  // push/pull-of-blobs service (per-key LWW by ts), so it's an ENGINE layered on top of
+  // this store, not an adapter in _syncAdapter(). It reuses export()/import()/reconcile()
+  // and rides the already-wired chrome.storage.onChanged pull path (the worker writes the
+  // merged doc into chrome.storage.sync). Contract: SETTINGS_SYNC_SPEC §9. BLOCKED until
+  // the Go backend is live (EntitlementManager.activate() throws "not available").
 
-  // Active adapter for area:'sync' keys. Tier-aware for the future cloud path; today the
-  // cloud stub is unavailable, so Free AND Pro roam via chrome.storage.sync (or LocalArea
-  // when sync is off/unavailable — still durable, just no roaming).
+  // Active adapter for area:'sync' keys: chrome.storage.sync when available (Free + Pro
+  // roaming), else LocalArea (sync off / unavailable — still durable, just no roaming).
   function _syncAdapter() {
-    const em = g.EntitlementManager;
-    const pro = !!(em && typeof em.isPro === 'function' && em.isPro());
-    if (pro && CloudArea.available()) return CloudArea;
-    if (ChromeSyncArea.available()) return ChromeSyncArea;
-    return LocalArea;
+    return ChromeSyncArea.available() ? ChromeSyncArea : LocalArea;
   }
-  function _areaAdapter(key) { return REGISTRY[key].area === 'sync' ? _syncAdapter() : LocalArea; }
   function _syncIsRemote() { return _syncAdapter() !== LocalArea; }
 
   function _emit(key, val) {

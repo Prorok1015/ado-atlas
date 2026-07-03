@@ -123,3 +123,100 @@ stay small and within `chrome.storage.sync` limits. Design in Phase 2.
 
 Because everything routes through `App.prefs` + `export/import`, Phase 2 is an adapter
 + engine addition, not a call-site rewrite.
+
+### Implementation status (2026-07-03)
+
+- **Phase 1 — DONE.** `App.prefs` live; every static `ado.*` pref routed through it;
+  secrets firewalled; legacy migrated once.
+- **Phase 2a — DONE.** StorageAdapter seam (`LocalArea`/`ChromeSyncArea`); `area:'sync'`
+  keys roam via `chrome.storage.sync` (Free), dual-written to local (durable fallback);
+  live pull via `chrome.storage.onChanged`; per-key `ts` meta + `export()/import()` LWW.
+- **Phase 2b — DONE.** Notify prefs roam (`background.js` reads sync-first via
+  `getSyncedPref`).
+- **Phase 2c — DONE.** Dynamic-key facility (`getDynamic/setDynamic/removeDynamic` +
+  `DYNAMIC` prefix registry + `ado.__dynKeys` index) → the per-wtype side-panel layout
+  (`ado.layout[.<wtype>]`) roams. **Free-tier roaming is complete.**
+- **Phase 2 (cloud) — remaining, BLOCKED on the Go backend.** Contract in §9 below.
+
+## 9. Cloud prefs-sync API contract (Pro, Phase 2)
+
+The Pro tier roams prefs via the custom backend instead of (or in addition to)
+`chrome.storage.sync` — no per-item size cap, cross-browser, tied to the subscription
+identity. The client already produces/consumes the exact payload (`export()` /
+`import()` with per-key `ts`, `reconcile()` LWW); this section defines the wire contract
+so the Go backend and the client `CloudSync` engine can be built independently.
+
+### 9.1 Model
+
+- One **prefs document per subscription identity** (keyed by `license_key`, or a stable
+  user id the license maps to). Document = the `export()` shape: `{ v, ts, values, meta }`
+  where `values` = `{ syncKey: stringValue }` and `meta` = `{ syncKey: ts }` (ms epoch).
+- **Only `scope:'sync'` keys** ever appear (the client `export()` guarantees this) —
+  device-scoped keys and secrets are structurally absent. The server MUST reject/ignore
+  any key it cannot classify as a known sync pref (defence in depth).
+- **Conflict resolution = per-key last-write-wins by `meta[key]` ts** (same as the client
+  `reconcile()`), applied on both push (merge client→server) and pull (merge server→client).
+  No field-level merge inside a value.
+- Dynamic-key families (side-panel layout `ado.layout[.<wtype>]`) are NOT part of this
+  blob (they roam via chrome.storage.sync's native merge). A later revision may add a
+  parallel dynamic section; out of scope here.
+
+### 9.2 Auth
+
+- Every request carries `Authorization: Bearer <license_key>` and a JSON `installation_id`
+  (both live in `chrome.storage.local`, never in the prefs blob). The backend validates
+  the license against the billing provider (see PREMIUM_IMPLEMENTATION_DESIGN `/api/license/*`)
+  and resolves it to the identity that owns the prefs document.
+- All requests over TLS. The server never returns secrets and never accepts a `values`
+  key that isn't a registered sync pref.
+
+### 9.3 Endpoints
+
+**`GET /api/prefs/pull`**
+→ `200 { v, ts, values, meta }` — the current server document (empty `values`/`meta` for
+a fresh identity). The client `import()`s it (per-key LWW; whole-blob adopt on a fresh
+device where local meta is empty).
+
+**`POST /api/prefs/push`** — body `{ v, values, meta }` (the client's changed keys, or a
+full export).
+→ `200 { v, ts, values, meta }` — the server merges the body into the stored document by
+per-key LWW (`meta[k]` decides), persists, and returns the **authoritative merged**
+document. The client `import()`s the response (idempotent — its own newer keys win, the
+server's newer keys are adopted). A key present in `values` with a **newer** `meta` ts
+overwrites; older is ignored. (Deletions: a key absent from `values` is left as-is; to
+propagate a removal, send `values[key] = null` with a fresh `meta[key]` — server tombstones
+by ts. Optional for v1.)
+
+### 9.4 Errors (client must never lose local prefs)
+
+| Status | Meaning | Client action |
+|---|---|---|
+| 401 | invalid/expired license | disable cloud sync, fall back to chrome.storage.sync/local; do NOT wipe local |
+| 402 / 403 | not Pro / entitlement lapsed | disable cloud sync; keep local |
+| 409 | version/precondition mismatch | `pull` then retry `push` (rebase) |
+| 429 | rate limited | exponential backoff; keep dirty set for the next flush |
+| 5xx / network | server/offline | keep local, retry on next debounced flush / next pull tick |
+
+Schema version `v`: bump on incompatible payload changes; the server migrates older `v`
+on read. Unknown future keys are ignored, not rejected (forward-compat).
+
+### 9.5 Client `CloudSync` engine (wiring, when the backend is live)
+
+- **Gating:** active only when `EntitlementManager.isPro()` AND a backend base URL is
+  configured. Otherwise the Free `chrome.storage.sync` path stands (unchanged).
+- **Push:** hook the existing debounced flush — instead of (or in addition to) writing
+  `chrome.storage.sync`, `POST /api/prefs/push` with `export()` (or just the dirty keys +
+  their meta), then `import()` the merged response.
+- **Pull:** on login/boot and on a periodic `chrome.alarms` tick (and optionally on window
+  focus) → `GET /api/prefs/pull` → `import()`.
+- **Transport in the service worker:** the worker owns the network I/O (it has the
+  `license_key`/`installation_id` and runs on alarms). The page requests a push via
+  `chrome.runtime.sendMessage` (like `fetchCloudAI`); the worker performs the authenticated
+  call and writes the merged result into `chrome.storage.sync`, so the page picks it up
+  through the **already-wired `chrome.storage.onChanged` pull path** — no new page plumbing.
+- **Rate/coalescing:** debounce push (already 800ms); coalesce bursts; pull interval
+  measured in minutes. Respect `429` backoff.
+
+This keeps secrets server-side and out of every payload, reuses the client's existing
+`export()/import()/reconcile()`, and lands as a backend + a worker-side engine — no
+change to the ~35 pref call-sites.
