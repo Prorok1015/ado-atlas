@@ -12,13 +12,13 @@ window.App = window.App || {};
 function bulkEls(){return [...document.querySelectorAll(App.state.mode==='board'?'#board .bcard[data-id]':App.state.mode==='timeline'?'#timeline .tlrow[data-id]':'#tree .trow[data-id]')];}
 function syncBulkRows(){                    // reflect App.state.bulkSel onto the rendered rows/cards (class + any checkbox)
   document.querySelectorAll('#tree .trow[data-id], #board .bcard[data-id], #timeline .tlrow[data-id]').forEach(r=>{
-    const on=App.state.bulkSel.has(+r.dataset.id);r.classList.toggle('bulksel',on);
+    const on=App.state.bulkSel.has(r.dataset.id);r.classList.toggle('bulksel',on);
     const cb=r.querySelector('.tcheck');if(cb)cb.checked=on;});
 }
 function bulkSet(ids,on){ids.forEach(id=>{if(on)App.state.bulkSel.add(id);else App.state.bulkSel.delete(id);});updateBulkBar();syncBulkRows();App.graph.syncGraphBulk();}
 function bulkToggle(id){const on=!App.state.bulkSel.has(id);bulkSet([id],on);bulkAnchor=id;bulkAnchorOn=on;}
 function bulkRange(toId){                    // apply the anchor's action (select OR deselect) to the whole range
-  const ids=bulkEls().map(r=>+r.dataset.id);
+  const ids=bulkEls().map(r=>r.dataset.id);
   const b=ids.indexOf(toId);if(b<0)return;
   let a=bulkAnchor!=null?ids.indexOf(bulkAnchor):-1;if(a<0){a=b;bulkAnchor=toId;}
   bulkSet(ids.slice(Math.min(a,b),Math.max(a,b)+1),bulkAnchorOn);
@@ -147,8 +147,8 @@ async function doReparent(ids,targetId){     // targetId: an id, or '' for root
   if(ok)pushAction(`re-parent ${ids.length} item(s)`,
     async()=>{await api.pool(olds.map(o=>async()=>{try{await api.setParent(o.id,o.old);}catch(e){}}),6);await afterUndo(null);},
     async()=>{await api.pool(ids.map(id=>async()=>{try{await api.setParent(id,targetId);}catch(e){}}),6);await afterUndo(null);});
-  if(targetId!=='')App.state.store.expanded.add(+targetId);              // reveal the moved items under the new parent
-  setStatus(`re-parented ${ok} item(s)`+(targetId!==''?` under #${targetId}`:' to root')+(fail?`, ${fail} failed`:''),!!fail);
+  if(targetId!=='')App.state.store.expanded.add(targetId);              // reveal the moved items under the new parent
+  setStatus(`re-parented ${ok} item(s)`+(targetId!==''?` under #${App.backend.nid(targetId)}`:' to root')+(fail?`, ${fail} failed`:''),!!fail);
   await refresh();
 }
 function cleanupDrag(){
@@ -159,14 +159,14 @@ function wireTreeDnD(){
   const t=$('tree');
   t.addEventListener('dragstart',e=>{
     const row=e.target.closest&&e.target.closest('.trow[data-id]');if(!row)return;
-    const id=+row.dataset.id;
+    const id=row.dataset.id;
     dragIds=(App.state.bulkSel.has(id)&&App.state.bulkSel.size>1)?[...App.state.bulkSel]:[id];
     try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(id));}catch(_){}
     dragIds.forEach(d=>{const el=t.querySelector('.trow[data-id="'+d+'"]');if(el)el.classList.add('dragging');});
   });
   t.addEventListener('dragover',e=>{
     if(!dragIds.length)return;
-    const row=e.target.closest&&e.target.closest('.trow[data-id]'),tid=row?+row.dataset.id:'';
+    const row=e.target.closest&&e.target.closest('.trow[data-id]'),tid=row?row.dataset.id:'';
     if(!canDrop(dragIds,tid)){e.dataTransfer.dropEffect='none';
       if(dropTargetEl){dropTargetEl.classList.remove('droptarget');dropTargetEl=null;}t.classList.remove('droproot');return;}
     e.preventDefault();e.dataTransfer.dropEffect='move';
@@ -176,7 +176,7 @@ function wireTreeDnD(){
   });
   t.addEventListener('drop',e=>{
     if(!dragIds.length)return;e.preventDefault();
-    const row=e.target.closest&&e.target.closest('.trow[data-id]'),tid=row?+row.dataset.id:'';
+    const row=e.target.closest&&e.target.closest('.trow[data-id]'),tid=row?row.dataset.id:'';
     const ids=dragIds.slice();cleanupDrag();
     if(canDrop(ids,tid))doReparent(ids,tid);
   });
@@ -265,7 +265,7 @@ async function bulkApply(field,val){
     const type = node ? node.type : '';
     itemsListHtml += `<div style="margin-bottom:6px; font-size:12px; display:flex; align-items:center; gap:6px;">` +
       `<i class="dot" style="background:${tyColor(type)}"></i>` +
-      `<span style="color:var(--muted); font-weight:600; flex:none;">#${id}</span>` +
+      `<span style="color:var(--muted); font-weight:600; flex:none;">#${App.backend.nid(id)}</span>` +
       `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--txt);">${htmlEsc(title)}</span>` +
       `</div>`;
   });

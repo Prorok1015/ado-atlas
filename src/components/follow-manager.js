@@ -13,7 +13,7 @@ window.FollowManager = {
     // Listen to messages from background
     chrome.runtime.onMessage.addListener((msg) => {
       if (msg.action === 'openItem' && msg.id && this.openItemCallback) {
-        this.openItemCallback(parseInt(msg.id, 10));
+        this.openItemCallback(App.backend.gid(msg.id));
       }
     });
   },

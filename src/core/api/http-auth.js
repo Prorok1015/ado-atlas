@@ -177,7 +177,7 @@ function mapWorkItem(rawItem, descField) {
   }
 
   const mapped = {
-    id: rawItem.id,
+    id: AdoLib.gidMake('ado', rawItem.id),
     rev: rawItem.rev ?? (f["System.Rev"] ?? ""),
   };
 
@@ -225,6 +225,7 @@ function mapWorkItem(rawItem, descField) {
   }
   mapped.fields = f;
 
+  if (mapped.parent != null && mapped.parent !== '') mapped.parent = AdoLib.gidMake('ado', mapped.parent);
   return mapped;
 }
 

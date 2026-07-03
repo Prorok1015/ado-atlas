@@ -15,8 +15,8 @@ function depsFromRelations(rels) {
     const tail = (r.url || "").replace(/\/+$/, "").split("/").pop();
     if (!/^\d+$/.test(tail)) continue;
     const tid = parseInt(tail, 10);
-    if (r.rel === "System.LinkTypes.Dependency-Forward") blocks.push(tid);
-    else if (r.rel === "System.LinkTypes.Dependency-Reverse") blockedBy.push(tid);
+    if (r.rel === "System.LinkTypes.Dependency-Forward") blocks.push(AdoLib.gidMake('ado', tid));
+    else if (r.rel === "System.LinkTypes.Dependency-Reverse") blockedBy.push(AdoLib.gidMake('ado', tid));
   }
   return { blocks, blockedBy };
 }
@@ -468,11 +468,12 @@ async function createItem({ type, title, parent, assigned, priority, iteration }
   for (const [k, v] of Object.entries(fields)) {
     ops.push({ op: "add", path: `/fields/${resolveField(k)}`, value: v });
   }
-  if (parent != null) {
+  const pnat = parent != null ? AdoLib.gidNative(parent) : null;
+  if (pnat != null) {
     const proj = await projUrl();
     ops.push({
       op: "add", path: "/relations/-",
-      value: { rel: "System.LinkTypes.Hierarchy-Reverse", url: `${proj}/_apis/wit/workitems/${parent}` },
+      value: { rel: "System.LinkTypes.Hierarchy-Reverse", url: `${proj}/_apis/wit/workitems/${pnat}` },
     });
   }
   const proj = await projUrl();

@@ -2374,7 +2374,7 @@
               <div class="trow" data-id="${n.id}">
                 <span class="tog leaf"></span>
                 <i class="dot" style="background:${getTypeColor(n.type)}"></i>
-                <span class="lab">#${n.id} ${htmlEsc(n.title)}</span>
+                <span class="lab">#${App.backend.nid(n.id)} ${htmlEsc(n.title)}</span>
               </div>
             </li>
           `;

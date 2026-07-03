@@ -31,9 +31,9 @@
     if(hasKids){tog.innerHTML=open?'<ui-icon name="chevron-down"></ui-icon>':'<ui-icon name="chevron-right"></ui-icon>';tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};}
     else{tog.classList.add('leaf');}     // childless → blank spacer keeps labels aligned
     const dot=document.createElement('i');dot.className='dot';dot.style.background=tyColor(n.type);
-    const lab=document.createElement('span');lab.className='lab';lab.textContent=`#${n.id} ${n.title}`;
+    const lab=document.createElement('span');lab.className='lab';lab.textContent=`#${App.backend.nid(n.id)} ${n.title}`;
     if(n.via&&n.via.length){const m=document.createElement('span');m.className='skip';m.innerHTML=' <ui-icon name="external-link"></ui-icon>';
-      m.title='via '+n.via.map(i=>'#'+i).join(' → ')+' (not in filter)';lab.appendChild(m);}
+      m.title='via '+n.via.map(i=>'#'+App.backend.nid(i)).join(' → ')+' (not in filter)';lab.appendChild(m);}
     // Priority sits to the RIGHT of the title (between the label and the spacer),
     // so it stays close to the task name and never visually merges with the
     // right-edge tag chips.

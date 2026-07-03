@@ -174,7 +174,7 @@ async function initialBoot(postSetup){
   }catch(e){}
   renderViewHelp();                          // show the controls legend for the initial view
   const p=new URLSearchParams(location.search),root=p.get('root');
-  if(root){await openItem(parseInt(root));}
+  if(root){await openItem(App.backend.gid(root));}
   if(App.state.mode==='tree')await App.snapshot.loadSnapshot();   // paint last session's tree instantly while the network refresh runs
   refresh().then(App.setup.warnIfPatExpiring);   // nudge after the list settles, if the PAT is near expiry
   try {
@@ -300,7 +300,7 @@ function wireControls(){
   $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.prefs.set('tlZoom',App.state.tlZoom);App.timeline.render();});
   $('tl_group').onchange=()=>{App.state.tlGroup=$('tl_group').value;App.prefs.set('tlGroup',App.state.tlGroup);App.timeline.render();};
   $('timeline').addEventListener('click',e=>{const r=e.target.closest&&e.target.closest('.tlrow[data-id]');if(!r)return;
-    const id=+r.dataset.id;
+    const id=r.dataset.id;
     if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(id);return;}        // Ctrl/Cmd: toggle in selection
     if(e.shiftKey){e.preventDefault();bulkRange(id);return;}                    // Shift: range from anchor
     openItem(id);});
@@ -428,7 +428,7 @@ function wireControls(){
       refresh();
     };
   }
-  $('searchbtn').onclick=()=>{const t=$('search').value.trim();if(/^\d+$/.test(t)){openItem(parseInt(t));return;}refresh();};
+  $('searchbtn').onclick=()=>{const t=$('search').value.trim();if(/^\d+$/.test(t)){openItem(App.backend.gid(t));return;}refresh();};
   $('search').addEventListener('keydown',e=>{if(e.key==='Enter')$('searchbtn').click();});
   // hard refresh: drop every per-session cache and re-fetch everything from the server
   $('refreshbtn').onclick=async()=>{

@@ -27,12 +27,12 @@
   async function expandNode(id){
     // double-click a graph node -> toggle expansion in the shared App.state.store (same
     // api.children the tree uses); collapse if already expanded.
-    id=Number(id);                          // keep id numeric to match App.state.store keys
+    id=String(id);                          // keep id string/composite to match App.state.store keys
     if(App.state.store.expanded.has(id)){App.state.store.expanded.delete(id);renderGraph({fit:true});return;}
-    loadStart('expanding #'+id+'…');
+    loadStart('expanding #'+App.backend.nid(id)+'…');
     try{const kids=await ensureKids(id);
       App.state.store.expanded.add(id);renderGraph({fit:true});
-      setStatus(`#${id}: +${kids.length} child(ren)`);
+      setStatus(`#${App.backend.nid(id)}: +${kids.length} child(ren)`);
     }finally{loadEnd();}
   }
   const txtColor=()=>document.body.classList.contains('light')?'#1b2330':'#e6edf3';   // theme text colour (matches --txt)
@@ -53,7 +53,7 @@
   function gstyle(){return [
    {selector:'node',style:{'background-color':e=>nodeFill(e.data('type')),'shape':'round-rectangle',
      // clean label: only #id (↗ skip marker) · type, then the title
-     'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
+     'label':e=>{const v=e.data('via');return '#'+App.backend.nid(e.data('id'))+(v&&v.length?' ↗':'')+' · '+e.data('type')+'\n'+e.data('title');},
      'color':txtColor,'font-family':HAND_FONT,'text-wrap':'wrap','text-max-width':'180px','font-size':'12px','text-valign':'center',
      'width':'210px','height':'label','padding':'12px',
      // top-left: child-count · priority · assignee (flat bookmarks); top-right: state (corner tag);
@@ -100,7 +100,7 @@
      'background-position-x':['3px','21px','39px','100%'],'background-position-y':['0','0','0','0'],
      'border-color':e=>TYPE_COLOR[e.data('type')]||'#95a5a6','border-width':1.5,'border-opacity':0.7,
      'shape':'round-rectangle','padding':'24px','color':txtColor,   // header sits on the page bg → theme-aware, not always white
-     'label':e=>{const v=e.data('via');return '#'+e.data('id')+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
+     'label':e=>{const v=e.data('via');return '#'+App.backend.nid(e.data('id'))+(v&&v.length?' ↗':'')+' · '+e.data('type')+' — '+e.data('title');},
      'text-valign':'top','text-halign':'center','text-margin-y':-4,
      'font-family':HAND_FONT,'font-size':'13px','font-weight':'bold','text-max-width':'400px','text-wrap':'wrap'}},
    {selector:'node:selected',style:{'border-color':'#fff','border-width':4}},
@@ -121,7 +121,7 @@
     App.state.cy=cytoscape({container:$('cy'),style:gstyle(),wheelSensitivity:0.2,autounselectify:true,boxSelectionEnabled:false,hideEdgesOnViewport:true,textureOnViewport:true});
     App.state.cy.on('pan zoom',()=>{syncCyGrid();depHandlePlace();});                 // grid + handle follow the canvas
     let tapTimer=null,tapId=null;                 // single tap = open editor; double tap = expand
-    App.state.cy.on('tap','node',e=>{const id=Number(e.target.data('id'));   // cytoscape gives a string id
+    App.state.cy.on('tap','node',e=>{const id=e.target.data('id');   // cytoscape gives a string id
       const oe=e.originalEvent||{};
       if(oe.ctrlKey||oe.metaKey||oe.shiftKey){bulkToggle(id);return;}   // modifier-tap → bulk select (no open)
       if(tapTimer&&tapId===id){clearTimeout(tapTimer);tapTimer=null;tapId=null;expandNode(id);return;}
@@ -137,11 +137,11 @@
       depHandleHide();
     });
     App.state.cy.on('position','node',e=>{const h=$('depHandle');
-      if(h&&h.style.display!=='none'&&h._nodeId===Number(e.target.data('id')))depHandlePlace();});
+      if(h&&h.style.display!=='none'&&h._nodeId===e.target.data('id'))depHandlePlace();});
     // Click on a dep edge → confirm + delete.
     App.state.cy.on('tap','edge[kind="dep"]',async e=>{
-      const ed=e.target,s=Number(ed.data('source')),t=Number(ed.data('target'));
-      if(!await customConfirm(window.i18n.t('dep.removeConfirm', {source:s, target:t}), window.i18n.t('dep.removeTitle')))return;
+      const ed=e.target,s=ed.data('source'),t=ed.data('target');
+      if(!await customConfirm(window.i18n.t('dep.removeConfirm', {source:App.backend.nid(s), target:App.backend.nid(t)}), window.i18n.t('dep.removeTitle')))return;
       await App.deps.removeDepLink(s,t,'blocks');
     });
     App.state.cy.on('mouseover','edge[kind="dep"]',e=>e.target.addClass('hot'));
@@ -169,7 +169,7 @@
   function depHandleShow(node){
     if(!App.state.cy)return;
     const h=depHandleEl();
-    h._nodeId=Number(node.data('id'));
+    h._nodeId=node.data('id');
     h.style.display='flex';
     depHandlePlace();
   }
@@ -202,7 +202,7 @@
     let hot=null;
     App.state.cy.nodes().forEach(nd=>{
       if(nd.isParent&&nd.isParent())return;
-      if(Number(nd.data('id'))===depDrag.sourceId)return;
+      if(nd.data('id')===depDrag.sourceId)return;
       const bb=nd.renderedBoundingBox();
       if(x>=bb.x1&&x<=bb.x2&&y>=bb.y1&&y<=bb.y2)hot=nd;
     });
@@ -215,11 +215,11 @@
     document.body.style.cursor='';
     if(d.svg&&d.svg.parentNode)d.svg.parentNode.removeChild(d.svg);
     if(d.hot)d.hot.removeClass('dep-hot');
-    const target=d.hot?Number(d.hot.data('id')):null;
+    const target=d.hot?d.hot.data('id'):null;
     if(!target||target===d.sourceId)return;
     await App.deps.addDepLink(d.sourceId,target,'blocks');   // source → target (source "blocks" target)
   });
-  function syncGraphBulk(){if(App.state.cy)App.state.cy.nodes().forEach(nd=>nd.toggleClass('bulk',App.state.bulkSel.has(Number(nd.data('id')))));}
+  function syncGraphBulk(){if(App.state.cy)App.state.cy.nodes().forEach(nd=>nd.toggleClass('bulk',App.state.bulkSel.has(nd.data('id'))));}
   function saveNodePositions() {
     if (!App.state.cy || !projectName) return;
     const positions = {};

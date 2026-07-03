@@ -245,7 +245,7 @@ function recordEditUndo(id,body,parentChanged,before,beforeParent,newParent){
 // sync with whatever fields the PATCH just touched. Used by both save() (full
 // manual save) and quickSave() (single-field auto-save).
 function applyVisualSync(id,body,v){
-  if(App.state.selRow&&body.title)App.state.selRow.querySelector('.lab').textContent=`#${id} ${body.title}`;
+  if(App.state.selRow&&body.title)App.state.selRow.querySelector('.lab').textContent=`#${App.backend.nid(id)} ${body.title}`;
   if(App.state.selRow&&body.state)App.state.selRow.querySelector('.badge').textContent=body.state;
   if(App.state.selRow&&('priority'in body)){let pc=App.state.selRow.querySelector('.prio');if(!pc){pc=document.createElement('span');pc.className='prio';App.state.selRow.insertBefore(pc,App.state.selRow.querySelector('.badge'));}pc.textContent='P'+body.priority;pc.style.background=prioColor(body.priority);}
   if(App.state.selRow&&('tags'in body)){App.state.selRow.querySelectorAll('.ttag').forEach(t=>t.remove());const bdg=App.state.selRow.querySelector('.badge');if(bdg){bdg.style.marginLeft='';const ts=tagList_(v.tags);if(ts.length){const show=ts.slice(0,3),extra=ts.length-show.length;bdg.style.marginLeft='0';show.forEach((t,i)=>{const tc=document.createElement('span');tc.className='ttag';tc.textContent=t;tc.style.background=personColor(t);tc.title=t;if(i===0)tc.style.marginLeft='auto';App.state.selRow.insertBefore(tc,bdg);});if(extra>0){const tc=document.createElement('span');tc.className='ttag';tc.textContent='+'+extra;tc.style.background='var(--muted)';App.state.selRow.insertBefore(tc,bdg);}}}}
@@ -372,7 +372,7 @@ async function quickSave(field){
   const numEq=(a,b)=>(a===''||a==null)&&(b===''||b==null) ? true : String(a)===String(b);
   if(field==='parent'){
     if(v.parent===App.state.orig.parent)return;
-    if(v.parent!==''&&Number(v.parent)===id){setStatus(window.i18n.t('status.cannotParentSelf'),true);return;}
+    if(v.parent!==''&&String(v.parent)===String(id)){setStatus(window.i18n.t('status.cannotParentSelf'),true);return;}
     parentChanged=true;
   } else if(field==='priority'){
     const op=App.state.orig.priority?String(App.state.orig.priority):'';
@@ -440,7 +440,7 @@ async function quickSave(field){
     if(App.state.store.nodes[id]) App.state.store.nodes[id].rev = r.rev;
   }
   refreshDirty();setSaveChip('saved');
-  setStatus(`#${id} ${field} saved`+(r?` → rev ${r.rev}`:''));
+  setStatus(`#${App.backend.nid(id)} ${field} saved`+(r?` → rev ${r.rev}`:''));
   postSaveRefresh(body,parentChanged);
 }
 
@@ -478,7 +478,7 @@ async function save(){
     FollowManager.updateItemRev(id,r.rev,App.state.orig.state,App.state.orig.title,App.state.orig.assigned);
     if(App.state.store.nodes[id]) App.state.store.nodes[id].rev = r.rev;
   }
-  refreshDirty();setSaveChip('saved');setStatus(`#${id} saved`+(r?` → rev ${r.rev}`:''));
+  refreshDirty();setSaveChip('saved');setStatus(`#${App.backend.nid(id)} saved`+(r?` → rev ${r.rev}`:''));
   postSaveRefresh(body,false);
 }
 function closeCommentForm(){

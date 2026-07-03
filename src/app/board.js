@@ -28,7 +28,7 @@
     const token=App.state.boardToken;                 // current render's token — bail if a newer render starts
     const cards=[...document.querySelectorAll('#board .bcard[data-id]')];
     if(!cards.length)return;
-    const ids=cards.map(c=>+c.dataset.id);
+    const ids=cards.map(c=>c.dataset.id);
     const setCard=(c,act)=>{                 // act = hours or null
       const est=c.dataset.est?+c.dataset.est:null,lab=c.querySelector('.tlabel'),fill=c.querySelector('.tfill');
       if(act==null){if(lab)lab.innerHTML=est!=null?('est '+est+'h'):'<ui-icon name="clock"></ui-icon> —';return;}
@@ -174,7 +174,7 @@
         (extra>0?`<span class="ttag" style="background:var(--muted)" title="${htmlEsc(ts.slice(4).join(', '))}">+${extra}</span>`:'')+
         `</div>`;
     })();
-    c.innerHTML=`<div class="bttl">${showAssigned&&n.assigned?personChipT(n.assigned):''}<span class="btxt">#${n.id} ${htmlEsc(n.title)}</span></div>`+
+    c.innerHTML=`<div class="bttl">${showAssigned&&n.assigned?personChipT(n.assigned):''}<span class="btxt">#${App.backend.nid(n.id)} ${htmlEsc(n.title)}</span></div>`+
       `<div class="bmeta">`+(showType?`<span>${htmlEsc(n.type)}</span>`:'')+
       (showPrio&&n.priority?`<span class="prio" style="background:${prioColor(n.priority)}">P${n.priority}</span>`:'')+
       (showState?`<span>${htmlEsc(n.state)}</span>`:'')+(overdue?'<span class="od">overdue</span>':'')+`</div>`+
@@ -189,7 +189,7 @@
     return c;
   }
   async function moveCard(id,field,val){            // field: 'iteration' | 'assigned' | 'state'
-    boardBusy=true;loadStart('moving #'+id+'…');
+    boardBusy=true;loadStart('moving #'+App.backend.nid(id)+'…');
     const card=document.querySelector('.bcard[data-id="'+id+'"]');if(card)card.classList.add('moving');
     const old=App.state.store.nodes[id]?App.state.store.nodes[id][field]:'';   // snapshot for undo (still the pre-move value here)
     try{
@@ -199,7 +199,7 @@
       pushAction('move #'+id,
         async()=>{await api.updateItem(id,{[field]:(old==null?'':old)});await afterUndo(id);},
         async()=>{await api.updateItem(id,{[field]:val});await afterUndo(id);});
-      setStatus('#'+id+' moved → rev '+r.rev);
+      setStatus('#'+App.backend.nid(id)+' moved → rev '+r.rev);
     }catch(e){setStatus('ERROR: '+e.message,true);}
     boardBusy=false;loadEnd();
     renderBoard();                                   // regroup from the (now updated) App.state.store
@@ -235,7 +235,7 @@
       if(bulk){const b=document.createElement('span');b.className='dgcount';b.textContent=App.state.bulkSel.size;cl.appendChild(b);}   // count badge
       document.body.appendChild(cl);pdrag.clone=cl;
       // dim every card being moved (the whole selection on a bulk drag)
-      pdrag.dragEls=bulk?[...document.querySelectorAll('#board .bcard[data-id]')].filter(el=>App.state.bulkSel.has(+el.dataset.id)):[pdrag.card];
+      pdrag.dragEls=bulk?[...document.querySelectorAll('#board .bcard[data-id]')].filter(el=>App.state.bulkSel.has(el.dataset.id)):[pdrag.card];
       pdrag.dragEls.forEach(el=>el.classList.add('dragging'));
       $('board').classList.add('drag');document.body.style.cursor='grabbing';
     }
@@ -262,7 +262,7 @@
     const node=App.state.store.nodes[d.id],curVal=node?(node[field]||''):'';   // field: iteration | assigned | state
     if(val===curVal&&!bulk)return;
     if(field==='iteration'){const it=_sprint(val),fin=it&&it.finish?it.finish.slice(0,10):null,today=new Date().toISOString().slice(0,10);
-      if(fin&&fin<today&&!await customConfirm(window.i18n.t('move.sprintEndedConfirm', {sprint:it.name, date:fin, what:bulk?window.i18n.t('move.nItems',{count:App.state.bulkSel.size}):('#'+d.id)}), window.i18n.t('move.confirmTitle')))return;}
+      if(fin&&fin<today&&!await customConfirm(window.i18n.t('move.sprintEndedConfirm', {sprint:it.name, date:fin, what:bulk?window.i18n.t('move.nItems',{count:App.state.bulkSel.size}):('#'+App.backend.nid(d.id))}), window.i18n.t('move.confirmTitle')))return;}
     if(bulk)moveCards([...App.state.bulkSel],field,val);else moveCard(d.id,field,val);
   });
 
@@ -294,7 +294,7 @@
     el.appendChild(head);
     const mkRow=(n)=>{
       const row=document.createElement('div');row.className='grow';row.dataset.id=n.id;
-      const lab=document.createElement('div');lab.className='glabel';lab.textContent=`#${n.id} ${n.title}`;lab.title=n.title;
+      const lab=document.createElement('div');lab.className='glabel';lab.textContent=`#${App.backend.nid(n.id)} ${n.title}`;lab.title=n.title;
       const track=document.createElement('div');track.className='gtrack';track.style.backgroundSize=(100/N)+'% 100%';
       const ps=d=>d?Date.parse(d.slice(0,10)):null;
       let bs=ps(n.start),be=ps(n.target||n.due),soft=false;
@@ -306,7 +306,7 @@
       const bar=document.createElement('div');bar.className='gbar'+(soft?' soft':'');
       bar.style.left=(si/N*100)+'%';bar.style.width=((ei-si+1)/N*100)+'%';
       bar.style.backgroundColor=tyColor(n.type);
-      bar.textContent=(n.priority?'P'+n.priority+' ':'')+'#'+n.id+' '+n.title;bar.title=n.title;
+      bar.textContent=(n.priority?'P'+n.priority+' ':'')+'#'+App.backend.nid(n.id)+' '+n.title;bar.title=n.title;
       bar.onclick=()=>openItem(n.id);
       track.appendChild(bar);
       if(showToday){const tl=document.createElement('div');tl.className='gtoday';tl.style.left=todayLeft+'%';track.appendChild(tl);}

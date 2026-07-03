@@ -38,7 +38,7 @@
       const ty=n?tyColor(n.type):'#95a5a6';
       const ttl=n?htmlEsc(n.title||''):'';
       return `<span class="depchip"><i class="dot" style="background:${ty}"></i>`+
-        `<a class="depopen" data-id="${id}">#${id}</a>`+
+        `<a class="depopen" data-id="${id}">#${App.backend.nid(id)}</a>`+
         (ttl?`<span class="depttl">${ttl}</span>`:'')+
         `<b data-dir="${dir}" data-id="${id}" title="remove">×</b></span>`;
     };
@@ -46,8 +46,8 @@
     if(!bb||!bk)return;
     bb.innerHTML=depsState.blockedBy.length?depsState.blockedBy.map(id=>chip(id,'blockedBy')).join(''):'<span class="pcnone">(none)</span>';
     bk.innerHTML=depsState.blocks.length?depsState.blocks.map(id=>chip(id,'blocks')).join(''):'<span class="pcnone">(none)</span>';
-    document.querySelectorAll('#s_deps .depchip b[data-dir]').forEach(x=>x.onclick=()=>removeDepLink(App.state.cur,+x.dataset.id,x.dataset.dir));
-    document.querySelectorAll('#s_deps .depopen').forEach(a=>a.onclick=(e)=>{e.preventDefault();openItem(+a.dataset.id);});
+    document.querySelectorAll('#s_deps .depchip b[data-dir]').forEach(x=>x.onclick=()=>removeDepLink(App.state.cur,x.dataset.id,x.dataset.dir));
+    document.querySelectorAll('#s_deps .depopen').forEach(a=>a.onclick=(e)=>{e.preventDefault();openItem(a.dataset.id);});
     // Lazy-load titles for ids not yet in the App.state.store (a single GET per id, cached on success)
     const missing=[...depsState.blockedBy,...depsState.blocks].filter(id=>!App.state.store.nodes[id]);
     missing.forEach(id=>{api.item(id).then(it=>{
@@ -91,30 +91,30 @@
     if(from===to){setStatus(window.i18n.t('status.cannotDependSelf'),true);return;}
     // Local dup-check only when the sidebar's open item IS the focus (else we have no fresh state)
     if(App.state.cur===focusId&&depsArr(dir).includes(otherId))return;
-    loadStart('linking #'+from+' → #'+to+'…');
+    loadStart('linking #'+App.backend.nid(from)+' → #'+App.backend.nid(to)+'…');
     try{
       await api.addDependency(from,to);
       App.state.depCache={};                                   // graph cache is per id-set; nuke wholesale
       applyDepLocal(from,to,'add');
-      pushAction(`link #${from} → #${to}`,
+      pushAction(`link #${App.backend.nid(from)} → #${App.backend.nid(to)}`,
         async()=>{try{await api.removeDependency(from,to);}catch(e){}App.state.depCache={};applyDepLocal(from,to,'remove');if(App.state.cur===focusId)await loadDeps(focusId);},
         async()=>{try{await api.addDependency(from,to);}catch(e){}App.state.depCache={};applyDepLocal(from,to,'add');if(App.state.cur===focusId)await loadDeps(focusId);});
-      setStatus(`linked #${from} → #${to}`);
+      setStatus(`linked #${App.backend.nid(from)} → #${App.backend.nid(to)}`);
     }catch(e){
       if(!denyOnForbidden(e,'add dependencies'))setStatus('ERROR: '+e.message,true);
     }finally{loadEnd();}
   }
   async function removeDepLink(focusId,otherId,dir){
     const {from,to}=depPair(focusId,otherId,dir);
-    loadStart('unlinking #'+from+' → #'+to+'…');
+    loadStart('unlinking #'+App.backend.nid(from)+' → #'+App.backend.nid(to)+'…');
     try{
       await api.removeDependency(from,to);
       App.state.depCache={};
       applyDepLocal(from,to,'remove');
-      pushAction(`unlink #${from} → #${to}`,
+      pushAction(`unlink #${App.backend.nid(from)} → #${App.backend.nid(to)}`,
         async()=>{try{await api.addDependency(from,to);}catch(e){}App.state.depCache={};applyDepLocal(from,to,'add');if(App.state.cur===focusId)await loadDeps(focusId);},
         async()=>{try{await api.removeDependency(from,to);}catch(e){}App.state.depCache={};applyDepLocal(from,to,'remove');if(App.state.cur===focusId)await loadDeps(focusId);});
-      setStatus(`unlinked #${from} → #${to}`);
+      setStatus(`unlinked #${App.backend.nid(from)} → #${App.backend.nid(to)}`);
     }catch(e){
       if(!denyOnForbidden(e,'remove dependencies'))setStatus('ERROR: '+e.message,true);
     }finally{loadEnd();}

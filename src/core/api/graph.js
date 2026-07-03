@@ -57,7 +57,7 @@ async function deps(ids) {
       const k = src + "_" + dst;
       if (idSet.has(src) && idSet.has(dst) && !seen.has(k)) {
         seen.add(k);
-        edges.push({ source: src, target: dst });
+        edges.push({ source: AdoLib.gidMake('ado', src), target: AdoLib.gidMake('ado', dst) });
       }
     }
   }
@@ -79,7 +79,11 @@ async function parents(ids) {
       for (const w of (res.value || [])) out[w.id] = (w.fields || {})[FIELD_REGISTRY.parent.ref] || null;
     } catch (_) { /* skip the chunk on error */ }
   }
-  return out;
+  const mapped = {};
+  for (const [id, parent] of Object.entries(out)) {
+    mapped[AdoLib.gidMake('ado', id)] = parent != null ? AdoLib.gidMake('ado', parent) : null;
+  }
+  return mapped;
 }
 
 // How many child work items each of `ids` has, WITHOUT fetching the children.
@@ -109,6 +113,10 @@ async function childCounts(ids) {
       if (r && r.rel && r.source && r.target) out[r.source.id] = (out[r.source.id] || 0) + 1;
     }
   }), 6);
-  return out;
+  const mapped = {};
+  for (const [id, count] of Object.entries(out)) {
+    mapped[AdoLib.gidMake('ado', id)] = count;
+  }
+  return mapped;
 }
 

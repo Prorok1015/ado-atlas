@@ -39,3 +39,20 @@
   mapWorkItem,
   isCoreField,
 };
+
+(function () {
+  const A = (typeof window !== "undefined" ? window : self).api;
+  if (!A || typeof AdoLib === "undefined") return;
+  const nid = AdoLib.gidNative;
+  const ID_POS = {   // arg positions that are work-item ids
+    item:[0], dependencies:[0], updateItem:[0], deleteItem:[0], history:[0],
+    comment:[0], comments:[0], updateComment:[0], deleteComment:[0],
+    addCommentReaction:[0], removeCommentReaction:[0], commentReactionUsers:[0],
+    addAttachmentLink:[0], removeAttachmentLink:[0], browserUrl:[0], timeline:[0],
+    children:[0], setParent:[0,1], addDependency:[0,1], removeDependency:[0,1],
+  };
+  for (const name in ID_POS) { const orig = A[name], pos = ID_POS[name]; if (typeof orig!=="function") continue;
+    A[name] = function (...a){ for (const p of pos) if (a[p]!=null) a[p]=nid(a[p]); return orig.apply(this,a); }; }
+  for (const name of ["deps","parents","childCounts","times"]) { const orig=A[name]; if (typeof orig!=="function") continue;
+    A[name] = function (ids,...r){ return orig.call(this, Array.isArray(ids)?ids.map(nid):ids, ...r); }; }
+})();

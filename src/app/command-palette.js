@@ -30,12 +30,12 @@
   function paletteMatches(q){
     q=(q||'').trim().toLowerCase();
     const toks=q.split(/\s+/).filter(Boolean),out=[];
-    if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);out.push({kind:'open',title:'Open #'+id,run:()=>openItem(id)});}
+    if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);out.push({kind:'open',title:'Open #'+id,run:()=>openItem(App.backend.gid(id))});}
     if(toks.length){                         // only match items once the user has typed something
       let n=0;
       for(const node of Object.values(App.state.store.nodes)){
-        const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
-        if(toks.every(t=>hay.includes(t))){out.push({kind:node.type||'item',title:`#${node.id} ${node.title||''}`,state:node.state,run:()=>openItem(node.id)});if(++n>=40)break;}
+        const hay=('#'+App.backend.nid(node.id)+' '+(node.title||'')).toLowerCase();
+        if(toks.every(t=>hay.includes(t))){out.push({kind:node.type||'item',title:`#${App.backend.nid(node.id)} ${node.title||''}`,state:node.state,run:()=>openItem(node.id)});if(++n>=40)break;}
       }
     }
     for(const a of PALETTE_ACTIONS){if(!toks.length||toks.every(t=>a.title.toLowerCase().includes(t)))out.push(a);}

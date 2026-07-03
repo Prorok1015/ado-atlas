@@ -81,14 +81,14 @@
     const showTlPrio=badgeOn('priority','timeline'),showTlState=badgeOn('state','timeline'),showTlAsg=badgeOn('assigned','timeline');
     const lab=n=>`<div class="tllabel" style="width:${LW}px"><i class="dot" style="background:${tyColor(n.type)}"></i>`+
       (showTlAsg&&n.assigned?personChipT(n.assigned):'')+
-      `<span class="tllab">#${n.id} ${htmlEsc(n.title)}</span>`+
+      `<span class="tllab">#${App.backend.nid(n.id)} ${htmlEsc(n.title)}</span>`+
       (showTlState&&n.state?`<span class="sbadge tlst" style="background:${stateColor(n.state)}">${htmlEsc(n.state)}</span>`:'')+
       `</div>`;
     // sp (optional) = the group's sprint window {s,e}; bars outside it are flagged.
     const rowHTML=(n,sp)=>{const t=n._tl,oos=sp&&(t.s<sp.s||t.e>sp.e);
       const tip=`${n.start?prettyDate(n.start):(t.soft?'sprint start':'?')} → ${(n.target||n.due)?prettyDate(n.target||n.due):(t.soft?'sprint finish':'?')}`+(oos?'  dates fall outside the sprint':'');
       const prefix=(showTlPrio&&n.priority)?('P'+n.priority+' '):'';
-      return `<div class="tlrow${App.state.bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${htmlEsc(tip)}">${htmlEsc(prefix)}#${n.id} ${htmlEsc(n.title)}</div></div></div>`;};
+      return `<div class="tlrow${App.state.bulkSel.has(n.id)?' bulksel':''}" data-id="${n.id}">${lab(n)}<div class="tltrack" style="width:${W}px"><div class="tlbar${t.soft?' soft':''}${oos?' oos':''}" style="left:${xOf(t.s)}px;width:${wOf(t.s,t.e)}px;background-color:${tyColor(n.type)}" title="${htmlEsc(tip)}">${htmlEsc(prefix)}#${App.backend.nid(n.id)} ${htmlEsc(n.title)}</div></div></div>`;};
     const byStart=(a,b)=>(a._tl.s-b._tl.s)||(a.id-b.id);
     const groupHead=(k,arr,sp)=>{
       let label=htmlEsc(k)+' · '+arr.length,track;

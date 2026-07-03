@@ -74,7 +74,7 @@ async function times(ids, offset) {
     return [wid, sec];
   }), 3);
   const out = {};
-  for (const [wid, sec] of results) out[wid] = sec;
+  for (const [wid, sec] of results) out[AdoLib.gidMake('ado', wid)] = sec;
   return out;
 }
 

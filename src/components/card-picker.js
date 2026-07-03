@@ -3,7 +3,7 @@ const CP_L = (k, fallback, p) => (typeof window !== 'undefined' && window.i18n) 
 
 function parentCardHtml(n, isBulk){
   return `<i class="dot" style="background:${tyColor(n.type)}"></i>`+
-    `<span class="pcid">#${n.id}</span><span class="pctitle">${htmlEsc(n.title||'')}</span>`+
+    `<span class="pcid">#${App.backend.nid(n.id)}</span><span class="pctitle">${htmlEsc(n.title||'')}</span>`+
     (n.state?`<span class="pcstate" style="background:${stateColor(n.state)}">${htmlEsc(n.state)}</span>`:'');
 }
 
@@ -169,7 +169,7 @@ function createCardPicker(base,opts){
 
 /* --- provider: parent / any work-item (id+title, with server-side search) --- */
 function itemRow(n){const badge=n.state?`<span class="pbadge" style="background:${stateColor(n.state)}">${htmlEsc(n.state)}</span>`:'';
-  return {value:String(n.id),html:`<i class="dot" style="background:${tyColor(n.type)}"></i><span class="ptitle">#${n.id} ${htmlEsc(n.title||'')}</span>${badge}`};}
+  return {value:String(n.id),html:`<i class="dot" style="background:${tyColor(n.type)}"></i><span class="ptitle">#${App.backend.nid(n.id)} ${htmlEsc(n.title||'')}</span>${badge}`};}
 
 async function itemApiSearch(term){            // look up items the local tree hasn't loaded
   const m=term.match(/^#?(\d+)$/);
@@ -180,7 +180,7 @@ async function itemApiSearch(term){            // look up items the local tree h
 function itemPickerProvider(getExclude){
   getExclude=getExclude||(()=>null);
   return {
-    openValue(v){if(/^\d+$/.test(v))openItem(parseInt(v,10));},
+    openValue(v){if(/^\d+$/.test(v))openItem(App.backend.gid(v));},
     renderCard(v,card){
       const isBulk = card.id === 'bulk_parent_card';
       if(!v){
@@ -209,11 +209,11 @@ function itemPickerProvider(getExclude){
     localRows(q){
       q=(q||'').trim().toLowerCase();const toks=q.split(/\s+/).filter(Boolean),ex=getExclude();
       const out=[{value:'',html:`<span class="pkind">—</span><span class="ptitle pcnone">${htmlEsc(CP_L('picker.parent.none', '(no parent)'))}</span>`}];
-      if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);if(id!==ex&&!App.state.store.nodes[id])out.push({value:String(id),raw:true,html:`<span class="pkind">id</span><span class="ptitle">${htmlEsc(CP_L('picker.useId', 'Use #'+id, { id: id }))}</span>`});}
+      if(/^#?\d+$/.test(q)){const id=parseInt(q.replace('#',''),10);const gid=App.backend.gid(id);if(gid!==ex&&!App.state.store.nodes[gid])out.push({value:gid,raw:true,html:`<span class="pkind">id</span><span class="ptitle">${htmlEsc(CP_L('picker.useId', 'Use #'+id, { id: id }))}</span>`});}
       let n=0;
       for(const node of Object.values(App.state.store.nodes)){
         if(ex!=null&&node.id===ex)continue;         // an item can't be its own parent
-        const hay=('#'+node.id+' '+(node.title||'')).toLowerCase();
+        const hay=('#'+App.backend.nid(node.id)+' '+(node.title||'')).toLowerCase();
         if(!toks.length||toks.every(t=>hay.includes(t))){out.push(itemRow(node));if(++n>=40)break;}
       }
       return out;
@@ -365,13 +365,13 @@ function createSprintField(base,opts){opts=opts||{};return createCardPicker(base
 // picker never holds a sticky value — every pick triggers an add and resets).
 function depAdderProvider(dir){
   const base=itemPickerProvider(()=>App.state.cur);
-  const blocked=()=>new Set(depsArr(dir).map(Number));
+  const blocked=()=>new Set(depsArr(dir));
   return {
     renderCard(v,card){const t=dir==='blocks'?CP_L('picker.dep.addBlocks','add a blocked link'):CP_L('picker.dep.addBlockedBy','add a blocked-by link');
       card.innerHTML=`<span class="pcnone">＋ ${htmlEsc(t)}</span>`;},
-    localRows(q){const ex=blocked();return base.localRows(q).filter(r=>!r.value||!ex.has(+r.value));},
+    localRows(q){const ex=blocked();return base.localRows(q).filter(r=>!r.value||!ex.has(r.value));},
     apiExpand(q,rows){const inner=base.apiExpand(q,rows);if(!inner)return null;
-      const ex=blocked();return async()=>(await inner()).filter(r=>!r.value||!ex.has(+r.value));},
+      const ex=blocked();return async()=>(await inner()).filter(r=>!r.value||!ex.has(r.value));},
   };
 }
 
@@ -383,7 +383,8 @@ function depPickerOnChange(dir){
     const baseId='s_deps_'+(dir==='blocks'?'blocks':'blockedby');
     const v=$(baseId).value.trim();
     $(baseId).value='';
-    if(!/^\d+$/.test(v)||App.state.cur==null)return;
-    addDepLink(App.state.cur,parseInt(v,10),dir);
+    const gid = /^\d+$/.test(v) ? App.backend.gid(v) : v;
+    if(!gid||App.state.cur==null)return;
+    addDepLink(App.state.cur,gid,dir);
   };
 }

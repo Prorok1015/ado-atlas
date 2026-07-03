@@ -396,9 +396,9 @@ async function toggleSidebarKids(id,btn){
   const nodes=kids.map(k=>App.state.store.nodes[k]).filter(Boolean);
   if(!nodes.length){box.innerHTML='<div class="kidmsg">(no children)</div>';return;}
   box.innerHTML=nodes.map(k=>`<a class="kidrow" data-id="${k.id}"><i class="dot" style="background:${tyColor(k.type)}"></i>`+
-    `<span class="kidttl">#${k.id} ${htmlEsc(k.title||'')}</span>`+
+    `<span class="kidttl">#${App.backend.nid(k.id)} ${htmlEsc(k.title||'')}</span>`+
     (k.state?`<span class="kidstate" style="background:${stateColor(k.state)}">${htmlEsc(k.state)}</span>`:'')+`</a>`).join('');
-  box.querySelectorAll('.kidrow').forEach(r=>r.onclick=()=>openItem(+r.dataset.id));
+  box.querySelectorAll('.kidrow').forEach(r=>r.onclick=()=>openItem(r.dataset.id));
 }
 function optionsPickerProvider(optionsList, placeholder) {
   return {
@@ -551,16 +551,19 @@ function setupDynamicDatePicker(elId, referenceName, initialVal) {
 function renderSidebarHeader(d) {
   const hdr = $('s_hdr');
   if (!hdr) return;
-  hdr.innerHTML=`<i class="dot" style="background:${tyColor(d.type)}"></i>#${d.id} ${htmlEsc(d.type)}`+
+  hdr.innerHTML=`<i class="dot" style="background:${tyColor(d.type)}"></i>#${App.backend.nid(d.id)} ${htmlEsc(d.type)}`+
     ` <span class="sbadge" style="background:${stateColor(d.state)}">${htmlEsc(d.state)}</span>`+
     `<span id="s_rev" style="color:var(--muted);font-weight:400;font-size:11px;margin-left:4px;">${d.rev ? 'rev' + d.rev : ''}</span>`;
 }
 
 async function openItem(id){
+  if (id != null && !String(id).includes(':')) {
+    id = App.backend.gid(id);
+  }
   const myToken=++App.state.openToken;
   // Always ask before clobbering edits — including reopening the SAME dirty
   // item (which would otherwise silently reload from server and wipe the work).
-  if(App.state.cur!=null&&dirty()&&!await customConfirm(window.i18n.t('editor.discardItemConfirm', {id:App.state.cur}), window.i18n.t('editor.discardTitle')))return;
+  if(App.state.cur!=null&&dirty()&&!await customConfirm(window.i18n.t('editor.discardItemConfirm', {id:App.backend.nid(App.state.cur)}), window.i18n.t('editor.discardTitle')))return;
   // After the async confirm another openItem() may have started — bail if superseded.
   if(myToken!==App.state.openToken)return;
 
@@ -1174,7 +1177,7 @@ async function openItem(id){
   // ── Unlock the sidebar (Phase 1 fields only) ──
   lockSidebar(false);
   refreshDirty();loadTimeline(id);
-  setStatus('#'+id+' partially loaded');
+  setStatus('#'+App.backend.nid(id)+' partially loaded');
 
   // ── Phase 2: Lazy loading of heavy/hidden fields that are actually visible ──
   const activeLazyGroups = [...LAZY_GROUPS].filter(g => !sideHidden.has(g));
@@ -1333,7 +1336,7 @@ async function openItem(id){
 
         lockSidebarHeavy(false, activeLazyGroups);
         refreshDirty();
-        setStatus('#'+id+' loaded');
+        setStatus('#'+App.backend.nid(id)+' loaded');
       }).catch(err => {
         if (err.name === 'AbortError') return;        // silently exit — a newer openItem() is running
         if (App.state.cur !== id || phase2Token !== App.state.openToken) return; // stale

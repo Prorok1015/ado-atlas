@@ -10,7 +10,7 @@
   async function snapKey() {
     try {
       const c = await api.getConfig();
-      return (c.org && c.project) ? ('snap:' + c.org + '/' + c.project) : null;
+      return (c.org && c.project) ? ('snap:v2:' + c.org + '/' + c.project) : null;
     } catch (e) { return null; }
   }
 

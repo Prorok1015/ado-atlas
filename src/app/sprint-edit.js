@@ -26,7 +26,7 @@ function updatePendingSprintItems() {
       
       const idSpan = document.createElement('span');
       idSpan.style.cssText = 'color:var(--muted); font-weight:600; flex:none;';
-      idSpan.textContent = `#${id}`;
+      idSpan.textContent = `#${App.backend.nid(id)}`;
       
       const titleSpan = document.createElement('span');
       titleSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; color:var(--txt);';

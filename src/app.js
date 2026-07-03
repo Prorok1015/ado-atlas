@@ -399,11 +399,11 @@ async function _refresh(){
   // Attach them under that ancestor and remember the skipped chain for a "↗ via" marker.
   const skippers=items.filter(n=>n.parent&&!inSet.has(n.parent));
   const anc=skippers.length?await resolveSkippedAncestors(skippers,inSet):{};
-  for(const idStr in anc){const a=anc[idStr],id=+idStr;
+  for(const idStr in anc){const a=anc[idStr],id=idStr;
     (kidsOf[a.target]||(kidsOf[a.target]=[])).push(id);
     if(App.state.store.nodes[id])App.state.store.nodes[id].via=a.via;}
   App.state.store.top=items.filter(n=>!(n.parent&&inSet.has(n.parent))&&!anc[n.id]).map(n=>n.id);
-  Object.keys(kidsOf).forEach(pid=>{App.state.store.kids[pid]=kidsOf[pid];if(firstLoad||prevExpanded.has(+pid))App.state.store.expanded.add(+pid);});  // auto-expand first load; otherwise preserve manual expand/collapse
+  Object.keys(kidsOf).forEach(pid=>{App.state.store.kids[pid]=kidsOf[pid];if(firstLoad||prevExpanded.has(pid))App.state.store.expanded.add(pid);});  // auto-expand first load; otherwise preserve manual expand/collapse
   for(const id of [...App.state.bulkSel])if(!inSet.has(id))App.state.bulkSel.delete(id);   // drop selections that no longer match the filter
   updateBulkBar();
   const ts=$('tree').scrollTop;
@@ -429,7 +429,7 @@ async function fetchChildCounts(ids,force){   // App.state.store counts on nodes
 }
 function rerenderChildCounts(){           // reflect freshly-learned counts in the current view
   if(App.state.mode==='tree'){const ts=$('tree').scrollTop;App.tree.renderTree();$('tree').scrollTop=ts;}
-  else if(App.state.mode==='graph'&&App.state.cy){App.state.cy.batch(()=>App.state.cy.nodes().forEach(nd=>{const n=App.state.store.nodes[Number(nd.data('id'))];if(n)nd.data('childCount',n.childCount);}));App.state.cy.style().update();}
+  else if(App.state.mode==='graph'&&App.state.cy){App.state.cy.batch(()=>App.state.cy.nodes().forEach(nd=>{const n=App.state.store.nodes[nd.data('id')];if(n)nd.data('childCount',n.childCount);}));App.state.cy.style().update();}
   App.snapshot.saveSnapshot();                         // persist the counts so next session's cached paint has them too
 }
 let childCountTok=0;

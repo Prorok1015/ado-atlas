@@ -53,7 +53,7 @@
     if (body.parent != null) delete App.state.store.kids[body.parent];   // parent's child list is now stale
     recordCreateUndo(r.id, body);
     closeNewItem();
-    setStatus(`created #${r.id} (${type})` + (body.parent != null ? ` under #${body.parent}` : ' (top-level)'));
+    setStatus(`created #${App.backend.nid(r.id)} (${type})` + (body.parent != null ? ` under #${body.parent}` : ' (top-level)'));
     await refresh();
     openItem(r.id);                                  // jump straight into the new item's editor
   }
