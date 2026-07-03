@@ -754,27 +754,26 @@ test("FilterManager: toggleChip and getChipState for tag field", () => {
 });
 
 test("FilterManager: load / save / migrate", () => {
-  const store = {};
-  globalThis.localStorage = {
-    getItem: (key) => store[key] || null,
-    setItem: (key, val) => { store[key] = String(val); },
-    removeItem: (key) => { delete store[key]; }
-  };
+  // FilterManager now persists through App.prefs (not localStorage directly). Drive
+  // the real prefs singleton — in node it uses its in-memory cache (no chrome), and
+  // filters/filterIR/filtersAdvanced are not mirrorLS so localStorage is never touched.
+  const prefs = require("../src/app/prefs.js");
+  globalThis.App = { prefs };
 
   const fm = new FilterManager();
-  
+
   // 1. Save and Load
   fm.toggleChip("state", "Active", "in");
   fm.save();
-  assert.ok(store["ado.filterIR"]);
+  assert.ok(prefs.get("filterIR"));
 
   const fm2 = new FilterManager();
   fm2.load();
   assert.strictEqual(fm2.getChipState("state", "Active"), "in");
 
   // 2. Migrate from filtersAdvanced
-  delete store["ado.filterIR"];
-  store["ado.filtersAdvanced"] = JSON.stringify({
+  prefs.remove("filterIR");
+  prefs.set("filtersAdvanced", JSON.stringify({
     where: {
       kind: "group",
       logic: "OR",
@@ -786,29 +785,30 @@ test("FilterManager: load / save / migrate", () => {
         }
       ]
     }
-  });
+  }));
 
   const fm3 = new FilterManager();
   fm3.load();
   assert.strictEqual(fm3.getChipState("state", "Closed"), "in");
-  assert.ok(!store["ado.filtersAdvanced"]);
-  assert.ok(store["ado.filterIR"]);
+  assert.ok(!prefs.get("filtersAdvanced"));
+  assert.ok(prefs.get("filterIR"));
 
   // 3. Migrate from flat filters (filters)
-  delete store["ado.filterIR"];
-  store["ado.filters"] = JSON.stringify({
+  prefs.remove("filterIR");
+  prefs.set("filters", JSON.stringify({
     state: { in: ["Active", "New"], not: ["Closed"] }
-  });
+  }));
 
   const fm4 = new FilterManager();
   fm4.load();
   assert.strictEqual(fm4.getChipState("state", "Active"), "in");
   assert.strictEqual(fm4.getChipState("state", "New"), "in");
   assert.strictEqual(fm4.getChipState("state", "Closed"), "out");
-  assert.ok(!store["ado.filters"]);
-  assert.ok(store["ado.filterIR"]);
+  assert.ok(!prefs.get("filters"));
+  assert.ok(prefs.get("filterIR"));
 
-  delete globalThis.localStorage;
+  prefs.remove("filterIR");
+  delete globalThis.App;
 });
 
 test("FilterManager: onChange listener and unsubscribe", () => {

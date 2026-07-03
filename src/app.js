@@ -33,11 +33,10 @@ let tagList=[];                          // distinct tags seen on recent items (
 let sprintPaths=[];                      // iteration paths for the Sprint filter (chip value = path)
 let sprintNames={};                      // iteration path -> short sprint name (chip label)
 let listCapped=false;                    // true when the last list() hit LIST_CAP (UI warns)
-let pinnedSprints=new Set();            // iteration paths pinned to stay expanded
-try{const s=localStorage.getItem('ado.pinnedSprints');if(s){const p=JSON.parse(s);if(Array.isArray(p))pinnedSprints=new Set(p);}}catch(_){}
+let pinnedSprints=new Set();            // iteration paths pinned to stay expanded (hydrated from App.prefs in initialBoot, after load())
 function togglePinSprint(path){
   if(pinnedSprints.has(path))pinnedSprints.delete(path);else pinnedSprints.add(path);
-  try{localStorage.setItem('ado.pinnedSprints',JSON.stringify([...pinnedSprints]));}catch(_){}
+  App.prefs.set('pinnedSprints',JSON.stringify([...pinnedSprints]));
   App.board.renderBoard();
 }
 let treeEverLoaded=false;                // false only before the very first successful list load
@@ -232,11 +231,7 @@ let openSprintPath=null;
 /* ---------- Timeline (project-wide Gantt — one continuous axis, no sprint cut-off) ---------- */
 const TL_DAY=86400000;
 const TL_PX={day:26,week:9,month:3.3};            // px per day at each zoom
-let tlLabelWidth = 240;                           // sticky left label column width
-try {
-  const savedTlWidth = localStorage.getItem('ado.tlLabelWidth');
-  if (savedTlWidth) tlLabelWidth = parseInt(savedTlWidth, 10);
-} catch(e) {}
+let tlLabelWidth = 240;                           // sticky left label column width (hydrated from App.prefs in initialBoot, after load())
 // timeline render (tlDates/tlKey/tlMonths/renderTimeline) -> app/timeline.js (App.timeline.render)
 
 /* ---------- App.state.mode / refresh ---------- */
@@ -269,7 +264,7 @@ const VIEW_HELP={
   board:[['<ui-icon name="mouse-pointer"></ui-icon>','click','openItem'],['<ui-icon name="check-square"></ui-icon>','ctrlShiftClick','toggleRangeSelect'],['<ui-icon name="move"></ui-icon>','drag','moveToColumn'],['<ui-icon name="plus"></ui-icon>','dragToPlus','newSprintFromCards']],
   timeline:[['<ui-icon name="mouse-pointer"></ui-icon>','click','openItem'],['<ui-icon name="check-square"></ui-icon>','ctrlClick','toggleSelect'],['<ui-icon name="arrow-up-down"></ui-icon>','shiftClick','selectRange']],
 };
-function viewHelpCollapsed(){try{return localStorage.getItem('ado.viewhelp')==='0';}catch(e){return false;}}
+function viewHelpCollapsed(){try{return App.prefs.get('viewhelp')==='0';}catch(e){return false;}}
 function renderViewHelp(){
   const box=$('viewhelp'),rows=VIEW_HELP[App.state.mode];
   const show=!!rows&&!$('sprintview').classList.contains('show');   // hide over the sprint detail
@@ -292,7 +287,7 @@ function renderViewHelp(){
     `<div class="vhb">`+rows.map(r=>`<div class="vhrow"><span class="vi">${r[0]}</span><span class="vk">${htmlEsc(window.i18n.t('viewHelp.k.'+r[1]))}</span><span class="vd">${htmlEsc(window.i18n.t('viewHelp.d.'+r[2]))}</span></div>`).join('')+
     `<div class="vhnote">${htmlEsc(window.i18n.t('viewHelp.note'))}</div></div>`;
   // Clicking the "Controls" label collapses/expands; the gear is its own button.
-  $('vhh').querySelector('.vhctrl').onclick=()=>{try{localStorage.setItem('ado.viewhelp',viewHelpCollapsed()?'1':'0');}catch(e){}renderViewHelp();};
+  $('vhh').querySelector('.vhctrl').onclick=()=>{App.prefs.set('viewhelp',viewHelpCollapsed()?'1':'0');renderViewHelp();};
   const gb=$('vhbadge');if(gb)gb.onclick=e=>{e.stopPropagation();toggleBadgePanel();};
   // If the gear vanished (App.state.mode without fields, but somehow panel is open), hide the popover.
   if(!hasFields){
@@ -345,7 +340,7 @@ function renderBadgePanel(){
       mn.value=String(App.state.maxNodesLimit);
       mn.onchange=()=>{
         App.state.maxNodesLimit=parseInt(mn.value,10);
-        try{localStorage.setItem('ado.maxNodes',App.state.maxNodesLimit);}catch(e){}
+        App.prefs.set('maxNodes',App.state.maxNodesLimit);
         App.graph.renderGraph({relayout:true,fit:true});
       };
     }

@@ -207,40 +207,40 @@
     }
 
     /**
-     * Loads FilterIR from localStorage key 'ado.filterIR', with migration path from old keys.
+     * Loads FilterIR from App.prefs key 'filterIR', with migration path from old keys.
      */
     load() {
       let loadedIR = null;
       try {
-        if (typeof localStorage !== 'undefined') {
-          const sIR = localStorage.getItem('ado.filterIR');
+        if (typeof App !== 'undefined' && App.prefs) {
+          const sIR = App.prefs.get('filterIR');
           if (sIR) {
             loadedIR = JSON.parse(sIR);
           } else {
             // Migrate from advanced filter IR if present
-            const sAdv = localStorage.getItem('ado.filtersAdvanced');
+            const sAdv = App.prefs.get('filtersAdvanced');
             if (sAdv) {
               loadedIR = JSON.parse(sAdv);
               // Migrate followed if present in flat filters
-              const sFlat = localStorage.getItem('ado.filters');
+              const sFlat = App.prefs.get('filters');
               if (sFlat) {
                 const fstate = JSON.parse(sFlat);
                 if (fstate.followed && fstate.followed['yes'] === 'in') {
                   loadedIR.followed = { in: ['yes'], not: [] };
                 }
-                localStorage.removeItem('ado.filters');
+                App.prefs.remove('filters');
               }
-              localStorage.removeItem('ado.filtersAdvanced');
+              App.prefs.remove('filtersAdvanced');
             } else {
               // Migrate from flat filters if present
-              const sFlat = localStorage.getItem('ado.filters');
+              const sFlat = App.prefs.get('filters');
               if (sFlat) {
                 const fstate = JSON.parse(sFlat);
                 loadedIR = this._fstateToIR(fstate);
                 if (fstate.followed && fstate.followed['yes'] === 'in') {
                   loadedIR.followed = { in: ['yes'], not: [] };
                 }
-                localStorage.removeItem('ado.filters');
+                App.prefs.remove('filters');
               }
             }
           }
@@ -258,12 +258,12 @@
     }
 
     /**
-     * Saves the current active FilterIR state to localStorage key 'ado.filterIR'.
+     * Saves the current active FilterIR state to App.prefs key 'filterIR'.
      */
     save() {
       try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem('ado.filterIR', JSON.stringify(this.activeIR));
+        if (typeof App !== 'undefined' && App.prefs) {
+          App.prefs.set('filterIR', JSON.stringify(this.activeIR));
         }
       } catch (e) {
         console.error("FilterManager: failed to save filters:", e);

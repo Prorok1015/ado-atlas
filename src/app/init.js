@@ -159,7 +159,10 @@ async function initialBoot(postSetup){
       }
     }
     const mn=App.prefs.get('maxNodes');if(mn!==null){App.state.maxNodesLimit=parseInt(mn,10);}
-    const rd=App.prefs.get('rankDir');if(rd==='TB'||rd==='LR'){App.state.rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
+    const rd=App.prefs.get('rankDir');if(rd==='TB'||rd==='LR'){App.state.rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}
+    // Hydrated here (not at app.js parse time) because App.prefs.load() only resolves during boot, after this module is parsed.
+    const savedTlWidth=App.prefs.get('tlLabelWidth');if(savedTlWidth)tlLabelWidth=parseInt(savedTlWidth,10);
+    const ps=App.prefs.get('pinnedSprints');if(ps){const p=JSON.parse(ps);if(Array.isArray(p))pinnedSprints=new Set(p);}}catch(e){}
   App.types.buildLegend();App.filters.renderFilters();App.filters.updateFilterCount();App.setup.updatePatBadge();updateUndoButtons();updateCreateButtons();
   setInterval(App.setup.updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
   await loadIdentity();

@@ -61,10 +61,16 @@
     async setLang(l, opts = {}) {
       lang = l || FALLBACK;
       dict = (lang === FALLBACK) ? fallbackDict : await load(lang);
-      try { localStorage.setItem('ado.lang', lang); } catch (e) {}
-      // Mirror into chrome.storage.local so the service worker (background.js)
-      // can localize desktop notifications without the in-app runtime layer.
-      try { chrome.storage.local.set({ 'ado.lang': lang }); } catch (e) {}
+      // Persist via App.prefs: writes chrome.storage.local['ado.lang'] (read by the
+      // service worker for notification i18n) and mirrors localStorage['ado.lang']
+      // (read synchronously by i18n-init.js pre-boot). Fall back to direct writes if
+      // the prefs layer isn't present (e.g. i18n used standalone).
+      if (typeof App !== 'undefined' && App.prefs) {
+        App.prefs.set('lang', lang);
+      } else {
+        try { localStorage.setItem('ado.lang', lang); } catch (e) {}
+        try { chrome.storage.local.set({ 'ado.lang': lang }); } catch (e) {}
+      }
       document.documentElement.setAttribute('lang', lang);
       document.documentElement.setAttribute('dir', RTL_LANGS.has(lang) ? 'rtl' : 'ltr');
       if (!opts.silent) {
