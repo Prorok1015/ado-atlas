@@ -11,12 +11,12 @@
 **Почему первым.** Edge построен на Chromium и исполняет тот же MV3-бандл **без изменений кода**. При этом целевая аудитория ADO — это экосистема Microsoft: корпоративные MS-шопы часто используют Edge как браузер по умолчанию (нередко навязанный политикой), поэтому пересечение «пользователи Azure DevOps ∩ Edge» велико. Это самый дешёвый канал с самым прямым попаданием в ЦА.
 
 **Что нужно (по коду — почти ничего):**
-* Публикация того же собранного пакета в **Microsoft Edge Add-ons** через **Partner Center** (регистрация аккаунта разработчика). Тот же `build.*` артефакт, что и для Chrome Web Store; листинг переиспользует ассеты из `STORE_LISTING.md` / `PRIVACY.md`.
+* Публикация того же собранного пакета в **Microsoft Edge Add-ons** через **Partner Center** (регистрация аккаунта разработчика). Тот же `build.*` артефакт, что и для Chrome Web Store; листинг переиспользует ассеты из `content/STORE_LISTING.md` / `content/PRIVACY.md`.
 * Один codebase и один манифест MV3 на оба стора. `chrome.*` API в Edge поддерживаются (Edge их предоставляет под тем же неймспейсом) — правки не требуются.
 
 **Единственная реальная задача разработки — OAuth redirect URI.**
 * `oauthRedirectUri()` = `chrome.identity.getRedirectURL()` → `https://<extension-id>.chromiumapp.org/`. **Edge выдаёт расширению СВОЙ `extension-id`**, отличный от Chrome, поэтому его redirect URI будет другим.
-* Необходимо **добавить Edge-вариант redirect URI в регистрацию Entra-приложения** (и отразить в `specs/OAUTH-SETUP.md` / инструкции пользователя для BYO-Client-ID). Иначе OAuth-вход сломается именно на Edge; путь через PAT при этом не затрагивается.
+* Необходимо **добавить Edge-вариант redirect URI в регистрацию Entra-приложения** (и отразить в `content/OAUTH-SETUP.md` / инструкции пользователя для BYO-Client-ID). Иначе OAuth-вход сломается именно на Edge; путь через PAT при этом не затрагивается.
 
 **Процесс / поддержка:** обновления публикуются в оба стора отдельно (позже автоматизируется в CI одной сборкой → два submission). Модерация Edge аналогична Chrome Web Store.
 
@@ -123,7 +123,7 @@ Tauri предпочтительнее Electron по следующим прич
 
 ### Фаза 0: Microsoft Edge Add-ons (~1 день, без рефакторинга)
 * Зарегистрировать аккаунт в Partner Center, подготовить листинг (переиспользовать ассеты Chrome Web Store).
-* Добавить Edge redirect URI (`https://<edge-ext-id>.chromiumapp.org/`) в регистрацию Entra-приложения и в `OAUTH-SETUP.md`.
+* Добавить Edge redirect URI (`https://<edge-ext-id>.chromiumapp.org/`) в регистрацию Entra-приложения и в `content/OAUTH-SETUP.md`.
 * Отправить тот же MV3-бандл на модерацию. Один codebase на оба стора.
 
 ### Фаза 1: Рефакторинг Data Layer (1 неделя)

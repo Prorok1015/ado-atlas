@@ -265,7 +265,7 @@ green, smoke the Pro path with `__dev_force_pro` and the Free path without it, c
   pure logic unit-tested. `npm run test` all-green; `git status` clean; per-feature commits.
 - `pro-features.js` `CATALOG` statuses updated to reflect what shipped.
 - Update memory (`monetization`/`premium` note if present, else add one) with what shipped +
-  what remains (backend-blocked items); add a short note to `specs/RESUME_REFACTOR_PROMPT.md` if
+  what remains (backend-blocked items); add a short note to `specs/ARCHITECTURE.md` if
   architecture changed (new `App.analytics`/`App.condFormat`/`App.templates` modules).
 
 ## Hand-off for the user's single final smoke

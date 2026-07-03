@@ -9,8 +9,8 @@ project, and a Personal Access Token on first run.
 > **Independent project — not affiliated with or endorsed by Microsoft.**
 > "Azure DevOps" is a trademark of Microsoft Corporation. Your token and data
 > stay on your device; the extension only ever contacts Azure DevOps. See
-> [PRIVACY.md](PRIVACY.md). Publishing to the Chrome Web Store: see
-> [PUBLISHING.md](PUBLISHING.md).
+> [PRIVACY.md](content/PRIVACY.md). Publishing to the Chrome Web Store: see
+> [PUBLISHING.md](content/PUBLISHING.md).
 
 ## Install (one-time, per machine)
 
@@ -27,7 +27,7 @@ authenticate (pick the tab at the top):
 
 - **Microsoft sign-in** *(Entra ID OAuth)* — one click, no token to copy, and it
   refreshes automatically. Requires a one-time Entra app registration — see
-  [OAUTH-SETUP.md](OAUTH-SETUP.md).
+  [OAUTH-SETUP.md](content/OAUTH-SETUP.md).
 - **Token** *(PAT)* — paste a Personal Access Token; zero external setup.
 
 Either way you then pick an **Organization** and **Project**.
@@ -211,7 +211,7 @@ Double-click `build.bat` on Windows, or run `npm run build` (both call
 `build.ps1`). Result: `dist\ado-atlas-extension.zip` — a Web Store-ready package
 with `manifest.json` at the root, spec-correct forward-slash paths, and only the
 runtime files (no tests/docs). For publishing to the Chrome Web Store, follow
-[PUBLISHING.md](PUBLISHING.md).
+[PUBLISHING.md](content/PUBLISHING.md).
 
 ## Tests
 

@@ -1,7 +1,8 @@
-# ADO Atlas modularization refactor — COMPLETE
+# ADO Atlas — architecture & working notes
 
-Branch `feature/premium-subscription`. This refactor (planned in `REFACTORING_PLAN.md`)
-is **done**. This doc records the final architecture and how to keep working within it.
+Branch `feature/premium-subscription`. The modularization refactor is **done**; this doc is
+the living reference for the codebase architecture, conventions, and how to keep working
+within it (updated as `App.prefs`, the Provider seam, etc. land).
 
 ## Result
 
@@ -96,14 +97,15 @@ attachments → mention → side-panel → editor → layout → sprint-edit →
 **boot.js (last)**`. `src/core/api/*` load in dependency order before the app scripts;
 `background.js importScripts` mirrors that api order for the service worker.
 
-## Gate (run before every commit — Windows node only)
+## Gate (run before every commit)
 
 ```
-NODE="/mnt/c/Program Files/nodejs/node.exe"
-"$NODE" tools/check-globals.js   # → "Global-scope check OK"
-"$NODE" tests/lib.test.js        # → 78 passed
-"$NODE" tests/ai.test.js         # → 19 passed
+npm run test   # check-globals + check-i18n-keys + check-prefs + lib.test (79) + ai.test (19)
 ```
+In this WSL repo `npm` resolves to the Windows npm on the mount. Fallback (run each with the
+Windows node directly): `NODE="/mnt/c/Program Files/nodejs/node.exe"` then
+`"$NODE" tools/check-globals.js` (→ "Global-scope check OK"), `tools/check-i18n-keys.js`,
+`tools/check-prefs.js`, `tests/lib.test.js` (→ 79 passed), `tests/ai.test.js` (→ 19 passed).
 Every new `src/**/*.js` must be added to `tools/check-globals.js` AND `index.html`
 (and `background.js` if the service worker needs it). `build.ps1` copies `src/`
 recursively, so new subfolders ship automatically.
@@ -130,3 +132,7 @@ recursively, so new subfolders ship automatically.
 - Root layout: `manifest.json` must stay at root; `index.html` + `background.js` are
   conventionally kept at root beside it (moving them means rewriting all relative
   `src/` paths + importScripts + the getURL call — Chrome-only to verify).
+
+## Composite/Global IDs Migration (BACKEND_PROVIDER_SPEC §13.1) — DONE
+- Migration to opaque composite/global ID strings (e.g. `"ado:123"`) is fully complete across the entire API and UI boundaries.
+- Cache version bumped to `snap:v2:` to invalidate stale numeric snapshot states.

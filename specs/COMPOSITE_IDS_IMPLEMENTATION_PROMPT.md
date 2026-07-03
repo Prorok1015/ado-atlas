@@ -138,4 +138,4 @@ create with a numeric parent; open via notification (?root=123). Snapshot: reloa
 ## Definition of done
 All A–E applied; `npm run test` green; grep audit clean; Chrome smoke passes; one coordinated
 commit. Then the app is federation-ready (ids opaque) and AggregateProvider (§13.2, Provider
-phase 5) can slot in. Update memory `backend-provider-plan` (composite ids done) + `RESUME_REFACTOR_PROMPT`.
+phase 5) can slot in. Update memory `backend-provider-plan` (composite ids done) + `specs/ARCHITECTURE.md`.
