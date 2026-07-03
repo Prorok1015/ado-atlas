@@ -8,4 +8,8 @@ Kept for reference/history only — they are not active TODOs and may lag the co
 - `FILTER_CONSTRUCTOR_SPEC.md` — visual filter builder + FilterIR (shipped; `src/components/filter-builder-modal.js`, `src/core/filter-compiler.js`).
 - `LOCALIZATION_SPEC.md` — i18n (EN/RU/ES/DE) (shipped; `src/components/i18n.js`, `src/locales/*`).
 
+Executed implementation prompts (kept for history; the feature shipped):
+
+- `PREFS_IMPLEMENTATION_PROMPT.md` — the `App.prefs` settings layer prompt (shipped; `src/app/prefs.js`). Its design doc, `SETTINGS_SYNC_SPEC.md`, stays ACTIVE one level up because the cloud-sync phase (§9) is still pending.
+
 Active specs live one level up in `specs/`.
