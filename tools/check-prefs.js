@@ -67,5 +67,14 @@ assert.strictEqual(merged.values.b, "B", "reconcile: newer remote b (20>10) adop
 assert.strictEqual(merged.values.c, undefined, "reconcile: remote c with ts 0 rejected (0 not > 0)");
 assert.strictEqual(merged.meta.b, 20, "reconcile: adopted key takes remote ts");
 
+// ---- 7. dynamic-key families (side-panel layout) ----
+prefs.setDynamic("ado.layout.Bug", JSON.stringify({ version: "1.0", layout: [] }));
+assert.ok(prefs.getDynamic("ado.layout.Bug"), "dynamic key round-trips through the cache");
+assert.strictEqual(prefs.getDynamic("ado.layout"), null, "unset dynamic key returns null");
+const exp = prefs.export();
+assert.ok(!("ado.layout.Bug" in exp.values), "dynamic keys are NOT in export() (static registry only)");
+prefs.removeDynamic("ado.layout.Bug");
+assert.strictEqual(prefs.getDynamic("ado.layout.Bug"), null, "removed dynamic key is gone");
+
 console.log("prefs export/import check OK (" + Object.keys(blob.values).length +
-            " sync keys exported; device keys + secrets firewalled; round-trip stable; per-key LWW verified)");
+            " sync keys exported; device keys + secrets firewalled; round-trip stable; per-key LWW + dynamic keys verified)");

@@ -113,25 +113,45 @@
   //    `ado.types:<proj>` stay direct-localStorage caches (ephemeral, dynamic key,
   //    never synced).
   //  * `ado.collapsed.<groupId>` — dynamic-key, device-scoped collapse state; device
-  //    prefs never roam, so it stays direct localStorage until a Phase 2 dynamic-key
-  //    facility (if ever needed).
-  //  * Side-panel layout `ado.layout[.<wtype>]` (+ legacy `ado.sideOrder`/`ado.sideHidden`
-  //    [.<wtype>]) — a sync-scoped layout, but a DYNAMIC per-type key family read
-  //    synchronously in the deep side-panel path. Deferred to the dynamic-key facility
-  //    so the static-registry model (and its export/import blob) stays clean.
+  //    prefs never roam, so it stays direct localStorage (a device-scoped dynamic family
+  //    would just add a DYNAMIC entry with area:'local' if ever wanted).
+
+  // DYNAMIC-KEY FAMILIES — full keys that share a prefix (e.g. the side-panel layout is
+  // stored PER work-item-type: ado.layout, ado.layout.Bug, ...). They don't fit the static
+  // REGISTRY (unbounded key set) but still need to roam. Handled by getDynamic/setDynamic/
+  // removeDynamic + a small index (DYN_INDEX_KEY) so load() can hydrate them without a
+  // full-store scan. Roaming rides chrome.storage.sync's native per-key merge (no ts-meta;
+  // dynamic keys are NOT part of export()/import() — that stays static-registry only).
+  const DYNAMIC = [
+    { prefix: 'ado.layout', scope: 'sync', area: 'sync', type: 'json' },   // side-panel layout schema, per work-item-type
+  ];
 
   const MIGRATED_FLAG = 'ado.__prefsMigrated';
   const META_KEY = 'ado.__prefsMeta';   // { logicalKey: ts } — per-key last-write time (roams in the sync area)
+  const DYN_INDEX_KEY = 'ado.__dynKeys'; // JSON array of live dynamic full keys (roams in the sync area)
   const SCHEMA_VERSION = 1;
   const SYNC_FLUSH_MS = 800;            // debounce window for pushing sync-area writes (chrome.storage.sync rate limits)
 
   const _cache = {};        // logical key -> string value (only keys that are set)
   const _meta = {};         // logical key -> ts (sync-scoped keys)
   const _dirty = new Set(); // sync-scoped keys changed locally since the last flush
+  const _dynCache = {};     // dynamic full key -> string value
+  const _dynDirty = new Set(); // dynamic full keys changed locally since the last flush
+  const _dynIndex = new Set(); // all dynamic full keys currently set (persisted as DYN_INDEX_KEY)
   const _listeners = [];
   let _loadPromise = null;
   let _flushTimer = null;
   let _listenerWired = false;
+
+  // Match a full storage key to its dynamic family (exact prefix or prefix + '.').
+  function _dynClassify(fullKey) {
+    for (const d of DYNAMIC) { if (fullKey === d.prefix || fullKey.startsWith(d.prefix + '.')) return d; }
+    return null;
+  }
+  function _parseJSONArray(raw) {
+    if (!raw) return null;
+    try { const a = JSON.parse(raw); return Array.isArray(a) ? a : null; } catch (e) { return null; }
+  }
 
   function storageKeyFor(key) { return REGISTRY[key].storageKey || ('ado.' + key); }
 
@@ -223,6 +243,16 @@
     LocalArea.remove(sk);
     if (REGISTRY[key].area === 'sync' && _syncIsRemote()) { _dirty.add(key); _scheduleFlush(); }
   }
+  function _persistDyn(fk) {
+    LocalArea.set({ [fk]: _dynCache[fk] });
+    const c = _dynClassify(fk);
+    if (c && c.area === 'sync' && _syncIsRemote()) { _dynDirty.add(fk); _scheduleFlush(); }
+  }
+  function _persistDynRemove(fk) {
+    LocalArea.remove(fk);
+    const c = _dynClassify(fk);
+    if (c && c.area === 'sync' && _syncIsRemote()) { _dynDirty.add(fk); _scheduleFlush(); }
+  }
 
   function _scheduleFlush() {
     if (_flushTimer) return;
@@ -232,22 +262,33 @@
   function _flushSync() {
     _flushTimer = null;
     const adapter = _syncAdapter();
-    if (adapter === LocalArea) { _dirty.clear(); return; }   // nothing to roam
-    const keys = [..._dirty]; _dirty.clear();
+    if (adapter === LocalArea) { _dirty.clear(); _dynDirty.clear(); return; }   // nothing to roam
     const removeKeys = [];
     // Write each key on its own set() call: chrome.storage.sync enforces an 8KB/item
     // quota, so an oversized value (e.g. a big filterIR) fails ALONE instead of blocking
     // the whole batch. Its always-present local copy keeps it working; a Pro CloudAdapter
     // (no cap) removes the limit. Writes are debounced + pref changes are infrequent, so
     // this stays well under chrome.storage.sync's write-op rate limit.
-    for (const key of keys) {
+    for (const key of _dirty) {
       const r = REGISTRY[key];
       if (!r || r.area !== 'sync') continue;
       const sk = storageKeyFor(key);
       if (key in _cache) adapter.set({ [sk]: _cache[key] }); else removeKeys.push(sk);
     }
+    _dirty.clear();
+    // Dynamic-key families (side-panel layout, ...) — same per-key discipline; also push
+    // the key index so other devices know which dynamic keys exist.
+    let indexDirty = false;
+    for (const fk of _dynDirty) {
+      const c = _dynClassify(fk);
+      if (!c || c.area !== 'sync') continue;
+      if (fk in _dynCache) adapter.set({ [fk]: _dynCache[fk] }); else removeKeys.push(fk);
+      indexDirty = true;
+    }
+    _dynDirty.clear();
     if (removeKeys.length) adapter.remove(removeKeys);
     adapter.set({ [META_KEY]: JSON.stringify(_syncMeta()) });
+    if (indexDirty) adapter.set({ [DYN_INDEX_KEY]: JSON.stringify([..._dynIndex]) });
   }
 
   // Apply a value that came FROM a remote source (import / roam) WITHOUT bumping ts to now:
@@ -291,6 +332,26 @@
     if (_dirty.size) _scheduleFlush();
   }
 
+  // Hydrate dynamic-key families from the index (sync value wins, local is the fallback).
+  // A second round-trip keyed by the indexed full keys — avoids scanning the whole store.
+  async function _loadDynamic(adapter, localIndexRaw, syncIndexRaw) {
+    const wanted = new Set();
+    for (const raw of [localIndexRaw, syncIndexRaw]) {
+      const arr = _parseJSONArray(raw);
+      if (arr) arr.forEach(k => { if (_dynClassify(k)) wanted.add(k); });
+    }
+    if (!wanted.size) return;
+    const dk = [...wanted];
+    const [dynLocal, dynSync] = await Promise.all([
+      LocalArea.get(dk),
+      (adapter !== LocalArea) ? adapter.get(dk) : Promise.resolve({}),
+    ]);
+    for (const fk of dk) {
+      if (fk in dynSync) { _dynCache[fk] = dynSync[fk]; _dynIndex.add(fk); }
+      else if (fk in dynLocal) { _dynCache[fk] = dynLocal[fk]; _dynIndex.add(fk); }
+    }
+  }
+
   // Live pull: react to sync-area changes from other devices (chrome already resolved the
   // per-key merge). Updates the cache + local mirror + mirrorLS + fires onChange.
   function _wireOnChanged() {
@@ -304,6 +365,21 @@
         if (sk === META_KEY) {
           const m = _parseMeta(changes[sk].newValue);
           if (m) for (const k in m) { if ((m[k] || 0) > (_meta[k] || 0)) _meta[k] = m[k]; }
+          continue;
+        }
+        if (sk === DYN_INDEX_KEY) {
+          const arr = _parseJSONArray(changes[sk].newValue);
+          if (arr) arr.forEach(k => { if (_dynClassify(k)) _dynIndex.add(k); });
+          continue;
+        }
+        const dc = _dynClassify(sk);
+        if (dc) {                                        // dynamic-family key roamed
+          const dv = changes[sk].newValue;
+          if (dv === undefined) {
+            if (sk in _dynCache) { delete _dynCache[sk]; _dynIndex.delete(sk); LocalArea.remove(sk); _emit(sk, null); }
+          } else if (_dynCache[sk] !== dv) {
+            _dynCache[sk] = dv; _dynIndex.add(sk); LocalArea.set({ [sk]: dv }); _emit(sk, dv);
+          }
           continue;
         }
         const key = _skToKey[sk];
@@ -347,8 +423,8 @@
         }
         const adapter = _syncAdapter();
         const [localStored, syncStored] = await Promise.all([
-          LocalArea.get([...localKeys, ...syncKeys, META_KEY]),   // sync keys' local copy is the fallback
-          (adapter !== LocalArea) ? adapter.get([...syncKeys, META_KEY]) : Promise.resolve({}),
+          LocalArea.get([...localKeys, ...syncKeys, META_KEY, DYN_INDEX_KEY]),   // sync keys' local copy is the fallback
+          (adapter !== LocalArea) ? adapter.get([...syncKeys, META_KEY, DYN_INDEX_KEY]) : Promise.resolve({}),
         ]);
         for (const key of Object.keys(REGISTRY)) {
           const sk = storageKeyFor(key);
@@ -362,6 +438,7 @@
         Object.assign(_meta, _parseMeta(localStored[META_KEY]) || {}, _parseMeta(syncStored[META_KEY]) || {});
         if (!localStored[MIGRATED_FLAG]) _migrateLegacy();
         if (adapter !== LocalArea) _promoteToSync(syncStored);
+        await _loadDynamic(adapter, localStored[DYN_INDEX_KEY], syncStored[DYN_INDEX_KEY]);
         _wireOnChanged();
       })();
       return _loadPromise;
@@ -395,6 +472,28 @@
     },
 
     getAll() { return Object.assign({}, _cache); },
+
+    // Dynamic-key families (full storage key, e.g. 'ado.layout.Bug'). SYNC read from cache;
+    // roams like a static key of the family's area. Not part of export()/import().
+    getDynamic(fullKey) {
+      if (!_dynClassify(fullKey)) { console.warn('App.prefs.getDynamic: unregistered dynamic key', fullKey); return null; }
+      return (fullKey in _dynCache) ? _dynCache[fullKey] : null;
+    },
+    setDynamic(fullKey, val) {
+      if (!_dynClassify(fullKey)) { console.warn('App.prefs.setDynamic: unregistered dynamic key', fullKey); return; }
+      const s = String(val);
+      _dynCache[fullKey] = s;
+      _dynIndex.add(fullKey);
+      _persistDyn(fullKey);
+      _emit(fullKey, s);
+    },
+    removeDynamic(fullKey) {
+      if (!_dynClassify(fullKey)) { console.warn('App.prefs.removeDynamic: unregistered dynamic key', fullKey); return; }
+      delete _dynCache[fullKey];
+      _dynIndex.delete(fullKey);
+      _persistDynRemove(fullKey);
+      _emit(fullKey, null);
+    },
 
     onChange(cb) {
       if (typeof cb === 'function') _listeners.push(cb);

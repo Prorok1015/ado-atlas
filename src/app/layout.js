@@ -161,7 +161,13 @@ function loadSideLayout(wtype, offFormFields = [], availableCustomFields = []) {
   const oldHiddenKey = 'ado.sideHidden' + suffix;
   
   try {
-    const saved = localStorage.getItem(layoutKey);
+    let saved = App.prefs.getDynamic(layoutKey);
+    if (!saved) {
+      // Phase-1 installs kept the schema in localStorage (never migrated into App.prefs);
+      // adopt it once so it starts roaming via the dynamic-key facility.
+      const legacy = localStorage.getItem(layoutKey);
+      if (legacy) { App.prefs.setDynamic(layoutKey, legacy); saved = legacy; }
+    }
     if (saved) {
       currentSideLayout = JSON.parse(saved);
       ensureLayoutFields(wtype, offFormFields, availableCustomFields);
@@ -228,12 +234,7 @@ function loadSideLayout(wtype, offFormFields = [], availableCustomFields = []) {
 function saveSideLayout(wtype) {
   if (!currentSideLayout) return;
   const suffix = wtype ? '.' + wtype : '';
-  const layoutKey = 'ado.layout' + suffix;
-  try {
-    localStorage.setItem(layoutKey, JSON.stringify(currentSideLayout));
-  } catch(e) {
-    console.error("Failed to save side layout schema", e);
-  }
+  App.prefs.setDynamic('ado.layout' + suffix, JSON.stringify(currentSideLayout));   // roams via the dynamic-key facility
 }
 
 function ensureLayoutFields(wtype, offFormFields, availableCustomFields = []) {
