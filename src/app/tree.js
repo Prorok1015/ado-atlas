@@ -24,9 +24,9 @@
     cb.title='select for bulk edit  (or Ctrl-click the row; Shift-click for a range)';
     cb.onclick=e=>{e.stopPropagation();bulkSet([n.id],cb.checked);bulkAnchor=n.id;bulkAnchorOn=cb.checked;};
     const open=App.state.store.expanded.has(n.id);
-    // Show the expand caret only when the item can have children: known in-set kids,
-    // a positive child count, or an as-yet-unknown count (undefined → keep the caret).
-    const hasKids=(App.state.store.kids[n.id]||[]).length>0||n.childCount===undefined||n.childCount>0;
+    // Show the expand caret only when the item can have children: known in-set kids
+    // or a positive child count.
+    const hasKids=(App.state.store.kids[n.id]||[]).length>0||n.childCount>0;
     const tog=document.createElement('span');tog.className='tog';
     if(hasKids){tog.innerHTML=open?'<ui-icon name="chevron-down"></ui-icon>':'<ui-icon name="chevron-right"></ui-icon>';tog.onclick=e=>{e.stopPropagation();toggle(li,n,tog);};}
     else{tog.classList.add('leaf');}     // childless → blank spacer keeps labels aligned
