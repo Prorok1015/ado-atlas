@@ -82,7 +82,7 @@ function closeMore() {
 
 async function initialBoot(postSetup){
   if(App.prefs){try{await App.prefs.load();}catch(e){}}   // memoised no-op if boot.js already hydrated; covers the setup.js -> initialBoot re-entry
-  try{App.settings.applyTheme(localStorage.getItem('ado.theme')||'dark');}catch(e){}
+  try{App.settings.applyTheme(App.prefs.get('theme')||'dark');}catch(e){}
   App.setup.updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
     iterCache=null;App.state.depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canEditSprint=true;canCreateItem=true;newSprints.clear();
@@ -119,12 +119,10 @@ async function initialBoot(postSetup){
       App.filters.scheduleApply();
     });
     updateFollowedBtnVisual();
-    chrome.storage.local.get(["followNotify", "mentionNotify", "notifyAge"]).then(({followNotify, mentionNotify, notifyAge})=>{
-      App.settings.applyFollowNotify(followNotify||'on');
-      App.settings.applyMentionNotify(mentionNotify||'on');
-      const ageSel = $('f_notify_age');
-      if (ageSel) ageSel.value = notifyAge || '172800';
-    });
+    App.settings.applyFollowNotify(App.prefs.get('followNotify')||'on');
+    App.settings.applyMentionNotify(App.prefs.get('mentionNotify')||'on');
+    {const ageSel = $('f_notify_age');
+     if (ageSel) ageSel.value = App.prefs.get('notifyAge') || '172800';}
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       setTimeout(() => {
         try {
@@ -142,17 +140,17 @@ async function initialBoot(postSetup){
     const ageSelect = $('f_notify_age');
     if (ageSelect) {
       ageSelect.onchange = () => {
-        chrome.storage.local.set({ notifyAge: ageSelect.value });
+        App.prefs.set('notifyAge', ageSelect.value);
       };
     }
-    const ss=localStorage.getItem('ado.sort');if(ss!==null)$('f_sort').value=ss;
-    if(localStorage.getItem('ado.showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
-    const bg=localStorage.getItem('ado.boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
-    const tz2=localStorage.getItem('ado.tlZoom');if(tz2&&TL_PX[tz2]){App.state.tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.z===tz2));}
-    const tg=localStorage.getItem('ado.tlGroup');if(tg){App.state.tlGroup=tg;$('tl_group').value=tg;}
-    const sg=localStorage.getItem('ado.sprintGroup');if(sg)sprintGroup=sg;
-    const au=localStorage.getItem('ado.auto');if(au!==null){$('f_auto').value=au;App.settings.setAutoRefresh(au);}
-    const sc=localStorage.getItem('ado.uiScale');
+    const ss=App.prefs.get('sort');if(ss!==null)$('f_sort').value=ss;
+    if(App.prefs.get('showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
+    const bg=App.prefs.get('boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
+    const tz2=App.prefs.get('tlZoom');if(tz2&&TL_PX[tz2]){App.state.tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.z===tz2));}
+    const tg=App.prefs.get('tlGroup');if(tg){App.state.tlGroup=tg;$('tl_group').value=tg;}
+    const sg=App.prefs.get('sprintGroup');if(sg)sprintGroup=sg;
+    const au=App.prefs.get('auto');if(au!==null){$('f_auto').value=au;App.settings.setAutoRefresh(au);}
+    const sc=App.prefs.get('uiScale');
     if(sc!==null){
       const num=parseFloat(sc);
       if(!isNaN(num)){
@@ -160,15 +158,15 @@ async function initialBoot(postSetup){
         updateUiScale(num);
       }
     }
-    const mn=localStorage.getItem('ado.maxNodes');if(mn!==null){App.state.maxNodesLimit=parseInt(mn,10);}
-    const rd=localStorage.getItem('ado.rankDir');if(rd==='TB'||rd==='LR'){App.state.rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
+    const mn=App.prefs.get('maxNodes');if(mn!==null){App.state.maxNodesLimit=parseInt(mn,10);}
+    const rd=App.prefs.get('rankDir');if(rd==='TB'||rd==='LR'){App.state.rankDir=rd;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===rd));}}catch(e){}
   App.types.buildLegend();App.filters.renderFilters();App.filters.updateFilterCount();App.setup.updatePatBadge();updateUndoButtons();updateCreateButtons();
   setInterval(App.setup.updatePatBadge, 1800000); // refresh the PAT countdown badge every 30 minutes independently of the tasks auto-refresh setting
   await loadIdentity();
   try{
-    const savedWidth=localStorage.getItem('ado.sideWidth');
+    const savedWidth=App.prefs.get('sideWidth');
     if(savedWidth)$('side').style.width=savedWidth;
-    const savedMode=localStorage.getItem('ado.mode');
+    const savedMode=App.prefs.get('mode');
     if(savedMode&&savedMode!=='tree')setMode(savedMode);
   }catch(e){}
   renderViewHelp();                          // show the controls legend for the initial view
@@ -277,27 +275,27 @@ function wireControls(){
   // switching view is render-only (no API): graph draws from the App.state.store, tree DOM persists
   $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>App.settings.switchMode(b.dataset.m));
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.graph.depHandleHide();App.graph.renderGraph();});
-  $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.rankDir',App.state.rankDir);}catch(e){}App.graph.renderGraph({relayout:true,fit:true});});
-  $('f_sort').onchange=()=>{try{localStorage.setItem('ado.sort',$('f_sort').value);}catch(e){}refresh();};
+  $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.prefs.set('rankDir',App.state.rankDir);App.graph.renderGraph({relayout:true,fit:true});});
+  $('f_sort').onchange=()=>{App.prefs.set('sort',$('f_sort').value);refresh();};
   for(let o=-12;o<=14;o++)$('f_tz').appendChild(new Option('UTC'+(o>=0?'+':'')+o,o));
-  {const s=localStorage.getItem('ado.tz');if(s!==null&&s!=='')tzOffset=parseInt(s);}
+  {const s=App.prefs.get('tz');if(s!==null&&s!=='')tzOffset=parseInt(s);}
   $('f_tz').value=tzOffset;
-  $('f_tz').onchange=()=>{tzOffset=parseInt($('f_tz').value);try{localStorage.setItem('ado.tz',tzOffset);}catch(e){}if(App.state.mode==='board')App.board.renderBoard();if(App.state.cur!=null)loadTimeline(App.state.cur);};
+  $('f_tz').onchange=()=>{tzOffset=parseInt($('f_tz').value);App.prefs.set('tz',tzOffset);if(App.state.mode==='board')App.board.renderBoard();if(App.state.cur!=null)loadTimeline(App.state.cur);};
   // working-hours window for the active-time calc (defaults 9–17)
-  {let ws=9,we=17;const wh=localStorage.getItem('ado.workHours');
+  {let ws=9,we=17;const wh=App.prefs.get('workHours');
     if(wh&&/^\d+-\d+$/.test(wh)){const m=wh.split('-');ws=+m[0];we=+m[1];}
     const r=api.setWorkHours(ws,we);$('f_wh_start').value=r.start;$('f_wh_end').value=r.end;}
   const applyWH=()=>{const r=api.setWorkHours($('f_wh_start').value,$('f_wh_end').value);
     $('f_wh_start').value=r.start;$('f_wh_end').value=r.end;
-    try{localStorage.setItem('ado.workHours',r.start+'-'+r.end);}catch(e){}
+    App.prefs.set('workHours',r.start+'-'+r.end);
     if(App.state.mode==='board')App.board.renderBoard();if(App.state.cur!=null)loadTimeline(App.state.cur);};
   $('f_wh_start').onchange=applyWH;$('f_wh_end').onchange=applyWH;
-  $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);try{localStorage.setItem('ado.showEmpty',on?'1':'0');}catch(e){}
+  $('empty_btn').onclick=()=>{const on=$('board').classList.toggle('showempty');$('empty_btn').classList.toggle('on',on);App.prefs.set('showEmpty',on?'1':'0');
     if(App.state.mode==='board'&&boardGroup!=='sprint')App.board.renderBoard();};   // state/assignee add/remove empty columns in JS (sprints are CSS-only)
-  $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.boardGroup',boardGroup);}catch(e){}App.board.renderBoard();});
+  $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.prefs.set('boardGroup',boardGroup);App.board.renderBoard();});
   // timeline: zoom segment, group select, row click → editor
-  $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));try{localStorage.setItem('ado.tlZoom',App.state.tlZoom);}catch(e){}App.timeline.render();});
-  $('tl_group').onchange=()=>{App.state.tlGroup=$('tl_group').value;try{localStorage.setItem('ado.tlGroup',App.state.tlGroup);}catch(e){}App.timeline.render();};
+  $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.prefs.set('tlZoom',App.state.tlZoom);App.timeline.render();});
+  $('tl_group').onchange=()=>{App.state.tlGroup=$('tl_group').value;App.prefs.set('tlGroup',App.state.tlGroup);App.timeline.render();};
   $('timeline').addEventListener('click',e=>{const r=e.target.closest&&e.target.closest('.tlrow[data-id]');if(!r)return;
     const id=+r.dataset.id;
     if(e.ctrlKey||e.metaKey){e.preventDefault();bulkToggle(id);return;}        // Ctrl/Cmd: toggle in selection
@@ -337,9 +335,7 @@ function wireControls(){
         drag = false;
         if (activeResizer) activeResizer.classList.remove('active');
         document.body.style.cursor = '';
-        try {
-          localStorage.setItem('ado.tlLabelWidth', tlLabelWidth);
-        } catch(e) {}
+        App.prefs.set('tlLabelWidth', tlLabelWidth);
         App.timeline.render();
       }
     });
@@ -447,11 +443,11 @@ function wireControls(){
     const p=$('badgepanel');if(p.style.display==='none')return;
     const gb=$('vhbadge');if(!p.contains(e.target)&&e.target!==gb&&(!gb||!gb.contains(e.target)))p.style.display='none';});
   $('theme').onclick=App.settings.cycleTheme;
-  try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((localStorage.getItem('ado.theme')||'dark')==='auto')App.settings.applyTheme('auto');});}catch(e){}
+  try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((App.prefs.get('theme')||'dark')==='auto')App.settings.applyTheme('auto');});}catch(e){}
   // Only wire real export buttons (data-x). Pro placeholders (data-pro-feature)
   // in the same segment are handled by the delegated premium handler.
   $('export').querySelectorAll('button[data-x]').forEach(b=>b.onclick=()=>App.export.exportView(b.dataset.x));
-  $('f_auto').onchange=()=>{const s=$('f_auto').value;try{localStorage.setItem('ado.auto',s);}catch(e){}App.settings.setAutoRefresh(s);};
+  $('f_auto').onchange=()=>{const s=$('f_auto').value;App.prefs.set('auto',s);App.settings.setAutoRefresh(s);};
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
   if(window.i18n&&$('f_lang')){$('f_lang').value=window.i18n.getLang();$('f_lang').onchange=()=>{window.i18n.setLang($('f_lang').value);};}
   $('f_follow_notify').onclick=App.settings.cycleFollowNotify;
@@ -560,7 +556,7 @@ function wireEditorAndKeys(){
     rz.addEventListener('mousedown',e=>{drag=true;rz.classList.add('active');document.body.style.cursor='col-resize';e.preventDefault();});
     document.addEventListener('mousemove',e=>{if(!drag)return;
       const w=Math.min(Math.max(window.innerWidth-e.clientX,300),Math.round(window.innerWidth*0.7));side.style.width=w+'px';});
-    document.addEventListener('mouseup',()=>{if(drag){drag=false;rz.classList.remove('active');document.body.style.cursor='';if(App.state.cy)App.state.cy.resize();try{localStorage.setItem('ado.sideWidth',side.style.width);}catch(e){}}});
+    document.addEventListener('mouseup',()=>{if(drag){drag=false;rz.classList.remove('active');document.body.style.cursor='';if(App.state.cy)App.state.cy.resize();App.prefs.set('sideWidth',side.style.width);}});
   })();
   $('s_save').onclick=save;
   $('s_comment').onclick=()=>{App.activity.toggleActivityExpand(true);toggleComment();};

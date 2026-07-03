@@ -29,9 +29,9 @@
     if(App.state.cy)App.state.cy.style().update();                        // re-evaluate theme-aware graph styles (parent label colour)
   }
   function cycleTheme(){
-    let m=localStorage.getItem('ado.theme')||'dark';
+    let m=App.prefs.get('theme')||'dark';
     m=m==='dark'?'light':(m==='light'?'auto':'dark');
-    try{localStorage.setItem('ado.theme',m);}catch(e){}
+    App.prefs.set('theme',m);
     applyTheme(m);
   }
   function applyFollowNotify(status) {
@@ -40,10 +40,9 @@
     btn.title = 'notifications: ' + status + ' — click to change';
     btn.innerHTML = (status === 'on' ? '<ui-icon name="bell"></ui-icon> ' : '<ui-icon name="bell-off"></ui-icon> ') + `<span id="f_follow_notify_label">${status}</span>`;
   }
-  async function cycleFollowNotify() {
-    const { followNotify = 'on' } = await chrome.storage.local.get("followNotify");
-    const next = followNotify === 'on' ? 'off' : 'on';
-    await chrome.storage.local.set({ followNotify: next });
+  function cycleFollowNotify() {
+    const next = (App.prefs.get('followNotify') || 'on') === 'on' ? 'off' : 'on';
+    App.prefs.set('followNotify', next);
     applyFollowNotify(next);
   }
   function applyMentionNotify(status) {
@@ -52,10 +51,9 @@
     btn.title = 'mention notifications: ' + status + ' — click to change';
     btn.innerHTML = (status === 'on' ? '<ui-icon name="bell"></ui-icon> ' : '<ui-icon name="bell-off"></ui-icon> ') + `<span id="f_mention_notify_label">${status}</span>`;
   }
-  async function cycleMentionNotify() {
-    const { mentionNotify = 'on' } = await chrome.storage.local.get("mentionNotify");
-    const next = mentionNotify === 'on' ? 'off' : 'on';
-    await chrome.storage.local.set({ mentionNotify: next });
+  function cycleMentionNotify() {
+    const next = (App.prefs.get('mentionNotify') || 'on') === 'on' ? 'off' : 'on';
+    App.prefs.set('mentionNotify', next);
     applyMentionNotify(next);
   }
   let autoTimer=null;
@@ -70,7 +68,7 @@
     sec=parseInt(sec,10)||0;
     if(sec>0)autoTimer=setInterval(autoTick,sec*1000);
   }
-  function switchMode(m){setMode(m);try{localStorage.setItem('ado.mode',m);}catch(e){}
+  function switchMode(m){setMode(m);App.prefs.set('mode',m);
     if(m==='graph')App.graph.renderGraph({fit:true});else if(m==='board')App.board.renderBoard();else if(m==='timeline')App.timeline.render();else App.tree.renderTree();}
 
   App.settings = { applyTheme, cycleTheme, applyFollowNotify, cycleFollowNotify, applyMentionNotify, cycleMentionNotify, setAutoRefresh, switchMode };
