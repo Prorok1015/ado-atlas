@@ -6,6 +6,7 @@
 // wirePremiumPlaceholders, api, App.setup, projectName, currentUser).
 /* ---------- boot ---------- */
 window.addEventListener('DOMContentLoaded',async()=>{
+  if(window.App&&App.prefs){try{await App.prefs.load();}catch(e){}}   // hydrate the prefs cache before anything reads it (i18n/setup/initialBoot)
   if(window.i18n){try{await window.i18n.init();window.i18n.applyDOM();}catch(e){}}
   wireSetup();
   FollowManager.init(openItem);

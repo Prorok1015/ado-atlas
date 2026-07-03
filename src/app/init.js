@@ -81,6 +81,7 @@ function closeMore() {
 }
 
 async function initialBoot(postSetup){
+  if(App.prefs){try{await App.prefs.load();}catch(e){}}   // memoised no-op if boot.js already hydrated; covers the setup.js -> initialBoot re-entry
   try{App.settings.applyTheme(localStorage.getItem('ado.theme')||'dark');}catch(e){}
   App.setup.updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
