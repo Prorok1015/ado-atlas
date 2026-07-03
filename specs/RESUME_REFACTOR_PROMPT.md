@@ -20,6 +20,33 @@ is **done**. This doc records the final architecture and how to keep working wit
   `wireModals` (in `src/app/init.js`); boot orchestration tail stays inline.
 - Tutorials JSON moved to `src/components/tutorials/`.
 
+## Settings layer — `App.prefs` (SETTINGS_SYNC_SPEC Phase 1, done)
+
+- `src/app/prefs.js` (`App.prefs`, loaded right after `state-globals.js`) is now the
+  single canonical store for persisted prefs: a registry-driven, localStorage-shaped
+  (string values) SYNC cache over `chrome.storage.local`, hydrated via
+  `await App.prefs.load()` (awaited in `boot.js` DOMContentLoaded + top of `initialBoot`).
+  API: `load/get/set/remove/getAll/onChange/export/import` + `REGISTRY`.
+- Every **static** `ado.*` pref is routed through `App.prefs.get/set` (theme, lang,
+  uiScale, tz, workHours, sort, auto, showEmpty, board/sprint group, tl zoom/group,
+  timelineView, rankDir, maxNodes, viewhelp, badges, custom_emojis, mode, bar/bulk
+  layout, filterIR, notify follow/mention/age, sideWidth, tlLabelWidth, activity
+  height/collapse, pinnedSprints).
+- **Left as direct localStorage on purpose:** pre-App boot scripts
+  (`theme-init.js`/`i18n-init.js`, synchronous, pre-chrome.storage — App.prefs mirrors
+  theme/uiScale/lang there via `mirrorLS`); and the DYNAMIC-key families — per-project
+  caches `ado.positions/types:<proj>`, the per-work-item-type side layout
+  `ado.layout[.<wtype>]` (+ legacy `ado.sideOrder`/`sideHidden`), and `ado.collapsed.<id>`.
+  These are deferred to a **Phase 2 dynamic-key facility** + the StorageAdapter/sync engine.
+- **Secrets firewall:** PAT/OAuth/config/`ai_custom_config*`/`license_key`/`__dev_force_pro`
+  are NOT in the REGISTRY and never touch App.prefs; `export()` emits only `scope:'sync'`
+  keys (verified by `tools/check-prefs.js`). The service worker still reads the raw
+  `chrome.storage.local` keys App.prefs writes (`ado.lang`, `followNotify`/`mentionNotify`/
+  `notifyAge`) — `background.js` unchanged.
+- **Parse-time gotcha:** `pinnedSprints`/`tlLabelWidth` were hydrated at app.js parse
+  time (before `load()` resolves), so their hydration moved into `initialBoot`'s
+  post-load restore block.
+
 ## Architecture (no-bundler)
 
 Classic `<script>`s in one shared global scope; load order in `index.html`.
