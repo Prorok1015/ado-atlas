@@ -43,6 +43,7 @@ const files = [
   "src/app/badges.js",
   "src/app/state-globals.js",
   "src/app/prefs.js",
+  "src/app/backend.js",
   "src/app/undo.js",
   "src/app/sprint-utils.js",
   "src/app/export.js",
