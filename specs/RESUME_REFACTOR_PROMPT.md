@@ -38,10 +38,14 @@ is **done**. This doc records the final architecture and how to keep working wit
   (`ado.__prefsMeta`) + `export()`→`{v,ts,values,meta}`; `import()` = per-key LWW by ts
   (or whole-blob adopt when no meta). Roaming is AUTOMATIC (no opt-in toggle). No manifest
   change (`storage` permission already covers `.sync`).
+- **Phase 2b done:** notify prefs (followNotify/mentionNotify/notifyAge) now roam
+  (area 'local'→'sync'); `background.js` `getSyncedPref()` reads chrome.storage.sync
+  first, falls back to local — so the worker sees roams even when the page is closed.
 - **Phase 2 remaining:** wire `CloudArea` to the Go backend (+ its explicit ts-LWW push/
-  pull) when live; roam notify prefs (needs `background.js` to read `chrome.storage.sync`);
-  optional Pro sync toggle in settings/paywall; `followedItems` own user-data channel;
-  dynamic-key facility for the deferred families below.
+  pull) when live [BLOCKED — backend stub]; optional Pro sync toggle in settings/paywall
+  (Free is automatic, no toggle); `followedItems` own user-data channel; dynamic-key
+  facility for the side-panel layout (`ado.layout[.<wtype>]` — must be per-key, not a
+  consolidated map, to stay under the 8KB/item sync quota; deep side-panel path — smoke).
 - Every **static** `ado.*` pref is routed through `App.prefs.get/set` (theme, lang,
   uiScale, tz, workHours, sort, auto, showEmpty, board/sprint group, tl zoom/group,
   timelineView, rankDir, maxNodes, viewhelp, badges, custom_emojis, mode, bar/bulk
