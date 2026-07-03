@@ -304,7 +304,7 @@ async function loadTimeline(id){
   const ent=Object.entries(t.durations).sort((a,b)=>b[1]-a[1]);
   if(!ent.length)return;
 
-  const currentView = localStorage.getItem('ado.timelineView') || 'bar';
+  const currentView = App.prefs.get('timelineView') || 'bar';
   
   // Header with toggle button
   const hdr = document.createElement('div');
@@ -317,7 +317,7 @@ async function loadTimeline(id){
     `<button class="stime-toggle-btn" title="Toggle view">${currentView === 'bar' ? '<ui-icon name="list"></ui-icon> List' : '<ui-icon name="bar-chart"></ui-icon> Bar'}</button>`;
   
   hdr.querySelector('.stime-toggle-btn').onclick = () => {
-    localStorage.setItem('ado.timelineView', currentView === 'bar' ? 'list' : 'bar');
+    App.prefs.set('timelineView', currentView === 'bar' ? 'list' : 'bar');
     loadTimeline(id);
   };
   el.appendChild(hdr);

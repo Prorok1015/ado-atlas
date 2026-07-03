@@ -49,12 +49,12 @@ const badgesOn={
 function badgeOn(k,view){view=view||App.state.mode;const m=badgesOn[view];return !m||m[k]!==false;}
 function loadBadgesOn(){
   try{
-    const s=localStorage.getItem('ado.badges');
+    const s=App.prefs.get('badges');
     if(s){const p=JSON.parse(s);Object.keys(badgesOn).forEach(v=>{
       if(p[v]&&typeof p[v]==='object')Object.keys(badgesOn[v]).forEach(k=>{if(typeof p[v][k]==='boolean')badgesOn[v][k]=p[v][k];});
     });}
-    const legacy=localStorage.getItem('ado.graphBadges');   // migrate v1 single-view format
+    const legacy=App.prefs.get('graphBadges');   // migrate v1 single-view format
     if(legacy){const op=JSON.parse(legacy);Object.keys(badgesOn.graph).forEach(k=>{if(typeof op[k]==='boolean')badgesOn.graph[k]=op[k];});}
   }catch(e){}
 }
-function saveBadgesOn(){try{localStorage.setItem('ado.badges',JSON.stringify(badgesOn));}catch(e){}}
+function saveBadgesOn(){App.prefs.set('badges',JSON.stringify(badgesOn));}

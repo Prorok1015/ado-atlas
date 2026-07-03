@@ -299,7 +299,7 @@ function registerNewTags(tagsStr) {
 function getWorkDayHours() {
   let ws = 9, we = 17;
   try {
-    const wh = localStorage.getItem('ado.workHours');
+    const wh = App.prefs.get('workHours');
     if (wh && /^\d+-\d+$/.test(wh)) {
       const m = wh.split('-');
       ws = +m[0];

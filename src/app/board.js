@@ -330,7 +330,7 @@
     $('g_back').onclick=backToBoard;
     {const eb=$('g_editdates');if(eb)eb.onclick=()=>App.sprint.showSprintEdit(path);}
     $('g_group').onclick=()=>{sprintGroup=sprintGroup==='assignee'?'none':'assignee';
-      try{localStorage.setItem('ado.sprintGroup',sprintGroup);}catch(e){}renderSprint(path);};
+      App.prefs.set('sprintGroup',sprintGroup);renderSprint(path);};
     annotateSprintTimes(items.map(n=>n.id),path);
     return true;
   }

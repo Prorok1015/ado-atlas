@@ -28,7 +28,7 @@
       confused: 'icons/reactions/confused.png'
     };
     try {
-      const custom = JSON.parse(localStorage.getItem('ado.custom_emojis') || '{}');
+      const custom = JSON.parse(App.prefs.get('custom_emojis') || '{}');
       return { ...defaults, ...custom };
     } catch (e) {
       return defaults;
@@ -144,7 +144,7 @@
   }
 
   function resetEmojis() {
-    localStorage.removeItem('ado.custom_emojis');
+    App.prefs.remove('custom_emojis');
     closeEmojisModal();
     loadActivity();
   }
@@ -158,7 +158,7 @@
         custom[type] = val;
       }
     }
-    localStorage.setItem('ado.custom_emojis', JSON.stringify(custom));
+    App.prefs.set('custom_emojis', JSON.stringify(custom));
     closeEmojisModal();
     loadActivity();
   }
@@ -323,16 +323,12 @@
         drag = false;
         rz.classList.remove('active');
         document.body.style.cursor = '';
-        try {
-          localStorage.setItem('ado.activityHeight', act.style.maxHeight);
-        } catch (err) {}
+        App.prefs.set('activityHeight', act.style.maxHeight);
       }
     });
 
-    try {
-      const savedH = localStorage.getItem('ado.activityHeight');
-      if (savedH) act.style.maxHeight = savedH;
-    } catch (err) {}
+    const savedH = App.prefs.get('activityHeight');
+    if (savedH) act.style.maxHeight = savedH;
   }
 
   let activeEmojiPicker = null;
@@ -625,8 +621,8 @@
       countBadge.style.display = cs.length > 0 ? 'inline-block' : 'none';
     }
 
-    const commentsCollapsed = localStorage.getItem('ado.activityCommentsCollapsed') === 'true';
-    const historyCollapsed = localStorage.getItem('ado.activityHistoryCollapsed') === 'true';
+    const commentsCollapsed = App.prefs.get('activityCommentsCollapsed') === 'true';
+    const historyCollapsed = App.prefs.get('activityHistoryCollapsed') === 'true';
 
     let h = `
     <div class="asec" id="activity_comments_header" style="cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center;">
@@ -733,7 +729,7 @@
         list.classList.toggle('hidden', collapsed);
         list.style.display = collapsed ? 'none' : 'flex';
         arrow.innerHTML = collapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>';
-        localStorage.setItem('ado.activityCommentsCollapsed', collapsed);
+        App.prefs.set('activityCommentsCollapsed', collapsed);
       };
     }
     const ahh = $('activity_history_header');
@@ -745,7 +741,7 @@
         list.classList.toggle('hidden', collapsed);
         list.style.display = collapsed ? 'none' : 'flex';
         arrow.innerHTML = collapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>';
-        localStorage.setItem('ado.activityHistoryCollapsed', collapsed);
+        App.prefs.set('activityHistoryCollapsed', collapsed);
       };
     }
   }
