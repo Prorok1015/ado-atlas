@@ -275,16 +275,18 @@
       // <img src="..." alt="..."> → ![alt](src). Order of attributes varies, so
       // capture them independently and reassemble.
       .replace(/<img\b([^>]*)\/?>/gi, (m, attrs) => {
-        const srcM = attrs.match(/\bsrc\s*=\s*"([^"]*)"/i);
-        const altM = attrs.match(/\balt\s*=\s*"([^"]*)"/i);
-        const src = srcM ? srcM[1] : "";
-        const alt = altM ? altM[1] : "";
+        const srcM = attrs.match(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/i);
+        const altM = attrs.match(/\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/i);
+        const src = srcM ? (srcM[1] != null ? srcM[1] : srcM[2] != null ? srcM[2] : srcM[3] != null ? srcM[3] : "") : "";
+        const alt = altM ? (altM[1] != null ? altM[1] : altM[2] != null ? altM[2] : altM[3] != null ? altM[3] : "") : "";
         return src ? "![" + alt + "](" + src + ")" : "";
       });
   }
   function htmlToMarkdown(s) {
     if (!s) return "";
     let t = String(s).replace(/\r\n/g, "\n");
+    // Strip ACK control characters that ADO injects as sentinels in comment renderedText
+    t = t.replace(/\u0006/g, "");
     t = t.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (m, c) => "\n```\n" + htmlUnesc(c.replace(/<[^>]+>/g, "")).replace(/\n+$/, "") + "\n```\n");
     t = t.replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (m, n, c) => "\n" + "#".repeat(Math.max(1, (+n) - 2)) + " " + inlineHtmlToMd(c).replace(/<[^>]+>/g, "").trim() + "\n");
     t = t.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (m, c) => "\n" + htmlToMarkdown(c).split("\n").map(l => (l ? "> " + l : ">")).join("\n") + "\n");
