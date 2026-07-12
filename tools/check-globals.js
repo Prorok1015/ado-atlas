@@ -9,6 +9,9 @@ const path = require("path");
 
 const root = path.join(__dirname, "..");
 const files = [
+  "src/components/icons.js",
+  "src/components/layer-manager.js",
+  "src/core/filter-compiler.js",
   "src/core/lib.js",
   "src/components/i18n.js",
   "src/core/api/core.js",
@@ -26,6 +29,7 @@ const files = [
   "src/components/tutorial-manager.js",
   "src/components/follow-manager.js",
   "src/components/entitlement-manager.js",
+  "src/components/pro-button-manager.js",
   "src/components/premium-paywall.js",
   "src/components/pro-features.js",
   "src/components/filter-builder-modal.js",
@@ -38,6 +42,8 @@ const files = [
   "src/ai/prompts/summarize-prompt.js",
   "src/ai/ai-search-service.js",
   "src/components/ai-search-dialog.js",
+  "src/ai/ai-summarizer.js",
+  "src/ai/ai-text-editor.js",
   "src/app/namespace.js",
   "src/app/analytics.js",
   "src/app/const.js",
