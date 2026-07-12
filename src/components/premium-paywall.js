@@ -86,8 +86,9 @@
       .pw-btn-activate:hover{background:rgba(242,169,0,.26);}
       .pw-btn-buy{display:block;width:100%;text-align:center;margin-top:6px;
         background:linear-gradient(90deg,#ffd86b,#ffb347);color:#1a1304;text-decoration:none;
-        padding:11px;border-radius:10px;font-weight:700;}
+        padding:11px;border-radius:10px;font-weight:700;border:none;box-sizing:border-box;font-family:inherit;}
       .pw-btn-buy:hover{filter:brightness(1.05);}
+      .pw-btn-buy:disabled{background:var(--line);color:var(--muted);cursor:not-allowed;filter:none;opacity:0.6;border:1px solid var(--line);}
       .pw-msg{min-height:18px;font-size:.82rem;margin:8px 0 0;color:#e0584f;}
       .pw-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);
         font-size:20px;cursor:pointer;line-height:1;z-index:1;}
@@ -135,7 +136,7 @@
             <span data-i18n="paywall.comingSoon.desc">This premium feature is currently under active development and will be available in an upcoming release.</span>
           </div>
 
-          <a class="pw-btn-buy" target="_blank" rel="noopener noreferrer" data-i18n="paywall.buy">Get ADO Atlas Pro — $5/mo</a>
+          <button class="pw-btn-buy" disabled type="button" data-i18n="paywall.buy">Get ADO Atlas Pro — $5/mo</button>
         </div>
         <div class="pw-right">
           <div class="pw-right-title" data-i18n="paywall.everythingInPro">Everything in Pro</div>
@@ -152,8 +153,6 @@
     titleEl = panelEl.querySelector('.pw-title');
     descEl = panelEl.querySelector('.pw-desc');
     benefitsEl = panelEl.querySelector('.pw-benefits');
-    const buyLink = panelEl.querySelector('.pw-btn-buy');
-    buyLink.href = BUY_URL;
 
     panelEl.querySelector('.pw-close').addEventListener('click', () => PremiumPaywall.close());
     backdropEl.addEventListener('click', (e) => { if (e.target === backdropEl) PremiumPaywall.close(); });
