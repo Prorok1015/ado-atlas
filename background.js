@@ -11,56 +11,38 @@ importScripts(
   'src/core/analytics.js'
 );
 
-// ---- Self-contained notification i18n (service worker has no window.i18n) ----
-// Keyed by short message ids. Use {token} placeholders resolved via AdoLib.formatMessage.
-const NOTIFY_I18N = {
-  en: {
-    mentionTitle: "Mentioned in [#{id}] {title}",
-    mentionMessage: "{author} in {fieldName}:\n\"{text}\"",
-    followTitle: "[#{id}] {title}",
-    followMessage: "{author} updated this item:\n{changes}",
-    moreChanges: "(+ {count} more changes)",
-    assignedTitle: "Assigned to you: [#{id}] {title}",
-    assignedMessage: "{author} assigned this task to you.",
-    contextMessage: "ADO Atlas",
-    openButton: "Open"
-  },
-  ru: {
-    mentionTitle: "Упоминание в [#{id}] {title}",
-    mentionMessage: "{author} в поле {fieldName}:\n\"{text}\"",
-    followTitle: "[#{id}] {title}",
-    followMessage: "{author} обновил(а) элемент:\n{changes}",
-    moreChanges: "(+ ещё {count} изменений)",
-    assignedTitle: "Назначено вам: [#{id}] {title}",
-    assignedMessage: "{author} назначил(а) вам эту задачу.",
-    contextMessage: "ADO Atlas",
-    openButton: "Открыть"
-  },
-  es: {
-    mentionTitle: "Mención en [#{id}] {title}",
-    mentionMessage: "{author} en {fieldName}:\n\"{text}\"",
-    followTitle: "[#{id}] {title}",
-    followMessage: "{author} actualizó este elemento:\n{changes}",
-    moreChanges: "(+ {count} cambios más)",
-    assignedTitle: "Asignado a ti: [#{id}] {title}",
-    assignedMessage: "{author} te asignó esta tarea.",
-    contextMessage: "ADO Atlas",
-    openButton: "Abrir"
-  },
-  de: {
-    mentionTitle: "Erwähnt in [#{id}] {title}",
-    mentionMessage: "{author} in {fieldName}:\n\"{text}\"",
-    followTitle: "[#{id}] {title}",
-    followMessage: "{author} hat dieses Element aktualisiert:\n{changes}",
-    moreChanges: "(+ {count} weitere Änderungen)",
-    assignedTitle: "Dir zugewiesen: [#{id}] {title}",
-    assignedMessage: "{author} hat dir diese Aufgabe zugewiesen.",
-    contextMessage: "ADO Atlas",
-    openButton: "Öffnen"
-  }
-};
-
+// ---- Dynamic notification i18n from JSON locale files (service worker has no window.i18n) ----
 const NOTIFY_LANGS = ["en", "ru", "es", "de"];
+
+let activeLocaleDict = {};
+let fallbackLocaleDict = {};
+
+// Load JSON locale file from the extension's bundle dynamically.
+async function loadLocaleDict(lang) {
+  try {
+    if (!fallbackLocaleDict["notify.openButton"]) {
+      const fallbackUrl = chrome.runtime.getURL("src/locales/en.json");
+      const res = await fetch(fallbackUrl);
+      fallbackLocaleDict = await res.json();
+    }
+    if (lang === "en") {
+      activeLocaleDict = fallbackLocaleDict;
+    } else {
+      const url = chrome.runtime.getURL(`src/locales/${lang}.json`);
+      const res = await fetch(url);
+      activeLocaleDict = await res.json();
+    }
+  } catch (e) {
+    console.error("Failed to load locale dictionary", lang, e);
+    activeLocaleDict = fallbackLocaleDict;
+  }
+}
+
+// Resolve a notification string using the preloaded locale dictionary and format tokens.
+function nt(id, params) {
+  const template = activeLocaleDict[`notify.${id}`] || fallbackLocaleDict[`notify.${id}`] || id;
+  return globalThis.AdoLib.formatMessage(template, params || {});
+}
 
 // Read a synced preference (followNotify/mentionNotify/notifyAge/ado.lang) written by
 // the app through App.prefs. Prefer the roamed chrome.storage.sync value; fall back to
@@ -82,13 +64,6 @@ async function getSyncedPref(key, dflt) {
 async function getNotifyLang() {
   const lang = await getSyncedPref("ado.lang", "en");
   return NOTIFY_LANGS.includes(lang) ? lang : "en";
-}
-
-// Resolve a notification string: dict[lang][id] -> dict.en[id] -> id, then interpolate {token}s.
-function nt(lang, id, params) {
-  const dict = NOTIFY_I18N[lang] || NOTIFY_I18N.en;
-  const template = (dict && dict[id]) || NOTIFY_I18N.en[id] || id;
-  return globalThis.AdoLib.formatMessage(template, params || {});
 }
 
 // On extension click, open/focus the UI
@@ -237,6 +212,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 async function runAllNotificationChecks() {
   try {
+    const notifyLang = await getNotifyLang();
+    await loadLocaleDict(notifyLang);
+
     // User-data (followed/mentioned caches) stay in chrome.storage.local; the notify
     // preferences roam, so read them sync-first via getSyncedPref.
     const {
@@ -544,8 +522,6 @@ async function runAllNotificationChecks() {
     let followedItemsUpdated = false;
     let mentionedItemsUpdated = false;
 
-    const notifyLang = await getNotifyLang();
-
     for (const res of results) {
       if (!res) continue;
 
@@ -555,10 +531,10 @@ async function runAllNotificationChecks() {
           chrome.notifications.create(`app-item-${res.id}-assigned`, {
             type: "basic",
             iconUrl: "icons/icon-128.png",
-            title: nt(notifyLang, "assignedTitle", { id: res.id, title: res.title }),
-            message: nt(notifyLang, "assignedMessage", { author: a.author }),
-            contextMessage: nt(notifyLang, "contextMessage"),
-            buttons: [{ title: nt(notifyLang, "openButton") }],
+            title: nt("assignedTitle", { id: res.id, title: res.title }),
+            message: nt("assignedMessage", { author: a.author }),
+            contextMessage: nt("contextMessage"),
+            buttons: [{ title: nt("openButton") }],
             priority: 2,
             requireInteraction: true
           }, (id) => {
@@ -585,10 +561,10 @@ async function runAllNotificationChecks() {
           chrome.notifications.create(`app-item-${res.id}-${idx}`, {
             type: "basic",
             iconUrl: "icons/icon-128.png",
-            title: nt(notifyLang, "mentionTitle", { id: res.id, title: res.title }),
-            message: nt(notifyLang, "mentionMessage", { author, fieldName, text: combinedText }),
-            contextMessage: nt(notifyLang, "contextMessage"),
-            buttons: [{ title: nt(notifyLang, "openButton") }],
+            title: nt("mentionTitle", { id: res.id, title: res.title }),
+            message: nt("mentionMessage", { author, fieldName, text: combinedText }),
+            contextMessage: nt("contextMessage"),
+            buttons: [{ title: nt("openButton") }],
             priority: 2,
             requireInteraction: true
           }, (id) => {
@@ -601,16 +577,16 @@ async function runAllNotificationChecks() {
         // Standard Follow notification
         let message = res.changes.join("\n");
         if (res.changes.length > 5) {
-          message = res.changes.slice(0, 5).join("\n") + "\n" + nt(notifyLang, "moreChanges", { count: res.changes.length - 5 });
+          message = res.changes.slice(0, 5).join("\n") + "\n" + nt("moreChanges", { count: res.changes.length - 5 });
         }
 
         chrome.notifications.create(`app-item-${res.id}-follow`, {
           type: "basic",
           iconUrl: "icons/icon-128.png",
-          title: nt(notifyLang, "followTitle", { id: res.id, title: res.title }),
-          message: nt(notifyLang, "followMessage", { author: res.author, changes: message }),
-          contextMessage: nt(notifyLang, "contextMessage"),
-          buttons: [{ title: nt(notifyLang, "openButton") }],
+          title: nt("followTitle", { id: res.id, title: res.title }),
+          message: nt("followMessage", { author: res.author, changes: message }),
+          contextMessage: nt("contextMessage"),
+          buttons: [{ title: nt("openButton") }],
           priority: 2,
           requireInteraction: true
         }, (id) => {
