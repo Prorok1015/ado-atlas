@@ -1077,7 +1077,11 @@
                 <span data-i18n="filter.builder.sortBy" style="font-size: 0.846rem; color: var(--muted); font-weight: 500;">Sort:</span>
                 <select id="fb-sort-select" style="background: var(--panel2); color: var(--txt); border: 1px solid var(--line); border-radius: 0.462rem; padding: 2px 6px; font-size: 0.846rem; min-height: 1.692rem; outline: none; cursor: pointer;">
                   <option value="" data-i18n="filter.sort.id">ID</option>
+                  <option value="id_desc" data-i18n="filter.sort.idDesc">ID Descending</option>
                   <option value="priority" data-i18n="filter.sort.priority">Priority</option>
+                  <option value="priority_desc" data-i18n="filter.sort.priorityDesc">Priority Descending</option>
+                  <option value="changeddate_desc" data-i18n="filter.sort.changedDateDesc">Recently Changed</option>
+                  <option value="createddate_desc" data-i18n="filter.sort.createdDateDesc">Recently Created</option>
                 </select>
               </div>
               <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ai-search-btn" style="position:relative; display:flex; align-items:center; gap:6px; background: linear-gradient(135deg, rgba(114,9,183,0.1), rgba(63,55,201,0.1)); border-color: rgba(99,102,241,0.3); margin-left: auto;" data-i18n-title="filter.builder.aiSearchTooltip" title="AI Search over work items (BETA)">
