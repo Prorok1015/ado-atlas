@@ -1,92 +1,37 @@
-// Guard against cross-file global collisions. lib.js, api.js and app.js are
+// Guard against cross-file global collisions. All src/**/*.js files are
 // loaded as classic <script>s that SHARE one global scope, so a top-level
 // declaration in one (e.g. `function assignees`) collides with the same name in
 // another (`let assignees`) — a SyntaxError that per-file `node --check` cannot
-// see. This parses the three as one combined scope to surface such duplicates.
+// see. This parses the files as one combined scope to surface such duplicates.
 const fs = require("fs");
 const vm = require("vm");
 const path = require("path");
 
 const root = path.join(__dirname, "..");
-const files = [
-  "src/components/icons.js",
-  "src/components/layer-manager.js",
-  "src/core/filter-compiler.js",
-  "src/core/lib.js",
-  "src/components/i18n.js",
-  "src/core/api/core.js",
-  "src/core/api/http-auth.js",
-  "src/core/api/query.js",
-  "src/core/api/endpoints.js",
-  "src/core/api/graph.js",
-  "src/core/api/items.js",
-  "src/core/api/time.js",
-  "src/core/api/facade.js",
-  "src/components/markdown-editor.js",
-  "src/components/card-picker.js",
-  "src/components/tags-editor.js",
-  "src/components/date-range-picker.js",
-  "src/components/tutorial-manager.js",
-  "src/components/follow-manager.js",
-  "src/components/entitlement-manager.js",
-  "src/components/pro-button-manager.js",
-  "src/components/premium-paywall.js",
-  "src/components/pro-features.js",
-  "src/components/filter-builder-modal.js",
-  "src/components/filter-manager.js",
-  "src/ai/ai-provider.js",
-  "src/ai/chrome-prompt-provider.js",
-  "src/ai/custom-cloud-provider.js",
-  "src/ai/hosted-cloud-provider.js",
-  "src/ai/prompts/search-prompt.js",
-  "src/ai/prompts/summarize-prompt.js",
-  "src/ai/ai-search-service.js",
-  "src/components/ai-search-dialog.js",
-  "src/ai/ai-summarizer.js",
-  "src/ai/ai-text-editor.js",
-  "src/app/namespace.js",
-  "src/app/analytics.js",
-  "src/app/const.js",
-  "src/app/loading.js",
-  "src/app/badges.js",
-  "src/app/state-globals.js",
-  "src/app/prefs.js",
-  "src/app/backend.js",
-  "src/app/undo.js",
-  "src/app/sprint-utils.js",
-  "src/app/export.js",
-  "src/app/types.js",
-  "src/app/timeline.js",
-  "src/app/item-create.js",
-  "src/app/settings.js",
-  "src/app/snapshot.js",
-  "src/app/setup.js",
-  "src/app/command-palette.js",
-  "src/app/filters.js",
-  "src/app/dependencies.js",
-  "src/app/activity.js",
-  "src/app/graph.js",
-  "src/app/board.js",
-  "src/app/tree.js",
-  "src/app/bulk.js",
-  "src/app/date-pickers.js",
-  "src/app/attachments.js",
-  "src/app/mention.js",
-  "src/app/side-panel.js",
-  "src/app/editor.js",
-  "src/app/layout.js",
-  "src/app/sprint-edit.js",
-  "src/app/init.js",
-  "src/app.js",
-  "src/app/boot.js"
-];
-const src = files.map(f => fs.readFileSync(path.join(root, f), "utf8")).join("\n;\n");
+
+function getJsFilesRecursively(dir) {
+  let results = [];
+  const list = fs.readdirSync(dir);
+  list.forEach(file => {
+    const filePath = path.join(dir, file);
+    const stat = fs.statSync(filePath);
+    if (stat && stat.isDirectory()) {
+      results = results.concat(getJsFilesRecursively(filePath));
+    } else if (file.endsWith(".js")) {
+      results.push(filePath);
+    }
+  });
+  return results;
+}
+
+const files = getJsFilesRecursively(path.join(root, "src"));
+const src = files.map(f => fs.readFileSync(f, "utf8")).join("\n;\n");
 
 try {
   new vm.Script(src, { filename: "combined.js" });   // compile-time early errors throw here
 } catch (e) {
   console.error("Global-scope check FAILED: " + e.message);
-  console.error("(a top-level name is declared in more than one of " + files.join(", ") + ")");
+  console.error("(a top-level name is declared in more than one file in the src directory)");
   process.exit(1);
 }
-console.log("Global-scope check OK (" + files.join(" + ") + ")");
+console.log(`Global-scope check OK (${files.length} files audited)`);
