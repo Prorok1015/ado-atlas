@@ -25,6 +25,43 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 #morepanel .mrow-full .btn{width:100%}
 #morebtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 
+/* ---- Export dropdown panel styling ---- */
+#exportpanel {
+  position: absolute;
+  top: calc(100% + 0.462rem);
+  right: 0;
+  z-index: 60;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.615rem;
+  padding: 0.462rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.308rem;
+  min-width: 10.769rem;
+  box-shadow: 0 0.462rem 1.692rem rgba(0,0,0,.4);
+}
+#exportpanel .mrow-full {
+  display: flex;
+}
+#exportpanel .mrow-full .btn {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.462rem;
+  justify-content: flex-start;
+  padding: 0.462rem 0.692rem;
+  border-radius: 0.385rem;
+  font-size: 0.846rem;
+  position: relative; /* allows absolute positioning of pro-badge-auto child */
+}
+#export_btn.on {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 #filterpanel{background:var(--panel);border-bottom:1px solid var(--line);padding:0.615rem 0.923rem;display:flex;flex-direction:column;gap:0.462rem}
 .frow{display:flex;align-items:center;gap:0.462rem;flex-wrap:wrap}
 .frow .fl{width:5.692rem;color:var(--muted);font-size:0.846rem;text-transform:uppercase;letter-spacing:.0.308rem;flex:none}

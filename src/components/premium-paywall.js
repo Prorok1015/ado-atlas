@@ -126,12 +126,15 @@
         <div class="pw-left">
           <div class="pw-badge"><span><ui-icon name="gem"></ui-icon><span data-i18n="paywall.badge.pro">Pro</span></span></div>
           <div class="pw-title"></div>
-          <p class="pw-desc"></p>
-          <div class="pw-key-row">
-            <input type="text" data-i18n-placeholder="paywall.licenseKey.placeholder" placeholder="Paste your license key…" spellcheck="false" autocomplete="off">
-            <button class="pw-btn pw-btn-activate" type="button" data-i18n="paywall.activate">Activate</button>
+          <p class="pw-desc" style="margin-bottom: 20px;"></p>
+          
+          <div class="pw-coming-soon" style="background: rgba(242,169,0,0.1); border: 1px solid rgba(242,169,0,0.3); border-radius: 9px; padding: 12px; margin-bottom: 20px; font-size: 0.88rem; line-height: 1.45;">
+            <div style="font-weight: 700; color: #ffd86b; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+              <ui-icon name="sparkles"></ui-icon> <span data-i18n="paywall.comingSoon.title">Pro Features — Coming Soon!</span>
+            </div>
+            <span data-i18n="paywall.comingSoon.desc">This premium feature is currently under active development and will be available in an upcoming release.</span>
           </div>
-          <p class="pw-msg"></p>
+
           <a class="pw-btn-buy" target="_blank" rel="noopener noreferrer" data-i18n="paywall.buy">Get ADO Atlas Pro — $5/mo</a>
         </div>
         <div class="pw-right">
@@ -148,17 +151,12 @@
 
     titleEl = panelEl.querySelector('.pw-title');
     descEl = panelEl.querySelector('.pw-desc');
-    keyInput = panelEl.querySelector('.pw-key-row input');
-    activateBtn = panelEl.querySelector('.pw-btn-activate');
-    msgEl = panelEl.querySelector('.pw-msg');
     benefitsEl = panelEl.querySelector('.pw-benefits');
     const buyLink = panelEl.querySelector('.pw-btn-buy');
     buyLink.href = BUY_URL;
 
     panelEl.querySelector('.pw-close').addEventListener('click', () => PremiumPaywall.close());
     backdropEl.addEventListener('click', (e) => { if (e.target === backdropEl) PremiumPaywall.close(); });
-    activateBtn.addEventListener('click', onActivate);
-    keyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') onActivate(); });
 
     const seeAll = panelEl.querySelector('.pw-seeall');
     if (seeAll) seeAll.addEventListener('click', () => {
@@ -190,29 +188,6 @@
     descEl.textContent = f.desc != null ? f.desc : L(f.descKey);
   }
 
-  async function onActivate() {
-    const key = (keyInput.value || '').trim();
-    if (!key) { setMsg(L('paywall.msg.enterKey', null, 'Please enter a license key.'), true); return; }
-    setMsg(L('paywall.msg.activating', null, 'Activating…'), false);
-    activateBtn.disabled = true;
-    try {
-      await global.EntitlementManager.activate(key);
-      setMsg(L('paywall.msg.activated', null, 'Activated! Enjoy Pro.'), false);
-    } catch (e) {
-      // EntitlementManager errors are not UI chrome — surface as-is, falling back
-      // to a localized generic failure when no message is supplied.
-      setMsg(e.message || L('paywall.msg.activationFailed', null, 'Activation failed.'), true);
-    } finally {
-      activateBtn.disabled = false;
-    }
-  }
-
-  function setMsg(text, isError) {
-    if (!msgEl) return;
-    msgEl.textContent = text;
-    msgEl.style.color = isError ? '#ff9b9b' : '#9be3a8';
-  }
-
   const PremiumPaywall = {
     // open(feature, info?) — `info` ({title, desc}) overrides the FEATURES lookup,
     // used by ProFeaturesPanel to pitch catalog items that have no FEATURES entry.
@@ -225,11 +200,8 @@
       benefitsEl.querySelectorAll('.pw-benefit').forEach(li => {
         li.classList.toggle('active', li.dataset.key === feature);
       });
-      setMsg('', false);
-      keyInput.value = '';
       backdropEl.classList.add('show');
       if (global.LayerManager) global.LayerManager.open(panelEl, backdropEl, { isPopover: false });
-      setTimeout(() => keyInput && keyInput.focus(), 0);
     },
 
     close() {

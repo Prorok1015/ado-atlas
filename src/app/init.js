@@ -79,6 +79,13 @@ function closeMore() {
   mb.classList.remove('on');
   if (window.LayerManager) window.LayerManager.close(mp);
 }
+function closeExport() {
+  const ep = $('exportpanel'), eb = $('export_btn');
+  if (!ep || !eb) return;
+  ep.style.display = 'none';
+  eb.classList.remove('on');
+  if (window.LayerManager) window.LayerManager.close(ep);
+}
 
 async function initialBoot(postSetup){
   if(App.prefs){try{await App.prefs.load();}catch(e){}}   // memoised no-op if boot.js already hydrated; covers the setup.js -> initialBoot re-entry
@@ -277,8 +284,7 @@ function wirePremiumPlaceholders(){
     if(!el)return;
     e.preventDefault();
     const feature=el.dataset.proFeature;
-    if(window.EntitlementManager && !window.EntitlementManager.gate(feature))return; // Free → paywall shown
-    if(window.customAlert)window.customAlert(window.i18n.t('pro.comingSoon'),window.i18n.t('pro.title'));
+    if(window.PremiumPaywall) window.PremiumPaywall.open(feature);
   });
   // "Explore ADO Atlas Pro" — opens the full premium feature catalog.
   const explore=$('pro_explore_btn');
@@ -472,9 +478,48 @@ function wireControls(){
     const gb=$('vhbadge');if(!p.contains(e.target)&&e.target!==gb&&(!gb||!gb.contains(e.target)))p.style.display='none';});
   $('theme').onclick=App.settings.cycleTheme;
   try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((App.prefs.get('theme')||'dark')==='auto')App.settings.applyTheme('auto');});}catch(e){}
-  // Only wire real export buttons (data-x). Pro placeholders (data-pro-feature)
-  // in the same segment are handled by the delegated premium handler.
-  $('export').querySelectorAll('button[data-x]').forEach(b=>b.onclick=()=>App.export.exportView(b.dataset.x));
+  // Export popover toggling
+  const exportP = $('exportpanel'), exportB = $('export_btn');
+  if (exportB && exportP) {
+    exportB.onclick = e => {
+      e.stopPropagation();
+      const show = exportP.style.display === 'none';
+      exportP.style.display = show ? 'flex' : 'none';
+      exportB.classList.toggle('on', show);
+      if (window.LayerManager) {
+        if (show) window.LayerManager.open(exportP, null, { isPopover: true });
+        else window.LayerManager.close(exportP);
+      }
+    };
+    
+    // Close on click of any button inside the panel
+    exportP.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        closeExport();
+      });
+    });
+
+    document.addEventListener('mousedown', e => {
+      if (exportP.style.display !== 'none' && !exportP.contains(e.target) && !exportB.contains(e.target)) {
+        closeExport();
+      }
+    });
+    
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && exportP.style.display !== 'none') {
+        closeExport();
+      }
+    });
+  }
+
+  // Wire actual export buttons
+  if ($('export')) {
+    $('export').querySelectorAll('button[data-x]').forEach(b => {
+      b.onclick = () => {
+        App.export.exportView(b.dataset.x);
+      };
+    });
+  }
   $('f_auto').onchange=()=>{const s=$('f_auto').value;App.prefs.set('auto',s);App.settings.setAutoRefresh(s);};
   $('f_scale').onchange=()=>{const s=$('f_scale').value;try{updateUiScale(parseFloat(s));}catch(e){}};
   if(window.i18n&&$('f_lang')){$('f_lang').value=window.i18n.getLang();$('f_lang').onchange=()=>{window.i18n.setLang($('f_lang').value);};}
