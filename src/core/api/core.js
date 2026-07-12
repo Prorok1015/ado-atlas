@@ -39,7 +39,8 @@ const FIELD_REGISTRY = {
   completed:   { ref: "Microsoft.VSTS.Scheduling.CompletedWork", type: "double", name: "Completed Work" },
   activity:    { ref: "Microsoft.VSTS.Common.Activity", type: "string", name: "Activity" },
   risk:        { ref: "Microsoft.VSTS.Common.Risk", type: "string", name: "Risk" },
-  valuearea:   { ref: "Microsoft.VSTS.Common.ValueArea", type: "string", name: "Value Area" }
+  valuearea:   { ref: "Microsoft.VSTS.Common.ValueArea", type: "string", name: "Value Area" },
+  createdby:   { ref: "System.CreatedBy", type: "identity", name: "Created By", aliases: ["created_by"] }
 };
 
 const CORE_FIELD_REFS = new Set();
@@ -54,7 +55,7 @@ for (const val of Object.values(FIELD_REGISTRY)) {
 
 function isCoreField(refName) {
   if (!refName) return false;
-  return CORE_FIELD_REFS.has(refName.toLowerCase());
+  const lower = refName.toLowerCase(); if (lower === "system.history") return true; return CORE_FIELD_REFS.has(lower);
 }
 
 const FIELD_ALIASES = {};
@@ -82,6 +83,8 @@ const DEFAULT_FIELDS = [
   FIELD_REGISTRY.due.ref,
   FIELD_REGISTRY.estimate.ref,
   FIELD_REGISTRY.tags.ref,
+  FIELD_REGISTRY.createddate.ref,
+  FIELD_REGISTRY.createdby.ref,
   "System.Rev",
 ];
 

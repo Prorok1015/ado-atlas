@@ -1587,9 +1587,18 @@ function setCustomizeTab(t){
   $('cz_tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.cz===t));
   $('cz_title').textContent=t==='side'?'Customize work item panel':(t==='bulk'?'Customize bulk edit bar':'Customize toolbar');
   const wtypeCont = $('cz_wtype_container');
-  if (wtypeCont) {
-    wtypeCont.style.display = t === 'side' ? 'flex' : 'none';
+  const presetCont = $('cz_preset_container');
+  if (wtypeCont) wtypeCont.style.display = t === 'side' ? 'flex' : 'none';
+  if (presetCont) presetCont.style.display = t === 'side' ? 'flex' : 'none';
+  
+  // Bind preset buttons if not already bound
+  if (presetCont && !presetCont.dataset.bound) {
+    presetCont.dataset.bound = 'true';
+    $('preset_dev').onclick = () => applyLayoutPreset('dev');
+    $('preset_qa').onclick = () => applyLayoutPreset('qa');
+    $('preset_pm').onclick = () => applyLayoutPreset('pm');
   }
+
   const overlay = $('customize-overlay');
   const visualEditor = $('cz_visual_editor');
   const list = $('customize-list');
@@ -1658,4 +1667,61 @@ function updateUiScale(scaleFactor) {
   if (typeof App.state.cy !== 'undefined' && App.state.cy && typeof App.state.cy.resize === 'function') {
     App.state.cy.resize();
   }
+}
+
+async function applyLayoutPreset(preset) {
+  if (czTab !== 'side') return;
+  // Start from default
+  let offFormFields = [];
+  if (czWType) {
+    try {
+      const fields = await api.getWorkItemTypeFields(czWType);
+      offFormFields = fields.filter(f => !f.isOnForm).map(f => 'cust:' + f.referenceName);
+    } catch (e) {}
+  }
+  const def = getDefaultSideLayout(czWType);
+  const hideSet = new Set(offFormFields);
+
+  if (preset === 'dev') {
+    // Hide PM stuff
+    hideSet.add('risk');
+    hideSet.add('valuearea');
+    hideSet.add('time_in_state');
+    hideSet.add('area');
+  } else if (preset === 'qa') {
+    // Hide effort
+    hideSet.add('storypoints');
+    hideSet.add('remaining');
+    hideSet.add('completed');
+    hideSet.add('time_in_state');
+    hideSet.add('risk');
+    hideSet.add('valuearea');
+  } else if (preset === 'pm') {
+    // Hide technical/dev noise
+    hideSet.add('deps');
+    hideSet.add('attachments');
+  }
+
+  // Filter out hidden elements
+  def.layout = def.layout.filter(item => !hideSet.has(item.ref));
+  // Clean up empty groups
+  def.layout.forEach(g => {
+    if (g.type === 'group' && g.elements) {
+      g.elements = g.elements.map(e => {
+        if (e.type === 'row' && e.columns) {
+          e.columns.forEach(c => {
+            if (c.elements) c.elements = c.elements.filter(i => !hideSet.has(i.ref));
+          });
+        } else if (e.type === 'field' && hideSet.has(e.ref)) {
+          return null;
+        }
+        return e;
+      }).filter(Boolean);
+    }
+  });
+
+  currentSideLayout = def;
+  saveSideLayout(czWType);
+  applySideLayout(czWType);
+  renderVisualLayoutBuilder();
 }

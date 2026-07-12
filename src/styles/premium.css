@@ -1,0 +1,228 @@
+/* ================================================================== */
+/* premium.css — Pro & Preview button styling                         */
+/*                                                                    */
+/* Loaded LAST so these modifiers always override .btn, .save, .seg   */
+/* and any other base class regardless of source file.                 */
+/*                                                                    */
+/* Usage: add the class to ANY interactive element, anywhere:          */
+/*   <button class="btn pro-glow">...</button>       (gold — paid)    */
+/*   <button class="btn pro-preview">...</button>    (green — free)   */
+/*   <div class="seg pro-glow">...</div>                              */
+/* Works in toolbars, settings, dialogs, modals — everywhere.         */
+/* ================================================================== */
+
+/* -------- shared plumbing ----------------------------------------- */
+.pro-glow,
+.pro-preview{
+  position:relative;
+  border:1px solid transparent !important;
+  background-origin:border-box !important;
+  background-clip:padding-box, border-box !important;
+  transition:box-shadow .25s ease, filter .25s ease;
+}
+/* Shimmer sweep — animates background-position of an oversized       */
+/* gradient so the highlight slides across. No transform, no overflow, */
+/* the ::before never leaves the element's box.                        */
+.pro-glow::before,
+.pro-preview::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background-size:300% 100%;
+  background-position:100% 0;
+  animation:pro-shimmer var(--pro-dur, 7s) ease-in-out var(--pro-delay, 0s) infinite;
+  pointer-events:none;
+  z-index:0;
+}
+@keyframes pro-shimmer{
+  0%,100%{background-position:100% 0}
+  50%{background-position:0% 0}
+}
+/* Inner content stays above the shimmer layer */
+.pro-glow>*,
+.pro-preview>*{position:relative;z-index:1;}
+
+/* ======================== .pro-glow (gold) ======================== */
+
+/* -------- DARK theme ---------------------------------------------- */
+.pro-glow{
+  background-image:
+    linear-gradient(var(--panel2), var(--panel2)),
+    linear-gradient(135deg, #f2a900 0%, #ffe07a 40%, #f2a900 60%, #d4920a 100%) !important;
+  box-shadow:
+    0 0 8px rgba(242,169,0,.20),
+    inset 0 1px 0 rgba(255,224,122,.08);
+  color:#ffe07a !important;
+}
+.pro-glow::before{
+  background-image:linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255,224,122,.12) 42%,
+    rgba(242,169,0,.20) 50%,
+    rgba(255,224,122,.12) 58%,
+    transparent 70%
+  );
+}
+.pro-glow:hover{
+  box-shadow:
+    0 0 12px rgba(242,169,0,.35),
+    0 0 28px rgba(242,169,0,.14),
+    inset 0 1px 0 rgba(255,224,122,.12);
+}
+.pro-glow:active{
+  box-shadow:0 0 4px rgba(242,169,0,.22);
+  filter:brightness(.95);
+}
+.pro-glow:focus-visible{
+  outline:2px solid #f2a900;
+  outline-offset:2px;
+}
+
+/* -------- LIGHT theme --------------------------------------------- */
+/* Clean panel fill — premium effect comes from border gradient + glow */
+body.light .pro-glow{
+  background-image:
+    linear-gradient(var(--panel2), var(--panel2)),
+    linear-gradient(135deg, #e8a20e 0%, #f5c842 40%, #e8a20e 60%, #d4920a 100%) !important;
+  box-shadow:
+    0 0 0 1px rgba(232,162,14,.30),
+    0 2px 8px rgba(232,162,14,.16);
+  color:#9a6600 !important;
+}
+body.light .pro-glow::before{
+  background-image:linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(245,200,66,.08) 42%,
+    rgba(232,162,14,.12) 50%,
+    rgba(245,200,66,.08) 58%,
+    transparent 70%
+  );
+}
+body.light .pro-glow:hover{
+  box-shadow:
+    0 0 0 1px rgba(232,162,14,.45),
+    0 3px 12px rgba(232,162,14,.22);
+}
+
+/* =============== .pro-preview (champagne / soft gold) ============= */
+/* Same gold family as .pro-glow but lighter & softer — visually says  */
+/* "this is a Pro feature you can try for free".                       */
+
+/* -------- DARK theme ---------------------------------------------- */
+.pro-preview{
+  background-image:
+    linear-gradient(var(--panel2), var(--panel2)),
+    linear-gradient(135deg, #c9a24e 0%, #e8d08a 40%, #c9a24e 60%, #a88636 100%) !important;
+  box-shadow:
+    0 0 8px rgba(201,162,78,.18),
+    inset 0 1px 0 rgba(232,208,138,.08);
+  color:#e8d08a !important;
+}
+.pro-preview::before{
+  background-image:linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(232,208,138,.10) 42%,
+    rgba(201,162,78,.16) 50%,
+    rgba(232,208,138,.10) 58%,
+    transparent 70%
+  );
+}
+.pro-preview:hover{
+  box-shadow:
+    0 0 12px rgba(201,162,78,.32),
+    0 0 28px rgba(201,162,78,.12),
+    inset 0 1px 0 rgba(232,208,138,.10);
+}
+.pro-preview:active{
+  box-shadow:0 0 4px rgba(201,162,78,.20);
+  filter:brightness(.95);
+}
+.pro-preview:focus-visible{
+  outline:2px solid #c9a24e;
+  outline-offset:2px;
+}
+
+/* -------- LIGHT theme --------------------------------------------- */
+body.light .pro-preview{
+  background-image:
+    linear-gradient(var(--panel2), var(--panel2)),
+    linear-gradient(135deg, #c9a24e 0%, #e0c56e 40%, #c9a24e 60%, #b08e3a 100%) !important;
+  box-shadow:
+    0 0 0 1px rgba(201,162,78,.28),
+    0 2px 6px rgba(201,162,78,.14);
+  color:#8a6d2a !important;
+}
+body.light .pro-preview::before{
+  background-image:linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(224,197,110,.08) 42%,
+    rgba(201,162,78,.12) 50%,
+    rgba(224,197,110,.08) 58%,
+    transparent 70%
+  );
+}
+body.light .pro-preview:hover{
+  box-shadow:
+    0 0 0 1px rgba(201,162,78,.40),
+    0 3px 12px rgba(201,162,78,.20);
+}
+
+/* -------- Segmented button group support (.seg) -------------------- */
+.seg.pro-glow>button{color:inherit}
+.seg.pro-glow>button.on{background:linear-gradient(135deg,#f2a900,#d4920a) !important;color:#4a3500 !important}
+.seg.pro-preview>button{color:inherit}
+.seg.pro-preview>button.on{background:linear-gradient(135deg,#c9a24e,#a88636) !important;color:#fff !important}
+
+/* ==================== Auto-Badges ================================= */
+/* ProButtonManager injects <span class="pro-badge-auto"> into tagged elements */
+.pro-badge-auto {
+  position: absolute;
+  top: -0.385rem;
+  right: -0.385rem;
+  pointer-events: none;
+  z-index: 5;
+  
+  /* Inherits sizing from .pro-badge-tiny */
+  font-size: 0.5rem;
+  line-height: 1;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.154rem 0.231rem;
+  border-radius: 0.154rem;
+  
+  display: flex;
+  align-items: center;
+  gap: 0.154rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.pro-badge-auto ui-icon {
+  display: inline-flex;
+}
+.pro-badge-auto ui-icon svg {
+  width: 0.85em;
+  height: 0.85em;
+}
+
+/* Tier: PRO (Gold) */
+.pro-badge-tier-pro {
+  background: linear-gradient(135deg, #f2a900, #d4920a);
+  color: #fff;
+}
+body.light .pro-badge-tier-pro {
+  color: #fff;
+}
+
+/* Tier: PREVIEW (Champagne) */
+.pro-badge-tier-preview {
+  background: linear-gradient(135deg, #c9a24e, #a88636);
+  color: #fff;
+}
+body.light .pro-badge-tier-preview {
+  color: #fff;
+}

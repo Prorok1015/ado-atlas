@@ -21,9 +21,10 @@ function dirty(){
     ||((App.state.orig.priority?String(App.state.orig.priority):'')!==v.prio)
     ||v.iter!==App.state.orig.iter||v.parent!==App.state.orig.parent||v.start!==App.state.orig.start||v.target!==App.state.orig.target||v.due!==App.state.orig.due||v.est!==App.state.orig.est)
     return true;
+  const norm=(s)=>(s||'').replace(/\r\n/g, '\n');
   // Lazy fields — only compare if they've actually been loaded into App.state.orig
-  if(App.state.orig._loaded_desc && v.desc!==App.state.orig.desc) return true;
-  if(App.state.orig._loaded_ac && App.state.orig.has_ac && v.ac!==App.state.orig.ac) return true;
+  if(App.state.orig._loaded_desc && norm(v.desc)!==norm(App.state.orig.desc)) return true;
+  if(App.state.orig._loaded_ac && App.state.orig.has_ac && norm(v.ac)!==norm(App.state.orig.ac)) return true;
   if(App.state.orig._loaded_tags && v.tags!==App.state.orig.tags) return true;
   if(App.state.orig._loaded_area && v.area!==App.state.orig.area) return true;
   if(App.state.orig._loaded_storypoints && !numEq(v.storypoints,App.state.orig.storypoints)) return true;
@@ -40,11 +41,15 @@ function dirty(){
       const origVal = App.state.orig[cf.referenceName];
       if (cf.type === 'double' || cf.type === 'integer') {
         if (!numEq(currentVal, origVal)) return true;
+      } else if (cf.type === 'html' || cf.type === 'plaintext') {
+        if (norm(currentVal) !== norm(origVal)) return true;
       } else {
         if (String(currentVal) !== String(origVal)) return true;
       }
     }
   }
+
+  if (App.state.commentEditor && App.state.commentEditor.value.trim() !== '') return true;
 
   return false;
 }
@@ -56,7 +61,8 @@ function dirty(){
 function textDirty(){
   if(App.state.cur==null||!App.state.orig)return false;
   const v=editorValues();
-  return v.title!==App.state.orig.title||v.desc!==App.state.orig.desc||(App.state.orig.has_ac&&v.ac!==App.state.orig.ac);
+  const norm=(s)=>(s||'').replace(/\r\n/g, '\n');
+  return norm(v.title)!==norm(App.state.orig.title)||norm(v.desc)!==norm(App.state.orig.desc)||(App.state.orig.has_ac&&norm(v.ac)!==norm(App.state.orig.ac));
 }
 let _saveChipTimer=null;
 function setSaveChip(state,msg){

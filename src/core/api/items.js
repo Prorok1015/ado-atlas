@@ -409,9 +409,13 @@ async function comments(wid, options) {
             }
           });
         }
+        let rt = c.renderedText || c.text || "";
+        if (rt) {
+          rt = rt.replace(/\x06/g, `${proj}/_apis/wit/attachments`);
+        }
         return {
           id: c.id,
-          text: htmlToMarkdown(c.renderedText || c.text),
+          text: htmlToMarkdown(rt),
           by: ((c.createdBy || {}).displayName) || "",
           date: c.createdDate || c.modifiedDate || "",
           reactions: reactions

@@ -227,5 +227,47 @@
   let applyTimer=null;
   function scheduleApply(){clearTimeout(applyTimer);applyTimer=setTimeout(refresh,500);}  // debounce (long enough to click several chips)
 
-  App.filters = { FILTERS, filterCount, updateFilterCount, renderFilters, scheduleApply };
+  function renderFavoriteFilters() {
+    const favCont = $('fav-filters');
+    if (!favCont) return;
+    
+    let saved = [];
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['fbSavedFilters'], (res) => {
+        saved = res.fbSavedFilters || [];
+        drawFavs(saved);
+      });
+    } else {
+      saved = JSON.parse(localStorage.getItem('fbSavedFilters') || '[]');
+      drawFavs(saved);
+    }
+    
+    function drawFavs(filters) {
+      favCont.innerHTML = '';
+      const favs = filters.filter(f => f.favorite);
+      if (favs.length === 0) {
+        favCont.style.display = 'none';
+        return;
+      }
+      favCont.style.display = 'flex';
+      
+      favs.forEach(f => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-fav-filter';
+        btn.title = 'Apply favorited filter';
+        btn.innerHTML = `<ui-icon name="star" style="color:var(--state-resolved, #e3a008); font-size:0.8em; margin-right:4px;"></ui-icon> <span>${f.name}</span>`;
+        btn.style.padding = '2px 8px';
+        btn.style.fontSize = '0.85rem';
+        btn.onclick = () => {
+          if (window.filterManager) {
+            window.filterManager.setIR(f.config);
+            if (window.refresh) window.refresh();
+          }
+        };
+        favCont.appendChild(btn);
+      });
+    }
+  }
+
+  App.filters = { FILTERS, filterCount, updateFilterCount, renderFilters, renderFavoriteFilters, scheduleApply };
 })(window.App);

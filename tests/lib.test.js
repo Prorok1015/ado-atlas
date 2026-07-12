@@ -479,6 +479,10 @@ test("mdToHtml: #123 inside an existing link is NOT re-linked", () => {
 test("htmlToMarkdown: <img> -> ![alt](src)", () => {
   assert.strictEqual(lib.htmlToMarkdown('<img src="https://x/a.png" alt="pic">'), "![pic](https://x/a.png)");
 });
+test("htmlToMarkdown: <img> with unquoted attributes", () => {
+  assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png alt=pic>'), "![pic](https://x/a.png)");
+  assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png alt="pic with spaces">'), "![pic with spaces](https://x/a.png)");
+});
 test("htmlToMarkdown: mention anchor -> @[Name](descriptor)", () => {
   const md = lib.htmlToMarkdown('<a href="#" data-vss-mention="version:2.0,e401e150-a645-7c8e-b903-3994dbead567">@Jane Doe</a>');
   assert.strictEqual(md, "@[Jane Doe](e401e150-a645-7c8e-b903-3994dbead567)");

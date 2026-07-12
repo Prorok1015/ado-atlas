@@ -344,7 +344,7 @@ button:hover ui-icon[name="trash"],
 .md-editor { position: relative; }
 .mdview{border:1px solid var(--line);border-radius:0.462rem;padding:0.462rem 0.692rem;min-height:4.308rem;font-size:1rem;overflow:auto}
 .mdview h3,.mdview h4,.mdview h5,.mdview h6{margin:.4em 0 .2em;font-size:1rem}
-.mdview p{margin:.3em 0}.mdview ul,.mdview ol{margin:.3em 0;padding-left:1.538rem}
+.mdview p{margin:.3em 0}.mdview ul{margin:.3em 0;padding-left:1.538rem;list-style-type:disc}.mdview ol{margin:.3em 0;padding-left:1.538rem;list-style-type:decimal}
 .mdview code{background:var(--panel2);border-radius:0.308rem;padding:0 0.308rem;font-family:ui-monospace,Consolas,monospace}
 .mdview pre{background:var(--panel2);border-radius:0.462rem;padding:0.615rem;overflow:auto}
 .mdview a{color:var(--accent)}

@@ -53,9 +53,18 @@ async function list({ wtype, parent, text, order, filters, signal } = {}) {
   if (wtype) where.push(`[${FIELD_REGISTRY.type.ref}] = '${wiqlQuote(wtype)}'`);
   if (parent != null) where.push(`[${FIELD_REGISTRY.parent.ref}] = ${parent|0}`);
   if (text) where.push(`[${FIELD_REGISTRY.title.ref}] CONTAINS '${wiqlQuote(text)}'`);
-  const orderBy = order === "priority"
-    ? `[${FIELD_REGISTRY.priority.ref}], [${FIELD_REGISTRY.id.ref}]`
-    : `[${FIELD_REGISTRY.id.ref}]`;
+  let orderBy = `[${FIELD_REGISTRY.id.ref}]`;
+  if (order === "priority") {
+    orderBy = `[${FIELD_REGISTRY.priority.ref}], [${FIELD_REGISTRY.id.ref}]`;
+  } else if (order === "priority_desc") {
+    orderBy = `[${FIELD_REGISTRY.priority.ref}] DESC, [${FIELD_REGISTRY.id.ref}]`;
+  } else if (order === "id_desc") {
+    orderBy = `[${FIELD_REGISTRY.id.ref}] DESC`;
+  } else if (order === "changeddate_desc") {
+    orderBy = `[${FIELD_REGISTRY.changeddate.ref}] DESC, [${FIELD_REGISTRY.id.ref}]`;
+  } else if (order === "createddate_desc") {
+    orderBy = `[${FIELD_REGISTRY.createddate.ref}] DESC, [${FIELD_REGISTRY.id.ref}]`;
+  }
   const wiql = `SELECT [${FIELD_REGISTRY.id.ref}] FROM WorkItems WHERE ` + where.join(" AND ") + " ORDER BY " + orderBy;
   const ids = await wiqlIds(wiql, LIST_CAP, signal);
   const items = await batchFetch(ids, null, signal);

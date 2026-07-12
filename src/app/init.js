@@ -110,10 +110,21 @@ async function initialBoot(postSetup){
     window.filterManager = new FilterManager({ quickFilterFields: App.filters.FILTERS.map(f => f.key) });
     window.filterManager.load();
     App.filters.renderFilters();
+    App.filters.renderFavoriteFilters();
     App.filters.updateFilterCount();
     window.filterManager.onChange(() => {
       window.filterManager.save();
       updateFollowedBtnVisual();
+      
+      const ir = window.filterManager.getIR();
+      if (ir && ir.order !== undefined) {
+        const sortSel = $('f_sort');
+        if (sortSel && sortSel.value !== (ir.order || '')) {
+          sortSel.value = ir.order || '';
+          App.prefs.set('sort', sortSel.value);
+        }
+      }
+
       App.filters.renderFilters();
       App.filters.updateFilterCount();
       App.filters.scheduleApply();
@@ -271,7 +282,10 @@ function wirePremiumPlaceholders(){
   });
   // "Explore ADO Atlas Pro" — opens the full premium feature catalog.
   const explore=$('pro_explore_btn');
-  if(explore)explore.addEventListener('click',()=>{ if(window.ProFeaturesPanel)window.ProFeaturesPanel.open(); });
+  if(explore)explore.addEventListener('click',()=>{ if(typeof closeMore === 'function') closeMore(); if(window.ProFeaturesPanel)window.ProFeaturesPanel.open(); });
+  
+  // Initialize the auto-styling for all [data-pro-feature] buttons
+  if(window.ProButtonManager) window.ProButtonManager.init();
 }
 
 // ---- wiring helpers (extracted verbatim from initialBoot; order preserved) ----
@@ -280,7 +294,17 @@ function wireControls(){
   $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>App.settings.switchMode(b.dataset.m));
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.graph.depHandleHide();App.graph.renderGraph();});
   $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.prefs.set('rankDir',App.state.rankDir);App.graph.renderGraph({relayout:true,fit:true});});
-  $('f_sort').onchange=()=>{App.prefs.set('sort',$('f_sort').value);refresh();};
+  $('f_sort').onchange=()=>{
+    App.prefs.set('sort',$('f_sort').value);
+    if (window.filterManager) {
+      const ir = window.filterManager.getIR();
+      ir.order = $('f_sort').value || null;
+      // We set activeIR without triggering full save/refresh loop, just silently update the order
+      // so the filter builder has it next time it's opened.
+      window.filterManager.activeIR = ir;
+    }
+    refresh();
+  };
   for(let o=-12;o<=14;o++)$('f_tz').appendChild(new Option('UTC'+(o>=0?'+':'')+o,o));
   {const s=App.prefs.get('tz');if(s!==null&&s!=='')tzOffset=parseInt(s);}
   $('f_tz').value=tzOffset;
@@ -578,6 +602,16 @@ function wireEditorAndKeys(){
   window.addEventListener('beforeunload',e=>{
     if(dirty()){e.preventDefault();e.returnValue='';return '';}
   });
+  
+  const summarizeBtn = $('s_ai_summarize');
+  if (summarizeBtn) {
+    summarizeBtn.onclick = async () => {
+      if (window.AISummarizer) {
+        await window.AISummarizer.summarizeCurrentItem();
+      }
+    };
+  }
+
   $('s_customize').onclick=()=>{setCustomizeTab('side');showCustomize();};   // gear in the panel header → open Customize on the sidebar tab
   $('s_copy_link').onclick = async () => {
     const url = $('s_link').href;

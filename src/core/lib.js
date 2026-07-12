@@ -213,7 +213,7 @@
     // mistaken for a literal "!" followed by [link](...), and pull @-mentions
     // and #123 BEFORE the regular link rule for the same reason.
     const MENTION_RE = /@\[([^\]\n]{1,80})\]\(([a-f0-9-]{36})\)/gi;
-    const IMG_RE     = /!\[([^\]\n]{0,200})\]\((https:\/\/[^)\s"<>]+)\)/g;
+    const IMG_RE     = /!\[([^\]\n]{0,200})\]\(((?:https:\/\/|\/|\?|File\?)[^)\s"<>]+)\)/gi;
     const LINK_RE    = /\[([^\]]+)\]\((https?:\/\/[^)\s"<>]+)\)/g;
     const WID_RE     = /(^|[\s(,;:.])#(\d{1,8})\b/g;
     function inl(t) {
@@ -223,7 +223,24 @@
         .replace(/__([^_]+)__/g, "<b>$1</b>")
         .replace(/~~([^~]+)~~/g, "<s>$1</s>")
         .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>");
-      if (allowImg) out = out.replace(IMG_RE, (m, alt, url) => `<img alt="${alt}" src="${url}" style="max-width:100%">`);
+      if (allowImg) {
+        out = out.replace(IMG_RE, (m, alt, url) => {
+          if (!url.startsWith("http")) {
+            if (base && url.includes("fileName=")) {
+              const projUrl = base.replace(/\/_workitems\/edit\/\d+\/?$/, "");
+              const match = url.match(/(?:uid|attachmentId)=([^&]+)/i);
+              if (match) {
+                url = projUrl + "/_apis/wit/attachments/" + match[1] + "?fileName=" + encodeURIComponent(alt || "image.png");
+              } else {
+                url = projUrl + (url.startsWith("/") ? "" : "/") + url;
+              }
+            } else {
+              return `![${alt}](${url})`;
+            }
+          }
+          return `<img alt="${alt}" src="${url}" style="max-width:100%">`;
+        });
+      }
       // @[Name](descriptor) - ADO mention anchor. href stays "#"; the descriptor
       // goes into data-vss-mention exactly so the saved HTML triggers a real
       // notification when round-tripped back.
@@ -254,7 +271,7 @@
       m = raw.match(/^\s*>\s?(.*)/); if (m) { if (!bq) { close(); out += "<blockquote>"; bq = true; } else out += "<br>"; out += inl(m[1]); continue; }
       m = raw.match(/^\s*[-*]\s+(.*)/); if (m) { if (!ul) { close(); out += "<ul>"; ul = true; } out += "<li>" + inl(m[1]) + "</li>"; continue; }
       m = raw.match(/^\s*\d+\.\s+(.*)/); if (m) { if (!ol) { close(); out += "<ol>"; ol = true; } out += "<li>" + inl(m[1]) + "</li>"; continue; }
-      if (!raw.trim()) { close(); continue; }
+      if (!raw.trim()) { if (bq) out += "<br>"; continue; }
       close(); out += "<p>" + inl(raw) + "</p>";
     }
     if (code) out += "<pre>" + h(buf) + "</pre>"; close(); return out;
@@ -286,10 +303,10 @@
       // <img src="..." alt="..."> → ![alt](src). Order of attributes varies, so
       // capture them independently and reassemble.
       .replace(/<img\b([^>]*)\/?>/gi, (m, attrs) => {
-        const srcM = attrs.match(/\bsrc\s*=\s*"([^"]*)"/i);
-        const altM = attrs.match(/\balt\s*=\s*"([^"]*)"/i);
-        const src = srcM ? srcM[1] : "";
-        const alt = altM ? altM[1] : "";
+        const srcM = attrs.match(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+        const altM = attrs.match(/\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+        const src = srcM ? (srcM[1] || srcM[2] || srcM[3] || "") : "";
+        const alt = altM ? (altM[1] || altM[2] || altM[3] || "") : "";
         return src ? "![" + alt + "](" + src + ")" : "";
       });
   }

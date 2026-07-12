@@ -228,7 +228,7 @@
       setMsg('', false);
       keyInput.value = '';
       backdropEl.classList.add('show');
-      if (global.LayerManager) global.LayerManager.open(panelEl, backdropEl, { isPopover: true });
+      if (global.LayerManager) global.LayerManager.open(panelEl, backdropEl, { isPopover: false });
       setTimeout(() => keyInput && keyInput.focus(), 0);
     },
 

@@ -562,4 +562,103 @@
   background: var(--muted, #666);
 }
 
+/* Custom Switch Slider for Deep Research Mode */
+.ai-switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 20px;
+}
+
+.ai-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ai-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--line, #333);
+  transition: .3s;
+  border-radius: 20px;
+}
+
+.ai-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+.ai-switch input:checked + .ai-slider {
+  background-color: #a855f7;
+}
+
+.ai-switch input:checked + .ai-slider:before {
+  transform: translateX(14px);
+}
+
+/* AI Summary Popover Styles */
+.ai-summary-hover-popover {
+  position: fixed;
+  width: 320px;
+  max-height: 250px;
+  background: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  padding: 12px;
+  z-index: 20100;
+  box-sizing: border-box;
+  overflow-y: auto;
+  color: var(--txt, #f5f5f5);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+body.light .ai-summary-hover-popover {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  color: #333;
+}
+
+.ai-summary-hover-popover h1,
+.ai-summary-hover-popover h2,
+.ai-summary-hover-popover h3,
+.ai-summary-hover-popover h4 {
+  color: var(--accent, #a855f7);
+  margin-top: 0;
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+.ai-summary-hover-popover ul,
+.ai-summary-hover-popover ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.ai-summary-hover-popover::-webkit-scrollbar {
+  width: 4px;
+}
+.ai-summary-hover-popover::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ai-summary-hover-popover::-webkit-scrollbar-thumb {
+  background: var(--line, #333);
+  border-radius: 2px;
+}
 

@@ -1,7 +1,7 @@
 /* ---------- Popover / Overlay Layer Manager ---------- */
 const LayerManager = {
   stack: [],
-  baseZ: 4000,
+  baseZ: 15000,
   stepZ: 100,
 
   // Registers a layer and assigns it a dynamic z-index.
@@ -45,9 +45,9 @@ const LayerManager = {
     let currentZ = this.baseZ;
     this.stack.forEach(layer => {
       if (layer.isPopover) {
-        // Popovers sit above all fullscreen panels (e.g. at 9500+)
-        layer.element.style.zIndex = '9500';
-        if (layer.backdrop) layer.backdrop.style.zIndex = '9499';
+        // Popovers sit above all fullscreen panels (e.g. at 20000+)
+        layer.element.style.zIndex = '20000';
+        if (layer.backdrop) layer.backdrop.style.zIndex = '19999';
       } else {
         if (layer.backdrop) {
           layer.backdrop.style.zIndex = String(currentZ - 1);

@@ -75,5 +75,14 @@
 - **Rules**:
   - Sidebar fields and layout structure must be rendered dynamically using a structured JSON layout definition stored per work item type (e.g., `ado.layout.<Wtype>`).
   - Avoid hardcoding static columns/structures in HTML/JS; utilize layout groups (sections), rows, and columns dynamically built from the schema.
+## 13. AI Component Encapsulation (`src/ai/`)
+- **Rules**:
+  - All new AI features must be built as isolated, standalone components located in the `src/ai/` directory, avoiding inline implementations at the point of usage.
+  - They should expose a minimal, clean public interface (e.g., `AITextEditor.open()`, `AISummarizer.summarize()`) to the rest of the application.
+  - Components must use the global `aiProviderRegistry` to abstract away specific vendor endpoints and models.
 
-
+## 14. GitHub Issues Project Workflow
+- **Rules**:
+  - All project management (from ideation to final commit) must be tracked strictly in GitHub Issues.
+  - No offline tracking documents (e.g. `scratch/issues.txt` or `task.md`) should be used as the primary source of truth for planning.
+  - Workflow: Idea -> Create GitHub Issue -> Implement feature in a branch -> Create Pull Request -> Merge -> Close Issue.

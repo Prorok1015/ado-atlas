@@ -50,10 +50,13 @@ function reachable(){const out=new Set(),st=[...(App.state.store.top||App.state.
     if(App.state.store.expanded.has(id))(App.state.store.kids[id]||[]).forEach(c=>st.push(c));}
   return out;}
 async function ensureKids(id){            // load children once, cache in the App.state.store
-  if(App.state.store.kids[id])return App.state.store.kids[id];
+  if(!App.state.store.fullKids) App.state.store.fullKids = new Set();
+  if(App.state.store.fullKids.has(id)) return App.state.store.kids[id] || [];
   const ord=$('f_sort').value||null;
   let kids;try{kids=await api.children(id,ord);}catch(e){setStatus('ERROR: '+e.message,true);return [];}
-  kids.forEach(k=>{App.state.store.nodes[k.id]=k;App.state.store.parent[k.id]=id;});App.state.store.kids[id]=kids.map(k=>k.id);
+  kids.forEach(k=>{App.state.store.nodes[k.id]=k;App.state.store.parent[k.id]=id;});
+  App.state.store.kids[id]=kids.map(k=>k.id);
+  App.state.store.fullKids.add(id);
   // these were loaded outside the filtered set, so their own child counts are
   // unknown — fetch them so the carets/badges on the new rows resolve too.
   fetchChildCounts(App.state.store.kids[id]).then(changed=>{if(changed)rerenderChildCounts();});
@@ -392,7 +395,7 @@ async function _refresh(){
   // RESET hierarchy caches — stale entries from a previous filter would leak via
   // auto-expand (e.g. cached Task children of an Epic when filter is "Epic only").
   const prevExpanded=App.state.store.expanded;const firstLoad=!treeEverLoaded;treeEverLoaded=true;
-  App.state.store.kids={};App.state.store.expanded=new Set();
+  App.state.store.kids={};App.state.store.expanded=new Set();App.state.store.fullKids=new Set();
   // Build hierarchy WITHIN the filtered set so tree/graph nest correctly (no duplicates).
   // App.state.store.top = items whose parent is NOT in the set (true roots); other items become
   // children of their parent inside the set; pre-populated App.state.store.kids avoids API calls.
@@ -578,8 +581,8 @@ function wireSetup(){
     }
   };
   $('setup-cancel').onclick=App.setup.hideSetup;
-  $('settingsbtn').onclick=()=>{const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}App.setup.showSetup(true);};
-  $('ai_settings_btn').onclick=()=>{const mp=$('morepanel');if(mp){mp.style.display='none';$('morebtn').classList.remove('on');}if(window.AISettingsDialog){window.AISettingsDialog.open();}};
+  $('settingsbtn').onclick=()=>{if(typeof closeMore === 'function') closeMore(); App.setup.showSetup(true);};
+  $('ai_settings_btn').onclick=()=>{if(typeof closeMore === 'function') closeMore(); if(window.AISettingsDialog){window.AISettingsDialog.open();}};
   $('patbadge').onclick=()=>App.setup.showSetup(true);
   $('projbadge').onclick=()=>App.setup.showSetup(true);
 }

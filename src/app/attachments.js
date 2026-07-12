@@ -16,7 +16,7 @@ function descRenderOpts(){return {workItemBase:descBase};}
 // swap the src to a blob: URL. Cache keyed by attachment URL; revoked on item
 // switch so memory doesn't grow without bound.
 const attBlobs=new Map();
-function isAdoAttachmentUrl(u){return /^https:\/\/[^/]+\/.+\/_apis\/wit\/attachments\/[^/?#]+/.test(u||'');}
+function isAdoAttachmentUrl(u){return /^https:\/\/[^/]+\/.+(?:\/_apis\/wit\/attachments\/|\bfileName=)/.test(u||'');}
 function clearAttBlobs(){
   const urls=Array.from(attBlobs.values());
   attBlobs.clear();

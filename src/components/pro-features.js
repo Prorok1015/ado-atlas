@@ -27,7 +27,10 @@
       { key: 'an_burndown', titleKey: 'proFeatures.item.anBurndown.title', descKey: 'proFeatures.item.anBurndown.desc', status: 'planned' },
       { key: 'an_velocity', titleKey: 'proFeatures.item.anVelocity.title', descKey: 'proFeatures.item.anVelocity.desc', status: 'planned' },
       { key: 'an_stale',    titleKey: 'proFeatures.item.anStale.title',    descKey: 'proFeatures.item.anStale.desc',    status: 'planned' },
-      { key: 'an_blocked',  titleKey: 'proFeatures.item.anBlocked.title',  descKey: 'proFeatures.item.anBlocked.desc',  status: 'planned' }
+      { key: 'an_blocked',  titleKey: 'proFeatures.item.anBlocked.title',  descKey: 'proFeatures.item.anBlocked.desc',  status: 'planned' },
+      { key: 'an_team_throughput', titleKey: 'proFeatures.item.anTeamThroughput.title', descKey: 'proFeatures.item.anTeamThroughput.desc', status: 'planned' },
+      { key: 'an_team_avg_cycle',  titleKey: 'proFeatures.item.anTeamAvgCycle.title',  descKey: 'proFeatures.item.anTeamAvgCycle.desc',  status: 'planned' },
+      { key: 'an_team_top',        titleKey: 'proFeatures.item.anTeamTop.title',        descKey: 'proFeatures.item.anTeamTop.desc',        status: 'planned' }
     ]},
     { groupKey: 'proFeatures.group.ai', icon: 'sparkles', items: [
       { key: 'cloud_ai',   titleKey: 'proFeatures.item.cloudAi.title',   descKey: 'proFeatures.item.cloudAi.desc',   status: 'stub' },
@@ -43,6 +46,7 @@
       { key: 'critical_path',   titleKey: 'proFeatures.item.criticalPath.title',   descKey: 'proFeatures.item.criticalPath.desc',   status: 'planned' },
       { key: 'baseline_gantt',  titleKey: 'proFeatures.item.baselineGantt.title',  descKey: 'proFeatures.item.baselineGantt.desc',  status: 'planned' },
       { key: 'ultra_dark',      titleKey: 'proFeatures.item.ultraDark.title',      descKey: 'proFeatures.item.ultraDark.desc',      status: 'planned' },
+      { key: 'premium_white',   titleKey: 'proFeatures.item.premiumWhite.title',   descKey: 'proFeatures.item.premiumWhite.desc',   status: 'planned' },
       { key: 'quick_templates', titleKey: 'proFeatures.item.quickTemplates.title', descKey: 'proFeatures.item.quickTemplates.desc', status: 'planned' }
     ]},
     { groupKey: 'proFeatures.group.filters', icon: 'folder', items: [
@@ -185,7 +189,7 @@
     open() {
       build();
       backdropEl.classList.add('show');
-      if (global.LayerManager) global.LayerManager.open(panelEl, backdropEl, { isPopover: true });
+      if (global.LayerManager) global.LayerManager.open(panelEl, backdropEl, { isPopover: false });
     },
     close() {
       if (!backdropEl) return;

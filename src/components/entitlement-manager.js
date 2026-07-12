@@ -89,6 +89,8 @@
     // paywall and returns false, so callers read like: `if (!EM.gate('x')) return;`
     gate(feature) {
       if (this.isPro()) return true;
+      // Free Preview: if the feature is marked as preview in the manager, allow it
+      if (global.ProButtonManager && global.ProButtonManager.isPreview(feature)) return true;
       if (global.PremiumPaywall) global.PremiumPaywall.open(feature);
       return false;
     }

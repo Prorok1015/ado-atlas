@@ -1073,7 +1073,14 @@
                 <span class="fb-toggle-icon"><ui-icon name="star"></ui-icon></span>
                 <span data-i18n="filter.builder.onlyFollowed">Only followed items</span>
               </button>
-              <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ai-search-btn" style="position:relative; display:flex; align-items:center; gap:6px; background: linear-gradient(135deg, rgba(114,9,183,0.1), rgba(63,55,201,0.1)); border-color: rgba(99,102,241,0.3);" data-i18n-title="filter.builder.aiSearchTooltip" title="AI Search over work items (BETA)">
+              <div class="fb-sort-control" style="display:flex; align-items:center; gap:6px; margin-left: 8px;">
+                <span data-i18n="filter.builder.sortBy" style="font-size: 0.846rem; color: var(--muted); font-weight: 500;">Sort:</span>
+                <select id="fb-sort-select" style="background: var(--panel2); color: var(--txt); border: 1px solid var(--line); border-radius: 0.462rem; padding: 2px 6px; font-size: 0.846rem; min-height: 1.692rem; outline: none; cursor: pointer;">
+                  <option value="" data-i18n="filter.sort.id">ID</option>
+                  <option value="priority" data-i18n="filter.sort.priority">Priority</option>
+                </select>
+              </div>
+              <button class="fb-ie-btn fb-ie-btn--outline" id="fb-ai-search-btn" style="position:relative; display:flex; align-items:center; gap:6px; background: linear-gradient(135deg, rgba(114,9,183,0.1), rgba(63,55,201,0.1)); border-color: rgba(99,102,241,0.3); margin-left: auto;" data-i18n-title="filter.builder.aiSearchTooltip" title="AI Search over work items (BETA)">
                 <span style="color:#a855f7; display: flex; align-items: center;"><ui-icon name="sparkles"></ui-icon></span>
                 <span data-i18n="filter.builder.aiSearch">AI Search...</span>
                 <span class="ai-beta-badge-tiny" style="position: absolute; top: -0.385rem; right: -0.385rem; font-size: 0.615rem; padding: 0 0.231rem;">BETA</span>
@@ -1580,10 +1587,31 @@
                   }
                 };
                 
+                const favItemBtn = document.createElement('button');
+                favItemBtn.className = 'fb-icon-btn';
+                favItemBtn.title = 'Toggle Favorite (shows on toolbar)';
+                favItemBtn.innerHTML = item.favorite ? '<ui-icon name="star"></ui-icon>' : '<ui-icon name="star"></ui-icon>';
+                favItemBtn.style.border = 'none';
+                if (item.favorite) favItemBtn.style.color = 'var(--state-resolved, #e3a008)';
+                favItemBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  item.favorite = !item.favorite;
+                  if (storage) {
+                    storage.set({ fbSavedFilters: savedFilters }, () => renderList(savedFilters));
+                  } else {
+                    localStorage.setItem('fbSavedFilters', JSON.stringify(savedFilters));
+                    renderList(savedFilters);
+                  }
+                  if (window.App && window.App.filters && typeof window.App.filters.renderFavoriteFilters === 'function') {
+                    window.App.filters.renderFavoriteFilters();
+                  }
+                };
+                
                 const arrowSpan = document.createElement('span');
                 arrowSpan.className = 'fb-filter-arrow';
                 arrowSpan.innerHTML = '<ui-icon name="chevron-right"></ui-icon>';
                 
+                actions.appendChild(favItemBtn);
                 actions.appendChild(copyItemBtn);
                 actions.appendChild(shareItemBtn);
                 actions.appendChild(deleteItemBtn);
@@ -2553,9 +2581,13 @@
 
   function apply() {
     const showFollowedEl = document.getElementById('fb-show-followed');
+    const sortSelectEl = document.getElementById('fb-sort-select');
 
     if (showFollowedEl) {
       currentIR.followed = showFollowedEl.classList.contains('on') ? { in: ['yes'], not: [] } : null;
+    }
+    if (sortSelectEl) {
+      currentIR.order = sortSelectEl.value || null;
     }
     localStorage.removeItem('fbDraftFilter');
 
@@ -2571,6 +2603,13 @@
     if (draftBanner) draftBanner.style.display = 'none';
 
     currentIR = normalizeIRForComparison(ir);
+    
+    // Bind order immediately if the DOM exists
+    const sortSelectEl = document.getElementById('fb-sort-select');
+    if (sortSelectEl) {
+      sortSelectEl.value = currentIR.order || '';
+    }
+
     updateState();
   }
 

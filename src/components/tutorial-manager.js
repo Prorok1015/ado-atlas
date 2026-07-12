@@ -310,9 +310,18 @@ class TutorialManager {
       }
     }
     
+    let retries = 0;
+    const MAX_RETRIES = 30; // 3 seconds max wait time
+
     const checkAndShow = () => {
       const target = document.querySelector(step.element);
       if (!target) {
+        retries++;
+        if (retries > MAX_RETRIES) {
+          console.warn(`Tutorial step skipped: element ${step.element} not found.`);
+          this.next();
+          return;
+        }
         // Element not in DOM, keep waiting
         this.waitTimeout = setTimeout(checkAndShow, 100);
         return;
@@ -321,6 +330,12 @@ class TutorialManager {
       const rect = target.getBoundingClientRect();
       const isVisible = rect.width > 0 && rect.height > 0;
       if (!isVisible) {
+        retries++;
+        if (retries > MAX_RETRIES) {
+          console.warn(`Tutorial step skipped: element ${step.element} not visible.`);
+          this.next();
+          return;
+        }
         // Element is in DOM but not visible (e.g. sidebar panel closed), wait for it to open
         this.waitTimeout = setTimeout(checkAndShow, 100);
         return;
@@ -339,8 +354,18 @@ class TutorialManager {
       if (!this.backdrop) {
         this.backdrop = document.createElement('div');
         this.backdrop.className = 'tut-backdrop';
-        this.backdrop.addEventListener('mousedown', e => e.stopPropagation());
+        this.backdrop.addEventListener('mousedown', e => {
+          if (!this.backdrop.classList.contains('tut-backdrop-nonblocking')) {
+            e.stopPropagation();
+          }
+        });
         document.body.appendChild(this.backdrop);
+      }
+
+      if (step.nonBlocking) {
+        this.backdrop.classList.add('tut-backdrop-nonblocking');
+      } else {
+        this.backdrop.classList.remove('tut-backdrop-nonblocking');
       }
 
       // Elevate target element
@@ -380,6 +405,7 @@ class TutorialManager {
       this.popover.innerHTML = `
         <h3>${step.title}</h3>
         <p>${step.text}</p>
+        ${step.image ? `<img src="${step.image}" class="tut-image" alt="Tutorial Image">` : ''}
         <div class="tut-footer">
           <span class="tut-steps-indicator">${this.currentStepIndex + 1} / ${this.currentTutorial.steps.length}</span>
           <div class="tut-buttons">

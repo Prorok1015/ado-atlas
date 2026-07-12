@@ -56,6 +56,8 @@ class MarkdownEditor {
           <button type="button" class="dbtn dbtn-i-only" data-fmt="ol"     title="${htmlEsc(MD_L('md.numberedList', 'Numbered list'))}">1.</button>
           <button type="button" class="dbtn dbtn-i-only" data-fmt="quote"  title="${htmlEsc(MD_L('md.quote', 'Quote'))}">”</button>
           <button type="button" class="dbtn dbtn-i-only" data-fmt="link"   title="${htmlEsc(MD_L('md.insertLink', 'Insert link'))}"><ui-icon name="link"></ui-icon></button>
+          <span class="dsep"></span>
+          <button type="button" class="dbtn icon ai-btn" id="ai-fmt-btn" title="AI Edit Text" style="color:var(--accent)"><ui-icon name="sparkles"></ui-icon></button>
         </div>
         <div class="dtspacer"></div>
         <button type="button" class="dbtn icon dbtn-toggle" title="${htmlEsc(MD_L('md.togglePreview', 'Toggle preview / edit'))}"><ui-icon name="eye"></ui-icon></button>
@@ -91,6 +93,91 @@ class MarkdownEditor {
         this.handleFormat(b.dataset.fmt);
       }
     };
+    
+    const handleSelection = (e) => {
+      const ta = this.textarea;
+      const s = ta.selectionStart;
+      const end = ta.selectionEnd;
+      if (s !== end && (end - s) >= 1) {
+        const selectedText = ta.value.slice(s, end).trim();
+        if (selectedText) {
+          let x = 0;
+          let y = 0;
+          if (e && e.type === 'mouseup') {
+            x = e.clientX;
+            y = e.clientY;
+          } else {
+            // Keyboard selection fallback
+            const rect = ta.getBoundingClientRect();
+            x = rect.left + rect.width / 2;
+            y = rect.top + 20;
+          }
+          this.showSelectionIndicator(x, y, selectedText, s, end);
+          return;
+        }
+      }
+      this.hideSelectionIndicator();
+    };
+
+    this.textarea.addEventListener('mouseup', handleSelection);
+    this.textarea.addEventListener('keyup', handleSelection);
+
+    // Hide indicator on blur to prevent ghosting, unless clicking indicator itself
+    this.textarea.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (document.activeElement !== this.selectionIndicator) {
+          this.hideSelectionIndicator();
+        }
+      }, 150);
+    });
+
+    // Toolbar AI Button
+    const aiBtn = this.container.querySelector('#ai-fmt-btn');
+    if (aiBtn) {
+      aiBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+      });
+      aiBtn.onclick = (e) => {
+        e.preventDefault();
+        const ta = this.textarea;
+        const s = ta.selectionStart;
+        const end = ta.selectionEnd;
+        let selectedText = '';
+        let isWhole = false;
+        if (s !== end) {
+          selectedText = ta.value.slice(s, end);
+        } else {
+          selectedText = ta.value;
+          isWhole = true;
+        }
+
+        if (!selectedText.trim()) return;
+
+        // Position popover near the AI button itself
+        const rect = aiBtn.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height + 10;
+
+        if (window.AITextEditor) {
+          window.AITextEditor.open(selectedText, { x, y }, (newText) => {
+            if (newText && newText !== selectedText) {
+              if (isWhole) {
+                ta.value = newText;
+                ta.selectionStart = 0;
+                ta.selectionEnd = ta.value.length;
+              } else {
+                ta.value = ta.value.slice(0, s) + newText + ta.value.slice(end);
+                ta.selectionStart = s;
+                ta.selectionEnd = s + newText.length;
+              }
+              ta.focus();
+              this.fireChange();
+            }
+          });
+        }
+      };
+    }
+
     this.textarea.oninput = () => {
       if (this.options.onInput) this.options.onInput();
     };
@@ -292,6 +379,8 @@ class MarkdownEditor {
     }
   }
 
+
+
   wrapSel(before, after) {
     if (!this.isEditMode) this.togglePreview(false);
     const ta = this.textarea;
@@ -441,6 +530,60 @@ class MarkdownEditor {
       }
       renderAttachments();
       setStatus(MD_L('md.attached', '#' + wid + ' attached ' + up.name, { id: wid, name: up.name }));
+    }
+  }
+
+  showSelectionIndicator(x, y, selectedText, s, end) {
+    this.currentSelection = { x, y, text: selectedText, start: s, end: end };
+
+    if (!this.selectionIndicator) {
+      this.selectionIndicator = document.createElement('button');
+      this.selectionIndicator.type = 'button';
+      this.selectionIndicator.className = 'ai-selection-indicator';
+      this.selectionIndicator.innerHTML = '<ui-icon name="sparkles"></ui-icon>';
+      this.selectionIndicator.style.position = 'fixed';
+      this.selectionIndicator.style.zIndex = '20100';
+      this.selectionIndicator.style.display = 'none';
+      
+      this.selectionIndicator.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      
+      this.selectionIndicator.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.hideSelectionIndicator();
+        
+        const sel = this.currentSelection;
+        if (sel && window.AITextEditor) {
+          const ta = this.textarea;
+          window.AITextEditor.open(sel.text, { x: sel.x, y: sel.y + 10 }, (newText) => {
+            if (newText && newText !== sel.text) {
+              ta.value = ta.value.slice(0, sel.start) + newText + ta.value.slice(sel.end);
+              ta.selectionStart = sel.start;
+              ta.selectionEnd = sel.start + newText.length;
+              ta.focus();
+              this.fireChange();
+            }
+          });
+        }
+      });
+
+      document.body.appendChild(this.selectionIndicator);
+      if (typeof App !== 'undefined' && App.icons && typeof App.icons.init === 'function') {
+        App.icons.init(this.selectionIndicator);
+      }
+    }
+
+    this.selectionIndicator.style.left = `${x - 12}px`;
+    this.selectionIndicator.style.top = `${y - 32}px`;
+    this.selectionIndicator.style.display = 'block';
+  }
+
+  hideSelectionIndicator() {
+    if (this.selectionIndicator) {
+      this.selectionIndicator.style.display = 'none';
     }
   }
 }

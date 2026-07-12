@@ -20,6 +20,8 @@
 /* The leading gem icon inherits the badge's dark text colour (currentColor). */
 .pro-badge-tiny ui-icon svg{width:0.85em;height:0.85em;}
 .pro-badge-text ui-icon svg{width:0.9em;height:0.9em;}
+
+
 ui-icon {
   display: inline-flex;
   align-items: center;

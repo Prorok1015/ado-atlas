@@ -20,6 +20,8 @@ const NOTIFY_I18N = {
     followTitle: "[#{id}] {title}",
     followMessage: "{author} updated this item:\n{changes}",
     moreChanges: "(+ {count} more changes)",
+    assignedTitle: "Assigned to you: [#{id}] {title}",
+    assignedMessage: "{author} assigned this task to you.",
     contextMessage: "ADO Atlas",
     openButton: "Open"
   },
@@ -29,6 +31,8 @@ const NOTIFY_I18N = {
     followTitle: "[#{id}] {title}",
     followMessage: "{author} обновил(а) элемент:\n{changes}",
     moreChanges: "(+ ещё {count} изменений)",
+    assignedTitle: "Назначено вам: [#{id}] {title}",
+    assignedMessage: "{author} назначил(а) вам эту задачу.",
     contextMessage: "ADO Atlas",
     openButton: "Открыть"
   },
@@ -38,6 +42,8 @@ const NOTIFY_I18N = {
     followTitle: "[#{id}] {title}",
     followMessage: "{author} actualizó este elemento:\n{changes}",
     moreChanges: "(+ {count} cambios más)",
+    assignedTitle: "Asignado a ti: [#{id}] {title}",
+    assignedMessage: "{author} te asignó esta tarea.",
     contextMessage: "ADO Atlas",
     openButton: "Abrir"
   },
@@ -47,6 +53,8 @@ const NOTIFY_I18N = {
     followTitle: "[#{id}] {title}",
     followMessage: "{author} hat dieses Element aktualisiert:\n{changes}",
     moreChanges: "(+ {count} weitere Änderungen)",
+    assignedTitle: "Dir zugewiesen: [#{id}] {title}",
+    assignedMessage: "{author} hat dir diese Aufgabe zugewiesen.",
     contextMessage: "ADO Atlas",
     openButton: "Öffnen"
   }
@@ -232,9 +240,11 @@ async function runAllNotificationChecks() {
     // User-data (followed/mentioned caches) stay in chrome.storage.local; the notify
     // preferences roam, so read them sync-first via getSyncedPref.
     const {
-      followedItems = {}, mentionedItems = {}, mentionCacheInitialized = false
+      followedItems = {}, mentionedItems = {}, assignedItems = {},
+      mentionCacheInitialized = false, assignedCacheInitialized = false
     } = await chrome.storage.local.get([
-      "followedItems", "mentionedItems", "mentionCacheInitialized"
+      "followedItems", "mentionedItems", "assignedItems",
+      "mentionCacheInitialized", "assignedCacheInitialized"
     ]);
     const followNotify = await getSyncedPref("followNotify", "on");
     const mentionNotify = await getSyncedPref("mentionNotify", "on");
@@ -279,52 +289,75 @@ async function runAllNotificationChecks() {
       }
     }
 
-    // 3. Fetch native mentioned item IDs via WIQL if name resolved
+    // 3. Fetch native mentioned and assigned item IDs via WIQL if name resolved
     let serverMentionedIds = [];
+    let serverAssignedIds = [];
     if (displayName) {
       try {
         const proj = await api.projUrl();
         const url = `${proj}/_apis/wit/wiql?api-version=7.1`;
-        const query = {
+        
+        // Mentions query
+        const mQuery = {
           query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.History] CONTAINS '@[${escapedName}]'`
         };
-        const res = await api.req("POST", url, query);
-        serverMentionedIds = (res.workItems || []).map(wi => wi.id);
+        const mRes = await api.req("POST", url, mQuery);
+        serverMentionedIds = (mRes.workItems || []).map(wi => wi.id);
+
+        // Assigned query (recent 14 days to keep cache manageable)
+        const aQuery = {
+          query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @me AND [System.ChangedDate] >= @today - 14`
+        };
+        const aRes = await api.req("POST", url, aQuery);
+        serverAssignedIds = (aRes.workItems || []).map(wi => wi.id);
       } catch (err) {
-        console.error("Failed to query mentions:", err);
+        console.error("Failed to query mentions/assigned:", err);
       }
     }
 
-    // Check Stage 1 initialization for mentions
+    // Check Stage 1 initialization for mentions and assignments
+    let cachesUpdated = false;
     if (!mentionCacheInitialized && displayName) {
       const currentMentionItems = await api.batchFetch(serverMentionedIds, ["System.Rev"]);
       for (const raw of currentMentionItems) {
-        mentionedItems[raw.id] = {
-          id: raw.id,
-          rev: raw.rev,
-          org: config.org,
-          project: config.project
-        };
+        mentionedItems[raw.id] = { id: raw.id, rev: raw.rev, org: config.org, project: config.project };
       }
+      cachesUpdated = true;
+    }
+    if (!assignedCacheInitialized && displayName) {
+      const currentAssignedItems = await api.batchFetch(serverAssignedIds, ["System.Rev"]);
+      for (const raw of currentAssignedItems) {
+        assignedItems[raw.id] = { id: raw.id, rev: raw.rev, org: config.org, project: config.project };
+      }
+      cachesUpdated = true;
+    }
+
+    if (cachesUpdated) {
       await chrome.storage.local.set({
         mentionedItems,
+        assignedItems,
         mentionCacheInitialized: true,
+        assignedCacheInitialized: true,
         followedItems
       });
       return;
     }
 
-    // 4. Combine all IDs to inspect for changes (Union of followed + mentioned)
+    // 4. Combine all IDs to inspect for changes (Union of followed + mentioned + assigned)
     const activeFollowed = Object.values(followedItems).filter(
       item => item.org === config.org && item.project === config.project
     );
     const activeMentioned = Object.values(mentionedItems).filter(
       item => item.org === config.org && item.project === config.project
     );
+    const activeAssigned = Object.values(assignedItems).filter(
+      item => item.org === config.org && item.project === config.project
+    );
 
     const allMonitoredIds = Array.from(new Set([
       ...activeFollowed.map(item => item.id),
-      ...serverMentionedIds
+      ...serverMentionedIds,
+      ...serverAssignedIds
     ]));
 
     if (allMonitoredIds.length === 0) {
@@ -353,20 +386,27 @@ async function runAllNotificationChecks() {
     for (const raw of currentRevs) {
       const storedFollow = followedItems[raw.id];
       const storedMention = mentionedItems[raw.id];
+      const storedAssigned = assignedItems[raw.id];
       
       const isFollowChanged = storedFollow && raw.rev > storedFollow.rev;
       const isMentionChanged = storedMention && raw.rev > storedMention.rev;
+      const isAssignedChanged = storedAssigned && raw.rev > storedAssigned.rev;
+      
       const isNewMention = !storedMention && serverMentionedIds.includes(raw.id);
+      const isNewAssigned = !storedAssigned && serverAssignedIds.includes(raw.id);
 
-      if (isFollowChanged || isMentionChanged || isNewMention) {
+      if (isFollowChanged || isMentionChanged || isNewMention || isAssignedChanged || isNewAssigned) {
         itemsToCheck.push({
           id: raw.id,
           oldFollowRev: storedFollow ? storedFollow.rev : raw.rev,
           oldMentionRev: storedMention ? storedMention.rev : 0,
+          oldAssignedRev: storedAssigned ? storedAssigned.rev : 0,
           newRev: raw.rev,
           isFollowChanged,
           isMentionChanged,
-          isNewMention
+          isNewMention,
+          isAssignedChanged,
+          isNewAssigned
         });
       }
     }
@@ -399,11 +439,12 @@ async function runAllNotificationChecks() {
         const rawItems = await api.batchFetch([item.id], ["System.Title"]);
         const title = (rawItems[0] && rawItems[0].fields && rawItems[0].fields["System.Title"]) || `Work Item #${item.id}`;
 
-        const minOldRev = Math.min(item.oldFollowRev, item.oldMentionRev === 0 ? item.newRev : item.oldMentionRev);
+        const minOldRev = Math.min(item.oldFollowRev, item.oldMentionRev === 0 ? item.newRev : item.oldMentionRev, item.oldAssignedRev === 0 ? item.newRev : item.oldAssignedRev);
         const recentUpdates = updates.filter(u => u.rev > minOldRev && u.rev <= item.newRev);
 
         let author = "Someone";
         const foundMentions = [];
+        const foundAssignments = [];
         const changeDescriptions = [];
 
         recentUpdates.forEach(u => {
@@ -455,7 +496,16 @@ async function runAllNotificationChecks() {
               foundMentions.push({ author, fieldName, text: cleanText });
             }
 
-            // 3. Collect general changes if revision is newer than old follow revision
+            // 3. Check for assignment
+            const isAssignedRev = u.rev > item.oldAssignedRev;
+            if (!isTooOld && isAssignedRev && ref === "System.AssignedTo") {
+              const assignedToName = ov.newValue && typeof ov.newValue === "object" ? ov.newValue.displayName : String(ov.newValue || "");
+              if (assignedToName === displayName) {
+                foundAssignments.push({ author, fieldName });
+              }
+            }
+
+            // 4. Collect general changes if revision is newer than old follow revision
             const isFollowRev = u.rev > item.oldFollowRev;
             if (!isTooOld && isFollowRev) {
               // Ignore comment count metadata changes, since they are redundant with actual comments
@@ -479,9 +529,11 @@ async function runAllNotificationChecks() {
           title,
           author,
           foundMentions,
+          foundAssignments,
           changes: changeDescriptions,
           isFollowed: !!followedItems[String(item.id)],
-          isMentioned: serverMentionedIds.includes(Number(item.id))
+          isMentioned: serverMentionedIds.includes(Number(item.id)),
+          isAssigned: serverAssignedIds.includes(Number(item.id))
         };
       } catch (err) {
         console.error(`Error processing updates for #${item.id}:`, err);
@@ -497,8 +549,26 @@ async function runAllNotificationChecks() {
     for (const res of results) {
       if (!res) continue;
 
+      // Notify assignments
+      if (res.foundAssignments && res.foundAssignments.length > 0 && mentionNotify !== "off") {
+        res.foundAssignments.forEach(a => {
+          chrome.notifications.create(`app-item-${res.id}-assigned`, {
+            type: "basic",
+            iconUrl: "icons/icon-128.png",
+            title: nt(notifyLang, "assignedTitle", { id: res.id, title: res.title }),
+            message: nt(notifyLang, "assignedMessage", { author: a.author }),
+            contextMessage: nt(notifyLang, "contextMessage"),
+            buttons: [{ title: nt(notifyLang, "openButton") }],
+            priority: 2,
+            requireInteraction: true
+          }, (id) => {
+            if (chrome.runtime.lastError) console.error("Assigned notification error:", chrome.runtime.lastError);
+          });
+        });
+      }
+
       // Prioritize Mention notification over Followed notification if BOTH occurred
-      if (res.foundMentions.length > 0 && mentionNotify !== "off") {
+      if (res.foundMentions && res.foundMentions.length > 0 && mentionNotify !== "off") {
         // Group mentions
         const uniqueMentionsByAuthor = {};
         res.foundMentions.forEach(m => {

@@ -62,6 +62,18 @@ Output:
     ]
   }
 }
+
+Query: "created in the last 7 days and closed"
+Output:
+{
+  "where": {
+    "logic": "AND",
+    "rules": [
+      { "field": "createddate", "op": "RANGE", "value": "@today-7...@today" },
+      { "field": "state", "op": "IN", "value": ["Closed", "Resolved"] }
+    ]
+  }
+}
 </examples>
 
 Query: "\${query}"
@@ -135,6 +147,18 @@ Output:
       { "field": "type", "op": "=", "value": "Bug" },
       { "field": "state", "op": "=", "value": "Active" },
       { "field": "assigned", "op": "=", "value": "@me" }
+    ]
+  }
+}
+
+Query: "created in the last 7 days and closed"
+Output:
+{
+  "where": {
+    "logic": "AND",
+    "rules": [
+      { "field": "createddate", "op": "RANGE", "value": "@today-7...@today" },
+      { "field": "state", "op": "IN", "value": ["Closed", "Resolved"] }
     ]
   }
 }

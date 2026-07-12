@@ -435,10 +435,6 @@
 
     bodyEl.innerHTML = `
     <div class="inline-comment-edit-container" id="inline_comment_editor_${commentId}"></div>
-    <div class="inline-comment-edit-actions" style="margin-top: 8px;">
-      <button type="button" class="btn btn-sm cancel-comment-edit-btn" data-cid="${commentId}">Cancel</button>
-      <button type="button" class="btn btn-sm save save-comment-edit-btn" data-cid="${commentId}">Save</button>
-    </div>
   `;
 
     const editorContainer = document.getElementById(`inline_comment_editor_${commentId}`);
@@ -449,6 +445,15 @@
     });
     ed.value = rawText;
     activeCommentEditors.set(commentId, ed);
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'actions inline-comment-edit-actions';
+    actionsDiv.style.marginTop = '8px';
+    actionsDiv.innerHTML = `
+      <button type="button" class="btn btn-sm save save-comment-edit-btn" data-cid="${commentId}">Save</button>
+      <button type="button" class="btn btn-sm cancel-comment-edit-btn" data-cid="${commentId}">Cancel</button>
+    `;
+    editorContainer.appendChild(actionsDiv);
   }
   function cancelEditComment(e, commentId) {
     e.stopPropagation();
@@ -624,7 +629,19 @@
     const commentsCollapsed = App.prefs.get('activityCommentsCollapsed') === 'true';
     const historyCollapsed = App.prefs.get('activityHistoryCollapsed') === 'true';
 
-    let h = `
+    let createdInfoHtml = '';
+    if (App.state.openItem) {
+      const createdBy = App.state.openItem.createdby || 'Unknown';
+      const createdDate = App.state.openItem.createddate ? fd(App.state.openItem.createddate) : 'Unknown';
+      createdInfoHtml = `
+        <div class="activity-created-info" style="font-size: 0.846rem; color: var(--muted); margin-bottom: 0.769rem; padding: 0 0.308rem; display: flex; align-items: center; gap: 0.462rem;">
+          <ui-icon name="info" style="font-size: 1rem;"></ui-icon>
+          <span>Created by <strong style="color: var(--txt); font-weight: 500;">${htmlEsc(createdBy)}</strong> on ${createdDate}</span>
+        </div>
+      `;
+    }
+
+    let h = createdInfoHtml + `
     <div class="asec" id="activity_comments_header" style="cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center;">
       <span>Comments (${cs.length})</span>
       <span class="toggle-arrow" style="font-size:10px; color:var(--muted); transition:transform 0.1s ease">${commentsCollapsed ? '<ui-icon name="chevron-right"></ui-icon>' : '<ui-icon name="chevron-down"></ui-icon>'}</span>

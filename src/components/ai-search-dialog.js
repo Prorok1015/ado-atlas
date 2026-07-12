@@ -21,6 +21,7 @@
 
   // AI Provider settings elements
   let settingsToggleBtn = null;
+  let deepResearchToggle = null;
 
   // Background states
   let isDialogVisible = false;
@@ -83,6 +84,15 @@
                   <button class="ai-reasoning-btn ${selectedLevel === 'balanced' ? 'active' : ''}" data-level="balanced" data-i18n="ai.reasoning.balanced" data-i18n-title="ai.reasoning.balancedTitle" title="2-pass schema-filtered. Recommended balance of speed and quality">Balanced</button>
                   <button class="ai-reasoning-btn ${selectedLevel === 'thorough' ? 'active' : ''}" data-level="thorough" data-i18n="ai.reasoning.thorough" data-i18n-title="ai.reasoning.thoroughTitle" title="3-pass reasoning with self-correction. Best for complex logic">Thorough</button>
                 </div>
+              </div>
+
+              <div class="ai-research-mode-container" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+                <label class="ai-switch">
+                  <input type="checkbox" id="ai-search-deep-research-toggle">
+                  <span class="ai-slider"></span>
+                </label>
+                <span style="font-size: 0.85rem; font-weight: 500;" data-i18n="ai.deepResearchMode">Deep Research Mode</span>
+                <span class="pro-badge-auto pro-badge-tier-pro" style="position: static; margin-left: 4px; display: inline-flex; align-items: center;"><ui-icon name="gem"></ui-icon>PRO</span>
               </div>
 
               <div class="ai-progress-container" id="ai-search-progress" style="display: none;">
@@ -171,6 +181,7 @@
     // Bind settings panel variables
     settingsToggleBtn = document.getElementById('ai-settings-toggle-btn');
 
+    deepResearchToggle = document.getElementById('ai-search-deep-research-toggle');
     backgroundProgressFill = document.getElementById('ai-bg-progress-fill');
     backgroundPercentText = document.getElementById('ai-bg-percent');
     backgroundStatusText = document.getElementById('ai-bg-status-text');
@@ -181,6 +192,18 @@
     // Bind event handlers
     textInput.addEventListener('input', handleTextInput);
     textInput.addEventListener('keydown', handleKeyDown);
+    if (deepResearchToggle) {
+      deepResearchToggle.addEventListener('change', () => {
+        if (deepResearchToggle.checked) {
+          if (window.EntitlementManager && !window.EntitlementManager.isPro()) {
+            deepResearchToggle.checked = false;
+            if (window.ProFeaturesPanel) {
+              window.ProFeaturesPanel.open();
+            }
+          }
+        }
+      });
+    }
     
     submitBtn.addEventListener('click', () => {
       applyDirectly = false;
@@ -1039,6 +1062,41 @@
       document.body.appendChild(globalTooltip);
     }
 
+    function createTab(id, active, iconName, iconColor, tooltipHtml, onClick, proFeature = null) {
+      const tab = document.createElement('div');
+      tab.className = `ai-modal-tab ${active ? 'active' : ''}`;
+      tab.id = id;
+      tab.innerHTML = `<span style="display:flex; align-items:center; color:${iconColor};"><ui-icon name="${iconName}"></ui-icon></span>`;
+      if (proFeature) {
+        tab.style.position = 'relative';
+        tab.setAttribute('data-pro-feature', proFeature);
+        if (window.ProButtonManager) window.ProButtonManager.apply(tab);
+      }
+      tab.onmouseenter = () => {
+        if (window.LayerManager) {
+          globalTooltip.innerHTML = tooltipHtml;
+          globalTooltip.classList.add('right-tooltip');
+          globalTooltip.style.transform = 'none';
+          globalTooltip.style.display = 'block';
+          const rect = tab.getBoundingClientRect();
+          const tooltipHeight = globalTooltip.offsetHeight || 60;
+          globalTooltip.style.position = 'absolute';
+          globalTooltip.style.top = (rect.top + window.scrollY + (rect.height - tooltipHeight) / 2) + 'px';
+          globalTooltip.style.left = (rect.right + window.scrollX + 8) + 'px';
+          window.LayerManager.open(globalTooltip, tab, { isPopover: true, direction: 'right' });
+        }
+      };
+      tab.onmouseleave = () => {
+        if (window.LayerManager) {
+          globalTooltip.classList.remove('right-tooltip');
+          globalTooltip.style.display = 'none';
+          window.LayerManager.close(globalTooltip);
+        }
+      };
+      tab.addEventListener('click', onClick);
+      return tab;
+    }
+
     // 1. Render Gemini Nano Tab
     const nanoProvider = allProviders.find(p => p.id === 'chrome-prompt-api');
     if (nanoProvider) {
@@ -1059,76 +1117,23 @@
         badgeColor = '#ef4444';
       }
 
-      const nanoTab = document.createElement('div');
-      nanoTab.className = `ai-modal-tab ${selectedProvider === 'chrome-prompt-api' ? 'active' : ''}`;
-      nanoTab.id = 'ai-provider-tab-nano';
-      nanoTab.innerHTML = `<span style="display:flex; align-items:center; color:#60a5fa;"><ui-icon name="sparkles"></ui-icon></span>`;
-      
-      nanoTab.onmouseenter = () => {
-        if (window.LayerManager) {
-          globalTooltip.innerHTML = `
-            <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">${L('ai.tab.nano.title', 'Gemini Nano')}</div>
-            <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">${L('ai.tab.nano.subtitle', 'Built-in Local AI')}</div>
-            <div style="font-size: 0.72rem; font-weight: 500; color: ${badgeColor};">${badgeText}</div>
-          `;
-          globalTooltip.classList.add('right-tooltip');
-          globalTooltip.style.transform = 'none'; // reset global CSS translate
-          globalTooltip.style.display = 'block';
-          const rect = nanoTab.getBoundingClientRect();
-          const tooltipWidth = globalTooltip.offsetWidth || 180;
-          const tooltipHeight = globalTooltip.offsetHeight || 60;
-          globalTooltip.style.position = 'absolute';
-          globalTooltip.style.top = (rect.top + window.scrollY + (rect.height - tooltipHeight) / 2) + 'px';
-          globalTooltip.style.left = (rect.right + window.scrollX + 8) + 'px';
-          window.LayerManager.open(globalTooltip, nanoTab, { isPopover: true, direction: 'right' });
-        }
-      };
-      nanoTab.onmouseleave = () => {
-        if (window.LayerManager) {
-          globalTooltip.classList.remove('right-tooltip');
-          globalTooltip.style.display = 'none';
-          window.LayerManager.close(globalTooltip);
-        }
-      };
 
-      nanoTab.addEventListener('click', () => selectProvider('chrome-prompt-api'));
-      container.appendChild(nanoTab);
+      const nanoTooltip = `
+        <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">${L('ai.tab.nano.title', 'Gemini Nano')}</div>
+        <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">${L('ai.tab.nano.subtitle', 'Built-in Local AI')}</div>
+        <div style="font-size: 0.72rem; font-weight: 500; color: ${badgeColor};">${badgeText}</div>
+      `;
+      container.appendChild(createTab('ai-provider-tab-nano', selectedProvider === 'chrome-prompt-api', 'sparkles', '#60a5fa', nanoTooltip, () => selectProvider('chrome-prompt-api')));
     }
 
     // 1b. ADO Atlas Cloud AI (Pro) placeholder tab — not yet live; opens the paywall.
     {
-      const proTab = document.createElement('div');
-      proTab.className = 'ai-modal-tab';
-      proTab.id = 'ai-provider-tab-pro';
-      proTab.style.position = 'relative';
-      proTab.innerHTML = `<span style="display:flex; align-items:center; color:#f2a900;"><ui-icon name="cloud"></ui-icon></span><span class="pro-badge-tiny" style="position:absolute; top:-0.3rem; left:-0.3rem; pointer-events:none; z-index:5;"><ui-icon name="gem"></ui-icon>${L('ai.pro', 'PRO')}</span>`;
-      proTab.onmouseenter = () => {
-        if (window.LayerManager) {
-          globalTooltip.innerHTML = `
-            <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">${L('ai.tab.pro.title', 'ADO Atlas Cloud AI')}</div>
-            <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">${L('ai.tab.pro.subtitle', 'Cloud GPT / Claude via our proxy — no API key needed')}</div>
-            <div style="font-size: 0.72rem; font-weight: 700; color: #f2a900;">${L('ai.pro', 'PRO')}</div>
-          `;
-          globalTooltip.classList.add('right-tooltip');
-          globalTooltip.style.transform = 'none';
-          globalTooltip.style.display = 'block';
-          const rect = proTab.getBoundingClientRect();
-          const tooltipHeight = globalTooltip.offsetHeight || 60;
-          globalTooltip.style.position = 'absolute';
-          globalTooltip.style.top = (rect.top + window.scrollY + (rect.height - tooltipHeight) / 2) + 'px';
-          globalTooltip.style.left = (rect.right + window.scrollX + 8) + 'px';
-          window.LayerManager.open(globalTooltip, proTab, { isPopover: true, direction: 'right' });
-        }
-      };
-      proTab.onmouseleave = () => {
-        if (window.LayerManager) {
-          globalTooltip.classList.remove('right-tooltip');
-          globalTooltip.style.display = 'none';
-          window.LayerManager.close(globalTooltip);
-        }
-      };
-      proTab.addEventListener('click', () => { if (window.PremiumPaywall) window.PremiumPaywall.open('cloud_ai'); });
-      container.appendChild(proTab);
+      const proTooltip = `
+        <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">${L('ai.tab.pro.title', 'ADO Atlas Cloud AI')}</div>
+        <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">${L('ai.tab.pro.subtitle', 'Cloud GPT / Claude via our proxy — no API key needed')}</div>
+        <div style="font-size: 0.72rem; font-weight: 700; color: #f2a900;">${L('ai.pro', 'PRO')}</div>
+      `;
+      container.appendChild(createTab('ai-provider-tab-pro', false, 'cloud', '#f2a900', proTooltip, () => { if (window.PremiumPaywall) window.PremiumPaywall.open('cloud_ai'); }, 'cloud_ai'));
     }
 
     // 2. Render Custom Cloud Connections (BYOK only). The hosted 'ado-atlas-cloud'
@@ -1145,50 +1150,19 @@
       let subtitle = isGemini ? L('ai.tab.byok.geminiSubtitle', 'Google AI Studio') : L('ai.tab.byok.openaiSubtitle', 'OpenAI Platform');
       if (provider.config.endpoint) {
         try {
-          const urlObj = new URL(provider.config.endpoint);
-          subtitle = urlObj.hostname;
+          subtitle = new URL(provider.config.endpoint).hostname;
         } catch (e) {
           subtitle = L('ai.tab.byok.customEndpoint', 'Custom Endpoint');
         }
       }
 
-      const tab = document.createElement('div');
-      tab.className = `ai-modal-tab ${selectedProvider === provider.id ? 'active' : ''}`;
-      tab.id = `ai-provider-tab-${provider.id}`;
-      
       const iconColor = isGemini ? '#a855f7' : '#10b981';
-
-      tab.innerHTML = `<span style="display:flex; align-items:center; color:${iconColor};"><ui-icon name="cloud"></ui-icon></span>`;
-      
-      tab.onmouseenter = () => {
-        if (window.LayerManager) {
-          globalTooltip.innerHTML = `
-            <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">${provider.displayName}</div>
-            <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">${subtitle}</div>
-            <div style="font-size: 0.72rem; font-weight: 500; color: ${badgeColor};">${badgeText}</div>
-          `;
-          globalTooltip.classList.add('right-tooltip');
-          globalTooltip.style.transform = 'none'; // reset global CSS translate
-          globalTooltip.style.display = 'block';
-          const rect = tab.getBoundingClientRect();
-          const tooltipWidth = globalTooltip.offsetWidth || 180;
-          const tooltipHeight = globalTooltip.offsetHeight || 60;
-          globalTooltip.style.position = 'absolute';
-          globalTooltip.style.top = (rect.top + window.scrollY + (rect.height - tooltipHeight) / 2) + 'px';
-          globalTooltip.style.left = (rect.right + window.scrollX + 8) + 'px';
-          window.LayerManager.open(globalTooltip, tab, { isPopover: true, direction: 'right' });
-        }
-      };
-      tab.onmouseleave = () => {
-        if (window.LayerManager) {
-          globalTooltip.classList.remove('right-tooltip');
-          globalTooltip.style.display = 'none';
-          window.LayerManager.close(globalTooltip);
-        }
-      };
-
-      tab.addEventListener('click', () => selectProvider(provider.id));
-      container.appendChild(tab);
+      const tooltip = `
+        <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 2px;">${provider.displayName}</div>
+        <div style="font-size: 0.72rem; color: var(--muted, #888); margin-bottom: 4px;">${subtitle}</div>
+        <div style="font-size: 0.72rem; font-weight: 500; color: ${badgeColor};">${badgeText}</div>
+      `;
+      container.appendChild(createTab(`ai-provider-tab-${provider.id}`, selectedProvider === provider.id, 'cloud', iconColor, tooltip, () => selectProvider(provider.id)));
     }
 
     // 3. Render Add/Config Tab
@@ -1383,6 +1357,7 @@
       
       const result = await global.aiSearchService.search(query, {
         reasoningLevel: selectedLevel,
+        deepResearch: deepResearchToggle ? deepResearchToggle.checked : false,
         onProgress: (status, percent) => {
           showProgress(status, percent);
         }
@@ -1457,6 +1432,9 @@
 
   function open(initialQuery) {
     initDOM();
+    if (deepResearchToggle) {
+      deepResearchToggle.checked = false;
+    }
     isDialogVisible = true;
     modalEl.style.display = 'flex';
     
