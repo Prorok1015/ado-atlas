@@ -58,11 +58,10 @@
       dotSpacer.style.width = '0.769rem';
       dotSpacer.style.flex = 'none';
 
-      // 4. Underlined label text
+      // 4. Label text
       const lab = document.createElement('span');
       lab.className = 'lab';
       lab.style.fontSize = '11px';
-      lab.style.textDecoration = 'underline';
       lab.textContent = window.i18n.t('tree.showOther', { count: nonMatchingCount });
 
       row.append(cbSpacer, icon, dotSpacer, lab);
