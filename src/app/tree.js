@@ -37,41 +37,41 @@
       const liOther = document.createElement('li');
       liOther.className = 'tree-show-other';
       liOther.style.listStyle = 'none';
-      const btn = document.createElement('a');
-      btn.className = 'show-other-btn';
-      btn.style.cssText = `
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        color: var(--accent);
-        font-size: 11px;
-        margin-left: 28px;
-        margin-top: 4px;
-        margin-bottom: 4px;
-        padding: 4px 10px;
-        border: 1px solid var(--accent);
-        border-radius: 12px;
-        background: transparent;
-        transition: all 0.2s ease;
-        font-weight: 500;
-        user-select: none;
-      `;
-      btn.innerHTML = `<ui-icon name="plus" style="width:10px;height:10px;stroke-width:3"></ui-icon><span>` + window.i18n.t('tree.showOther', { count: nonMatchingCount }) + `</span>`;
-      
-      btn.onmouseenter = () => {
-        btn.style.background = 'var(--accent)';
-        btn.style.color = '#fff';
-      };
-      btn.onmouseleave = () => {
-        btn.style.background = 'transparent';
-        btn.style.color = 'var(--accent)';
-      };
 
-      btn.onclick = async (e) => {
+      const row = document.createElement('div');
+      row.className = 'trow';
+      row.style.color = 'var(--muted)';
+      row.style.cursor = 'pointer';
+
+      // 1. Checkbox spacer (matches .tcheck layout width)
+      const cbSpacer = document.createElement('span');
+      cbSpacer.style.width = '13px';
+      cbSpacer.style.flex = 'none';
+
+      // 2. Icon element in the caret slot
+      const icon = document.createElement('span');
+      icon.className = 'tog';
+      icon.innerHTML = '<ui-icon name="plus" style="width:10px;height:10px;stroke-width:3"></ui-icon>';
+
+      // 3. Dot spacer (matches .dot layout width)
+      const dotSpacer = document.createElement('span');
+      dotSpacer.style.width = '0.769rem';
+      dotSpacer.style.flex = 'none';
+
+      // 4. Underlined label text
+      const lab = document.createElement('span');
+      lab.className = 'lab';
+      lab.style.fontSize = '11px';
+      lab.style.textDecoration = 'underline';
+      lab.textContent = window.i18n.t('tree.showOther', { count: nonMatchingCount });
+
+      row.append(cbSpacer, icon, dotSpacer, lab);
+
+      row.onclick = async (e) => {
         e.stopPropagation();
-        btn.innerHTML = `<ui-icon name="clock" class="busy" style="width:10px;height:10px"></ui-icon><span>loading…</span>`;
-        btn.style.pointerEvents = 'none';
+        lab.textContent = 'loading…';
+        icon.innerHTML = '<ui-icon name="clock" class="busy" style="width:10px;height:10px"></ui-icon>';
+        row.style.pointerEvents = 'none';
         try {
           await ensureKids(id);
           if (App.state.store.showAllKids) {
@@ -82,7 +82,7 @@
         }
         renderTree();
       };
-      liOther.appendChild(btn);
+      liOther.appendChild(row);
       ul.appendChild(liOther);
     }
     return ul;
