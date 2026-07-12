@@ -1,6 +1,5 @@
 (function(global) {
   'use strict';
-
   // Localized string helper
   const L = (k, fallback, p) => (typeof window !== 'undefined' && window.i18n) ? window.i18n.t(k, p) : fallback;
 
@@ -123,6 +122,8 @@
     summarizeBtn.addEventListener('mouseleave', hideHoverSummary);
   }
 
+=======
+>>>>>>> origin/main:ai/ai-summarizer.js
   class AISummarizer {
     constructor(registry) {
       this.registry = registry || global.aiProviderRegistry;
@@ -137,6 +138,7 @@
       const systemPrompt = global.SUMMARIZE_SYSTEM_PROMPT || 'Summarize the following work item description in 2-3 concise sentences.';
       return provider.prompt(systemPrompt, description, options);
     }
+<<<<<<< HEAD:src/ai/ai-summarizer.js
 
     static async summarizeCurrentItem(force = false) {
       const App = window.App || {};
