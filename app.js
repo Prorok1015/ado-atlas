@@ -5168,7 +5168,10 @@ function renderActivity(cs,hs){
               ${actionsHtml}
             </div>
           </div>
-          <div class="atext">${mdToHtml(c.text, descRenderOpts())}</div>
+          <div class="atext">${mdToHtml(c.text, descRenderOpts()).replace(
+            /(<img\s[^>]*?)src="(https:\/\/[^"]+\/_apis\/wit\/attachments\/[^"]+)"/gi,
+            '$1src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-src="$2"'
+          )}</div>
           <div class="comment-reactions">${reactHtml}</div>
         </div>
       </div>
