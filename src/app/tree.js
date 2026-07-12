@@ -140,26 +140,14 @@
     if(open&&hasKids)li.appendChild(childrenUl(n.id));    // auto-expand from shared state (never for a known-leaf)
     return li;
   }
-  async function toggle(li,n,tog){
+  function toggle(li,n,tog){
     if(App.state.store.expanded.has(n.id)){            // collapse (cached data stays)
       App.state.store.expanded.delete(n.id);
       const u=li.querySelector('ul');if(u)u.remove();tog.innerHTML='<ui-icon name="chevron-right"></ui-icon>';return;
     }
-    const matchingCount = (App.state.store.kids[n.id] || []).length;
-    const isFull = App.state.store.fullKids && App.state.store.fullKids.has(n.id);
-    const needFetch = !isFull && (n.childCount === undefined || n.childCount > matchingCount);
-
-    if (needFetch) {
-      tog.innerHTML='<ui-icon name="clock"></ui-icon>';tog.classList.add('busy');loadStart();
-      try{await ensureKids(n.id);
-        App.state.store.expanded.add(n.id);
-        li.appendChild(childrenUl(n.id));
-      }finally{tog.classList.remove('busy');tog.innerHTML='<ui-icon name="chevron-down"></ui-icon>';loadEnd();}
-    } else {
-      App.state.store.expanded.add(n.id);
-      li.appendChild(childrenUl(n.id));
-      tog.innerHTML='<ui-icon name="chevron-down"></ui-icon>';
-    }
+    App.state.store.expanded.add(n.id);
+    li.appendChild(childrenUl(n.id));
+    tog.innerHTML='<ui-icon name="chevron-down"></ui-icon>';
   }
   function activeText(){const t=$('search').value.trim();return (t && !/^\d+$/.test(t))?t:null;}
   async function currentItems(){
