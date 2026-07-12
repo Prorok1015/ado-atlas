@@ -208,8 +208,8 @@ Click any item to open the side editor. Beyond the usual fields:
 
 ## Build (only when sharing / publishing)
 
-Double-click `build.bat` on Windows, or run `npm run build` (both call
-`build.ps1`). Result: `dist\ado-atlas-extension.zip` — a Web Store-ready package
+Double-click `build.bat` on Windows, or run `npm run build` (both call the
+cross-platform Node.js script `tools/build.js`). Result: `dist\ado-atlas-extension.zip` — a Web Store-ready package
 with `manifest.json` at the root, spec-correct forward-slash paths, and only the
 runtime files (no tests/docs). For publishing to the Chrome Web Store, follow
 [PUBLISHING.md](content/PUBLISHING.md).

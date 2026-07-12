@@ -9,6 +9,6 @@
     "check": "node tools/check-globals.js",
     "check:i18n": "node tools/check-i18n-keys.js",
     "test": "node tools/check-globals.js && node tools/check-i18n-keys.js && node tools/check-prefs.js && node tests/lib.test.js && node tests/ai.test.js && node tests/api.test.js",
-    "build": "powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1"
+    "build": "node tools/build.js"
   }
 }
