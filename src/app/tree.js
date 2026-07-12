@@ -11,37 +11,76 @@
   function childrenUl(id){
     const ul=document.createElement('ul');ul.className='tree';
     const kids=App.state.store.kids[id]||[];
-    if(!kids.length){
+    const inSet = new Set(App.state.store.roots);
+    const matching = kids.filter(cid => inSet.has(cid));
+
+    const n = App.state.store.nodes[id];
+    const isFull = App.state.store.fullKids && App.state.store.fullKids.has(id);
+    const totalCount = n ? (n.childCount !== undefined ? n.childCount : kids.length) : kids.length;
+    const nonMatchingCount = isFull 
+      ? kids.filter(cid => !inSet.has(cid)).length
+      : Math.max(0, totalCount - matching.length);
+
+    if(!kids.length && nonMatchingCount === 0){
       const e=document.createElement('div');e.className='empty';
       e.textContent=window.i18n.t('tree.noChildren');
       ul.appendChild(e);
       return ul;
     }
-    const inSet = new Set(App.state.store.roots);
-    const matching = kids.filter(cid => inSet.has(cid));
-    const nonMatching = kids.filter(cid => !inSet.has(cid));
 
     const showAll = App.state.store.showAllKids && App.state.store.showAllKids.has(id);
     const rendered = showAll ? kids : matching;
 
     rendered.forEach(cid=>{if(App.state.store.nodes[cid])ul.appendChild(treeNode(App.state.store.nodes[cid]));});
 
-    if(!showAll && nonMatching.length > 0) {
+    if(!showAll && nonMatchingCount > 0) {
       const liOther = document.createElement('li');
       liOther.className = 'tree-show-other';
+      liOther.style.listStyle = 'none';
       const btn = document.createElement('a');
-      btn.style.cursor = 'pointer';
-      btn.style.color = 'var(--accent)';
-      btn.style.fontSize = '11px';
-      btn.style.marginLeft = '28px';
-      btn.style.textDecoration = 'underline';
-      btn.textContent = window.i18n.t('tree.showOther', { count: nonMatching.length });
-      btn.onclick = (e) => {
+      btn.className = 'show-other-btn';
+      btn.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        color: var(--accent);
+        font-size: 11px;
+        margin-left: 28px;
+        margin-top: 4px;
+        margin-bottom: 4px;
+        padding: 4px 10px;
+        border: 1px solid var(--accent);
+        border-radius: 12px;
+        background: transparent;
+        transition: all 0.2s ease;
+        font-weight: 500;
+        user-select: none;
+      `;
+      btn.innerHTML = `<ui-icon name="plus" style="width:10px;height:10px;stroke-width:3"></ui-icon><span>` + window.i18n.t('tree.showOther', { count: nonMatchingCount }) + `</span>`;
+      
+      btn.onmouseenter = () => {
+        btn.style.background = 'var(--accent)';
+        btn.style.color = '#fff';
+      };
+      btn.onmouseleave = () => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--accent)';
+      };
+
+      btn.onclick = async (e) => {
         e.stopPropagation();
-        if (App.state.store.showAllKids) {
-          App.state.store.showAllKids.add(id);
-          renderTree();
+        btn.innerHTML = `<ui-icon name="clock" class="busy" style="width:10px;height:10px"></ui-icon><span>loading…</span>`;
+        btn.style.pointerEvents = 'none';
+        try {
+          await ensureKids(id);
+          if (App.state.store.showAllKids) {
+            App.state.store.showAllKids.add(id);
+          }
+        } catch(err) {
+          console.error(err);
         }
+        renderTree();
       };
       liOther.appendChild(btn);
       ul.appendChild(liOther);
