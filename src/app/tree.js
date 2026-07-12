@@ -145,11 +145,21 @@
       App.state.store.expanded.delete(n.id);
       const u=li.querySelector('ul');if(u)u.remove();tog.innerHTML='<ui-icon name="chevron-right"></ui-icon>';return;
     }
-    tog.innerHTML='<ui-icon name="clock"></ui-icon>';tog.classList.add('busy');loadStart();
-    try{await ensureKids(n.id);
+    const matchingCount = (App.state.store.kids[n.id] || []).length;
+    const isFull = App.state.store.fullKids && App.state.store.fullKids.has(n.id);
+    const needFetch = !isFull && (n.childCount === undefined || n.childCount > matchingCount);
+
+    if (needFetch) {
+      tog.innerHTML='<ui-icon name="clock"></ui-icon>';tog.classList.add('busy');loadStart();
+      try{await ensureKids(n.id);
+        App.state.store.expanded.add(n.id);
+        li.appendChild(childrenUl(n.id));
+      }finally{tog.classList.remove('busy');tog.innerHTML='<ui-icon name="chevron-down"></ui-icon>';loadEnd();}
+    } else {
       App.state.store.expanded.add(n.id);
       li.appendChild(childrenUl(n.id));
-    }finally{tog.classList.remove('busy');tog.innerHTML='<ui-icon name="chevron-down"></ui-icon>';loadEnd();}
+      tog.innerHTML='<ui-icon name="chevron-down"></ui-icon>';
+    }
   }
   function activeText(){const t=$('search').value.trim();return (t && !/^\d+$/.test(t))?t:null;}
   async function currentItems(){
