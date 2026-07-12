@@ -678,6 +678,7 @@
   "toolbar.tlzoom.week": "Неделя",
   "toolbar.undo.title": "отменить (Ctrl/Cmd+Z)",
   "tree.noChildren": "(нет дочерних)",
+  "tree.showOther": "Показать остальные {count} элементов",
   "view.calculatingLayout": "вычисление расположения…",
   "viewHelp.controls": "Управление",
   "viewHelp.d.createDepLink": "создать связь зависимости",

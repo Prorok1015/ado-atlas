@@ -678,6 +678,7 @@
   "toolbar.tlzoom.week": "Woche",
   "toolbar.undo.title": "rückgängig (Strg/Cmd+Z)",
   "tree.noChildren": "(keine untergeordneten)",
+  "tree.showOther": "Andere {count} Elemente anzeigen",
   "view.calculatingLayout": "Layout wird berechnet…",
   "viewHelp.controls": "Steuerung",
   "viewHelp.d.createDepLink": "Abhängigkeitsverknüpfung erstellen",

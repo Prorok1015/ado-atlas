@@ -18,6 +18,6 @@ window.App.state = {
   openItemAbortCtrl: null,                                   // AbortController for the in-flight openItem() fetch
   // client-side mirror of already-loaded data; tree + graph both render from this
   // store, and `expanded` is the shared expand/collapse state so they stay in sync.
-  store: { nodes: {}, kids: {}, roots: [], expanded: new Set(), parent: {} },
+  store: { nodes: {}, kids: {}, roots: [], expanded: new Set(), parent: {}, showAllKids: new Set() },
   bulkSel: new Set(),                                        // ids checked in the tree for bulk edit
 };

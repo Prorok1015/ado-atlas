@@ -9,9 +9,43 @@
   'use strict';
 
   function childrenUl(id){
-    const ul=document.createElement('ul');const kids=App.state.store.kids[id]||[];
-    if(!kids.length){const e=document.createElement('div');e.className='empty';e.textContent=window.i18n.t('tree.noChildren');ul.appendChild(e);}
-    kids.forEach(cid=>{if(App.state.store.nodes[cid])ul.appendChild(treeNode(App.state.store.nodes[cid]));});
+    const ul=document.createElement('ul');ul.className='tree';
+    const kids=App.state.store.kids[id]||[];
+    if(!kids.length){
+      const e=document.createElement('div');e.className='empty';
+      e.textContent=window.i18n.t('tree.noChildren');
+      ul.appendChild(e);
+      return ul;
+    }
+    const inSet = new Set(App.state.store.roots);
+    const matching = kids.filter(cid => inSet.has(cid));
+    const nonMatching = kids.filter(cid => !inSet.has(cid));
+
+    const showAll = App.state.store.showAllKids && App.state.store.showAllKids.has(id);
+    const rendered = showAll ? kids : matching;
+
+    rendered.forEach(cid=>{if(App.state.store.nodes[cid])ul.appendChild(treeNode(App.state.store.nodes[cid]));});
+
+    if(!showAll && nonMatching.length > 0) {
+      const liOther = document.createElement('li');
+      liOther.className = 'tree-show-other';
+      const btn = document.createElement('a');
+      btn.style.cursor = 'pointer';
+      btn.style.color = 'var(--accent)';
+      btn.style.fontSize = '11px';
+      btn.style.marginLeft = '28px';
+      btn.style.textDecoration = 'underline';
+      btn.textContent = window.i18n.t('tree.showOther', { count: nonMatching.length });
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        if (App.state.store.showAllKids) {
+          App.state.store.showAllKids.add(id);
+          renderTree();
+        }
+      };
+      liOther.appendChild(btn);
+      ul.appendChild(liOther);
+    }
     return ul;
   }
   function treeNode(n){

@@ -395,7 +395,7 @@ async function _refresh(){
   // RESET hierarchy caches — stale entries from a previous filter would leak via
   // auto-expand (e.g. cached Task children of an Epic when filter is "Epic only").
   const prevExpanded=App.state.store.expanded;const firstLoad=!treeEverLoaded;treeEverLoaded=true;
-  App.state.store.kids={};App.state.store.expanded=new Set();App.state.store.fullKids=new Set();
+  App.state.store.kids={};App.state.store.expanded=new Set();App.state.store.fullKids=new Set();App.state.store.showAllKids=new Set();
   // Build hierarchy WITHIN the filtered set so tree/graph nest correctly (no duplicates).
   // App.state.store.top = items whose parent is NOT in the set (true roots); other items become
   // children of their parent inside the set; pre-populated App.state.store.kids avoids API calls.

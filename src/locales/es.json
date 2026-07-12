@@ -678,6 +678,7 @@
   "toolbar.tlzoom.week": "Semana",
   "toolbar.undo.title": "deshacer (Ctrl/Cmd+Z)",
   "tree.noChildren": "(sin elementos secundarios)",
+  "tree.showOther": "Mostrar otros {count} elementos",
   "view.calculatingLayout": "calculando diseño…",
   "viewHelp.controls": "Controles",
   "viewHelp.d.createDepLink": "crear vínculo de dependencia",
