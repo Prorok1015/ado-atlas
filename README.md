@@ -9,8 +9,8 @@ project, and a Personal Access Token on first run.
 > **Independent project — not affiliated with or endorsed by Microsoft.**
 > "Azure DevOps" is a trademark of Microsoft Corporation. Your token and data
 > stay on your device; the extension only ever contacts Azure DevOps. See
-> [PRIVACY.md](PRIVACY.md). Publishing to the Chrome Web Store: see
-> [PUBLISHING.md](PUBLISHING.md).
+> [PRIVACY.md](content/PRIVACY.md). Publishing to the Chrome Web Store: see
+> [PUBLISHING.md](content/PUBLISHING.md).
 
 ## Install (one-time, per machine)
 
@@ -27,7 +27,7 @@ authenticate (pick the tab at the top):
 
 - **Microsoft sign-in** *(Entra ID OAuth)* — one click, no token to copy, and it
   refreshes automatically. Requires a one-time Entra app registration — see
-  [OAUTH-SETUP.md](OAUTH-SETUP.md).
+  [OAUTH-SETUP.md](content/OAUTH-SETUP.md).
 - **Token** *(PAT)* — paste a Personal Access Token; zero external setup.
 
 Either way you then pick an **Organization** and **Project**.
@@ -191,31 +191,32 @@ Click any item to open the side editor. Beyond the usual fields:
 
 ## What's inside
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `manifest.json` | MV3 declaration: `host_permissions` for `dev.azure.com`, `storage`, action with full-tab UI |
-| `background.js` | Service worker: on icon click, open `index.html` in a tab (focuses an existing one if it's already open) |
-| `index.html` | Single-page UI shell + setup-modal markup |
-| `app.css` | Styles (dark + light theme, board / Gantt, modal) |
-| `lib.js` | Pure, dependency-free helpers (WIQL builder, html⇄text, business-hours, PAT countdown) — shared by `api.js`/`app.js` and unit-tested |
-| `api.js` | ADO REST client — direct calls to `dev.azure.com` using the PAT |
-| `app.js` | Tree / Graph / Board / Sprint / Editor logic |
-| `vendor/` | Cytoscape + dagre + cytoscape-dagre (bundled, no CDN) |
-| `icons/` | Toolbar icons (16/48/128) |
-| `build.bat` | One-shot zip into `dist/ado-atlas-extension.zip` |
-| `tests/` | Node unit tests for `lib.js` (`npm test`) |
+| `manifest.json` | MV3 extension manifest: host permissions for `dev.azure.com`, extension storage, background worker configuration. |
+| `background.js` | Service worker managing the full-tab UI launch and background alarm synchronization checks. |
+| `index.html` | The single-page application shell, toolbar layout, and setup UI. |
+| `src/core/lib.js` | Pure, deterministic utility library (WIQL builder, text⇄HTML parser, business hours time math) with zero DOM/Node dependencies. |
+| `src/core/api/` | Centralized REST client architecture for communicating with Azure DevOps (retry backoff, Entra auth, query compilation). |
+| `src/app/` | UI and interactive view state controllers (tree, graph, board, timeline, comment activity, layout customization, undo/redo). |
+| `src/components/` | Reusable, self-contained UI components (LayerManager stacking context, PremiumPaywall dialog, FilterBuilderModal, ProButtonManager). |
+| `src/ai/` | Extensible AI interface abstractions (AITextEditor, AISearchService, AISummarizer), registering Gemini Nano & custom Cloud AI models. |
+| `src/locales/` | JSON locale dictionaries for translation keys (`en`, `ru`, `de`, `es`, `pseudo`) loaded dynamically by the i18n manager. |
+| `src/styles/` | Modular vanilla CSS styling system derived entirely from unified CSS variable design tokens. |
+| `vendor/` | Third-party UI dependencies: Cytoscape graph rendering engine + Dagre layout plugin. |
+| `tests/` | Lightweight, dependency-free Node.js unit test suites (`npm test`) validating lib utilities and AI services. |
 
 ## Build (only when sharing / publishing)
 
-Double-click `build.bat` on Windows, or run `npm run build` (both call
-`build.ps1`). Result: `dist\ado-atlas-extension.zip` — a Web Store-ready package
+Double-click `build.bat` on Windows, or run `npm run build` (both call the
+cross-platform Node.js script `tools/build.js`). Result: `dist\ado-atlas-extension.zip` — a Web Store-ready package
 with `manifest.json` at the root, spec-correct forward-slash paths, and only the
 runtime files (no tests/docs). For publishing to the Chrome Web Store, follow
-[PUBLISHING.md](PUBLISHING.md).
+[PUBLISHING.md](content/PUBLISHING.md).
 
 ## Tests
 
-The pure logic in `lib.js` has unit tests (no dependencies, no browser):
+The pure logic in `src/core/lib.js` has unit tests (no dependencies, no browser):
 
 ```
 npm test        # or: node tests/lib.test.js

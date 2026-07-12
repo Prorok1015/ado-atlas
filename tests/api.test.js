@@ -1,0 +1,134 @@
+// Unit tests for API mapping logic. Run with: node tests/api.test.js
+const assert = require("node:assert");
+const lib = require("../src/core/lib.js");
+
+// Set up globals required by http-auth.js
+global.AdoLib = lib;
+global.FIELD_REGISTRY = {
+  id:          { ref: "System.Id", type: "integer", name: "ID" },
+  type:        { ref: "System.WorkItemType", type: "string", name: "Type" },
+  title:       { ref: "System.Title", type: "string", name: "Title" },
+  state:       { ref: "System.State", type: "string", name: "State" },
+  assigned:    { ref: "System.AssignedTo", type: "identity", name: "Assigned" },
+  parent:      { ref: "System.Parent", type: "integer", name: "Parent ID" },
+  finish:      { ref: "System.FinishDate", type: "dateTime" },
+  target:      { ref: "System.TargetDate", type: "dateTime" },
+  due:         { ref: "System.DueDate", type: "dateTime" },
+  ac:          { ref: "Microsoft.VSTS.Common.AcceptanceCriteria", type: "html", name: "Acceptance Criteria" },
+  desc:        { ref: "System.Description", type: "html", name: "Description", fallbackRefs: ["Microsoft.VSTS.TCM.ReproSteps", "System.Description"] },
+  estimate:    { ref: "Microsoft.VSTS.Scheduling.OriginalEstimate", type: "double", name: "Original Estimate" },
+  priority:    { ref: "Microsoft.VSTS.Common.Priority", type: "integer", name: "Priority" },
+  iteration:   { ref: "System.IterationPath", type: "string", name: "Sprint" },
+  tags:        { ref: "System.Tags", type: "string", name: "Tags" }
+};
+global.AC_TYPES = new Set(["User Story", "Bug"]);
+global.htmlToMarkdown = (x) => x || "";
+global.depsFromRelations = () => [];
+global.attachmentsFromRelations = () => [];
+
+// Mock Chrome APIs
+global.chrome = {
+  identity: {
+    getRedirectURL: () => "https://mock-redirect"
+  },
+  storage: {
+    local: {
+      get: async () => ({}),
+      set: async () => {}
+    }
+  }
+};
+
+// Mock fetch globally
+global.fetch = async () => ({
+  ok: true,
+  text: async () => "{}"
+});
+
+// Load http-auth.js in the global context (simulating browser script tag behavior)
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+const code = fs.readFileSync(path.resolve(__dirname, "../src/core/api/http-auth.js"), "utf8");
+vm.runInThisContext(code);
+
+let pass = 0, fail = 0;
+function test(name, fn) {
+  try {
+    fn();
+    pass++;
+    console.log("  ok   " + name);
+  } catch (e) {
+    fail++;
+    console.error("FAIL   " + name + "\n       " + (e && e.stack || e));
+  }
+}
+
+console.log("Running API tests...");
+
+test("mapWorkItem: normalizes numeric parent to composite string ID", () => {
+  const raw = {
+    id: 100,
+    fields: {
+      "System.Id": 100,
+      "System.WorkItemType": "Task",
+      "System.Title": "Task Title",
+      "System.State": "New",
+      "System.Parent": 200
+    }
+  };
+  const mapped = global.mapWorkItem(raw);
+  assert.strictEqual(mapped.id, "ado:100");
+  assert.strictEqual(mapped.parent, "ado:200");
+});
+
+test("mapWorkItem: normalizes string numeric parent to composite string ID", () => {
+  const raw = {
+    id: 100,
+    fields: {
+      "System.Id": 100,
+      "System.WorkItemType": "Task",
+      "System.Title": "Task Title",
+      "System.State": "New",
+      "System.Parent": "200"
+    }
+  };
+  const mapped = global.mapWorkItem(raw);
+  assert.strictEqual(mapped.parent, "ado:200");
+});
+
+test("mapWorkItem: preserves already-composite parent ID", () => {
+  const raw = {
+    id: 100,
+    fields: {
+      "System.Id": 100,
+      "System.WorkItemType": "Task",
+      "System.Title": "Task Title",
+      "System.State": "New",
+      "System.Parent": "ado:200"
+    }
+  };
+  const mapped = global.mapWorkItem(raw);
+  assert.strictEqual(mapped.parent, "ado:200");
+});
+
+test("mapWorkItem: maps empty/falsy parent to null", () => {
+  const cases = [null, undefined, "", 0, "0"];
+  for (const p of cases) {
+    const raw = {
+      id: 100,
+      fields: {
+        "System.Id": 100,
+        "System.WorkItemType": "Task",
+        "System.Title": "Task Title",
+        "System.State": "New",
+        "System.Parent": p
+      }
+    };
+    const mapped = global.mapWorkItem(raw);
+    assert.strictEqual(mapped.parent, null, `Expected null parent for: ${p}`);
+  }
+});
+
+console.log(`API tests finished: ${pass} passed, ${fail} failed.`);
+process.exit(fail ? 1 : 0);

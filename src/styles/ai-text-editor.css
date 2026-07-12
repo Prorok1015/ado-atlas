@@ -1,0 +1,107 @@
+/* AI Text Editor Popover Styles */
+
+.ai-text-editor-popover {
+  position: fixed;
+  width: 160px;
+  background: rgba(30, 30, 30, 0.75);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  z-index: 20000;
+  box-sizing: border-box;
+}
+
+/* Light Theme overrides */
+body.light .ai-text-editor-popover {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.ai-editor-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-editor-btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--txt, #f5f5f5);
+  font-size: 0.8rem;
+  font-family: inherit;
+  font-weight: 500;
+  text-align: left;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+  width: 100%;
+}
+
+.ai-editor-btn:hover {
+  background: rgba(168, 85, 247, 0.12);
+  color: var(--accent, #a855f7);
+}
+
+.ai-editor-btn .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--muted, #aaa);
+}
+
+.ai-editor-btn:hover .icon {
+  color: var(--accent, #a855f7);
+}
+
+body.light .ai-editor-btn {
+  color: #333;
+}
+
+body.light .ai-editor-btn:hover {
+  background: rgba(168, 85, 247, 0.08);
+}
+
+/* Floating Selection Indicator */
+.ai-selection-indicator {
+  position: fixed;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  animation: ai-indicator-pop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ai-selection-indicator:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(168, 85, 247, 0.6);
+}
+
+.ai-selection-indicator ui-icon {
+  width: 12px;
+  height: 12px;
+  display: flex;
+}
+
+@keyframes ai-indicator-pop {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}

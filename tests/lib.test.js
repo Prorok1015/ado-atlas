@@ -1,8 +1,8 @@
 // Unit tests for the pure helpers in lib.js. No deps — run with: npm test
 // (or: node tests/lib.test.js). Exits non-zero if anything fails.
 const assert = require("node:assert");
-const lib = require("../lib.js");
-const FilterManager = require("../components/filter-manager.js");
+const lib = require("../src/core/lib.js");
+const FilterManager = require("../src/components/filter-manager.js");
 
 let pass = 0, fail = 0;
 function test(name, fn) {
@@ -10,6 +10,29 @@ function test(name, fn) {
   catch (e) { fail++; console.error("FAIL   " + name + "\n       " + (e && e.message)); }
 }
 const utc = (...a) => new Date(Date.UTC(...a));
+
+// ---- formatMessage (i18n interpolation) ----
+test("formatMessage: substitutes a single placeholder", () => {
+  assert.strictEqual(lib.formatMessage("{count} items followed", { count: 3 }), "3 items followed");
+});
+test("formatMessage: substitutes multiple placeholders", () => {
+  assert.strictEqual(lib.formatMessage("{a} of {b}", { a: 2, b: 5 }), "2 of 5");
+});
+test("formatMessage: leaves unknown placeholder token untouched", () => {
+  assert.strictEqual(lib.formatMessage("hi {name}", { other: "x" }), "hi {name}");
+});
+test("formatMessage: no params returns template verbatim", () => {
+  assert.strictEqual(lib.formatMessage("plain {x}"), "plain {x}");
+});
+test("formatMessage: empty/missing template returns empty string", () => {
+  assert.strictEqual(lib.formatMessage("", { x: 1 }), "");
+  assert.strictEqual(lib.formatMessage(undefined, { x: 1 }), "");
+  assert.strictEqual(lib.formatMessage(null), "");
+});
+test("formatMessage: coerces non-string param values", () => {
+  assert.strictEqual(lib.formatMessage("{v}", { v: 0 }), "0");
+  assert.strictEqual(lib.formatMessage("{v}", { v: false }), "false");
+});
 
 // ---- wiqlQuote ----
 test("wiqlQuote doubles single quotes", () => {
@@ -456,6 +479,15 @@ test("mdToHtml: #123 inside an existing link is NOT re-linked", () => {
 test("htmlToMarkdown: <img> -> ![alt](src)", () => {
   assert.strictEqual(lib.htmlToMarkdown('<img src="https://x/a.png" alt="pic">'), "![pic](https://x/a.png)");
 });
+test("htmlToMarkdown: <img> with unquoted attributes", () => {
+  assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png alt=pic>'), "![pic](https://x/a.png)");
+  assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png alt="pic with spaces">'), "![pic with spaces](https://x/a.png)");
+});
+test("htmlToMarkdown: strips ACK (\\u0006) control characters from ADO comment HTML", () => {
+  assert.strictEqual(lib.htmlToMarkdown("\u0006hello\u0006"), "hello");
+  assert.strictEqual(lib.htmlToMarkdown("<b>\u0006bold\u0006</b>"), "**bold**");
+  assert.strictEqual(lib.htmlToMarkdown("<div>\u0006a</div><div>\u0006b</div>"), "a\nb");
+});
 test("htmlToMarkdown: mention anchor -> @[Name](descriptor)", () => {
   const md = lib.htmlToMarkdown('<a href="#" data-vss-mention="version:2.0,e401e150-a645-7c8e-b903-3994dbead567">@Jane Doe</a>');
   assert.strictEqual(md, "@[Jane Doe](e401e150-a645-7c8e-b903-3994dbead567)");
@@ -470,18 +502,6 @@ test("round-trip: image + mention + #ref survive md -> html -> md", () => {
   assert.ok(back.includes("#42"));
   assert.ok(back.includes("![pic](https://x/a.png)"));
   assert.ok(back.includes("@[Jane](e401e150-a645-7c8e-b903-3994dbead567)"));
-});
-
-test("htmlToMarkdown: strips ACK (\\u0006) control characters from ADO comment HTML", () => {
-  assert.strictEqual(lib.htmlToMarkdown("\u0006hello\u0006"), "hello");
-  assert.strictEqual(lib.htmlToMarkdown("<b>\u0006bold\u0006</b>"), "**bold**");
-  assert.strictEqual(lib.htmlToMarkdown("<div>\u0006a</div><div>\u0006b</div>"), "a\nb");
-});
-test("htmlToMarkdown: <img> with unquoted src and alt attributes", () => {
-  assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png alt=pic>'), "![pic](https://x/a.png)");
-  assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png>'), "![](https://x/a.png)");
-  assert.strictEqual(lib.htmlToMarkdown('<img src=\'https://x/a.png\' alt=\'pic\'>'), "![pic](https://x/a.png)");
-  assert.strictEqual(lib.htmlToMarkdown('<img src="https://x/a.png" alt="pic">'), "![pic](https://x/a.png)");
 });
 
 // ---- OAuth helpers ----
@@ -743,27 +763,26 @@ test("FilterManager: toggleChip and getChipState for tag field", () => {
 });
 
 test("FilterManager: load / save / migrate", () => {
-  const store = {};
-  globalThis.localStorage = {
-    getItem: (key) => store[key] || null,
-    setItem: (key, val) => { store[key] = String(val); },
-    removeItem: (key) => { delete store[key]; }
-  };
+  // FilterManager now persists through App.prefs (not localStorage directly). Drive
+  // the real prefs singleton — in node it uses its in-memory cache (no chrome), and
+  // filters/filterIR/filtersAdvanced are not mirrorLS so localStorage is never touched.
+  const prefs = require("../src/app/prefs.js");
+  globalThis.App = { prefs };
 
   const fm = new FilterManager();
-  
+
   // 1. Save and Load
   fm.toggleChip("state", "Active", "in");
   fm.save();
-  assert.ok(store["ado.filterIR"]);
+  assert.ok(prefs.get("filterIR"));
 
   const fm2 = new FilterManager();
   fm2.load();
   assert.strictEqual(fm2.getChipState("state", "Active"), "in");
 
   // 2. Migrate from filtersAdvanced
-  delete store["ado.filterIR"];
-  store["ado.filtersAdvanced"] = JSON.stringify({
+  prefs.remove("filterIR");
+  prefs.set("filtersAdvanced", JSON.stringify({
     where: {
       kind: "group",
       logic: "OR",
@@ -775,29 +794,30 @@ test("FilterManager: load / save / migrate", () => {
         }
       ]
     }
-  });
+  }));
 
   const fm3 = new FilterManager();
   fm3.load();
   assert.strictEqual(fm3.getChipState("state", "Closed"), "in");
-  assert.ok(!store["ado.filtersAdvanced"]);
-  assert.ok(store["ado.filterIR"]);
+  assert.ok(!prefs.get("filtersAdvanced"));
+  assert.ok(prefs.get("filterIR"));
 
   // 3. Migrate from flat filters (filters)
-  delete store["ado.filterIR"];
-  store["ado.filters"] = JSON.stringify({
+  prefs.remove("filterIR");
+  prefs.set("filters", JSON.stringify({
     state: { in: ["Active", "New"], not: ["Closed"] }
-  });
+  }));
 
   const fm4 = new FilterManager();
   fm4.load();
   assert.strictEqual(fm4.getChipState("state", "Active"), "in");
   assert.strictEqual(fm4.getChipState("state", "New"), "in");
   assert.strictEqual(fm4.getChipState("state", "Closed"), "out");
-  assert.ok(!store["ado.filters"]);
-  assert.ok(store["ado.filterIR"]);
+  assert.ok(!prefs.get("filters"));
+  assert.ok(prefs.get("filterIR"));
 
-  delete globalThis.localStorage;
+  prefs.remove("filterIR");
+  delete globalThis.App;
 });
 
 test("FilterManager: onChange listener and unsubscribe", () => {
@@ -824,6 +844,17 @@ test("timeExprToMath and evaluateMath", () => {
   assert.strictEqual(lib.evaluateMath(lib.timeExprToMath("2d + 4h", 8)), 20);
   assert.strictEqual(lib.evaluateMath(lib.timeExprToMath("1.5d - 2h", 8)), 10);
   assert.ok(isNaN(lib.evaluateMath(lib.timeExprToMath("invalid", 8))));
+});
+
+test("gid: composite work-item id encode/decode (BACKEND_PROVIDER §13.1)", () => {
+  assert.strictEqual(lib.gidMake("ado", 123), "ado:123");
+  assert.strictEqual(lib.gidMake("jira", "PROJ-45"), "jira:PROJ-45");
+  assert.strictEqual(lib.gidNative("ado:123"), "123");
+  assert.strictEqual(lib.gidNative("jira:PROJ-45"), "PROJ-45");   // native may contain no extra colon
+  assert.strictEqual(lib.gidNative("123"), "123");                 // tolerant: bare native passes through
+  assert.strictEqual(lib.gidProvider("ado:123"), "ado");
+  assert.strictEqual(lib.gidProvider("123"), null);                // bare native has no provider
+  assert.strictEqual(lib.gidNative(lib.gidMake("ado", 7)), "7");   // round-trip
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

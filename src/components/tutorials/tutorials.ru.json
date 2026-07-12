@@ -1,0 +1,235 @@
+{
+  "v1.2.0_toolbar_controls": {
+    "title": "<ui-icon name=\"compass\"></ui-icon> Тур по панели инструментов и навигации",
+    "version": "1.2.0",
+    "context": "board",
+    "steps": [
+      {
+        "element": "#mode",
+        "title": "<ui-icon name=\"map\"></ui-icon> Переключатель видов и жесты",
+        "text": "Динамически переключайте режимы отображения!<hr/><div class='tut-section'><div class='tut-section-title'>Типы представлений</div><div>• <span class='tut-badge'>Дерево</span> — иерархия родитель-потомок.<br/>• <span class='tut-badge'>Граф</span> — визуальная карта зависимостей.<br/>• <span class='tut-badge'>Доска</span> — рабочий процесс по этапам-колонкам.<br/>• <span class='tut-badge'>Таймлайн</span> — спринты и диаграммы Ганта.</div></div><div class='tut-section'><div class='tut-section-title'>Совет</div><div>Перетаскивайте строки в режиме «Дерево», чтобы быстро менять иерархию родитель-потомок, или используйте <kbd>Ctrl/Cmd</kbd>+клик для массового редактирования.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#filt_btn",
+        "title": "<ui-icon name=\"search\"></ui-icon> Расширенные фильтры",
+        "text": "Мгновенно сужайте рабочее пространство!<hr/><div class='tut-section'><div class='tut-section-title'>Параметры поиска и фильтрации</div><div>• Поиск элементов по тексту, названию или ID.<br/>• Фильтрация по <span class='tut-badge'>Спринту</span>, <span class='tut-badge'>Состоянию</span>, <span class='tut-badge'>Исполнителю</span> или <span class='tut-badge'>Тегам</span>.<br/>• Переключение порядка сортировки по приоритету или ID.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#followed_btn",
+        "title": "<ui-icon name=\"star\"></ui-icon> Фильтр отслеживаемых элементов",
+        "text": "Сосредоточьтесь на элементах, которые вы отслеживаете!<hr/><div class='tut-section'><div class='tut-section-title'>Переключение фильтра по звёздочке</div><div>Нажмите кнопку со звездой, чтобы мгновенно отфильтровать активное представление и показать только подписанные рабочие элементы.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#undobtn",
+        "title": "<ui-icon name=\"undo\"></ui-icon> Отмена и повтор",
+        "text": "Исправляйте ошибки одним кликом!<hr/><div class='tut-section'><div class='tut-section-title'>Горячие клавиши</div><div>• <kbd>Ctrl + Z</kbd> — отменяет изменения иерархии, изменения статуса или правки описания.<br/>• <kbd>Ctrl + Y</kbd> — повторяет последнее отменённое действие.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#morebtn",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Отображение и настройки",
+        "text": "Управляйте отображением приложения и подключениями!<hr/><div class='tut-section'><div class='tut-section-title'>Параметры настроек</div><div>Настройте переключение темы, часовые пояса, интервалы автообновления, пользовательские эмодзи-реакции или подключения к DevOps.</div></div>",
+        "position": "bottom"
+      }
+    ]
+  },
+  "v1.2.0_display_settings": {
+    "title": "<ui-icon name=\"settings\"></ui-icon> Тур по настройкам отображения",
+    "version": "1.2.0",
+    "context": "settings",
+    "steps": [
+      {
+        "element": "#morepanel",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Общие настройки",
+        "text": "Управляйте настройками и предпочтениями!<hr/><div class='tut-section'><div class='tut-section-title'>Доступные настройки</div><div>Тема, масштабирование интерфейса, частота автообновления, смещение часового пояса и активные рабочие часы.</div></div><div class='tut-section'><div class='tut-section-title'>Помощь по настройкам</div><div>Наведите курсор на значок <ui-icon name=\"help\"></ui-icon> рядом с любой меткой настройки, чтобы прочитать подробные подсказки!</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#cz_open",
+        "title": "<ui-icon name=\"layout\"></ui-icon> Настройка макета",
+        "text": "Адаптируйте макет под ваш проект!<hr/><div class='tut-section'><div class='tut-section-title'>Настройка макета</div><div>• Меняйте порядок или видимость кнопок панели инструментов.<br/>• Выбирайте колонки для видов «Дерево», «Доска» и «Таймлайн».<br/>• Выбирайте, какие поля отображаются на карточках.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#emojis_open",
+        "title": "<ui-icon name=\"smile\"></ui-icon> Пользовательские реакции",
+        "text": "Персонализируйте реакции на комментарии!<hr/><div class='tut-section'><div class='tut-section-title'>Ресурсы реакций</div><div>Выбирайте пользовательские эмодзи или загружайте изображения для использования в качестве реакций на комментарии вместо стандартных.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#tutorialbtn",
+        "title": "<ui-icon name=\"book\"></ui-icon> Интерактивные туры",
+        "text": "Освежайте знания в любой момент!<hr/><div class='tut-section'><div class='tut-section-title'>Туры по функциям</div><div>Откройте этот список, чтобы повторно пройти любое обучение, проверить свой прогресс или полностью сбросить историю просмотренного.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#settingsbtn",
+        "title": "<ui-icon name=\"key\"></ui-icon> Подключение к DevOps",
+        "text": "Настройте контекст вашего проекта!<hr/><div class='tut-section'><div class='tut-section-title'>Данные подключения</div><div>Управляйте URL организаций, названиями проектов, токенами PAT или учётными данными OAuth для установки безопасного соединения с Azure DevOps.</div></div>",
+        "position": "bottom"
+      }
+    ]
+  },
+  "v1.2.0_sidebar_features": {
+    "title": "<ui-icon name=\"copy\"></ui-icon> Детали и действия боковой панели",
+    "version": "1.2.0",
+    "context": "sidebar",
+    "steps": [
+      {
+        "element": "#s_desc_attach",
+        "title": "<ui-icon name=\"paperclip\"></ui-icon> Вложения файлов",
+        "text": "Мгновенно загружайте файлы и логи!<hr/><div class='tut-section'><div class='tut-section-title'>Как прикрепить</div><div>• Нажмите на значок скрепки, чтобы выбрать файлы.<br/>• Вставляйте изображения из буфера обмена прямо в описания.<br/>• Перетаскивайте файлы из проводника в любое место панели.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#s_customize",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Настройка панели",
+        "text": "Скрывайте или меняйте порядок полей деталей!<hr/><div class='tut-section'><div class='tut-section-title'>Макеты боковой панели</div><div>Настройте, какие поля видны на этой панели. Конфигурация макета автоматически сохраняется <span class='tut-key'>для каждого типа рабочего элемента</span> (например, макет для Bug и макет для Epic).</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#s_link_split",
+        "title": "<ui-icon name=\"link\"></ui-icon> Ссылка ADO и навигация",
+        "text": "Переходите прямо в облачный портал!<hr/><div class='tut-section'><div class='tut-section-title'>Параметры ссылки</div><div>• Левый клик: переход непосредственно на веб-страницу Azure DevOps для этого элемента.<br/>• Правый/раздельный клик: копирование прямой ссылки на элемент ADO в буфер обмена.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#s_desc_full",
+        "title": "<ui-icon name=\"maximize\"></ui-icon> Полноэкранный редактор",
+        "text": "Удобно пишите документацию!<hr/><div class='tut-section'><div class='tut-section-title'>Полноэкранный режим</div><div>Включите полноэкранный режим редактора, чтобы писать документацию описаний, редактировать markdown-текст или читать длинные описания.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#s_follow",
+        "title": "<ui-icon name=\"star\"></ui-icon> Локальные подписки (Отслеживание)",
+        "text": "Будьте в курсе ключевых рабочих элементов!<hr/><div class='tut-section'><div class='tut-section-title'>Локальные оповещения</div><div>Atlas отслеживает подписанные элементы в фоновом режиме и отправляет уведомления на рабочий стол при изменениях. Он <span class='tut-key'>не</span> регистрирует вас на сервере ADO, избегая спам-писем!</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "[data-sg='title']",
+        "title": "<ui-icon name=\"copy\"></ui-icon> Динамические поля",
+        "text": "Поля адаптируются под тип вашего рабочего элемента!<hr/><div class='tut-section'><div class='tut-section-title'>Синхронизация данных</div><div>Название, Состояние, Исполнитель и другие поля деталей мгновенно синхронизируются с Azure DevOps и динамически меняются в зависимости от текущего элемента.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#activity_toggle_btn",
+        "title": "<ui-icon name=\"trending-up\"></ui-icon> Активность и время в состоянии",
+        "text": "Отслеживайте время переходов и комментарии!<hr/><div class='tut-section'><div class='tut-section-title'>Переходы состояний</div><div>Анализируйте, сколько времени рабочие элементы проводят в каждом состоянии (например, Active, Resolved), чтобы выявлять узкие места.</div></div>",
+        "position": "left"
+      },
+      {
+        "element": ".ah-actions",
+        "title": "<ui-icon name=\"message-square\"></ui-icon> Действия в активности",
+        "text": "Выполняйте действия прямо из боковой панели!<hr/><div class='tut-section'><div class='tut-section-title'>Быстрые действия</div><div>• Создавайте дочерние элементы в один клик.<br/>• Публикуйте комментарии в markdown.<br/>• Переключайте панель полной истории обсуждения.</div></div>",
+        "position": "left"
+      }
+    ]
+  },
+  "v1.2.0_advanced_filter_syntax": {
+    "title": "<ui-icon name=\"search\"></ui-icon> Конструктор расширенных фильтров",
+    "version": "1.2.0",
+    "context": "advanced_filter_modal",
+    "steps": [
+      {
+        "element": ".fb-add-field-container",
+        "title": "<ui-icon name=\"plus\"></ui-icon> Вложенные логические группы",
+        "text": "Нажмите <span class='tut-key'>Добавить поле</span>, чтобы добавить строки правил.<hr/><div class='tut-section'><div class='tut-section-title'>Логика вложенности</div><div>Вы можете вкладывать группы! Комбинируйте несколько условий с помощью селекторов <span class='tut-badge'>AND</span> или <span class='tut-badge'>OR</span> для построения сложных многоуровневых логических запросов.</div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-field-row",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Переключение операторов",
+        "text": "Нажмите на <span class='tut-key'>чип оператора</span> (например, <code>=</code>), чтобы переключить его напрямую!<hr/><div class='tut-section'><div class='tut-section-title'>Иерархическая фильтрация</div><div>Используйте оператор <span class='tut-badge'>UNDER</span> для поиска по поддеревьям Area Path или проверки рекурсивных иерархий родитель-потомок (например, для всех потомков Epic 123).</div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-field-row",
+        "title": "<ui-icon name=\"sparkles\"></ui-icon> Макросы идентичности и значений",
+        "text": "Избегайте жёсткого задания значений с помощью умных макросов!<hr/><div class='tut-section'><div class='tut-section-title'>Распространённые макросы</div><div>• <span class='tut-code-inline'>@me</span> — соответствует активному пользователю (идеально для поля «Исполнитель»).<br/>• <span class='tut-code-inline'>@empty</span> — соответствует элементам с пустыми или незаполненными полями.</div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-field-row",
+        "title": "<ui-icon name=\"calendar\"></ui-icon> Макросы дат и системные макросы",
+        "text": "Фильтруйте по временным рамкам или области проекта динамически!<hr/><div class='tut-section'><div class='tut-section-title'>Продвинутые макросы</div><div>• <span class='tut-code-inline'>@today</span> — соответствует текущей дате. Поддерживает смещения вида <span class='tut-code-inline'>@today - 7</span>.<br/>• <span class='tut-code-inline'>@currentiteration</span> — указывает на текущий спринт.<br/>• <span class='tut-code-inline'>@project</span> — ссылается на контекст текущего проекта.</div></div>",
+        "position": "right"
+      },
+      {
+        "element": ".fb-preview-panel",
+        "title": "<ui-icon name=\"eye\"></ui-icon> Предпросмотр результатов в реальном времени",
+        "text": "Проверяйте свой фильтр мгновенно!<hr/><div class='tut-section'><div class='tut-section-title'>Живая боковая панель</div><div>Боковая панель выполняет ваш запрос в фоновом режиме, отображая подходящие рабочие элементы и показывая количество совпадений в реальном времени по мере ввода!</div></div>",
+        "position": "left"
+      },
+      {
+        "element": "#fb-show-followed",
+        "title": "<ui-icon name=\"star\"></ui-icon> Только отслеживаемые элементы",
+        "text": "Сосредоточьтесь только на том, что важно для вас!<hr/><div class='tut-section'><div class='tut-section-title'>Быстрое переключение</div><div>Переключите этот тумблер, чтобы быстро ограничить все результаты расширенного запроса только теми элементами, которые вы сейчас отслеживаете.</div></div>",
+        "position": "top"
+      },
+      {
+        "element": "#fb-save-btn",
+        "title": "<ui-icon name=\"save\"></ui-icon> Сохранённые пресеты",
+        "text": "Сохраняйте свои сложные запросы!<hr/><div class='tut-section'><div class='tut-section-title'>Сохранение правил</div><div>Нажмите <span class='tut-key'>Сохранить</span>, чтобы сохранить всю конфигурацию под произвольным именем, сделав её многоразовой для будущих сессий.</div></div>",
+        "position": "top"
+      },
+      {
+        "element": "#fb-manage-btn",
+        "title": "<ui-icon name=\"folder\"></ui-icon> Менеджер фильтров",
+        "text": "Нажмите <span class='tut-key'>Управление</span>, чтобы открыть окно управления. Оттуда вы можете удалять, делиться или импортировать/экспортировать конфигурации.",
+        "position": "top"
+      },
+      {
+        "element": "#fb-tab-list-btn",
+        "title": "<ui-icon name=\"folder\"></ui-icon> Вкладка сохранённых фильтров",
+        "text": "Организуйте свою библиотеку пресетов!<hr/><div class='tut-section'><div class='tut-section-title'>Доступные действия</div><div>• Нажмите на имя сохранённого фильтра, чтобы применить его мгновенно.<br/>• Нажмите <ui-icon name=\"copy\"></ui-icon>, чтобы скопировать его в буфер обмена.<br/>• Нажмите <ui-icon name=\"share\"></ui-icon>, чтобы поделиться или скачать конфигурацию.<br/>• Нажмите на корзину, чтобы удалить устаревшие конфигурации.</div></div><div class='tut-section'><div class='tut-section-title'>Облачная синхронизация</div><div>Все сохранённые фильтры синхронизируются с хранилищем вашей учётной записи. Они доступны на всех ваших устройствах и в сессиях браузера под этой учётной записью.</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#fb-tab-ie-btn",
+        "title": "<ui-icon name=\"copy\"></ui-icon> Вкладка импорта / экспорта",
+        "text": "Легко делитесь фильтрами!<hr/><div class='tut-section'><div class='tut-section-title'>Импорт/экспорт JSON</div><div>• Вставьте JSON напрямую или загрузите файл <code>.json</code>.<br/>• Нажмите <span class='tut-key'>Применить и выполнить</span>, чтобы запустить вставленный фильтр немедленно, не сохраняя его в свои пресеты!</div></div>",
+        "position": "bottom"
+      }
+    ]
+  },
+  "v1.2.0_ai_search": {
+    "title": "<ui-icon name=\"sparkles\"></ui-icon> Тур по ИИ-поиску и естественному языку",
+    "version": "1.2.0",
+    "context": "board",
+    "steps": [
+      {
+        "element": "#ai_filter_btn",
+        "title": "<ui-icon name=\"sparkles\"></ui-icon> Запуск ИИ-поиска",
+        "text": "Нажмите эту кнопку с искрами, чтобы открыть интерактивный диалог ИИ-поиска.<hr/><div class='tut-section'><div class='tut-section-title'>Конфиденциальный ИИ на устройстве</div><div>Работает на 100% локально на вашей машине, используя встроенную в Google Chrome модель Gemini Nano. Никакие данные никогда не покидают ваш браузер!</div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": "#ai-search-text-input",
+        "title": "<ui-icon name=\"message-square\"></ui-icon> Запрос на естественном языке",
+        "text": "Опишите то, что ищете, простым языком (например, на английском или русском).<hr/><div class='tut-section'><div class='tut-section-title'>Примеры для пробы</div><div>• <i>«активные баги, назначенные мне, созданные за последние 2 недели»</i><br/>• <i>«завершённые задачи в Sprint 15 или 16»</i></div></div>",
+        "position": "bottom"
+      },
+      {
+        "element": ".ai-reasoning-container",
+        "title": "<ui-icon name=\"trending-up\"></ui-icon> Параметры глубины рассуждений",
+        "text": "Выберите уровень глубины обработки ИИ:<hr/><div class='tut-section'><div>• <span class='tut-badge'>Авто</span> — автоматический выбор оптимальной глубины.<br/>• <span class='tut-badge'>Быстро</span> — быстрое выполнение за 1 проход.<br/>• <span class='tut-badge'>Сбалансированно</span> — 2-проходный парсер с фильтрацией по схеме (рекомендуется).<br/>• <span class='tut-badge'>Тщательно</span> — 3-проходное рассуждение с самокоррекцией.</div></div>",
+        "position": "top"
+      },
+      {
+        "element": "#ai-provider-tab-settings",
+        "title": "<ui-icon name=\"settings\"></ui-icon> Облачные подключения и модели",
+        "text": "Нажмите на вкладку <span class='tut-key'>+</span>, чтобы настроить внешние подключения!<hr/><div class='tut-section'><div class='tut-section-title'>Поддержка пользовательских провайдеров</div><div>Подключите Google Gemini API (используя бесплатный ключ из AI Studio) или OpenAI API. Вы можете выбирать пользовательские модели прямо из выпадающего меню в стиле тегов!</div></div>",
+        "position": "right"
+      },
+      {
+        "element": "#ai-search-submit-btn",
+        "title": "<ui-icon name=\"search\"></ui-icon> Запуск и проверка фильтров",
+        "text": "Нажмите <span class='tut-key'>Поиск</span>, чтобы ИИ обработал ваш запрос. Вы сможете просмотреть построенные визуальные фильтры и доработать их в Конструкторе расширенных фильтров перед применением к активному рабочему пространству.",
+        "position": "top"
+      }
+    ]
+  }
+}

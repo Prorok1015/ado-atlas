@@ -1,0 +1,10 @@
+/* app.css split (theme variables (:root + body.light) + reset). Loaded in original order; concatenation reproduces the original app.css. */
+:root{--bg:#0f1216;--panel:#171c23;--panel2:#1e252e;--line:#2a323d;--txt:#e6edf3;
+  --muted:#9aa7b4;--accent:#4c8bf5;--field:#0d1117;--sel:#243042;
+  --cy-bg:#14181f;--cy-dot:#2b333e;color-scheme:dark}
+body.light{--bg:#f5f7fa;--panel:#fff;--panel2:#eef2f7;--line:#d6dee8;--txt:#1b2330;
+  --muted:#5a6b7b;--accent:#2f6fed;--field:#fff;--sel:#e4edfb;
+  --cy-bg:#fdfcfa;--cy-dot:#dad6cd;color-scheme:light}
+*{box-sizing:border-box}
+html{margin:0;height:100%;font-size:1rem}
+
