@@ -191,19 +191,20 @@ Click any item to open the side editor. Beyond the usual fields:
 
 ## What's inside
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `manifest.json` | MV3 declaration: `host_permissions` for `dev.azure.com`, `storage`, action with full-tab UI |
-| `background.js` | Service worker: on icon click, open `index.html` in a tab (focuses an existing one if it's already open) |
-| `index.html` | Single-page UI shell + setup-modal markup |
-| `app.css` | Styles (dark + light theme, board / Gantt, modal) |
-| `lib.js` | Pure, dependency-free helpers (WIQL builder, html⇄text, business-hours, PAT countdown) — shared by `api.js`/`app.js` and unit-tested |
-| `api.js` | ADO REST client — direct calls to `dev.azure.com` using the PAT |
-| `app.js` | Tree / Graph / Board / Sprint / Editor logic |
-| `vendor/` | Cytoscape + dagre + cytoscape-dagre (bundled, no CDN) |
-| `icons/` | Toolbar icons (16/48/128) |
-| `build.bat` | One-shot zip into `dist/ado-atlas-extension.zip` |
-| `tests/` | Node unit tests for `lib.js` (`npm test`) |
+| `manifest.json` | MV3 extension manifest: host permissions for `dev.azure.com`, extension storage, background worker configuration. |
+| `background.js` | Service worker managing the full-tab UI launch and background alarm synchronization checks. |
+| `index.html` | The single-page application shell, toolbar layout, and setup UI. |
+| `src/core/lib.js` | Pure, deterministic utility library (WIQL builder, text⇄HTML parser, business hours time math) with zero DOM/Node dependencies. |
+| `src/core/api/` | Centralized REST client architecture for communicating with Azure DevOps (retry backoff, Entra auth, query compilation). |
+| `src/app/` | UI and interactive view state controllers (tree, graph, board, timeline, comment activity, layout customization, undo/redo). |
+| `src/components/` | Reusable, self-contained UI components (LayerManager stacking context, PremiumPaywall dialog, FilterBuilderModal, ProButtonManager). |
+| `src/ai/` | Extensible AI interface abstractions (AITextEditor, AISearchService, AISummarizer), registering Gemini Nano & custom Cloud AI models. |
+| `src/locales/` | JSON locale dictionaries for translation keys (`en`, `ru`, `de`, `es`, `pseudo`) loaded dynamically by the i18n manager. |
+| `src/styles/` | Modular vanilla CSS styling system derived entirely from unified CSS variable design tokens. |
+| `vendor/` | Third-party UI dependencies: Cytoscape graph rendering engine + Dagre layout plugin. |
+| `tests/` | Lightweight, dependency-free Node.js unit test suites (`npm test`) validating lib utilities and AI services. |
 
 ## Build (only when sharing / publishing)
 
@@ -215,7 +216,7 @@ runtime files (no tests/docs). For publishing to the Chrome Web Store, follow
 
 ## Tests
 
-The pure logic in `lib.js` has unit tests (no dependencies, no browser):
+The pure logic in `src/core/lib.js` has unit tests (no dependencies, no browser):
 
 ```
 npm test        # or: node tests/lib.test.js
