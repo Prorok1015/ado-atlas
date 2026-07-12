@@ -297,7 +297,7 @@ function wirePremiumPlaceholders(){
 // ---- wiring helpers (extracted verbatim from initialBoot; order preserved) ----
 function wireControls(){
   // switching view is render-only (no API): graph draws from the App.state.store, tree DOM persists
-  $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>App.settings.switchMode(b.dataset.m));
+  $('mode').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(b.dataset.proFeature)return;App.settings.switchMode(b.dataset.m);});
   $('emode').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.edgeMode=b.dataset.e;$('emode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.graph.depHandleHide();App.graph.renderGraph();});
   $('dir').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.rankDir=b.dataset.d;$('dir').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.prefs.set('rankDir',App.state.rankDir);App.graph.renderGraph({relayout:true,fit:true});});
   $('f_sort').onchange=()=>{

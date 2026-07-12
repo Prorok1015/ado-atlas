@@ -58,8 +58,10 @@ body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-size:1rem;l
 .patbadge.patok{color:#3fb950;border-color:#3fb95066}
 .patbadge.patwarn{color:#e0a13c;border-color:#e0a13c66}
 .patbadge.patbad{color:#e06c75;border-color:#e06c7566}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:0.615rem;overflow:hidden}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:0.615rem;overflow:visible}
 .seg button{background:transparent;color:var(--muted);border:0;padding:0.308rem 0.769rem;cursor:pointer;font:inherit;font-size:0.923rem}
+.seg button:first-of-type{border-top-left-radius:0.538rem;border-bottom-left-radius:0.538rem}
+.seg button:last-of-type{border-top-right-radius:0.538rem;border-bottom-right-radius:0.538rem}
 .seg button+button{border-left:1px solid var(--line)}   /* visually separate the segmented buttons */
 .seg button:hover{background:var(--panel2);color:var(--txt)}
 .seg button.on{background:var(--accent);color:#fff}

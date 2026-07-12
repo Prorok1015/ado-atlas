@@ -30,7 +30,7 @@
   <button class="btn save" id="newbtn" data-i18n-title="toolbar.new.title" title="create a new work item (N)"><ui-icon name="plus"></ui-icon> <span data-i18n="toolbar.new">New</span></button>
   <button class="btn" id="undobtn" data-i18n-title="toolbar.undo.title" title="undo (Ctrl/Cmd+Z)" disabled><ui-icon name="undo"></ui-icon></button>
   <button class="btn" id="redobtn" data-i18n-title="toolbar.redo.title" title="redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)" disabled><ui-icon name="redo"></ui-icon></button>
-  <div class="seg" id="mode"><button data-m="tree" class="on" data-i18n="toolbar.mode.tree">Tree</button><button data-m="graph" data-i18n="toolbar.mode.graph">Graph</button><button data-m="board" data-i18n="toolbar.mode.board">Board</button><button data-m="timeline" data-i18n="toolbar.mode.timeline">Timeline</button></div>
+  <div class="seg" id="mode"><button data-m="tree" class="on" data-i18n="toolbar.mode.tree">Tree</button><button data-m="graph" data-i18n="toolbar.mode.graph">Graph</button><button data-m="board" data-i18n="toolbar.mode.board">Board</button><button data-m="timeline" data-i18n="toolbar.mode.timeline">Timeline</button><button data-m="analytics" data-pro-feature="analytics" style="position: relative;" data-i18n-title="toolbar.analytics.title" title="Process analytics: Cycle Time, Flow Efficiency, WIP trends (Pro)"><span data-i18n="toolbar.analytics">Analytics</span></button></div>
   <div class="seg" id="emode" style="display:none"><button data-e="hierarchy" class="on" data-i18n-title="toolbar.emode.hier.title" title="just hierarchy (compound boxes)" data-i18n="toolbar.emode.hier">Hier</button><button data-e="dep" data-i18n-title="toolbar.emode.dep.title" title="add dependency arrows" data-i18n="toolbar.emode.dep">+ Deps</button></div>
   <div class="seg" id="dir" style="display:none"><button data-d="TB"><ui-icon name="arrow-up-down"></ui-icon> <span data-i18n="toolbar.dir.v">V</span></button><button data-d="LR" class="on"><ui-icon name="arrow-left-right"></ui-icon> <span data-i18n="toolbar.dir.h">H</span></button></div>
   <div class="seg" id="grp" style="display:none"><button data-g="sprint" class="on" data-i18n="toolbar.group.sprint">by Sprint</button><button data-g="state" data-i18n="toolbar.group.state">by State</button><button data-g="assignee" data-i18n="toolbar.group.assignee">by Assignee</button></div>
@@ -54,7 +54,6 @@
       <div class="mrow mrow-full" style="position: relative;"><button class="btn pro-glow" id="export_excel_btn" data-pro-feature="export" data-i18n-title="export.excel.title" title="High-resolution PDF / Excel export (Pro)"><ui-icon name="table"></ui-icon> <span data-i18n="export.excel">Excel</span></button></div>
     </div>
   </span>
-  <button class="btn" id="analytics_btn" style="position: relative;" data-pro-feature="analytics" data-i18n-title="toolbar.analytics.title" title="Process analytics: Cycle Time, Flow Efficiency, WIP trends (Pro)"><ui-icon name="bar-chart"></ui-icon> <span data-i18n="toolbar.analytics">Analytics</span></button>
   <span class="patbadge" id="patbadge" data-i18n-title="toolbar.patbadge.title" title="PAT validity"></span>
   <span class="legend" id="legend"></span>
   <span class="popwrap" id="settings-wrap">
