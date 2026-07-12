@@ -124,6 +124,20 @@
   }
 
   class AISummarizer {
+    constructor(registry) {
+      this.registry = registry || global.aiProviderRegistry;
+    }
+
+    async summarize(description, options = {}) {
+      const provider = await this.registry.getActive();
+      if (!provider) {
+        throw new Error("AI is not available. No active provider found.");
+      }
+
+      const systemPrompt = global.SUMMARIZE_SYSTEM_PROMPT || 'Summarize the following work item description in 2-3 concise sentences.';
+      return provider.prompt(systemPrompt, description, options);
+    }
+
     static async summarizeCurrentItem(force = false) {
       const App = window.App || {};
       const wid = App.state?.cur;
@@ -259,11 +273,14 @@ ${commentsText ? `Discussion History:\n${commentsText}\n` : ''}`;
   }
 
   global.AISummarizer = AISummarizer;
+  global.aiSummarizer = new AISummarizer();
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initHoverListeners);
-  } else {
-    initHoverListeners();
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initHoverListeners);
+    } else {
+      initHoverListeners();
+    }
   }
 
 })(typeof globalThis !== 'undefined' ? globalThis : window);

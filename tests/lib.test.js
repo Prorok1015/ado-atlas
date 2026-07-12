@@ -483,6 +483,11 @@ test("htmlToMarkdown: <img> with unquoted attributes", () => {
   assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png alt=pic>'), "![pic](https://x/a.png)");
   assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png alt="pic with spaces">'), "![pic with spaces](https://x/a.png)");
 });
+test("htmlToMarkdown: strips ACK (\\u0006) control characters from ADO comment HTML", () => {
+  assert.strictEqual(lib.htmlToMarkdown("\u0006hello\u0006"), "hello");
+  assert.strictEqual(lib.htmlToMarkdown("<b>\u0006bold\u0006</b>"), "**bold**");
+  assert.strictEqual(lib.htmlToMarkdown("<div>\u0006a</div><div>\u0006b</div>"), "a\nb");
+});
 test("htmlToMarkdown: mention anchor -> @[Name](descriptor)", () => {
   const md = lib.htmlToMarkdown('<a href="#" data-vss-mention="version:2.0,e401e150-a645-7c8e-b903-3994dbead567">@Jane Doe</a>');
   assert.strictEqual(md, "@[Jane Doe](e401e150-a645-7c8e-b903-3994dbead567)");

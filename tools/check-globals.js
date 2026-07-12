@@ -35,6 +35,7 @@ const files = [
   "src/ai/custom-cloud-provider.js",
   "src/ai/hosted-cloud-provider.js",
   "src/ai/prompts/search-prompt.js",
+  "src/ai/prompts/summarize-prompt.js",
   "src/ai/ai-search-service.js",
   "src/components/ai-search-dialog.js",
   "src/app/namespace.js",
