@@ -12,8 +12,6 @@ importScripts(
 );
 
 // ---- Dynamic notification i18n from JSON locale files (service worker has no window.i18n) ----
-const NOTIFY_LANGS = ["en", "ru", "es", "de"];
-
 let activeLocaleDict = {};
 let fallbackLocaleDict = {};
 
@@ -30,10 +28,13 @@ async function loadLocaleDict(lang) {
     } else {
       const url = chrome.runtime.getURL(`src/locales/${lang}.json`);
       const res = await fetch(url);
-      activeLocaleDict = await res.json();
+      if (res.ok) {
+        activeLocaleDict = await res.json();
+      } else {
+        activeLocaleDict = fallbackLocaleDict;
+      }
     }
   } catch (e) {
-    console.error("Failed to load locale dictionary", lang, e);
     activeLocaleDict = fallbackLocaleDict;
   }
 }
@@ -62,8 +63,7 @@ async function getSyncedPref(key, dflt) {
 
 // Read the active language (roams via App.prefs under 'ado.lang').
 async function getNotifyLang() {
-  const lang = await getSyncedPref("ado.lang", "en");
-  return NOTIFY_LANGS.includes(lang) ? lang : "en";
+  return await getSyncedPref("ado.lang", "en") || "en";
 }
 
 // On extension click, open/focus the UI
