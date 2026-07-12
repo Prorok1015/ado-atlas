@@ -472,6 +472,18 @@ test("round-trip: image + mention + #ref survive md -> html -> md", () => {
   assert.ok(back.includes("@[Jane](e401e150-a645-7c8e-b903-3994dbead567)"));
 });
 
+test("htmlToMarkdown: strips ACK (\\u0006) control characters from ADO comment HTML", () => {
+  assert.strictEqual(lib.htmlToMarkdown("\u0006hello\u0006"), "hello");
+  assert.strictEqual(lib.htmlToMarkdown("<b>\u0006bold\u0006</b>"), "**bold**");
+  assert.strictEqual(lib.htmlToMarkdown("<div>\u0006a</div><div>\u0006b</div>"), "a\nb");
+});
+test("htmlToMarkdown: <img> with unquoted src and alt attributes", () => {
+  assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png alt=pic>'), "![pic](https://x/a.png)");
+  assert.strictEqual(lib.htmlToMarkdown('<img src=https://x/a.png>'), "![](https://x/a.png)");
+  assert.strictEqual(lib.htmlToMarkdown('<img src=\'https://x/a.png\' alt=\'pic\'>'), "![pic](https://x/a.png)");
+  assert.strictEqual(lib.htmlToMarkdown('<img src="https://x/a.png" alt="pic">'), "![pic](https://x/a.png)");
+});
+
 // ---- OAuth helpers ----
 test("base64UrlEncode: url-safe, no padding", () => {
   // bytes [251,255] -> base64 "+/8=" -> base64url "-_8"
