@@ -750,6 +750,7 @@
   function gidProvider(gid) { const s = String(gid); const i = s.indexOf(':'); return i >= 0 ? s.slice(0, i) : null; }
 
   return { formatMessage, wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml, highlightCode,
+           highlightRegistry, langAliases,
            base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath,
            gidMake, gidNative, gidProvider };
 });

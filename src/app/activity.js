@@ -778,17 +778,27 @@
       pre.style.position = "relative";
       
       const rawText = pre.textContent.replace(/\n$/, '');
-      const initialLang = pre.getAttribute("data-lang") || "";
+      
+      const registry = (window.AdoLib && window.AdoLib.highlightRegistry) || {};
+      const aliases = (window.AdoLib && window.AdoLib.langAliases) || {};
+      
+      let initialLang = pre.getAttribute("data-lang") || "";
+      if (initialLang) {
+        initialLang = initialLang.toLowerCase();
+        if (aliases[initialLang]) {
+          initialLang = aliases[initialLang];
+        }
+      }
 
       const select = document.createElement("select");
       select.className = "md-lang-selector";
       
       const languages = [
         { value: "", label: "text" },
-        { value: "json", label: "json" },
-        { value: "javascript", label: "js" },
-        { value: "html", label: "html" },
-        { value: "css", label: "css" }
+        ...Object.keys(registry).map(lang => ({
+          value: lang,
+          label: lang === "javascript" ? "js" : lang
+        }))
       ];
       
       languages.forEach(l => {
