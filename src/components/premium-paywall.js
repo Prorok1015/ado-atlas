@@ -22,14 +22,14 @@
 
   // Per-feature pitch shown on the left (keyed by data-pro-feature value).
   // `titleKey`/`descKey` resolve at render time so language switches re-pitch.
-  const FEATURES = {
-    analytics:      { titleKey: 'paywall.feature.analytics.title',     descKey: 'paywall.feature.analytics.desc' },
-    filter_presets: { titleKey: 'paywall.feature.filterPresets.title', descKey: 'paywall.feature.filterPresets.desc' },
-    hosted_oauth:   { titleKey: 'paywall.feature.hostedOauth.title',   descKey: 'paywall.feature.hostedOauth.desc' },
-    cloud_ai:       { titleKey: 'paywall.feature.cloudAi.title',       descKey: 'paywall.feature.cloudAi.desc' },
-    export:         { titleKey: 'paywall.feature.export.title',        descKey: 'paywall.feature.export.desc' },
-    default:        { titleKey: 'paywall.feature.default.title',       descKey: 'paywall.feature.default.desc' }
-  };
+  // Per-feature pitch copy lives in ProCatalog (pitchTitleKey / pitchDescKey). A feature
+  // without its own pitch falls back to the generic one — explicitly, not by accident.
+  const DEFAULT_PITCH = { titleKey: 'paywall.feature.default.title', descKey: 'paywall.feature.default.desc' };
+  function pitchFor(feature) {
+    const f = global.ProCatalog && global.ProCatalog.get(feature);
+    if (!f || !f.pitchTitleKey) return DEFAULT_PITCH;
+    return { titleKey: f.pitchTitleKey, descKey: f.pitchDescKey };
+  }
 
   // The full benefit list shown on the right. `key` ties a row to a FEATURES key so
   // the triggering feature can be highlighted; rows without a feature key (e.g. UI
@@ -180,7 +180,7 @@
   // Renders the left-column title/desc for the currently active feature pitch.
   function renderPitch() {
     if (!titleEl || !descEl) return;
-    const f = activeInfo || FEATURES[activeFeature] || FEATURES.default;
+    const f = activeInfo || pitchFor(activeFeature);
     // info from ProFeaturesPanel carries literal title/desc (catalog items aren't
     // all localized); FEATURES entries carry i18n keys resolved here.
     titleEl.textContent = f.title != null ? f.title : L(f.titleKey);

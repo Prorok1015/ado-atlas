@@ -10,31 +10,8 @@
   
   // Single Source of Truth for feature tiers.
   // Any feature key NOT listed here defaults to 'pro'.
-  const TIERS = {
-    // ---- Free Preview (champagne / soft gold) ----
-    analytics: 'preview',
-    an_cycle: 'preview',
-    an_cfd: 'preview',
-    an_aging: 'preview',
-    an_burndown: 'preview',
-    an_velocity: 'preview',
-    an_stale: 'preview',
-    an_blocked: 'preview',
-    an_team_throughput: 'preview',
-    an_team_avg_cycle: 'preview',
-    an_team_top: 'preview',
-    conditional_formatting: 'preview',
-    quick_templates: 'preview',
-    export: 'preview',
-    ultra_dark: 'preview',
-    premium_white: 'preview'
-
-    // ---- Pro (gold) — Everything else ----
-    // cloud_ai, hosted_oauth, filter_presets, shared_views,
-    // tv_dashboard, scheduled_reports, cross_project, share_link,
-    // saved_views, swimlanes, critical_path, baseline_gantt,
-    // ai_summary, ai_deps, ai_reports, ai_risk
-  };
+  // Tiers live in ProCatalog (pro-catalog.js) — the single registry. This class only
+  // renders what the tier implies: the shimmer class and the PRO / PREVIEW badge.
 
   class ProButtonManager {
     static init() {
@@ -50,7 +27,9 @@
     }
 
     static getTier(feature) {
-      return TIERS[feature] || 'pro';
+      // fail closed: an undeclared feature is 'pro', never free. check-premium.js is what
+      // keeps an undeclared feature from reaching here in the first place.
+      return (global.ProCatalog ? global.ProCatalog.tier(feature) : 'pro');
     }
 
     static isPreview(feature) {

@@ -7,8 +7,17 @@
   // the full premium surface / scope of work. Theme-dependent, gold accents,
   // ui-icons (no emoji), stacked via LayerManager.
   //
-  // `status` per item: 'stub' = has an in-context UI placeholder already;
-  // 'partial' = base feature exists free, Pro adds more; 'planned' = not started.
+  // `status` per item describes IMPLEMENTATION, never access:
+  //   'planned' = not started · 'stub' = in-context UI placeholder exists
+  //   'partial' = base feature exists free, Pro adds more
+  //   'live'    = SHIPPED and usable today
+  //
+  // Who may use it is a different axis, and TIERS (pro-button-manager.js) is its single
+  // source of truth — so the tag for a 'live' item is DERIVED from the tier, not stored
+  // here. A live feature at tier 'preview' is free for everyone right now and must say so;
+  // the day TIERS flips it to 'pro', this panel relabels itself with no edit here.
+  // (Duplicating the tier into the catalog is exactly the two-sources-of-truth drift that
+  // bit the pro-glow markup — see AGENTS.md §16.)
 
   // Lazy, guarded i18n helper. Falls back to an English literal so the panel
   // degrades gracefully when the runtime is absent.
@@ -18,59 +27,14 @@
 
   // Catalog rows carry i18n keys (titleKey/descKey) resolved at render time; the
   // English literal lives in locales/en.json. groupKey localizes the section head.
-  const CATALOG = [
-    { groupKey: 'proFeatures.group.analytics', icon: 'bar-chart', items: [
-      { key: 'analytics',   titleKey: 'proFeatures.item.analytics.title',  descKey: 'proFeatures.item.analytics.desc',  status: 'stub' },
-      { key: 'an_cycle',    titleKey: 'proFeatures.item.anCycle.title',    descKey: 'proFeatures.item.anCycle.desc',    status: 'planned' },
-      { key: 'an_cfd',      titleKey: 'proFeatures.item.anCfd.title',      descKey: 'proFeatures.item.anCfd.desc',      status: 'planned' },
-      { key: 'an_aging',    titleKey: 'proFeatures.item.anAging.title',    descKey: 'proFeatures.item.anAging.desc',    status: 'planned' },
-      { key: 'an_burndown', titleKey: 'proFeatures.item.anBurndown.title', descKey: 'proFeatures.item.anBurndown.desc', status: 'planned' },
-      { key: 'an_velocity', titleKey: 'proFeatures.item.anVelocity.title', descKey: 'proFeatures.item.anVelocity.desc', status: 'planned' },
-      { key: 'an_stale',    titleKey: 'proFeatures.item.anStale.title',    descKey: 'proFeatures.item.anStale.desc',    status: 'planned' },
-      { key: 'an_blocked',  titleKey: 'proFeatures.item.anBlocked.title',  descKey: 'proFeatures.item.anBlocked.desc',  status: 'planned' },
-      { key: 'an_team_throughput', titleKey: 'proFeatures.item.anTeamThroughput.title', descKey: 'proFeatures.item.anTeamThroughput.desc', status: 'planned' },
-      { key: 'an_team_avg_cycle',  titleKey: 'proFeatures.item.anTeamAvgCycle.title',  descKey: 'proFeatures.item.anTeamAvgCycle.desc',  status: 'planned' },
-      { key: 'an_team_top',        titleKey: 'proFeatures.item.anTeamTop.title',        descKey: 'proFeatures.item.anTeamTop.desc',        status: 'planned' }
-    ]},
-    { groupKey: 'proFeatures.group.ai', icon: 'sparkles', items: [
-      { key: 'cloud_ai',   titleKey: 'proFeatures.item.cloudAi.title',   descKey: 'proFeatures.item.cloudAi.desc',   status: 'stub' },
-      { key: 'ai_summary', titleKey: 'proFeatures.item.aiSummary.title', descKey: 'proFeatures.item.aiSummary.desc', status: 'planned' },
-      { key: 'ai_deps',    titleKey: 'proFeatures.item.aiDeps.title',    descKey: 'proFeatures.item.aiDeps.desc',    status: 'planned' },
-      { key: 'ai_reports', titleKey: 'proFeatures.item.aiReports.title', descKey: 'proFeatures.item.aiReports.desc', status: 'planned' },
-      { key: 'ai_risk',    titleKey: 'proFeatures.item.aiRisk.title',    descKey: 'proFeatures.item.aiRisk.desc',    status: 'planned' }
-    ]},
-    { groupKey: 'proFeatures.group.viz', icon: 'layout', items: [
-      { key: 'conditional_formatting', titleKey: 'proFeatures.item.conditionalFormatting.title', descKey: 'proFeatures.item.conditionalFormatting.desc', status: 'planned' },
-      { key: 'saved_views',     titleKey: 'proFeatures.item.savedViews.title',     descKey: 'proFeatures.item.savedViews.desc',     status: 'planned' },
-      { key: 'swimlanes',       titleKey: 'proFeatures.item.swimlanes.title',      descKey: 'proFeatures.item.swimlanes.desc',      status: 'planned' },
-      { key: 'critical_path',   titleKey: 'proFeatures.item.criticalPath.title',   descKey: 'proFeatures.item.criticalPath.desc',   status: 'planned' },
-      { key: 'baseline_gantt',  titleKey: 'proFeatures.item.baselineGantt.title',  descKey: 'proFeatures.item.baselineGantt.desc',  status: 'planned' },
-      { key: 'ultra_dark',      titleKey: 'proFeatures.item.ultraDark.title',      descKey: 'proFeatures.item.ultraDark.desc',      status: 'planned' },
-      { key: 'premium_white',   titleKey: 'proFeatures.item.premiumWhite.title',   descKey: 'proFeatures.item.premiumWhite.desc',   status: 'planned' },
-      { key: 'quick_templates', titleKey: 'proFeatures.item.quickTemplates.title', descKey: 'proFeatures.item.quickTemplates.desc', status: 'planned' }
-    ]},
-    { groupKey: 'proFeatures.group.filters', icon: 'folder', items: [
-      { key: 'filter_presets', titleKey: 'proFeatures.item.filterPresets.title', descKey: 'proFeatures.item.filterPresets.desc', status: 'partial' }
-    ]},
-    { groupKey: 'proFeatures.group.signIn', icon: 'key', items: [
-      { key: 'hosted_oauth', titleKey: 'proFeatures.item.hostedOauth.title', descKey: 'proFeatures.item.hostedOauth.desc', status: 'stub' }
-    ]},
-    { groupKey: 'proFeatures.group.export', icon: 'download', items: [
-      { key: 'export',     titleKey: 'proFeatures.item.export.title',    descKey: 'proFeatures.item.export.desc',    status: 'stub' },
-      { key: 'share_link', titleKey: 'proFeatures.item.shareLink.title', descKey: 'proFeatures.item.shareLink.desc', status: 'planned' }
-    ]},
-    { groupKey: 'proFeatures.group.team', icon: 'user', items: [
-      { key: 'shared_views',     titleKey: 'proFeatures.item.sharedViews.title',      descKey: 'proFeatures.item.sharedViews.desc',      status: 'planned' },
-      { key: 'tv_dashboard',     titleKey: 'proFeatures.item.tvDashboard.title',      descKey: 'proFeatures.item.tvDashboard.desc',      status: 'planned' },
-      { key: 'scheduled_reports',titleKey: 'proFeatures.item.scheduledReports.title', descKey: 'proFeatures.item.scheduledReports.desc', status: 'planned' },
-      { key: 'cross_project',    titleKey: 'proFeatures.item.crossProject.title',     descKey: 'proFeatures.item.crossProject.desc',     status: 'planned' }
-    ]}
-  ];
+  // The catalog now lives in ProCatalog (pro-catalog.js) — one registry for every feature.
+
 
   const STATUS = {
     stub:    { labelKey: 'proFeatures.status.stub',    cls: 'pf-st-stub' },
     partial: { labelKey: 'proFeatures.status.partial', cls: 'pf-st-partial' },
-    planned: { labelKey: 'proFeatures.status.planned', cls: 'pf-st-planned' }
+    planned: { labelKey: 'proFeatures.status.planned', cls: 'pf-st-planned' },
+    live:    { labelKey: 'proFeatures.status.live',    cls: 'pf-st-live' }        // shipped, tier decides the wording below
   };
 
   let built = false;
@@ -109,10 +73,15 @@
       .pf-st-stub{background:rgba(34,197,94,.18);color:#48d178;}
       .pf-st-partial{background:rgba(242,169,0,.18);color:#e0a82e;}
       .pf-st-planned{background:var(--panel2);color:var(--muted);border:1px solid var(--line);}
+      /* shipped: green = you already have it in Pro; gold = free preview, go use it today */
+      .pf-st-live{background:rgba(34,197,94,.28);color:#48d178;font-weight:700;}
+      .pf-st-preview{background:rgba(242,169,0,.22);color:#e0a82e;font-weight:700;}
       .pf-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;}
       .pf-close:hover{color:var(--txt);}
       body.light .pf-group-title{color:#9a6a00;}
       body.light .pf-st-partial{color:#9a6a00;}
+      body.light .pf-st-live{color:#1a7f37;}
+      body.light .pf-st-preview{color:#9a6a00;}
     `;
     document.head.appendChild(style);
   }
@@ -127,18 +96,29 @@
     panelEl = document.createElement('div');
     panelEl.className = 'pf-panel';
 
-    const groupsHtml = CATALOG.map(g => `
+    // A shipped feature's tag is derived from its TIER, so the catalog never has to restate
+    // who may use it: 'preview' → free for everyone right now; otherwise → included in Pro.
+    // Flip the tier in TIERS and this panel relabels itself.
+    const tagFor = (it) => {
+      if (it.status !== 'live') return STATUS[it.status];
+      const tier = global.ProButtonManager ? global.ProButtonManager.getTier(it.key) : 'pro';
+      return tier === 'preview'
+        ? { labelKey: 'proFeatures.status.freePreview', cls: 'pf-st-preview' }
+        : STATUS.live;
+    };
+
+    const groupsHtml = (global.ProCatalog ? global.ProCatalog.GROUPS : []).map(g => `
       <div class="pf-group">
-        <div class="pf-group-title"><ui-icon name="${g.icon}"></ui-icon><span data-i18n="${g.groupKey}"></span></div>
+        <div class="pf-group-title"><ui-icon name="${g.icon}"></ui-icon><span data-i18n="${g.group}"></span></div>
         <div class="pf-grid">
-          ${g.items.map(it => `
+          ${g.items.map(it => { const tag = tagFor(it); return `
             <button type="button" class="pf-tile" data-key="${it.key}">
               <div class="pf-tile-top">
                 <span class="pf-tile-title" data-i18n="${it.titleKey}"></span>
-                <span class="pf-tag ${STATUS[it.status].cls}" data-i18n="${STATUS[it.status].labelKey}"></span>
+                <span class="pf-tag ${tag.cls}" data-i18n="${tag.labelKey}"></span>
               </div>
               <div class="pf-tile-desc" data-i18n="${it.descKey}"></div>
-            </button>`).join('')}
+            </button>`; }).join('')}
         </div>
       </div>`).join('');
 

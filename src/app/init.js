@@ -278,10 +278,44 @@ async function loadFilterData(){
 // with `data-pro-feature="<key>"` (key must exist in PremiumPaywall.FEATURES) and
 // a click opens the paywall for Free users, or shows a "coming soon" placeholder
 // for Pro users until the real feature ships (Stage 3+).
+// Runs every registered entitlement guard at the two moments a subscription can change
+// under the user's feet: boot (it may have expired between sessions) and any entitlement
+// change (the background alarm revalidating, an activation, a deactivation).
+//
+// One aggregated notice, not one per feature: a user whose subscription lapsed does not
+// want three separate toasts telling them so.
+function wireEntitlementGuards(){
+  const EM=window.EntitlementManager;
+  if(!EM||!EM.enforceEntitlements)return;
+
+  const run=()=>{
+    const reverted=EM.enforceEntitlements();
+    if(!reverted.length)return;
+    if(typeof App.settings!=='undefined'&&App.settings.renderThemeGallery)App.settings.renderThemeGallery();
+    if(typeof setStatus==='function'){
+      setStatus(window.i18n
+        ? window.i18n.t('entitlement.reverted',{features:reverted.join(', ')})
+        : 'Pro features reverted to free defaults: '+reverted.join(', '), true);
+    }
+  };
+
+  run();                                   // expired between sessions?
+  if(EM.onChange)EM.onChange(run);         // expires while the tab is open?
+}
+
 function wirePremiumPlaceholders(){
   document.addEventListener('click',(e)=>{
     const el=e.target.closest('[data-pro-feature]');
     if(!el)return;
+    // This listener is the "coming soon" placeholder for premium features that DON'T EXIST
+    // yet (pro-features.js CATALOG: status 'stub' / 'planned') — clicking them can only
+    // pitch the paywall, since there is nothing to open.
+    //
+    // An element marked `data-pro-ready` is a feature that IS implemented and calls
+    // EntitlementManager.gate(feature) itself at its own entry point. It must not be
+    // hijacked here, or a paying Pro user would get a paywall on top of a working feature.
+    // (data-pro-feature is still set on it so ProButtonManager styles/badges it.)
+    if(el.hasAttribute('data-pro-ready'))return;
     e.preventDefault();
     const feature=el.dataset.proFeature;
     if(window.PremiumPaywall) window.PremiumPaywall.open(feature);
@@ -476,7 +510,17 @@ function wireControls(){
   document.addEventListener('mousedown',e=>{
     const p=$('badgepanel');if(p.style.display==='none')return;
     const gb=$('vhbadge');if(!p.contains(e.target)&&e.target!==gb&&(!gb||!gb.contains(e.target)))p.style.display='none';});
-  $('theme').onclick=App.settings.cycleTheme;
+  // A subscription can lapse between sessions, or mid-session when the background alarm
+  // revalidates. Features that persist an entitled value register a guard (see
+  // EntitlementManager.registerGuard); here we just run them all at the two moments that
+  // matter, and report whatever got reverted in ONE notice.
+  wireEntitlementGuards();
+
+  // Theme: the ⚙ row is a compact chip that opens the picker overlay (same shape as
+  // "Customize layout…" / the emoji editor). The gallery wires its own clicks on render.
+  $('theme_open').onclick=App.settings.openThemePicker;
+  $('theme_close').onclick=App.settings.closeThemePicker;
+  $('theme-overlay').addEventListener('mousedown',e=>{if(e.target===$('theme-overlay'))App.settings.closeThemePicker();});
   try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if((App.prefs.get('theme')||'dark')==='auto')App.settings.applyTheme('auto');});}catch(e){}
   // Export popover toggling
   const exportP = $('exportpanel'), exportB = $('export_btn');
@@ -784,6 +828,7 @@ function wireEditorAndKeys(){
         }
         if (el.id === 'sprint-overlay') { e.preventDefault(); e.stopPropagation(); App.sprint.closeSprintModal(); return; }
         if (el.id === 'customize-overlay') { e.preventDefault(); e.stopPropagation(); closeCustomize(); return; }
+        if (el.id === 'theme-overlay') { e.preventDefault(); e.stopPropagation(); App.settings.closeThemePicker(); return; }
         if (el.id === 'setup-overlay') { e.preventDefault(); e.stopPropagation(); App.setup.hideSetup(); return; }
         if (el.id === 'confirm-overlay') { return; }
         if (el.id === 'link-overlay') { return; }

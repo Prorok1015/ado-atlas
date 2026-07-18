@@ -4,11 +4,11 @@
   "private": true,
   "license": "UNLICENSED",
   "author": "Zakhar Lebediuk",
-  "description": "ADO Atlas Chrome extension — dev tooling (unit tests for lib.js).",
+  "description": "ADO Atlas Chrome extension \u2014 dev tooling (unit tests for lib.js).",
   "scripts": {
     "check": "node tools/check-globals.js",
     "check:i18n": "node tools/check-i18n-keys.js",
-    "test": "node tools/check-globals.js && node tools/check-i18n-keys.js && node tools/check-prefs.js && node tests/lib.test.js && node tests/ai.test.js && node tests/api.test.js",
+    "test": "node tools/check-globals.js && node tools/check-i18n-keys.js && node tools/check-prefs.js && node tools/check-themes.js && node tools/check-premium.js && node tests/lib.test.js && node tests/ai.test.js && node tests/api.test.js && node tests/entitlement.test.js",
     "build": "node tools/build.js"
   }
 }

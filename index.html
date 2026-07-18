@@ -59,8 +59,8 @@
   <span class="popwrap" id="settings-wrap">
     <button class="btn" id="morebtn" data-i18n-title="settings.more.title" title="settings &amp; display options"><ui-icon name="settings"></ui-icon></button>
     <div id="morepanel" style="display:none">
-      <div class="mrow"><span class="ml"><span data-i18n="settings.theme">Theme</span><span class="logic-hint" data-i18n-tooltip="help.theme" data-tooltip-html="<b>Theme Switcher</b><br/>Cycle between Light, Dark, or System Sync theme options."><ui-icon name="help"></ui-icon></span></span>
-        <button class="btn" id="theme" data-i18n-title="settings.theme.title" title="cycle dark / light / auto"><ui-icon name="moon"></ui-icon> <span id="theme_label">dark</span></button></div>
+      <div class="mrow"><span class="ml"><span data-i18n="settings.theme">Theme</span><span class="logic-hint" data-i18n-tooltip="help.theme" data-tooltip-html="<b>Theme</b><br/>Pick a palette. Every card previews the app in that theme."><ui-icon name="help"></ui-icon></span></span>
+        <button class="btn" id="theme_open" data-i18n-title="settings.theme.title" title="choose a theme"><span class="theme-chip" id="theme_chip"></span> <span id="theme_label">dark</span></button></div>
       <div class="mrow"><span class="ml"><span data-i18n="settings.uiScale">UI Scale</span><span class="logic-hint" data-i18n-tooltip="help.uiScale" data-tooltip-html="<b>UI Scaling</b><br/>Adjust the overall font and interface scaling factor for high-resolution displays."><ui-icon name="help"></ui-icon></span></span>
         <select id="f_scale" data-i18n-title="settings.uiScale.title" title="UI scaling factor">
           <option value="0.8">80%</option>
@@ -516,6 +516,17 @@
   </div>
 </div>
 <!-- Customize emojis modal -->
+<div id="theme-overlay">
+  <div id="theme-box" role="dialog" aria-modal="true" aria-labelledby="theme-title">
+    <h1 id="theme-title" data-i18n="theme.title">Theme</h1>
+    <p class="hint" data-i18n="theme.hint">Every card previews the app in that palette.</p>
+    <div class="theme-gallery" id="theme_gallery"></div>
+    <div class="row-end">
+      <button class="btn" id="theme_close" data-i18n="theme.done">Done</button>
+    </div>
+  </div>
+</div>
+
 <div id="emojis-overlay">
   <div id="emojis-box">
     <h1 data-i18n="emojis.title">Customize Reactions</h1>
@@ -713,6 +724,7 @@
 <script src="src/components/date-range-picker.js"></script>
 <script src="src/components/tutorial-manager.js"></script>
 <script src="src/components/follow-manager.js"></script>
+<script src="src/components/pro-catalog.js"></script>
 <script src="src/components/entitlement-manager.js"></script>
 <script src="src/components/pro-button-manager.js"></script>
 <script src="src/components/premium-paywall.js"></script>

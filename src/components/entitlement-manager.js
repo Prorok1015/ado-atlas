@@ -81,6 +81,48 @@
 
     onChange(cb) { if (typeof cb === 'function') this._listeners.push(cb); },
 
+    // ---- Entitlement guards ---------------------------------------------------------
+    // A subscription can lapse at any time (expiry between sessions, or the background
+    // alarm revalidating mid-session). Any feature that PERSISTS a value the user had to
+    // be entitled to — a Pro theme in `theme`, Pro formatting rules, Pro templates — must
+    // fall back to a free value when that happens, or an expired subscriber silently keeps
+    // the paid feature forever.
+    //
+    // Wiring each feature to onChange() by hand does not scale: whoever forgets gets that
+    // bug, silently. So features REGISTER a guard and this manager owns the lifecycle —
+    // it guarantees every guard runs at boot and on every entitlement change.
+    //
+    //   EntitlementManager.registerGuard('theme', (em) => {
+    //     if (allowed) return null;            // nothing to do
+    //     revertToFreeValue();
+    //     return 'Ultra Dark';                 // short label, for one aggregated notice
+    //   });
+    //
+    // The guard MUST be silent: no paywall, no modal. gate() is for a user ACTION; a guard
+    // answers "may we keep showing what they already have?" — throwing a paywall at boot
+    // would be hostile.
+    _guards: new Map(),
+
+    registerGuard(id, fn) {
+      if (typeof fn === 'function') this._guards.set(id, fn);
+    },
+
+    // Runs every guard and returns the labels of whatever was reverted, so the caller can
+    // show ONE notice instead of N. Never throws: a broken guard must not take the others
+    // (or the boot) down with it.
+    enforceEntitlements() {
+      const reverted = [];
+      for (const [id, fn] of this._guards) {
+        try {
+          const label = fn(this);
+          if (label) reverted.push(label);
+        } catch (e) {
+          console.warn('EntitlementManager: guard "' + id + '" failed:', e);
+        }
+      }
+      return reverted;
+    },
+
     _notify() {
       this._listeners.forEach(cb => { try { cb(this); } catch (e) { console.error(e); } });
     },
