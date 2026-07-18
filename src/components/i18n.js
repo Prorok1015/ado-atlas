@@ -47,11 +47,20 @@
     },
 
     // Resolve key -> string. Lookup order: active dict -> English -> the key.
-    t(key, params) {
-      const tmpl = (key in dict) ? dict[key]
-                 : (key in fallbackDict) ? fallbackDict[key]
-                 : key;
-      return interpolate(tmpl, params);
+    t(key, fallbackOrParams, params) {
+      let tmpl, actualParams;
+      if (typeof fallbackOrParams === 'string') {
+        tmpl = (key in dict) ? dict[key]
+             : (key in fallbackDict) ? fallbackDict[key]
+             : fallbackOrParams;
+        actualParams = params;
+      } else {
+        tmpl = (key in dict) ? dict[key]
+             : (key in fallbackDict) ? fallbackDict[key]
+             : key;
+        actualParams = fallbackOrParams;
+      }
+      return interpolate(tmpl, actualParams);
     },
 
     getLang() { return lang; },
