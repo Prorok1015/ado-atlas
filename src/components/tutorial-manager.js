@@ -127,15 +127,15 @@ class TutorialManager {
 
     overlay.innerHTML = `
       <div class="tut-prompt-box">
-        <h2><ui-icon name="smile"></ui-icon> Welcome to ADO Atlas!</h2>
-        <p>Would you like to keep interactive tutorials enabled to guide you through the features, or skip them all?</p>
-        <p class="tut-prompt-hint"><ui-icon name="lightbulb"></ui-icon> You can always manage and replay tours from <strong>Settings → Interactive Tours</strong></p>
+        <h2><ui-icon name="smile"></ui-icon> ${window.i18n.t('tutorial.welcome.title', 'Welcome to ADO Atlas!')}</h2>
+        <p>${window.i18n.t('tutorial.welcome.desc', 'Would you like to keep interactive tutorials enabled to guide you through the features, or skip them all?')}</p>
+        <p class="tut-prompt-hint"><ui-icon name="lightbulb"></ui-icon> ${window.i18n.t('tutorial.welcome.hint', 'You can always manage and replay tours from <strong>Settings → Interactive Tours</strong>')}</p>
         <div class="tut-prompt-list">
           ${listHtml}
         </div>
         <div class="tut-prompt-buttons">
-          <button class="tut-btn tut-prompt-skip">Skip All</button>
-          <button class="tut-btn tut-btn-primary tut-prompt-start">Keep Tutorials</button>
+          <button class="tut-btn tut-prompt-skip">${window.i18n.t('tutorial.welcome.skip', 'Skip All')}</button>
+          <button class="tut-btn tut-btn-primary tut-prompt-start">${window.i18n.t('tutorial.welcome.keep', 'Keep Tutorials')}</button>
         </div>
       </div>
     `;
@@ -179,11 +179,11 @@ class TutorialManager {
     const itemsHtml = Object.keys(this.registry).map(id => {
       const name = this.registry[id]?.title || id;
       const isCompleted = !!this.seen[id];
-      const statusText = isCompleted ? '<ui-icon name="check-circle"></ui-icon> Completed' : '<ui-icon name="clock"></ui-icon> New';
+      const statusText = isCompleted ? '<ui-icon name="check-circle"></ui-icon> ' + window.i18n.t('tutorial.replay.completed', 'Completed') : '<ui-icon name="clock"></ui-icon> ' + window.i18n.t('tutorial.replay.new', 'New');
       return `
         <div class="tut-replay-item" style="display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:0.846rem; border-bottom:1px solid var(--line); padding:8px 0;">
           <span>${name} <small style="color:var(--muted); font-size:0.75rem;">(${statusText})</small></span>
-          <button class="tut-btn tut-replay-start" data-id="${id}" style="padding:4px 8px;">Run</button>
+          <button class="tut-btn tut-replay-start" data-id="${id}" style="padding:4px 8px;">${window.i18n.t('tutorial.replay.run', 'Run')}</button>
         </div>
       `;
     }).join('');
@@ -191,16 +191,16 @@ class TutorialManager {
     overlay.innerHTML = `
       <div class="tut-prompt-box" style="width: 25rem;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h2 style="margin:0;"><ui-icon name="book"></ui-icon> Feature Tours</h2>
+          <h2 style="margin:0;"><ui-icon name="book"></ui-icon> ${window.i18n.t('tutorial.replay.title', 'Feature Tours')}</h2>
           <button class="tut-btn tut-close-replay" style="border:none; background:transparent; font-size:1.1rem; padding:0; cursor:pointer; color:var(--txt);"><ui-icon name="x"></ui-icon></button>
         </div>
-        <p>Select any tour to replay it. Follow the highlights to explore the features.</p>
+        <p>${window.i18n.t('tutorial.replay.desc', 'Select any tour to replay it. Follow the highlights to explore the features.')}</p>
         <div class="tut-replay-list" style="display:flex; flex-direction:column; max-height:200px; overflow-y:auto;">
           ${itemsHtml}
         </div>
         <div class="tut-prompt-buttons" style="margin-top:8px;">
-          <button class="tut-btn tut-replay-reset-all" style="margin-right:auto;">Reset All</button>
-          <button class="tut-btn tut-btn-primary tut-close-replay">Close</button>
+          <button class="tut-btn tut-replay-reset-all" style="margin-right:auto;">${window.i18n.t('tutorial.replay.resetAll', 'Reset All')}</button>
+          <button class="tut-btn tut-btn-primary tut-close-replay">${window.i18n.t('common.close', 'Close')}</button>
         </div>
       </div>
     `;
@@ -233,9 +233,9 @@ class TutorialManager {
           const side = document.querySelector('#side');
           if (side && side.classList.contains('hidden')) {
             if (window.customAlert) {
-              window.customAlert('Please click on any work item to open the sidebar and start the sidebar tour.', 'Sidebar Tour');
+              window.customAlert(window.i18n.t('tutorial.err.sidebarNotOpen', 'Please click on any work item to open the sidebar and start the sidebar tour.'), window.i18n.t('tutorial.err.sidebarTour', 'Sidebar Tour'));
             } else {
-              alert('Please click on any work item to open the sidebar and start the sidebar tour.');
+              alert(window.i18n.t('tutorial.err.sidebarNotOpen', 'Please click on any work item to open the sidebar and start the sidebar tour.'));
             }
           }
         }
@@ -400,7 +400,7 @@ class TutorialManager {
       }
 
       const isLast = this.currentStepIndex === this.currentTutorial.steps.length - 1;
-      const prevButtonHtml = this.currentStepIndex > 0 ? '<button class="tut-btn tut-prev">Prev</button>' : '';
+      const prevButtonHtml = this.currentStepIndex > 0 ? '<button class="tut-btn tut-prev">' + window.i18n.t('common.prev', 'Prev') + '</button>' : '';
       
       this.popover.innerHTML = `
         <h3>${step.title}</h3>
@@ -409,9 +409,9 @@ class TutorialManager {
         <div class="tut-footer">
           <span class="tut-steps-indicator">${this.currentStepIndex + 1} / ${this.currentTutorial.steps.length}</span>
           <div class="tut-buttons">
-            <button class="tut-btn tut-skip">Skip</button>
+            <button class="tut-btn tut-skip">${window.i18n.t('common.skip', 'Skip')}</button>
             ${prevButtonHtml}
-            <button class="tut-btn tut-btn-primary tut-next">${isLast ? 'Finish' : 'Next'}</button>
+            <button class="tut-btn tut-btn-primary tut-next">${isLast ? window.i18n.t('common.finish', 'Finish') : window.i18n.t('common.next', 'Next')}</button>
           </div>
         </div>
       `;

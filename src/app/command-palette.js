@@ -11,18 +11,18 @@
 
   let palItems = [], palIdx = 0;
   const PALETTE_ACTIONS = [
-    { kind: 'cmd', title: 'New work item', run: () => App.create.showNewItem() },
-    { kind: 'cmd', title: 'Undo last change (Ctrl/Cmd+Z)', run: () => runUndo() },
-    { kind: 'cmd', title: 'Redo (Ctrl/Cmd+Shift+Z)', run: () => runRedo() },
-    { kind: 'cmd', title: 'Refresh list', run: () => refresh() },
-    { kind: 'cmd', title: 'View: Tree', run: () => App.settings.switchMode('tree') },
-    { kind: 'cmd', title: 'View: Graph', run: () => App.settings.switchMode('graph') },
-    { kind: 'cmd', title: 'View: Board', run: () => App.settings.switchMode('board') },
-    { kind: 'cmd', title: 'Export CSV', run: () => App.export.exportView('csv') },
-    { kind: 'cmd', title: 'Export JSON', run: () => App.export.exportView('json') },
-    { kind: 'cmd', title: 'Toggle theme', run: () => App.settings.cycleTheme() },
-    { kind: 'cmd', title: 'Open settings', run: () => App.setup.showSetup(true) },
-    { kind: 'cmd', title: 'Clear bulk selection', run: () => clearBulk() },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.newItem', 'New work item'), run: () => App.create.showNewItem() },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.undo', 'Undo last change (Ctrl/Cmd+Z)'), run: () => runUndo() },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.redo', 'Redo (Ctrl/Cmd+Shift+Z)'), run: () => runRedo() },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.refresh', 'Refresh list'), run: () => refresh() },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.viewTree', 'View: Tree'), run: () => App.settings.switchMode('tree') },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.viewGraph', 'View: Graph'), run: () => App.settings.switchMode('graph') },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.viewBoard', 'View: Board'), run: () => App.settings.switchMode('board') },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.exportCsv', 'Export CSV'), run: () => App.export.exportView('csv') },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.exportJson', 'Export JSON'), run: () => App.export.exportView('json') },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.toggleTheme', 'Toggle theme'), run: () => App.settings.cycleTheme() },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.openSettings', 'Open settings'), run: () => App.setup.showSetup(true) },
+    { kind: 'cmd', title: window.i18n.t('palette.cmd.clearBulk', 'Clear bulk selection'), run: () => clearBulk() },
   ];
 
   function openPalette(){$('palette').classList.add('show');if (window.LayerManager) window.LayerManager.open($('palette'));const i=$('palette-input');i.value='';renderPalette('');i.focus();}
@@ -44,7 +44,7 @@
   function renderPalette(q){palItems=paletteMatches(q);palIdx=0;drawPalette();}
   function drawPalette(){
     const list=$('palette-list');
-    if(!palItems.length){list.innerHTML='<div class="prow"><span class="ptitle" style="color:var(--muted)">no matches</span></div>';return;}
+    if(!palItems.length){list.innerHTML=`<div class="prow"><span class="ptitle" style="color:var(--muted)">${window.i18n.t('palette.noMatches', 'no matches')}</span></div>`;return;}
     list.innerHTML=palItems.map((it,i)=>{
       const badge=it.state?`<span class="pbadge" style="background:${stateColor(it.state)}">${htmlEsc(it.state)}</span>`:'';
       return `<div class="prow${i===palIdx?' on':''}" data-i="${i}"><span class="pkind">${htmlEsc(it.kind)}</span><span class="ptitle">${htmlEsc(it.title)}</span>${badge}</div>`;
