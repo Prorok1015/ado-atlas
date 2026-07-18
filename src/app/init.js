@@ -962,3 +962,18 @@ function wireModals(){
   $('customize-overlay').addEventListener('mousedown',e=>{if(e.target===$('customize-overlay'))closeCustomize();});
   $('customize-box').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeCustomize();}});
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.seg').forEach(seg => {
+    seg.setAttribute('role', 'tablist');
+    const updateSelected = () => {
+      seg.querySelectorAll('button').forEach(btn => {
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-selected', btn.classList.contains('on') ? 'true' : 'false');
+      });
+    };
+    updateSelected();
+    const observer = new MutationObserver(updateSelected);
+    observer.observe(seg, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  });
+});

@@ -166,10 +166,7 @@
     <span class="bulk-label" data-i18n="bulk.assignee">Assignee</span>
     <input type="hidden" id="bulk_assigned">
     <button type="button" class="btn pcard" id="bulk_assigned_card" data-i18n-title="bulk.assignee.title" title="click to change assignee" style="min-width:130px" data-i18n="bulk.assignee.placeholder">Assignee…</button>
-    <div id="bulk_assigned_pick" class="ppick" style="display:none;position:absolute;top:100%;left:0;z-index:9000;min-width:220px">
-      <input id="bulk_assigned_search" class="psearch" data-i18n-placeholder="picker.searchPeople" placeholder="search people…  (Esc to cancel)" autocomplete="off">
-      <div id="bulk_assigned_results" class="presults"></div>
-    </div>
+
   </div>
 
   <!-- Sprint Card Picker -->
@@ -177,10 +174,7 @@
     <span class="bulk-label" data-i18n="bulk.sprint">Sprint</span>
     <input type="hidden" id="bulk_iter">
     <button type="button" class="btn pcard" id="bulk_iter_card" data-i18n-title="bulk.sprint.title" title="click to change sprint" style="min-width:150px" data-i18n="bulk.sprint.placeholder">Sprint…</button>
-    <div id="bulk_iter_pick" class="ppick" style="display:none;position:absolute;top:100%;left:0;z-index:9000;min-width:300px">
-      <input id="bulk_iter_search" class="psearch" data-i18n-placeholder="picker.searchSprints" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
-      <div id="bulk_iter_results" class="presults"></div>
-    </div>
+
   </div>
 
   <!-- Parent Card Picker -->
@@ -188,10 +182,7 @@
     <span class="bulk-label" data-i18n="bulk.parent">Parent</span>
     <input type="hidden" id="bulk_parent">
     <button type="button" class="btn pcard" id="bulk_parent_card" data-i18n-title="bulk.parent.title" title="click to change parent" style="min-width:130px" data-i18n="bulk.parent.placeholder">Parent…</button>
-    <div id="bulk_parent_pick" class="ppick" style="display:none;position:absolute;top:100%;left:0;z-index:9000;min-width:280px">
-      <input id="bulk_parent_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
-      <div id="bulk_parent_results" class="presults"></div>
-    </div>
+
   </div>
 
   <!-- Tags Actions -->
@@ -285,10 +276,7 @@
         <button type="button" class="btn pcard" id="s_assigned_card" data-i18n-title="picker.changeAssignee.title" title="click to change assignee"></button>
         <button type="button" class="btn" id="s_me" data-i18n-title="picker.assignToMe.title" title="assign to me" style="padding:6px 9px" data-i18n="picker.me">me</button>
       </div>
-      <div id="s_assigned_pick" class="ppick" style="display:none">
-        <input id="s_assigned_search" class="psearch" data-i18n-placeholder="picker.searchPeople" placeholder="search people…  (Esc to cancel)" autocomplete="off">
-        <div id="s_assigned_results" class="presults"></div>
-      </div>
+
     </div>
     <div class="sgroup" data-sg="sprint">
     <label>Sprint</label>
@@ -296,10 +284,7 @@
     <div class="prow-field">
       <button type="button" class="btn pcard" id="s_iter_card" data-i18n-title="picker.changeSprint.title" title="click to change sprint"></button>
     </div>
-    <div id="s_iter_pick" class="ppick" style="display:none">
-      <input id="s_iter_search" class="psearch" data-i18n-placeholder="picker.searchSprints" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
-      <div id="s_iter_results" class="presults"></div>
-    </div>
+
     </div>
     <div class="sgroup" data-sg="parent">
     <label>Parent</label>
@@ -308,10 +293,7 @@
       <button type="button" class="btn pcard" id="s_parent_card" data-i18n-title="picker.changeParent.title" title="click to change parent"></button>
       <button type="button" class="btn" id="s_parent_open" data-i18n-title="picker.openParent.title" title="open parent" style="padding:6px 9px">↑</button>
     </div>
-    <div id="s_parent_pick" class="ppick" style="display:none">
-      <input id="s_parent_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
-      <div id="s_parent_results" class="presults"></div>
-    </div>
+
     </div>
     <div class="sgroup" data-sg="deps">
     <label>Dependencies</label>
@@ -323,10 +305,7 @@
         <div class="prow-field">
           <button type="button" class="btn pcard" id="s_deps_blockedby_card" data-i18n-title="deps.addBlocking.title" title="add a blocking work item"></button>
         </div>
-        <div id="s_deps_blockedby_pick" class="ppick" style="display:none">
-          <input id="s_deps_blockedby_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
-          <div id="s_deps_blockedby_results" class="presults"></div>
-        </div>
+
       </div>
       <div class="depgroup">
         <div class="dephdr">Blocks</div>
@@ -335,10 +314,7 @@
         <div class="prow-field">
           <button type="button" class="btn pcard" id="s_deps_blocks_card" data-i18n-title="deps.addBlocked.title" title="add a work item this blocks"></button>
         </div>
-        <div id="s_deps_blocks_pick" class="ppick" style="display:none">
-          <input id="s_deps_blocks_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
-          <div id="s_deps_blocks_results" class="presults"></div>
-        </div>
+
       </div>
     </div>
     </div>
@@ -377,10 +353,7 @@
             <button type="button" class="btn pcard" id="c_assigned_card" data-i18n-title="picker.chooseAssignee.title" title="click to choose an assignee"></button>
             <button type="button" class="btn" id="c_me" data-i18n-title="picker.assignToMe.title" title="assign to me" style="padding:4px 8px" data-i18n="picker.me">me</button>
           </div>
-          <div id="c_assigned_pick" class="ppick" style="display:none">
-            <input id="c_assigned_search" class="psearch" data-i18n-placeholder="picker.searchPeople" placeholder="search people…  (Esc to cancel)" autocomplete="off">
-            <div id="c_assigned_results" class="presults"></div>
-          </div>
+
           <div class="actions"><button class="btn save" id="c_create" data-i18n="child.create">Create</button><button class="btn" id="c_cancel" data-i18n="common.cancel">Cancel</button></div>
         </div>
         <div id="s_activity"></div>
@@ -395,7 +368,7 @@
      Parent is optional — leave blank for a top-level item. -->
 <div id="newitem-overlay">
   <div id="newitem-box">
-    <h1 data-i18n="newitem.title">New work item</h1>
+    <h2 data-i18n="newitem.title">New work item</h2>
     <div class="row">
       <div><label>Type</label><select id="n_type" style="width:100%"></select></div>
       <div style="max-width:96px"><label>Priority</label><select id="n_prio" style="width:100%"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
@@ -408,28 +381,19 @@
       <button type="button" class="btn pcard" id="n_assigned_card" data-i18n-title="picker.chooseAssignee.title" title="click to choose an assignee"></button>
       <button type="button" class="btn" id="n_me" data-i18n-title="picker.assignToMe.title" title="assign to me" style="padding:6px 9px" data-i18n="picker.me">me</button>
     </div>
-    <div id="n_assigned_pick" class="ppick" style="display:none">
-      <input id="n_assigned_search" class="psearch" data-i18n-placeholder="picker.searchPeople" placeholder="search people…  (Esc to cancel)" autocomplete="off">
-      <div id="n_assigned_results" class="presults"></div>
-    </div>
+
     <label>Parent</label>
     <input type="hidden" id="n_parent">
     <div class="prow-field">
       <button type="button" class="btn pcard" id="n_parent_card" data-i18n-title="picker.chooseParent.title" title="click to choose a parent"></button>
     </div>
-    <div id="n_parent_pick" class="ppick" style="display:none">
-      <input id="n_parent_search" class="psearch" data-i18n-placeholder="picker.searchIdTitle" placeholder="search id or title…  (Esc to cancel)" autocomplete="off">
-      <div id="n_parent_results" class="presults"></div>
-    </div>
+
     <label>Sprint</label>
     <input type="hidden" id="n_iter">
     <div class="prow-field">
       <button type="button" class="btn pcard" id="n_iter_card" data-i18n-title="picker.chooseSprint.title" title="click to choose a sprint"></button>
     </div>
-    <div id="n_iter_pick" class="ppick" style="display:none">
-      <input id="n_iter_search" class="psearch" data-i18n-placeholder="picker.searchSprints" placeholder="search sprints…  (Esc to cancel)" autocomplete="off">
-      <div id="n_iter_results" class="presults"></div>
-    </div>
+
     <div id="newitem-err"></div>
     <div id="newitem-actions">
       <button class="btn save" id="n_create" data-i18n-title="newitem.createHint.title" title="Ctrl/Cmd+Enter" data-i18n="newitem.create">Create</button>
@@ -442,7 +406,7 @@
      Creates a dated iteration; needs permission to add iteration nodes in ADO. -->
 <div id="sprint-overlay">
   <div id="sprint-box">
-    <h1 id="sprint-title" data-i18n="sprint.title">New sprint</h1>
+    <h2 id="sprint-title" data-i18n="sprint.title">New sprint</h2>
     <label data-i18n="sprint.name">Name</label>
     <input id="sp_name" data-i18n-placeholder="sprint.namePlaceholder" placeholder="e.g. Sprint 7" style="width:100%" autocomplete="off">
     <input id="sp_start" type="hidden">
@@ -469,7 +433,7 @@
 <!-- Customize toolbar: reorder (drag) and show/hide (checkbox) the toolbar controls. -->
 <div id="customize-overlay">
   <div id="customize-box">
-    <h1 id="cz_title" data-i18n="customize.title">Customize</h1>
+    <h2 id="cz_title" data-i18n="customize.title">Customize</h2>
     <div id="cz_tabs">
       <button data-cz="bar" class="on" data-i18n="customize.tab.toolbar">Toolbar</button>
       <button data-cz="side" data-i18n="customize.tab.panel">Work item panel</button>
@@ -518,7 +482,7 @@
 <!-- Customize emojis modal -->
 <div id="theme-overlay">
   <div id="theme-box" role="dialog" aria-modal="true" aria-labelledby="theme-title">
-    <h1 id="theme-title" data-i18n="theme.title">Theme</h1>
+    <h2 id="theme-title" data-i18n="theme.title">Theme</h2>
     <p class="hint" data-i18n="theme.hint">Every card previews the app in that palette.</p>
     <div class="theme-gallery" id="theme_gallery"></div>
     <div class="row-end">
@@ -529,7 +493,7 @@
 
 <div id="emojis-overlay">
   <div id="emojis-box">
-    <h1 data-i18n="emojis.title">Customize Reactions</h1>
+    <h2 data-i18n="emojis.title">Customize Reactions</h2>
     <p class="hint" data-i18n="emojis.hint">Override standard reactions with custom emojis or image URLs (https://...). Leave blank to restore defaults.</p>
     <div id="emojis-inputs-list">
       <div class="emoji-config-row">
@@ -599,7 +563,7 @@
      check passes (handled by app.js boot). -->
 <div id="setup-overlay">
   <div id="setup-box">
-    <h1 data-i18n="setup.title">Connect to Azure DevOps</h1>
+    <h2 data-i18n="setup.title">Connect to Azure DevOps</h2>
     <div class="seg" id="auth-mode" style="margin-bottom:10px">
       <button data-am="pat" class="on" data-i18n="setup.authMode.token">Token</button>
       <button data-am="oauth" data-i18n="setup.authMode.oauth">Microsoft sign-in</button>
@@ -667,7 +631,7 @@
 <!-- Custom confirm modal -->
 <div id="confirm-overlay" class="modal-backdrop" style="display:none">
   <div id="confirm-box">
-    <h1 id="confirm-title" data-i18n="confirm.title">Confirm Action</h1>
+    <h2 id="confirm-title" data-i18n="confirm.title">Confirm Action</h2>
     <p id="confirm-message" data-i18n="confirm.message">Are you sure?</p>
     <div id="confirm-actions">
       <button class="btn" id="confirm-cancel" data-i18n="common.cancel">Cancel</button>
@@ -679,7 +643,7 @@
 <!-- Privacy Settings Modal -->
 <div id="privacy-overlay" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
   <div id="confirm-box">
-    <h1 id="privacy-title" data-i18n="privacy.modalTitle">Privacy Settings</h1>
+    <h2 id="privacy-title" data-i18n="privacy.modalTitle">Privacy Settings</h2>
     <p id="privacy-message" data-i18n="privacy.modalMessage">
       ADO Atlas collects anonymous usage statistics (such as which views and features are used) to help improve the extension. No work-item descriptions, titles, comments, credentials, or personal info are ever sent.
     </p>
@@ -693,7 +657,7 @@
 <!-- AI Cloud Consent Warning Modal -->
 <div id="ai-consent-overlay" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="ai-consent-title">
   <div id="confirm-box">
-    <h1 id="ai-consent-title" data-i18n="ai.consent.title">AI Cloud Transmission Warning</h1>
+    <h2 id="ai-consent-title" data-i18n="ai.consent.title">AI Cloud Transmission Warning</h2>
     <p id="ai-consent-message" data-i18n="ai.consent.message">
       Work-item content (descriptions or comments) will be transmitted to the configured cloud AI provider. Do you want to proceed?
     </p>
@@ -711,7 +675,7 @@
 <!-- Custom link insert modal -->
 <div id="link-overlay" class="modal-backdrop" style="display:none">
   <div id="link-box">
-    <h1 id="link-dialog-title" data-i18n="link.title">Insert Link</h1>
+    <h2 id="link-dialog-title" data-i18n="link.title">Insert Link</h2>
     <div>
       <label for="link-dialog-text" data-i18n="link.textLabel">Text to display</label>
       <input id="link-dialog-text" data-i18n-placeholder="link.textPlaceholder" placeholder="link text" autocomplete="off">
