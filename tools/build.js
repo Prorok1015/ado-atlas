@@ -123,7 +123,15 @@ const archive = new ZipArchive();
 for (const f of files) {
   const filePath = path.join(root, f);
   if (fs.existsSync(filePath)) {
-    archive.addFile(f, fs.readFileSync(filePath));
+    let content = fs.readFileSync(filePath);
+    if (f.endsWith(".js") || f.endsWith(".html") || f.endsWith(".json")) {
+      let text = content.toString("utf8");
+      if (text.includes("__dev_force_pro")) {
+        text = text.replace(/__dev_force_pro/g, "DISABLED_DEV_FORCE_PRO");
+        content = Buffer.from(text, "utf8");
+      }
+    }
+    archive.addFile(f, content);
   }
 }
 
@@ -140,7 +148,15 @@ function addDirectoryRecursively(d) {
     if (stat && stat.isDirectory()) {
       addDirectoryRecursively(relPath);
     } else {
-      archive.addFile(relPath, fs.readFileSync(filePath));
+      let content = fs.readFileSync(filePath);
+      if (file.endsWith(".js") || file.endsWith(".html") || file.endsWith(".json")) {
+        let text = content.toString("utf8");
+        if (text.includes("__dev_force_pro")) {
+          text = text.replace(/__dev_force_pro/g, "DISABLED_DEV_FORCE_PRO");
+          content = Buffer.from(text, "utf8");
+        }
+      }
+      archive.addFile(relPath, content);
     }
   });
 }
