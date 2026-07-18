@@ -953,6 +953,10 @@ test("mdToHtml: auto-detect languages", () => {
   // JS auto-detect
   const jsHtml = lib.mdToHtml("```\nconst x = 5;\n```");
   assert.ok(jsHtml.includes('hl-keyword'));
+
+  // JS class declarations and curly braces must not be misdetected as CSS
+  const complexJsHtml = lib.mdToHtml("```\nconst appName = \"ADO Atlas\";\nlet isTesting = true;\nclass HighlightEngine {\n  constructor() {\n    this.enabled = true;\n  }\n}\n```");
+  assert.ok(complexJsHtml.includes('data-lang="javascript"'));
 });
 
 (async () => {

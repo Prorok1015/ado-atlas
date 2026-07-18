@@ -390,10 +390,10 @@
               } catch (e) {
                 if (trimmedBuf.startsWith("<")) {
                   detectedLang = "html";
+                } else if (/\b(const|let|var|function|class|import|export|return|async|await)\b/.test(trimmedBuf) || ["const ", "let ", "function ", "class ", "import "].some(kw => trimmedBuf.includes(kw))) {
+                  detectedLang = "javascript";
                 } else if (trimmedBuf.includes("{") && trimmedBuf.includes("}") && /[\w.-]+\s*\{/.test(trimmedBuf)) {
                   detectedLang = "css";
-                } else if (/\b(const|let|function|class|import)\b/.test(trimmedBuf) || ["const ", "let ", "function ", "class ", "import "].some(kw => trimmedBuf.includes(kw))) {
-                  detectedLang = "javascript";
                 }
               }
             }
