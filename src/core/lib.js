@@ -399,7 +399,7 @@
             }
           }
           
-          out += "<pre>" + highlightCode(buf, detectedLang) + "</pre>";
+          out += `<pre data-lang="${detectedLang || ''}">` + highlightCode(buf, detectedLang) + "</pre>";
           buf = "";
           code = false;
           codeLang = null;

@@ -642,6 +642,15 @@ function hydrateCodeBlocks(container) {
   pres.forEach(pre => {
     if (pre.querySelector(".md-copy-btn")) return;
     pre.style.position = "relative";
+    
+    const lang = pre.getAttribute("data-lang");
+    if (lang) {
+      const badge = document.createElement("span");
+      badge.className = "md-lang-badge";
+      badge.textContent = lang;
+      pre.appendChild(badge);
+    }
+
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "md-copy-btn";
@@ -654,6 +663,10 @@ function hydrateCodeBlocks(container) {
       const copyBtn = clone.querySelector(".md-copy-btn");
       if (copyBtn) {
         copyBtn.remove();
+      }
+      const langBadge = clone.querySelector(".md-lang-badge");
+      if (langBadge) {
+        langBadge.remove();
       }
       const textToCopy = clone.textContent.replace(/\n$/, '');
       navigator.clipboard.writeText(textToCopy).then(() => {
