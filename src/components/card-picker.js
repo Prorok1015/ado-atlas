@@ -14,6 +14,41 @@ function createCardPicker(base,opts){
   const V=()=>$(base),Card=()=>$(base+'_card'),Pick=()=>$(base+'_pick'),
         Search=()=>$(base+'_search'),Results=()=>$(base+'_results'),Open=()=>$(base+'_open');
   let idx=0,rows=[],searchTimer=null,searchTok=0,searching=false,hasMoved=false;
+  const baseId = base.startsWith('#') ? base.substring(1) : base;
+  if (!document.getElementById(baseId + '_pick')) {
+    const cardEl = document.getElementById(baseId + '_card');
+    if (cardEl && cardEl.parentNode) {
+      const p = document.createElement('div');
+      p.id = baseId + '_pick';
+      p.className = 'ppick';
+      p.style.display = 'none';
+      if (baseId.startsWith('bulk_')) {
+        p.style.position = 'absolute';
+        p.style.top = '100%';
+        p.style.left = '0';
+        p.style.zIndex = '9000';
+        if (baseId === 'bulk_assigned') p.style.minWidth = '220px';
+        if (baseId === 'bulk_iter') p.style.minWidth = '300px';
+        if (baseId === 'bulk_parent') p.style.minWidth = '280px';
+      }
+      if (opts.pickerStyle) Object.assign(p.style, opts.pickerStyle);
+      const s = document.createElement('input');
+      s.id = baseId + '_search';
+      s.className = 'psearch';
+      const pKey = opts.placeholderKey || 'picker.search';
+      const pTxt = opts.placeholderText || 'search…  (Esc to cancel)';
+      s.setAttribute('data-i18n-placeholder', pKey);
+      s.placeholder = CP_L(pKey, pTxt);
+      s.autocomplete = 'off';
+      const r = document.createElement('div');
+      r.id = baseId + '_results';
+      r.className = 'presults';
+      p.appendChild(s);
+      p.appendChild(r);
+      cardEl.parentNode.appendChild(p);
+    }
+  }
+
   function render(){
     const vEl=V(); if(!vEl)return;
     const card=Card();
@@ -356,9 +391,9 @@ function sprintPickerProvider(getNone){
   };
 }
 
-function createParentField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange, keepTextOnClose:opts.keepTextOnClose, provider:itemPickerProvider(opts.getExcludeId)});}
-function createAssigneeField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange, keepTextOnClose:opts.keepTextOnClose, provider:assigneePickerProvider()});}
-function createSprintField(base,opts){opts=opts||{};return createCardPicker(base,{onChange:opts.onChange, keepTextOnClose:opts.keepTextOnClose, provider:sprintPickerProvider(opts.getNone)});}
+function createParentField(base,opts){opts=opts||{};opts.placeholderKey='picker.searchIdTitle';opts.placeholderText='search id or title…  (Esc to cancel)';return createCardPicker(base,{onChange:opts.onChange, keepTextOnClose:opts.keepTextOnClose, provider:itemPickerProvider(opts.getExcludeId), pickerStyle:opts.pickerStyle, placeholderKey:opts.placeholderKey, placeholderText:opts.placeholderText});}
+function createAssigneeField(base,opts){opts=opts||{};opts.placeholderKey='picker.searchPeople';opts.placeholderText='search people…  (Esc to cancel)';return createCardPicker(base,{onChange:opts.onChange, keepTextOnClose:opts.keepTextOnClose, provider:assigneePickerProvider(), pickerStyle:opts.pickerStyle, placeholderKey:opts.placeholderKey, placeholderText:opts.placeholderText});}
+function createSprintField(base,opts){opts=opts||{};opts.placeholderKey='picker.searchSprints';opts.placeholderText='search sprints…  (Esc to cancel)';return createCardPicker(base,{onChange:opts.onChange, keepTextOnClose:opts.keepTextOnClose, provider:sprintPickerProvider(opts.getNone), pickerStyle:opts.pickerStyle, placeholderKey:opts.placeholderKey, placeholderText:opts.placeholderText});}
 
 // Adapter on top of itemPickerProvider: hides the items already linked in the
 // chosen direction and always renders the card as a "+ add" affordance (the
