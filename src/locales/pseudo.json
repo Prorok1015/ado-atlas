@@ -804,7 +804,6 @@
   "tutorial.replay.title": "[!Feature Tours!]",
   "tutorial.replay.desc": "[!Select any tour to replay it. Follow the highlights to explore the features.!]",
   "tutorial.replay.resetAll": "[!Reset All!]",
-  "common.close": "[!Close!]",
   "tutorial.err.sidebarNotOpen": "[!Please click on any work item to open the sidebar and start the sidebar tour.!]",
   "tutorial.err.sidebarTour": "[!Sidebar Tour!]",
   "common.prev": "[!Prev!]",
