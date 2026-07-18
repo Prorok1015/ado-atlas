@@ -426,6 +426,27 @@ test("mdToHtml: HTML entities are preserved while raw ampersands are escaped", (
   assert.strictEqual(lib.mdToHtml("&nbsp;"), "<p>&nbsp;</p>");
   assert.strictEqual(lib.mdToHtml("a &copy b"), "<p>a &amp;copy b</p>");
 });
+test("mdToHtml: tables render correctly", () => {
+  const md = "| H1 | H2 |\n|---|---:|\n| val1 | **val2** |";
+  const html = lib.mdToHtml(md);
+  assert.ok(html.includes("<table"));
+  assert.ok(html.includes(">H1</th>"));
+  assert.ok(html.includes("<b>val2</b>"));
+});
+test("htmlToMarkdown: tables parse back to markdown", () => {
+  const html = '<table style="border-collapse:collapse;"><thead><tr><th>H1</th><th>H2</th></tr></thead><tbody><tr><td>val1</td><td>val2</td></tr></tbody></table>';
+  const md = lib.htmlToMarkdown(html);
+  assert.strictEqual(md, "| H1 | H2 |\n| --- | --- |\n| val1 | val2 |");
+});
+test("mdToHtml: task lists render correctly", () => {
+  assert.ok(lib.mdToHtml("- [ ] Task 1").includes('<li><input type="checkbox" disabled style="margin-right:6px;">Task 1</li>'));
+  assert.ok(lib.mdToHtml("- [x] Task 2").includes('<li><input type="checkbox" checked disabled style="margin-right:6px;">Task 2</li>'));
+});
+test("htmlToMarkdown: task lists parse back to markdown", () => {
+  const html = '<ul><li><input type="checkbox" disabled> Task 1</li><li><input type="checkbox" checked disabled> Task 2</li></ul>';
+  const md = lib.htmlToMarkdown(html);
+  assert.strictEqual(md, "- [ ] Task 1\n- [x] Task 2");
+});
 test("mdToHtml: strikethrough + underscore-bold + hr + blockquote", () => {
   assert.ok(lib.mdToHtml("~~gone~~").includes("<s>gone</s>"));
   assert.ok(lib.mdToHtml("__bold__").includes("<b>bold</b>"));

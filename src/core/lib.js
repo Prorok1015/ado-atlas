@@ -263,13 +263,76 @@
     }
     const ls = (src || "").replace(/\r\n/g, "\n").split("\n"); let out = "", ul = false, ol = false, bq = false, code = false, buf = "";
     const close = () => { if (ul) { out += "</ul>"; ul = false; } if (ol) { out += "</ol>"; ol = false; } if (bq) { out += "</blockquote>"; bq = false; } };
-    for (const raw of ls) {
+    
+    const isTableRow = (line) => line && line.trim().startsWith('|') && line.trim().endsWith('|');
+    const isDelimiterRow = (line) => {
+      if (!line) return false;
+      const trimmed = line.trim();
+      return trimmed.startsWith('|') && trimmed.endsWith('|') && /^[|:\s-]+$/.test(trimmed);
+    };
+
+    for (let i = 0; i < ls.length; i++) {
+      const raw = ls[i];
       if (/^```/.test(raw)) { if (code) { out += "<pre>" + h(buf) + "</pre>"; buf = ""; code = false; } else { close(); code = true; } continue; }
       if (code) { buf += raw + "\n"; continue; }
+
+      // Parse Markdown Tables
+      if (isTableRow(raw) && isDelimiterRow(ls[i + 1])) {
+        close();
+        const headerCols = raw.split('|').slice(1, -1).map(c => c.trim());
+        const alignments = ls[i + 1].split('|').slice(1, -1).map(c => {
+          const t = c.trim();
+          const left = t.startsWith(':');
+          const right = t.endsWith(':');
+          if (left && right) return 'center';
+          if (right) return 'right';
+          if (left) return 'left';
+          return '';
+        });
+        i++; // skip delimiter row
+        const rows = [];
+        while (i + 1 < ls.length && isTableRow(ls[i + 1])) {
+          i++;
+          rows.push(ls[i].split('|').slice(1, -1).map(c => c.trim()));
+        }
+        
+        let tableHtml = '<table style="border-collapse:collapse;width:100%;margin:16px 0;"><thead><tr>';
+        headerCols.forEach((col, idx) => {
+          const align = alignments[idx] ? `text-align:${alignments[idx]};` : '';
+          tableHtml += `<th style="border:1px solid var(--line,#333);padding:8px 12px;background:var(--panel2,#1e1e1e);font-weight:600;${align}">${inl(col)}</th>`;
+        });
+        tableHtml += '</tr></thead><tbody>';
+        rows.forEach(row => {
+          tableHtml += '<tr>';
+          for (let idx = 0; idx < headerCols.length; idx++) {
+            const cell = row[idx] || '';
+            const align = alignments[idx] ? `text-align:${alignments[idx]};` : '';
+            tableHtml += `<td style="border:1px solid var(--line,#333);padding:8px 12px;${align}">${inl(cell)}</td>`;
+          }
+          tableHtml += '</tr>';
+        });
+        tableHtml += '</tbody></table>';
+        out += tableHtml;
+        continue;
+      }
+
       if (/^\s*([-*_])\1\1+\s*$/.test(raw)) { close(); out += "<hr>"; continue; }   // --- / *** / ___
       let m = raw.match(/^(#{1,6})\s+(.*)/); if (m) { close(); const l = Math.min(6, m[1].length + 2); out += `<h${l}>${inl(m[2])}</h${l}>`; continue; }
       m = raw.match(/^\s*>\s?(.*)/); if (m) { if (!bq) { close(); out += "<blockquote>"; bq = true; } else out += "<br>"; out += inl(m[1]); continue; }
-      m = raw.match(/^\s*[-*]\s+(.*)/); if (m) { if (!ul) { close(); out += "<ul>"; ul = true; } out += "<li>" + inl(m[1]) + "</li>"; continue; }
+      m = raw.match(/^\s*[-*]\s+(.*)/); if (m) {
+        if (!ul) { close(); out += "<ul>"; ul = true; }
+        let content = m[1];
+        let taskPrefix = "";
+        if (content.startsWith("[ ] ")) {
+          taskPrefix = '<input type="checkbox" disabled style="margin-right:6px;">';
+          content = content.slice(4);
+        } else if (content.startsWith("[x] ") || content.startsWith("[X] ")) {
+          taskPrefix = '<input type="checkbox" checked disabled style="margin-right:6px;">';
+          content = content.slice(4);
+        }
+        out += "<li>" + taskPrefix + inl(content) + "</li>";
+        continue;
+      }
       m = raw.match(/^\s*\d+\.\s+(.*)/); if (m) { if (!ol) { close(); out += "<ol>"; ol = true; } out += "<li>" + inl(m[1]) + "</li>"; continue; }
       if (!raw.trim()) { if (bq) out += "<br>"; continue; }
       close(); out += "<p>" + inl(raw) + "</p>";
@@ -317,9 +380,78 @@
     t = t.replace(/\u0006/g, "");
     t = t.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (m, c) => "\n```\n" + htmlUnesc(c.replace(/<[^>]+>/g, "")).replace(/\n+$/, "") + "\n```\n");
     t = t.replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (m, n, c) => "\n" + "#".repeat(Math.max(1, (+n) - 2)) + " " + inlineHtmlToMd(c).replace(/<[^>]+>/g, "").trim() + "\n");
+    t = t.replace(/<table\b[^>]*>([\s\S]*?)<\/table>/gi, (m, tableContent) => {
+      let headerCols = [];
+      const theadMatch = tableContent.match(/<thead\b[^>]*>([\s\S]*?)<\/thead>/i);
+      const headerSource = theadMatch ? theadMatch[1] : tableContent;
+      const trHeadMatch = headerSource.match(/<tr\b[^>]*>([\s\S]*?)<\/tr>/i);
+      
+      if (trHeadMatch) {
+        const thRegex = /<th\b[^>]*>([\s\S]*?)<\/th>/gi;
+        let thMatch;
+        while ((thMatch = thRegex.exec(trHeadMatch[1])) !== null) {
+          headerCols.push(inlineHtmlToMd(thMatch[1]).replace(/<[^>]+>/g, "").trim());
+        }
+      }
+      
+      if (headerCols.length === 0) {
+        const trFirstMatch = tableContent.match(/<tr\b[^>]*>([\s\S]*?)<\/tr>/i);
+        if (trFirstMatch) {
+          const tdRegex = /<td\b[^>]*>([\s\S]*?)<\/td>/gi;
+          let tdMatch;
+          while ((tdMatch = tdRegex.exec(trFirstMatch[1])) !== null) {
+            headerCols.push(inlineHtmlToMd(tdMatch[1]).replace(/<[^>]+>/g, "").trim());
+          }
+        }
+      }
+      
+      if (headerCols.length === 0) return "";
+      
+      let dataRows = [];
+      const tbodyMatch = tableContent.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/i);
+      const bodySource = tbodyMatch ? tbodyMatch[1] : tableContent;
+      
+      let trSource = bodySource;
+      if (!theadMatch && tableContent.includes("</td>")) {
+        trSource = bodySource.replace(/<tr\b[^>]*>[\s\S]*?<\/tr>/i, "");
+      }
+      
+      const trRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+      let trMatch;
+      while ((trMatch = trRegex.exec(trSource)) !== null) {
+        let cols = [];
+        const tdRegex = /<td\b[^>]*>([\s\S]*?)<\/td>/gi;
+        let tdMatch;
+        while ((tdMatch = tdRegex.exec(trMatch[1])) !== null) {
+          cols.push(inlineHtmlToMd(tdMatch[1]).replace(/<[^>]+>/g, "").trim());
+        }
+        if (cols.length > 0) {
+          dataRows.push(cols);
+        }
+      }
+      
+      let mdTable = "\n| " + headerCols.join(" | ") + " |\n";
+      mdTable += "| " + headerCols.map(() => "---").join(" | ") + " |\n";
+      dataRows.forEach(row => {
+        const paddedRow = [];
+        for (let i = 0; i < headerCols.length; i++) {
+          paddedRow.push(row[i] || "");
+        }
+        mdTable += "| " + paddedRow.join(" | ") + " |\n";
+      });
+      return mdTable + "\n";
+    });
+
     t = t.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (m, c) => "\n" + htmlToMarkdown(c).split("\n").map(l => (l ? "> " + l : ">")).join("\n") + "\n");
     t = t.replace(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (m, c) => { let i = 0; return "\n" + c.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (mm, li) => (++i) + ". " + inlineHtmlToMd(li).replace(/<[^>]+>/g, "").trim() + "\n"); });
-    t = t.replace(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (m, c) => "\n" + c.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (mm, li) => "- " + inlineHtmlToMd(li).replace(/<[^>]+>/g, "").trim() + "\n"));
+    t = t.replace(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (m, c) => "\n" + c.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (mm, li) => {
+      let text = inlineHtmlToMd(li).replace(/<[^>]+>/g, "").trim();
+      const hasChecked = /<input[^>]*checkbox[^>]*checked/i.test(li);
+      const hasUnchecked = /<input[^>]*checkbox/i.test(li);
+      if (hasChecked) return "- [x] " + text + "\n";
+      if (hasUnchecked) return "- [ ] " + text + "\n";
+      return "- " + text + "\n";
+    }));
     t = t.replace(/<hr\s*\/?>/gi, "\n---\n");
     t = t.replace(/<br\s*\/?>/gi, "\n");
     t = inlineHtmlToMd(t);
