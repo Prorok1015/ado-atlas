@@ -28,11 +28,8 @@ any third party:
   ids, dates, tags) used to render the last view instantly. This cache is
   ignored after 24 hours and can be cleared at any time.
 
-## What the extension sends, and to whom
-
-The extension makes network requests **only** to Azure DevOps (and, for Microsoft
-sign-in, the Microsoft login service), over HTTPS, authenticated with your
-credentials:
+The extension makes network requests only to Azure DevOps (and, for Microsoft
+sign-in, the Microsoft login service), to your configured cloud AI provider (if configured and approved), and to Google Analytics (only if you explicitly opt in to telemetry), over HTTPS:
 
 - `https://dev.azure.com` — to read and update your work items.
 - `https://app.vssps.visualstudio.com` — only when you click **Load** in setup,
@@ -41,11 +38,16 @@ credentials:
 - `https://login.microsoftonline.com` — **only if you use Microsoft sign-in**, to
   complete the OAuth sign-in and to refresh the access token. Not contacted at
   all when you authenticate with a PAT.
+- `https://generativelanguage.googleapis.com` or `https://api.openai.com` (or a custom endpoint) — **only if you configure your own cloud AI API keys** and trigger AI Summarization or AI Text Editing.
+- `https://www.google-analytics.com` — **only if you explicitly opt-in to usage telemetry**.
 
-These hosts are the only ones the extension is permitted to contact (enforced by
-its Content Security Policy). The extension contains **no analytics, no
-telemetry, no advertising, and no third-party servers.** No data is ever
-transmitted to the developer.
+### Anonymous Usage Telemetry
+
+If you explicitly opt-in (via the initial boot dialog or settings), the extension collects anonymous usage statistics (such as which views and features are used) via Google Analytics to help improve the extension. No work-item descriptions, titles, comments, credentials, or personal info are ever sent. Telemetry is strictly opt-in and is disabled by default.
+
+### Cloud AI Data Transmission
+
+If you configure your own cloud AI API keys (e.g., OpenAI or Gemini) and use the AI Summarizer or AI Text Editor, work-item contents (such as titles, descriptions, and comments) are transmitted to the configured cloud provider. You will be prompted with a warning dialog before the first transmission. If you use on-device models (e.g., Gemini Nano via the Chrome Prompt API), all data processing happens locally on your device and no data is transmitted to any cloud provider.
 
 ### Files you attach to a work item
 

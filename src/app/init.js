@@ -139,7 +139,7 @@ async function initialBoot(postSetup){
     updateFollowedBtnVisual();
     App.settings.applyFollowNotify(App.prefs.get('followNotify')||'on');
     App.settings.applyMentionNotify(App.prefs.get('mentionNotify')||'on');
-    App.settings.applyTelemetry(App.prefs.get('telemetry')||'on');
+    App.settings.applyTelemetry(App.prefs.get('telemetry')||'off');
     {const ageSel = $('f_notify_age');
      if (ageSel) ageSel.value = App.prefs.get('notifyAge') || '172800';}
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {

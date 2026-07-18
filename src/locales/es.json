@@ -733,5 +733,13 @@
   "viewHelp.k.shiftClick": "Mayús+clic",
   "viewHelp.note": "seleccionar elementos abre la barra de edición masiva",
   "viewHelp.reportBug": "Informar de un error",
-  "viewHelp.toggleFields": "mostrar / ocultar campos en esta vista"
+  "viewHelp.toggleFields": "mostrar / ocultar campos en esta vista",
+  "privacy.modalTitle": "Configuración de privacidad",
+  "privacy.modalMessage": "ADO Atlas recopila estadísticas de uso anónimas (como qué vistas y funciones se utilizan) para ayudar a mejorar la extensión. Nunca se envían descripciones de elementos de trabajo, títulos, comentarios, credenciales ni información personal.",
+  "privacy.decline": "Rechazar",
+  "privacy.accept": "Aceptar",
+  "ai.consent.title": "Advertencia de transmisión a la nube de IA",
+  "ai.consent.message": "El contenido de los elementos de trabajo (descripciones o comentarios) se transmitirá al proveedor de IA en la nube configurado. ¿Desea continuar?",
+  "ai.consent.dontShowAgain": "No volver a mostrar",
+  "ai.consent.proceed": "Proceder"
 }

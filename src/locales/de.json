@@ -733,5 +733,13 @@
   "viewHelp.k.shiftClick": "Umschalt+Klick",
   "viewHelp.note": "das Auswählen von Elementen öffnet die Massenbearbeitungsleiste",
   "viewHelp.reportBug": "Fehler melden",
-  "viewHelp.toggleFields": "Felder in dieser Ansicht ein-/ausblenden"
+  "viewHelp.toggleFields": "Felder in dieser Ansicht ein-/ausblenden",
+  "privacy.modalTitle": "Datenschutzeinstellungen",
+  "privacy.modalMessage": "ADO Atlas sammelt anonyme Nutzungsstatistiken (z. B. welche Ansichten und Funktionen verwendet werden), um die Erweiterung zu verbessern. Es werden niemals Arbeitselement-Beschreibungen, Titel, Kommentare, Zugangsdaten oder persönliche Informationen gesendet.",
+  "privacy.decline": "Ablehnen",
+  "privacy.accept": "Akzeptieren",
+  "ai.consent.title": "Warnung vor KI-Cloud-Übertragung",
+  "ai.consent.message": "Inhalte von Arbeitselementen (Beschreibungen oder Kommentare) werden an den konfigurierten Cloud-KI-Anbieter übertragen. Möchten Sie fortfahren?",
+  "ai.consent.dontShowAgain": "Nicht mehr anzeigen",
+  "ai.consent.proceed": "Fortfahren"
 }

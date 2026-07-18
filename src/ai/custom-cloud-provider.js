@@ -223,7 +223,7 @@
         // gemini
         let baseUrl = this.config.endpoint || 'https://generativelanguage.googleapis.com';
         if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
-        const url = `${baseUrl}/v1/models/${model}:generateContent?key=${apiKey}`;
+        const url = `${baseUrl}/v1/models/${model}:generateContent`;
         
         const contents = [];
         if (systemPrompt) {
@@ -252,7 +252,8 @@
         const response = await this._fetch(url, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
           },
           body: JSON.stringify(body),
           signal: options.signal

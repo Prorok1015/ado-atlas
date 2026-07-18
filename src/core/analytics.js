@@ -78,7 +78,7 @@
     return { session_id: sess.id, engagement_time_msec: 100 };
   }
 
-  // Telemetry is opt-out: enabled unless the user set the `telemetry` pref to 'off'.
+  // Telemetry is opt-in: enabled ONLY if the user set the `telemetry` pref to 'on'.
   // The pref roams via chrome.storage.sync (App.prefs area:'sync', worker:true) and
   // dual-writes to local, so read sync-first with a local fallback (mirrors
   // background.js getSyncedPref). Returns false when not configured — no key, no send.
@@ -86,13 +86,13 @@
     if (!configured()) return false;
     try {
       const s = await chrome.storage.sync.get('telemetry');
-      if (s && s.telemetry !== undefined) return s.telemetry !== 'off';
+      if (s && s.telemetry !== undefined) return s.telemetry === 'on';
     } catch (_) {}
     try {
       const l = await chrome.storage.local.get('telemetry');
-      if (l && l.telemetry !== undefined) return l.telemetry !== 'off';
+      if (l && l.telemetry !== undefined) return l.telemetry === 'on';
     } catch (_) {}
-    return true; // default on
+    return false; // default off
   }
 
   // Fire a single event. Fire-and-forget: any failure (offline, opt-out, bad config)

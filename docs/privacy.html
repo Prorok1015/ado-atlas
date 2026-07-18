@@ -50,17 +50,18 @@
   </ul>
 
   <h2>What the extension sends, and to whom</h2>
-  <p>The extension makes network requests <b>only</b> to Azure DevOps, over HTTPS, authenticated with your PAT:</p>
+  <p>The extension makes network requests to Azure DevOps, to your configured cloud AI provider (if configured and approved), and to Google Analytics (only if you explicitly opt-in to telemetry), over HTTPS:</p>
   <ul>
     <li><code>https://dev.azure.com</code> — to read and update your work items.</li>
     <li><code>https://app.vssps.visualstudio.com</code> — only when you click <b>Load</b> in setup, to list the
-        organizations and projects your account can access (a convenience; you can type them manually instead).</li>
+        organizations and projects your account can access.</li>
     <li><code>https://login.microsoftonline.com</code> — <b>only if you use Microsoft sign-in</b>, to complete the
-        OAuth sign-in and refresh the access token. Not contacted at all when you authenticate with a PAT.</li>
+        OAuth sign-in and refresh the access token.</li>
+    <li><code>https://generativelanguage.googleapis.com</code> or <code>https://api.openai.com</code> (or a custom endpoint) — <b>only if you configure your own cloud AI API keys</b> and trigger AI Summarization or AI Text Editing.</li>
+    <li><code>https://www.google-analytics.com</code> — <b>only if you explicitly opt-in to usage telemetry</b>.</li>
   </ul>
-  <p>These hosts are the only ones the extension is permitted to contact (enforced by its Content Security Policy).
-     The extension contains <b>no analytics, no telemetry, no advertising, and no third-party servers.</b>
-     No data is ever transmitted to the developer.</p>
+  <p>The extension collects anonymous usage statistics (such as which views and features are used) via Google Analytics to help improve the extension <b>only if you explicitly opt-in</b> (either on first boot or in settings). Telemetry is off by default.
+     Furthermore, if you configure your own cloud AI keys, work-item contents (descriptions/comments) are transmitted to the configured AI provider after user confirmation. On-device models process all data locally on your device.</p>
 
   <h3>Files you attach to a work item</h3>
   <p>When you paste, drop, or pick a file inside the <b>Description</b> editor, the file's bytes are uploaded

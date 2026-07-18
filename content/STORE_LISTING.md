@@ -58,7 +58,8 @@ Filters and bulk actions
 
 Privacy first
 • Your token and data never leave your device, except requests to your own Azure
-  DevOps. No analytics, no tracking, no third-party servers.
+  DevOps, configured cloud AI endpoints (if keys are provided), and Google Analytics (only if you explicitly opt-in).
+• Opt-in anonymous usage telemetry helps us improve the extension; it collects no work-item data or credentials, and is off by default.
 • Files you attach go straight to your Azure DevOps; the extension keeps no
   local copy of the bytes.
 • A PAT-expiry countdown reminds you before your token lapses.
@@ -102,9 +103,9 @@ Azure DevOps REST API directly with the user's Personal Access Token.
   contacted when the user authenticates with a PAT.
 - **alarms** — Power background alarms to periodically trigger checks for notifications and subscription updates.
 - **notifications** — Displays rich OS-level desktop notifications when the user is mentioned in a work item or when updates occur on followed items.
-- **tabs** — Used to query and switch focus to existing Azure DevOps tabs when clicking the "Open" button in a notification, rather than opening redundant tabs.
 - **Host permission `https://generativelanguage.googleapis.com/*`** — Connects directly to the Google Gemini API to run advanced semantic query parsing when cloud AI provider is selected.
 - **Host permission `https://api.openai.com/*`** — Connects directly to the OpenAI API to run advanced semantic query parsing when cloud AI provider is selected.
+- **Host permission `https://www.google-analytics.com/*`** — Connects directly to Google Analytics to submit anonymous usage telemetry events (only if explicitly opted-in by the user).
 
 ### Are you using remote code?
 **No.** All scripts (including the Cytoscape/dagre libraries) are bundled in the
@@ -124,8 +125,7 @@ package; nothing is loaded from a remote URL and no `eval` is used.
   bytes are never copied or transmitted anywhere other than the user's Azure
   DevOps organization.
 - The extension does **not** collect: personally identifiable information beyond
-  the above, location, health, financial/payment info, web history, or user
-  activity/analytics.
+  the above, location, health, financial/payment info, or web history. Anonymous usage analytics (views visited, feature usage) are collected ONLY if the user explicitly opts in.
 
 ### Data usage certifications (check all that apply — all true here)
 - I do **not** sell or transfer user data to third parties (outside approved use

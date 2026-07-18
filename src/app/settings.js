@@ -301,7 +301,7 @@
     btn.innerHTML = (status === 'on' ? '<ui-icon name="bar-chart"></ui-icon> ' : '<ui-icon name="slash"></ui-icon> ') + `<span id="f_telemetry_label">${status}</span>`;
   }
   function cycleTelemetry() {
-    const next = (App.prefs.get('telemetry') || 'on') === 'on' ? 'off' : 'on';
+    const next = (App.prefs.get('telemetry') || 'off') === 'on' ? 'off' : 'on';
     App.prefs.set('telemetry', next);
     applyTelemetry(next);
   }

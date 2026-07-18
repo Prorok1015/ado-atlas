@@ -90,7 +90,7 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
 
 async function openAppWindow(itemId) {
   const baseUrl = chrome.runtime.getURL("index.html");
-  const tabs = await chrome.tabs.query({});
+  const tabs = await chrome.tabs.query({ url: baseUrl + "*" });
   const existing = tabs.find((t) => {
     if (!t.url) return false;
     try {
@@ -184,14 +184,48 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.action === "fetchCloudAI") {
     const { url, method, headers, body } = msg;
-    fetch(url, { method, headers, body })
-      .then(async (res) => {
-        const text = await res.text();
-        if (sendResponse) sendResponse({ status: res.status, statusText: res.statusText, text });
-      })
-      .catch((err) => {
+    chrome.storage.local.get(["ai_custom_config", "ai_custom_providers"], (data) => {
+      try {
+        const allowedHosts = new Set(["generativelanguage.googleapis.com", "api.openai.com"]);
+        
+        if (data.ai_custom_config && data.ai_custom_config.endpoint) {
+          try {
+            const rawEndpoint = data.ai_custom_config.endpoint.trim();
+            const endpointWithProto = rawEndpoint.includes("://") ? rawEndpoint : `https://${rawEndpoint}`;
+            const u = new URL(endpointWithProto);
+            allowedHosts.add(u.hostname);
+          } catch (_) {}
+        }
+        if (data.ai_custom_providers && Array.isArray(data.ai_custom_providers)) {
+          for (const p of data.ai_custom_providers) {
+            if (p.endpoint) {
+              try {
+                const rawEndpoint = p.endpoint.trim();
+                const endpointWithProto = rawEndpoint.includes("://") ? rawEndpoint : `https://${rawEndpoint}`;
+                const u = new URL(endpointWithProto);
+                allowedHosts.add(u.hostname);
+              } catch (_) {}
+            }
+          }
+        }
+        
+        const targetUrl = new URL(url);
+        if (!allowedHosts.has(targetUrl.hostname)) {
+          throw new Error(`Security exception: domain ${targetUrl.hostname} is not in the allow-list.`);
+        }
+        
+        fetch(url, { method, headers, body })
+          .then(async (res) => {
+            const text = await res.text();
+            if (sendResponse) sendResponse({ status: res.status, statusText: res.statusText, text });
+          })
+          .catch((err) => {
+            if (sendResponse) sendResponse({ error: err.message });
+          });
+      } catch (err) {
         if (sendResponse) sendResponse({ error: err.message });
-      });
+      }
+    });
     return true; // Keep channel open for async response
   }
   if (msg.action === "ga") {

@@ -42,6 +42,14 @@
       close();
       return;
     }
+
+    if (window.checkAiCloudConsent) {
+      const consented = await window.checkAiCloudConsent(ai);
+      if (!consented) {
+        close();
+        return;
+      }
+    }
     
     // Show spinner inside popover
     popoverEl.innerHTML = `

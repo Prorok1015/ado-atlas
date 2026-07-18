@@ -676,6 +676,38 @@
   </div>
 </div>
 
+<!-- Privacy Settings Modal -->
+<div id="privacy-overlay" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
+  <div id="confirm-box">
+    <h1 id="privacy-title" data-i18n="privacy.modalTitle">Privacy Settings</h1>
+    <p id="privacy-message" data-i18n="privacy.modalMessage">
+      ADO Atlas collects anonymous usage statistics (such as which views and features are used) to help improve the extension. No work-item descriptions, titles, comments, credentials, or personal info are ever sent.
+    </p>
+    <div id="privacy-actions" style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn" id="privacy-decline" data-i18n="privacy.decline">Decline</button>
+      <button class="btn save" id="privacy-accept" data-i18n="privacy.accept">Accept</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Cloud Consent Warning Modal -->
+<div id="ai-consent-overlay" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="ai-consent-title">
+  <div id="confirm-box">
+    <h1 id="ai-consent-title" data-i18n="ai.consent.title">AI Cloud Transmission Warning</h1>
+    <p id="ai-consent-message" data-i18n="ai.consent.message">
+      Work-item content (descriptions or comments) will be transmitted to the configured cloud AI provider. Do you want to proceed?
+    </p>
+    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.923rem; margin-top: 4px;">
+      <input type="checkbox" id="ai-consent-dont-show">
+      <label for="ai-consent-dont-show" style="user-select: none;" data-i18n="ai.consent.dontShowAgain">Do not show again</label>
+    </div>
+    <div id="ai-consent-actions" style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn" id="ai-consent-cancel" data-i18n="common.cancel">Cancel</button>
+      <button class="btn save" id="ai-consent-ok" data-i18n="ai.consent.proceed">Proceed</button>
+    </div>
+  </div>
+</div>
+
 <!-- Custom link insert modal -->
 <div id="link-overlay" class="modal-backdrop" style="display:none">
   <div id="link-box">

@@ -178,6 +178,11 @@
         return;
       }
 
+      if (window.checkAiCloudConsent) {
+        const consented = await window.checkAiCloudConsent(ai);
+        if (!consented) return;
+      }
+
       // Show loader in modal content
       document.getElementById('ai-summary-title').textContent = L('ai.summary.titleFor', 'AI Summary for #{id}', { id: wid });
       const contentEl = document.getElementById('ai-summary-modal-content');

@@ -5,9 +5,113 @@
 // app.js/init.js/side-panel.js/setup at runtime (wireSetup, initialBoot, openItem,
 // wirePremiumPlaceholders, api, App.setup, projectName, currentUser).
 /* ---------- boot ---------- */
+async function showPrivacySettingsModal() {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('privacy-overlay');
+    if (!overlay) {
+      resolve('off');
+      return;
+    }
+    overlay.style.display = 'flex';
+    overlay.classList.add('show');
+    if (window.LayerManager) window.LayerManager.open(overlay, null, { isPopover: true });
+
+    const acceptBtn = document.getElementById('privacy-accept');
+    const declineBtn = document.getElementById('privacy-decline');
+
+    const cleanup = (value) => {
+      overlay.style.display = 'none';
+      overlay.classList.remove('show');
+      if (window.LayerManager) window.LayerManager.close(overlay);
+      acceptBtn.onclick = null;
+      declineBtn.onclick = null;
+      document.removeEventListener('keydown', onKey);
+      resolve(value);
+    };
+
+    const onKey = e => {
+      if (e.key === 'Enter') { e.preventDefault(); cleanup('on'); }
+      else if (e.key === 'Escape') { e.preventDefault(); cleanup('off'); }
+    };
+
+    acceptBtn.onclick = () => { cleanup('on'); };
+    declineBtn.onclick = () => { cleanup('off'); };
+    document.addEventListener('keydown', onKey);
+    acceptBtn.focus();
+  });
+}
+
+async function checkAiCloudConsent(provider) {
+  if (!provider || provider.id === 'chrome-prompt') {
+    return true;
+  }
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['ai_cloud_consent_accepted'], (data) => {
+      if (data && data.ai_cloud_consent_accepted) {
+        resolve(true);
+        return;
+      }
+      
+      const overlay = document.getElementById('ai-consent-overlay');
+      if (!overlay) {
+        resolve(true);
+        return;
+      }
+      
+      overlay.style.display = 'flex';
+      overlay.classList.add('show');
+      if (window.LayerManager) window.LayerManager.open(overlay, null, { isPopover: true });
+      
+      const okBtn = document.getElementById('ai-consent-ok');
+      const cancelBtn = document.getElementById('ai-consent-cancel');
+      const dontShowCheck = document.getElementById('ai-consent-dont-show');
+      dontShowCheck.checked = false;
+      
+      const cleanup = (proceed) => {
+        overlay.style.display = 'none';
+        overlay.classList.remove('show');
+        if (window.LayerManager) window.LayerManager.close(overlay);
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+        document.removeEventListener('keydown', onKey);
+        
+        if (proceed && dontShowCheck.checked) {
+          chrome.storage.local.set({ ai_cloud_consent_accepted: true }, () => {
+            resolve(true);
+          });
+        } else {
+          resolve(proceed);
+        }
+      };
+      
+      const onKey = e => {
+        if (e.key === 'Enter') { e.preventDefault(); cleanup(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); cleanup(false); }
+      };
+      
+      okBtn.onclick = () => { cleanup(true); };
+      cancelBtn.onclick = () => { cleanup(false); };
+      document.addEventListener('keydown', onKey);
+      okBtn.focus();
+    });
+  });
+}
+
+window.showPrivacySettingsModal = showPrivacySettingsModal;
+window.checkAiCloudConsent = checkAiCloudConsent;
+
 window.addEventListener('DOMContentLoaded',async()=>{
   if(window.App&&App.prefs){try{await App.prefs.load();}catch(e){}}   // hydrate the prefs cache before anything reads it (i18n/setup/initialBoot)
   if(window.i18n){try{await window.i18n.init();window.i18n.applyDOM();}catch(e){}}
+  
+  if (App.prefs && App.prefs.get('telemetry') === null) {
+    const val = await showPrivacySettingsModal();
+    App.prefs.set('telemetry', val);
+    if (window.App && App.settings) {
+      App.settings.applyTelemetry(val);
+    }
+  }
+
   if(App.analytics){try{App.analytics.track('app_open',{lang:window.i18n?window.i18n.getLang():undefined});}catch(e){}}
   wireSetup();
   FollowManager.init(openItem);

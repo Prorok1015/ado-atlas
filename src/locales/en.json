@@ -733,5 +733,13 @@
   "viewHelp.k.shiftClick": "Shift-click",
   "viewHelp.note": "selecting items opens the bulk-edit bar",
   "viewHelp.reportBug": "Report a Bug",
-  "viewHelp.toggleFields": "show / hide fields on this view"
+  "viewHelp.toggleFields": "show / hide fields on this view",
+  "privacy.modalTitle": "Privacy Settings",
+  "privacy.modalMessage": "ADO Atlas collects anonymous usage statistics (such as which views and features are used) to help improve the extension. No work-item descriptions, titles, comments, credentials, or personal info are ever sent.",
+  "privacy.decline": "Decline",
+  "privacy.accept": "Accept",
+  "ai.consent.title": "AI Cloud Transmission Warning",
+  "ai.consent.message": "Work-item content (descriptions or comments) will be transmitted to the configured cloud AI provider. Do you want to proceed?",
+  "ai.consent.dontShowAgain": "Do not show again",
+  "ai.consent.proceed": "Proceed"
 }
