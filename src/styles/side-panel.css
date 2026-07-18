@@ -562,24 +562,42 @@ body.light .mdview tr:nth-child(even), body.light .atext tr:nth-child(even) {
   background: rgba(0, 0, 0, 0.02);
 }
 
-/* Code language badge */
-.md-lang-badge {
+/* Code language selector dropdown */
+.md-lang-selector {
   position: absolute;
   top: 6px;
   right: 34px;
   font-size: 0.692rem;
   color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
   opacity: 0.55;
   text-transform: uppercase;
-  user-select: none;
-  pointer-events: none;
   font-family: var(--font-family, inherit);
   font-weight: 500;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, border-color 0.2s, background 0.2s;
+  outline: none;
+  appearance: none;
+  text-align: center;
+  z-index: 11;
 }
-pre:hover .md-lang-badge {
+.md-lang-selector:hover {
+  opacity: 0.85;
+  border-color: var(--accent);
+  background: var(--panel2);
+}
+.md-lang-selector option {
+  background: var(--panel);
+  color: var(--txt);
+  text-transform: uppercase;
+}
+pre:hover .md-lang-selector {
   opacity: 0.85;
 }
+
 
 
 

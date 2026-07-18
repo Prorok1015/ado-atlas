@@ -777,13 +777,29 @@
       if (pre.querySelector(".md-copy-btn")) return;
       pre.style.position = "relative";
       
-      const lang = pre.getAttribute("data-lang");
-      if (lang) {
-        const badge = document.createElement("span");
-        badge.className = "md-lang-badge";
-        badge.textContent = lang;
-        pre.appendChild(badge);
-      }
+      const rawText = pre.textContent.replace(/\n$/, '');
+      const initialLang = pre.getAttribute("data-lang") || "";
+
+      const select = document.createElement("select");
+      select.className = "md-lang-selector";
+      
+      const languages = [
+        { value: "", label: "text" },
+        { value: "json", label: "json" },
+        { value: "javascript", label: "js" },
+        { value: "html", label: "html" },
+        { value: "css", label: "css" }
+      ];
+      
+      languages.forEach(l => {
+        const opt = document.createElement("option");
+        opt.value = l.value;
+        opt.textContent = l.label;
+        if (l.value === initialLang) {
+          opt.selected = true;
+        }
+        select.appendChild(opt);
+      });
 
       const btn = document.createElement("button");
       btn.type = "button";
@@ -793,17 +809,7 @@
       btn.innerHTML = COPY_ICON;
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        const clone = pre.cloneNode(true);
-        const copyBtn = clone.querySelector(".md-copy-btn");
-        if (copyBtn) {
-          copyBtn.remove();
-        }
-        const langBadge = clone.querySelector(".md-lang-badge");
-        if (langBadge) {
-          langBadge.remove();
-        }
-        const textToCopy = clone.textContent.replace(/\n$/, '');
-        navigator.clipboard.writeText(textToCopy).then(() => {
+        navigator.clipboard.writeText(rawText).then(() => {
           btn.innerHTML = CHECK_ICON;
           btn.classList.add("success");
           setTimeout(() => {
@@ -814,7 +820,29 @@
           console.error("Failed to copy code: ", err);
         });
       });
+
+      pre.appendChild(select);
       pre.appendChild(btn);
+
+      select.addEventListener("change", () => {
+        const newLang = select.value;
+        const highlightFn = (window.AdoLib && window.AdoLib.highlightCode);
+        if (!highlightFn) return;
+        const highlightedHtml = highlightFn(rawText, newLang);
+        
+        const children = Array.from(pre.childNodes);
+        children.forEach(child => {
+          if (child !== btn && child !== select) {
+            pre.removeChild(child);
+          }
+        });
+        
+        const temp = document.createElement("div");
+        temp.innerHTML = highlightedHtml;
+        while (temp.firstChild) {
+          pre.insertBefore(temp.firstChild, select);
+        }
+      });
     });
   }
 
