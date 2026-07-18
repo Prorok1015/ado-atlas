@@ -218,22 +218,29 @@ async function removeAttachmentLink(wid, attUrl) {
 
 // Body shape mirrors the old /api/item PATCH endpoint: friendly aliases
 // (title/state/assigned/iteration/desc/ac/priority/estimate/start/target/due).
-async function updateItem(wid, body) {
+async function updateItem(wid, body, expectedRev) {
   let wtype = null;
-  if (("target" in body && !detectedTargetField) || "desc" in body) {
+  let targetField = FIELD_REGISTRY.target.ref;
+  
+  const gid = AdoLib.gidMake ? AdoLib.gidMake('ado', wid) : `ado:${wid}`;
+  const cachedNode = (typeof App !== "undefined" && App.state && App.state.store && App.state.store.nodes) ? App.state.store.nodes[gid] : null;
+  if (cachedNode) {
+    wtype = cachedNode.type;
+    targetField = cachedNode.targetField || (FIELD_REGISTRY.finish.ref in (cachedNode.fields || {}) ? FIELD_REGISTRY.finish.ref : FIELD_REGISTRY.target.ref);
+  }
+  
+  if (!wtype && ("target" in body || "desc" in body)) {
     try {
       const proj = await projUrl();
       const w = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`);
       const f = w.fields || {};
       wtype = f[FIELD_REGISTRY.type.ref];
       if (FIELD_REGISTRY.finish.ref in f) {
-        detectedTargetField = FIELD_REGISTRY.finish.ref;
+        targetField = FIELD_REGISTRY.finish.ref;
       } else if (FIELD_REGISTRY.target.ref in f) {
-        detectedTargetField = FIELD_REGISTRY.target.ref;
-      } else {
-        if (wtype === "Product Backlog Item") {
-          detectedTargetField = FIELD_REGISTRY.finish.ref;
-        }
+        targetField = FIELD_REGISTRY.target.ref;
+      } else if (wtype === "Product Backlog Item") {
+        targetField = FIELD_REGISTRY.finish.ref;
       }
     } catch (_) {}
   }
@@ -323,12 +330,31 @@ async function updateItem(wid, body) {
   //    cleanly replaces. ADO rejects two ops on the same field in one PATCH
   //    (VS403691), so we send exactly one op for tags.
   const ops = [];
+
+  // Prepend test operation for revision if available
+  let rev = expectedRev;
+  if (rev === undefined && cachedNode) {
+    rev = cachedNode.rev;
+  }
+  if (rev === undefined || rev === null) {
+    try {
+      const proj = await projUrl();
+      const w = await req("GET", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`);
+      rev = w.rev;
+    } catch (_) {}
+  }
+  if (rev != null) {
+    ops.push({ op: "test", path: "/rev", value: rev });
+  }
+
   for (const [k, v] of Object.entries(fields)) {
     let resolved;
     if (k === "desc") {
       resolved = descField;
+    } else if (k === "target") {
+      resolved = targetField;
     } else {
-      resolved = resolveField(k);
+      resolved = resolveField(k, wtype);
     }
     const path = `/fields/${resolved}`;
     if (v === "" || v == null) {
@@ -340,8 +366,20 @@ async function updateItem(wid, body) {
     }
   }
   const proj = await projUrl();
-  const d = await req("PATCH", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`, ops, "application/json-patch+json");
-  return { id: d.id, rev: d.rev };
+  try {
+    const d = await req("PATCH", `${proj}/_apis/wit/workitems/${wid}?${API_VERSION}`, ops, "application/json-patch+json");
+    return { id: d.id, rev: d.rev };
+  } catch (e) {
+    if (e.message && e.message.includes("409")) {
+      if (typeof window !== "undefined" && window.customAlert) {
+        window.customAlert(
+          "Conflict detected: This work item has been modified by someone else. Please refresh the page to load the latest changes and prevent overwriting their work.",
+          "Save Conflict (409)"
+        );
+      }
+    }
+    throw e;
+  }
 }
 
 async function comment(wid, text) {

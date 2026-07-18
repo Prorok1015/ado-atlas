@@ -354,7 +354,7 @@ async function bulkApply(field,val){
       }
       else if (field === 'dates') {
         const startFieldName = 'Microsoft.VSTS.Scheduling.StartDate';
-        const targetFieldName = detectedTargetField || 'Microsoft.VSTS.Scheduling.TargetDate';
+        const targetFieldName = (node && node.targetField) || 'Microsoft.VSTS.Scheduling.TargetDate';
         
         if ('start' in val) {
           const path = `/fields/${startFieldName}`;
@@ -407,6 +407,10 @@ async function bulkApply(field,val){
       }
 
       if (itemOpsList.length) {
+        const rev = node ? node.rev : null;
+        if (rev != null) {
+          itemOpsList.unshift({ op: "test", path: "/rev", value: rev });
+        }
         itemsOps.push({
           method: 'PATCH',
           uri: `/_apis/wit/workitems/${nid(id)}?api-version=7.1`,
@@ -431,18 +435,33 @@ async function bulkApply(field,val){
       return;
     }
     
-    let ok = 0, fail = 0;
+    let ok = 0, fail = 0, conflictCount = 0;
     for (let i = 0; i < itemsOps.length; i += 200) {
       const batch = itemsOps.slice(i, i + 200);
       const res = await api.batchUpdate(batch);
       const valueArray = res && res.value && Array.isArray(res.value) ? res.value : (Array.isArray(res) ? res : null);
       if (valueArray) {
         valueArray.forEach(itemRes => {
-          if (itemRes.code === 200) ok++;
-          else fail++;
+          if (itemRes.code === 200) {
+            ok++;
+          } else {
+            fail++;
+            if (itemRes.code === 409) {
+              conflictCount++;
+            }
+          }
         });
       } else {
         fail += batch.length;
+      }
+    }
+
+    if (conflictCount > 0) {
+      if (typeof window !== "undefined" && window.customAlert) {
+        window.customAlert(
+          `Conflict detected: ${conflictCount} work item(s) could not be updated because they were modified by someone else. Please refresh the page to load the latest changes.`,
+          "Save Conflict (409)"
+        );
       }
     }
     
@@ -515,7 +534,7 @@ async function bulkApply(field,val){
 }
 
 function resolveBulkField(field) {
-  if (field === 'target') return detectedTargetField || api.FIELD_REGISTRY.target.ref;
+  if (field === 'target') return api.FIELD_REGISTRY.target.ref;
   if (field in api.FIELD_REGISTRY) return api.FIELD_REGISTRY[field].ref;
   return field;
 }
