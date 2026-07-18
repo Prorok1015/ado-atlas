@@ -948,7 +948,11 @@ test("mdToHtml: auto-detect languages", () => {
 
   // CSS auto-detect
   const cssHtml = lib.mdToHtml("```\nbody {\n  color: red;\n}\n```");
-  assert.ok(cssHtml.includes('hl-keyword'));
+  assert.ok(cssHtml.includes('data-lang="css"'), 'basic CSS detected');
+
+  // CSS with var() must NOT be misdetected as JS
+  const cssVarHtml = lib.mdToHtml("```\nbody {\n  margin: 0;\n  background-color: var(--bg);\n  color: var(--txt);\n}\n```");
+  assert.ok(cssVarHtml.includes('data-lang="css"'), 'CSS with var(--x) must be css, not js');
 
   // JS auto-detect
   const jsHtml = lib.mdToHtml("```\nconst x = 5;\n```");
@@ -957,6 +961,14 @@ test("mdToHtml: auto-detect languages", () => {
   // JS class declarations and curly braces must not be misdetected as CSS
   const complexJsHtml = lib.mdToHtml("```\nconst appName = \"ADO Atlas\";\nlet isTesting = true;\nclass HighlightEngine {\n  constructor() {\n    this.enabled = true;\n  }\n}\n```");
   assert.ok(complexJsHtml.includes('data-lang="javascript"'));
+
+  // SQL auto-detect
+  const sqlHtml = lib.mdToHtml("```\nSELECT * FROM users WHERE id = 1;\n```");
+  assert.ok(sqlHtml.includes('data-lang="sql"'), 'SQL detected');
+
+  // Shell auto-detect
+  const shHtml = lib.mdToHtml("```\necho 'hello world'\n```");
+  assert.ok(shHtml.includes('data-lang="bash"'), 'Shell detected');
 });
 
 (async () => {

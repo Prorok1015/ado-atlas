@@ -199,14 +199,21 @@
   // ---- Syntax Highlighting ----
   const highlightRegistry = {
     json: [
-      { token: "hl-key", regex: /"(?:[^"\\]|\\.)*"\s*(?=:)/g },
+      { token: "hl-key", regex: /"(?:[^"\\]|\\.)*"(?=\s*:)/g },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"/g },
-      { token: "hl-num", regex: /\b-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g }
+      { token: "hl-num", regex: /\b-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g },
+      { token: "hl-keyword", regex: /\b(true|false|null)\b/g }
     ],
     javascript: [
       { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g },
-      { token: "hl-keyword", regex: /\b(const|let|var|function|class|import|export|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|try|catch|finally|throw|async|await|yield|default|extends|super|this)\b/g },
+      { token: "hl-keyword", regex: /\b(const|let|var|function|class|import|export|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|try|catch|finally|throw|async|await|yield|default|extends|super|this|of|in|from)\b/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+    ],
+    typescript: [
+      { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
+      { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g },
+      { token: "hl-keyword", regex: /\b(const|let|var|function|class|import|export|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|try|catch|finally|throw|async|await|yield|default|extends|super|this|of|in|from|type|interface|enum|namespace|abstract|implements|readonly|declare|as|is|keyof|infer|never|unknown|any)\b/g },
       { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
     ],
     html: [
@@ -219,13 +226,62 @@
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|url\([^)]*\)/g },
       { token: "hl-keyword", regex: /\b(color|background|margin|padding|border|display|position|top|left|right|bottom|width|height|font|flex|grid|opacity|z-index|box-shadow|text-align|float|clear|overflow|visibility|clip-path|transform|transition|animation|media|keyframes|import)\b|!important|\b[a-zA-Z-]+\b(?=\s*:)/g },
       { token: "hl-num", regex: /\b-?\d+(?:\.\d+)?(?:px|em|rem|%|s|ms|deg)?\b/g }
+    ],
+    python: [
+      { token: "hl-comment", regex: /#.*/g },
+      { token: "hl-string", regex: /"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|f"(?:[^"\\]|\\.)*"|f'(?:[^'\\]|\\.)*'/g },
+      { token: "hl-keyword", regex: /\b(def|class|import|from|return|if|elif|else|for|while|try|except|finally|with|as|raise|yield|lambda|pass|break|continue|and|or|not|is|in|True|False|None|self|async|await|print)\b/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+    ],
+    sql: [
+      { token: "hl-comment", regex: /--.*|\/\*[\s\S]*?\*\//g },
+      { token: "hl-string", regex: /'(?:[^'\\]|\\.)*'/g },
+      { token: "hl-keyword", regex: /\b(SELECT|FROM|WHERE|INSERT|INTO|UPDATE|SET|DELETE|CREATE|ALTER|DROP|TABLE|INDEX|VIEW|JOIN|INNER|LEFT|RIGHT|OUTER|FULL|ON|AND|OR|NOT|NULL|IS|IN|BETWEEN|LIKE|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|AS|DISTINCT|UNION|ALL|EXISTS|CASE|WHEN|THEN|ELSE|END|COUNT|SUM|AVG|MIN|MAX|VALUES|PRIMARY|KEY|FOREIGN|REFERENCES|DEFAULT|CONSTRAINT|CASCADE|TRIGGER|FUNCTION|PROCEDURE|BEGIN|COMMIT|ROLLBACK|GRANT|REVOKE|INT|VARCHAR|TEXT|BOOLEAN|DATE|TIMESTAMP|FLOAT|DECIMAL|SERIAL|BIGINT|IF)\b/gi },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+    ],
+    bash: [
+      { token: "hl-comment", regex: /#.*/g },
+      { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'[^']*'/g },
+      { token: "hl-keyword", regex: /\b(if|then|else|elif|fi|for|while|do|done|case|esac|function|return|in|local|export|source|echo|exit|cd|ls|grep|sed|awk|cat|rm|mv|cp|mkdir|chmod|chown|sudo|apt|yum|npm|node|git|docker|curl|wget|pip|python|bash|sh|set|unset|readonly|declare|eval|exec|trap)\b/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+    ],
+    csharp: [
+      { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
+      { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|@"(?:[^"]|"")*"|\$"(?:[^"\\]|\\.)*"/g },
+      { token: "hl-keyword", regex: /\b(using|namespace|class|struct|interface|enum|public|private|protected|internal|static|abstract|virtual|override|sealed|readonly|const|new|return|if|else|for|foreach|while|do|switch|case|break|continue|try|catch|finally|throw|async|await|var|string|int|bool|void|null|true|false|this|base|get|set|value|partial|yield|where|select|from|in|ref|out|params|typeof|is|as|object|dynamic|decimal|float|double|long|byte|char|event|delegate|lock|task|Task)\b/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?[fdmLuU]?\b/g }
+    ],
+    yaml: [
+      { token: "hl-comment", regex: /#.*/g },
+      { token: "hl-key", regex: /^[ \t]*[\w.\/-]+(?=\s*:)/gm },
+      { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'[^']*'/g },
+      { token: "hl-keyword", regex: /\b(true|false|null|yes|no|on|off)\b/gi },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+    ],
+    markdown: [
+      { token: "hl-keyword", regex: /^#{1,6}\s.*/gm },
+      { token: "hl-string", regex: /\*\*[^*]+\*\*|__[^_]+__/g },
+      { token: "hl-comment", regex: /^\s*>\s.*/gm },
+      { token: "hl-num", regex: /\[[^\]]+\]\([^)]+\)/g }
     ]
   };
 
   const langAliases = {
     js: "javascript",
-    ts: "javascript",
-    xml: "html"
+    ts: "typescript",
+    jsx: "javascript",
+    tsx: "typescript",
+    xml: "html",
+    svg: "html",
+    py: "python",
+    sh: "bash",
+    shell: "bash",
+    zsh: "bash",
+    powershell: "bash",
+    ps1: "bash",
+    cs: "csharp",
+    yml: "yaml",
+    md: "markdown"
   };
 
   function highlightCode(code, lang) {
@@ -390,10 +446,18 @@
               } catch (e) {
                 if (trimmedBuf.startsWith("<")) {
                   detectedLang = "html";
-                } else if (/\b(const|let|var|function|class|import|export|return|async|await)\b/.test(trimmedBuf) || ["const ", "let ", "function ", "class ", "import "].some(kw => trimmedBuf.includes(kw))) {
-                  detectedLang = "javascript";
-                } else if (trimmedBuf.includes("{") && trimmedBuf.includes("}") && /[\w.-]+\s*\{/.test(trimmedBuf)) {
+                } else if (/[\w.#:-]+\s*\{[^}]*\}/.test(trimmedBuf) && /(?:margin|padding|color|display|background|border|font|width|height|position|flex|grid)\s*:/.test(trimmedBuf)) {
                   detectedLang = "css";
+                } else if (/\b(const|let|function|class|import|export|return|async|await)\b/.test(trimmedBuf) || /\bvar\s+\w/.test(trimmedBuf)) {
+                  detectedLang = "javascript";
+                } else if (/\b(def|class|import|from|elif|self)\b/.test(trimmedBuf) && /:$/.test(trimmedBuf.split('\n').filter(Boolean).pop() || '')) {
+                  detectedLang = "python";
+                } else if (/\b(SELECT|FROM|WHERE|INSERT|CREATE|ALTER|DROP|UPDATE|DELETE)\b/i.test(trimmedBuf)) {
+                  detectedLang = "sql";
+                } else if (/^(\$|#!\/)/.test(trimmedBuf) || /\b(echo|sudo|apt|grep|cd|ls|mkdir|chmod)\b/.test(trimmedBuf)) {
+                  detectedLang = "bash";
+                } else if (/---/.test(trimmedBuf) && /^\s*[\w.\/-]+\s*:/m.test(trimmedBuf)) {
+                  detectedLang = "yaml";
                 }
               }
             }
@@ -754,8 +818,15 @@
   const langMeta = {
     json:       { label: 'JSON',       color: '#292929' },
     javascript: { label: 'JavaScript', color: '#f1e05a' },
+    typescript: { label: 'TypeScript', color: '#3178c6' },
     html:       { label: 'HTML',       color: '#e34c26' },
     css:        { label: 'CSS',        color: '#563d7c' },
+    python:     { label: 'Python',     color: '#3572a5' },
+    sql:        { label: 'SQL',        color: '#e38c00' },
+    bash:       { label: 'Shell',      color: '#89e051' },
+    csharp:     { label: 'C#',         color: '#178600' },
+    yaml:       { label: 'YAML',       color: '#cb171e' },
+    markdown:   { label: 'Markdown',   color: '#083fa1' },
     '':         { label: 'Text',       color: '#8b949e' }
   };
 
