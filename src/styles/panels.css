@@ -19,8 +19,6 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 #morepanel .mrow{display:flex;align-items:center;justify-content:space-between;gap:0.923rem}
 #morepanel .ml{color:var(--muted);font-size:0.846rem;text-transform:uppercase;letter-spacing:.0.308rem;white-space:nowrap}
 #morepanel select{min-width:7.077rem}
-#morepanel #theme{min-width:7.077rem;text-align:left}
-#morepanel #theme #theme_label{text-transform:capitalize}
 #morepanel .mrow-full{margin-top:2px;padding-top:0.692rem;border-top:1px solid var(--line)}
 #morepanel .mrow-full .btn{width:100%}
 #morebtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}

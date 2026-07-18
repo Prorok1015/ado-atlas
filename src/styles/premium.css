@@ -226,3 +226,196 @@ body.light .pro-badge-tier-pro {
 body.light .pro-badge-tier-preview {
   color: #fff;
 }
+
+/* ============================================================================
+   Premium themes (Pro).
+   Same 11 tokens as base.css — no new theming engine. premium.css loads LAST
+   (index.html), so these equal-specificity rules win over :root / body.light
+   on source order alone.
+
+   A light-BASED premium theme also carries `body.light` (settings.js applies
+   both classes), so every existing `body.light` component override keeps working.
+   ========================================================================== */
+
+/* Ultra Dark — true black. On OLED the ground is physically unlit; the surfaces
+   step up in tight increments because pure black otherwise flattens depth, and
+   the accent is lifted so it still reads against nothing. */
+body.theme-ultra {
+  --bg: #000000;
+  --panel: #0a0b0d;
+  --panel2: #131519;
+  --line: #23262c;
+  --txt: #f2f4f7;
+  --muted: #878e99;
+  --accent: #6ea8fe;
+  --field: #050506;
+  --sel: #17243a;
+  --cy-bg: #000000;
+  --cy-dot: #1d2026;
+  color-scheme: dark;
+}
+
+/* Nocturne — indigo ground, violet accent. #a855f7 is the purple the AI features
+   already use across the stylesheets; this promotes it to a full palette. */
+body.theme-nocturne {
+  --bg: #12121c;
+  --panel: #1a1a2a;
+  --panel2: #232338;
+  --line: #32324e;
+  --txt: #e9e7f5;
+  --muted: #9b98bb;
+  --accent: #a855f7;
+  --field: #0e0e17;
+  --sel: #2c2550;
+  --cy-bg: #14141f;
+  --cy-dot: #2e2e48;
+  color-scheme: dark;
+}
+
+/* Paper — warm, low-blue, LIGHT-based (ships with body.light). For bright rooms
+   and long grooming sessions where the stock light theme's blue-white starts to sting. */
+body.theme-paper {
+  --bg: #f2eee5;
+  --panel: #fbf9f4;
+  --panel2: #eae5d9;
+  --line: #d8d0c0;
+  --txt: #2b2721;
+  --muted: #6d6457;
+  --accent: #3a63c8;
+  --field: #fffdf8;
+  --sel: #e6dcc8;
+  --cy-bg: #f7f4ec;
+  --cy-dot: #dcd3c2;
+  color-scheme: light;
+}
+
+/* ---- Theme gallery (⚙ menu) ---------------------------------------------- */
+.theme-gallery { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+
+.theme-group-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted);
+}
+.theme-group-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.theme-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+.theme-card {
+  position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 6px 5px; font: inherit; color: var(--txt);
+  transition: border-color .15s, transform .12s;
+}
+.theme-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.theme-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-card[aria-checked="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* the miniature is a real preview: it renders the app's own tokens, scoped
+   to the card via inline custom properties written by settings.js */
+.theme-swatch {
+  border-radius: 4px; overflow: hidden; border: 1px solid rgba(128,128,128,.22);
+  aspect-ratio: 16 / 10; display: flex; flex-direction: column;
+  background: var(--sw-bg);
+}
+.theme-swatch .sw-top {
+  height: 22%; background: var(--sw-panel); border-bottom: 1px solid var(--sw-line);
+  display: flex; align-items: center; gap: 3px; padding: 0 4px;
+}
+.theme-swatch .sw-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--sw-accent); }
+.theme-swatch .sw-pill { height: 4px; width: 16px; border-radius: 2px; background: var(--sw-sel); }
+.theme-swatch .sw-body { flex: 1; display: flex; }
+.theme-swatch .sw-side { width: 26%; background: var(--sw-panel2); border-right: 1px solid var(--sw-line); }
+.theme-swatch .sw-main { flex: 1; padding: 4px; display: flex; flex-direction: column; gap: 3px; }
+.theme-swatch .sw-row { height: 4px; border-radius: 2px; background: var(--sw-txt); opacity: .55; }
+.theme-swatch .sw-row.dim { background: var(--sw-muted); opacity: .5; width: 76%; }
+.theme-swatch .sw-row.acc { background: var(--sw-accent); opacity: 1; width: 34%; }
+.theme-swatch .sw-row.short { width: 58%; }
+
+.theme-name {
+  display: flex; align-items: center; gap: 5px; margin-top: 6px;
+  font-size: 11.5px; font-weight: 600;
+}
+.theme-name .tick { margin-left: auto; color: var(--accent); display: none; }
+.theme-card[aria-checked="true"] .theme-name .tick { display: inline-flex; }
+
+
+/* Auto-mode pairing (Pro): which theme sits on each side of the system switch */
+.theme-pair { display: none; grid-template-columns: 1fr 1fr; gap: 8px; }
+.theme-pair.on { display: grid; }
+.theme-pair label {
+  display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 3px;
+}
+.theme-pair select { width: 100%; }
+
+/* ⚙ row trigger: keeps morepanel's one-line label|control contract. The chip is a live
+   dot of the current palette (bg + accent), so the row still says which theme is on. */
+#morepanel #theme_open { min-width: 7.077rem; text-align: left; display: flex; align-items: center; gap: 6px; }
+#morepanel #theme_open #theme_label { text-transform: capitalize; }
+.theme-chip {
+  width: 13px; height: 13px; border-radius: 4px; flex: none;
+  border: 1px solid var(--line); background: var(--bg);
+  box-shadow: inset -4px -4px 0 -2px currentColor;   /* the accent, bottom-right */
+}
+
+/* ---- Theme picker overlay ------------------------------------------------
+   Same shape as #emojis-overlay / #customize-overlay: the ⚙ popover is a narrow
+   label|control list, so anything that needs a grid gets its own overlay. */
+#theme-overlay {
+  display: none; position: fixed; inset: 0; z-index: 20000;
+  background: rgba(0,0,0,.55); align-items: center; justify-content: center;
+}
+#theme-overlay.show { display: flex; }
+#theme-box {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 0.77rem;
+  padding: 1.23rem 1.38rem; width: min(30rem, 92vw); max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 0.77rem 2.3rem rgba(0,0,0,.45);
+  display: flex; flex-direction: column; gap: 0.77rem;
+}
+#theme-box h1 { margin: 0; font-size: 1.08rem; }
+#theme-box .hint { margin: 0; color: var(--muted); font-size: 0.85rem; }
+#theme-box .row-end { display: flex; justify-content: flex-end; }
+
+/* "Follow system" card: a diagonal split of the two themes actually paired right now,
+   so the swatch itself says which pair is in effect. Day is top-left, night bottom-right —
+   the same reading order as the Day / Night selects below it. */
+.theme-swatch-auto { position: relative; display: block; background: var(--sw-night-bg); }
+.theme-swatch-auto .sw-half {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 0 7px;
+}
+.theme-swatch-auto .sw-half-day {
+  background: var(--sw-day-bg);
+  clip-path: polygon(0 0, 100% 0, 0 100%);          /* top-left triangle */
+  align-items: flex-start;
+}
+.theme-swatch-auto .sw-half-night {
+  background: var(--sw-night-bg);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);    /* bottom-right triangle */
+  align-items: flex-end;
+}
+.theme-swatch-auto .sw-mini { height: 3px; width: 40%; border-radius: 2px; }
+.theme-swatch-auto .sw-mini.short { width: 22%; }
+.theme-swatch-auto .sw-half-day   .sw-mini { background: var(--sw-day-txt);   opacity: .5; }
+.theme-swatch-auto .sw-half-day   .sw-mini.short { background: var(--sw-day-accent);   opacity: 1; }
+.theme-swatch-auto .sw-half-night .sw-mini { background: var(--sw-night-txt); opacity: .5; }
+.theme-swatch-auto .sw-half-night .sw-mini.short { background: var(--sw-night-accent); opacity: 1; }
+/* hairline so the two grounds stay legible when the pair is low-contrast */
+.theme-swatch-auto::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to bottom left, transparent calc(50% - .5px), var(--line) calc(50% - .5px), var(--line) calc(50% + .5px), transparent calc(50% + .5px));
+}
+
+.theme-sub {
+  display: block; margin-top: 1px;
+  font-size: 10px; color: var(--muted); line-height: 1.3;
+}
+
+/* ProButtonManager owns the badge + shimmer on premium theme cards.
+   NOTE: no `overflow: hidden` here — .pro-badge-auto deliberately overhangs the host's
+   corner, and clipping the host clips the badge. The shimmer needs no clipping either: it
+   is an inset:0 ::before animated via background-position (not transform), so it can never
+   leave the box. See AGENTS.md §16c. */
+.theme-card .theme-swatch { position: relative; z-index: 1; }   /* stay above the shimmer layer */
+.theme-card .pro-badge-auto { top: -0.15rem; right: -0.15rem; }

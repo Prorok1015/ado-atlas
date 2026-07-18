@@ -60,6 +60,11 @@
   const REGISTRY = {
     // ---- UI preferences (sync) ----
     theme:        { default: null, scope: 'sync',   area: 'sync',  type: 'string', mirrorLS: true },
+    // autoTheme/themeDay/themeNight back the "follow system" pairing. mirrorLS because
+    // theme-init.js reads them synchronously before first paint (see that file).
+    autoTheme:    { default: null, scope: 'sync',   area: 'sync',  type: 'string', mirrorLS: true },
+    themeDay:     { default: null, scope: 'sync',   area: 'sync',  type: 'string', mirrorLS: true },
+    themeNight:   { default: null, scope: 'sync',   area: 'sync',  type: 'string', mirrorLS: true },
     lang:         { default: null, scope: 'sync',   area: 'sync',  type: 'string', mirrorLS: true }, // also read by worker via chrome.storage.local['ado.lang']
     uiScale:      { default: null, scope: 'sync',   area: 'sync',  type: 'number', mirrorLS: true },
     tz:           { default: null, scope: 'sync',   area: 'sync',  type: 'number' },
