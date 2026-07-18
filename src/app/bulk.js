@@ -284,11 +284,16 @@ async function bulkApply(field,val){
     const orgName = projConfig.org.replace(/\/$/, "");
     const projUrl = `https://dev.azure.com/${encodeURIComponent(orgName)}/${encodeURIComponent(projConfig.project)}`;
     
+    // App.state.bulkSel holds GLOBAL ids ("ado:123"). The api.* facade strips those for its
+    // named methods, but req()/batchUpdate() are raw — anything hand-built here must be
+    // converted with nid() or ADO gets "/workitems/ado:123" and rejects the whole batch.
+    const nid = id => App.backend.nid(id);
+
     let relationsMap = {};
     if (field === 'parent') {
-      const rawItems = (await api.req("GET", `${projUrl}/_apis/wit/workitems?ids=${ids.join(",")}&$expand=relations&api-version=7.1`)).value || [];
+      const rawItems = (await api.req("GET", `${projUrl}/_apis/wit/workitems?ids=${ids.map(nid).join(",")}&$expand=relations&api-version=7.1`)).value || [];
       for (const item of rawItems) {
-        relationsMap[item.id] = item.relations || [];
+        relationsMap[String(item.id)] = item.relations || [];   // raw response is keyed by NATIVE id
       }
     }
     
@@ -385,9 +390,9 @@ async function bulkApply(field,val){
         if (String(curParent) === String(val)) continue;
         
         oldsList.push({ id, oldParent: curParent });
-        const rels = relationsMap[id] || [];
+        const rels = relationsMap[nid(id)] || [];
         const idx = rels.findIndex(r => r.rel === "System.LinkTypes.Hierarchy-Reverse");
-        
+
         if (idx >= 0) {
           itemOpsList.push({ op: "remove", path: `/relations/${idx}` });
         }
@@ -395,15 +400,16 @@ async function bulkApply(field,val){
           itemOpsList.push({
             op: "add",
             path: "/relations/-",
-            value: { rel: "System.LinkTypes.Hierarchy-Reverse", url: `${projUrl}/_apis/wit/workitems/${val | 0}` }
+            // `val | 0` used to live here: on a global id it yields 0 → /workitems/0.
+            value: { rel: "System.LinkTypes.Hierarchy-Reverse", url: `${projUrl}/_apis/wit/workitems/${nid(val)}` }
           });
         }
       }
-      
+
       if (itemOpsList.length) {
         itemsOps.push({
           method: 'PATCH',
-          uri: `/_apis/wit/workitems/${id}?api-version=7.1`,
+          uri: `/_apis/wit/workitems/${nid(id)}?api-version=7.1`,
           headers: { 'Content-Type': 'application/json-patch+json' },
           body: itemOpsList,
           id: id
@@ -412,7 +418,7 @@ async function bulkApply(field,val){
       if (itemUndoOpsList.length) {
         undoOps.push({
           method: 'PATCH',
-          uri: `/_apis/wit/workitems/${id}?api-version=7.1`,
+          uri: `/_apis/wit/workitems/${nid(id)}?api-version=7.1`,
           headers: { 'Content-Type': 'application/json-patch+json' },
           body: itemUndoOpsList
         });
@@ -517,29 +523,32 @@ function resolveBulkField(field) {
 async function undoParentBatch(oldsList) {
   loadStart(`undoing parent bulk update…`);
   try {
+    // Same global-id → native-id rule as bulkApply: req()/batchUpdate() are raw, so every
+    // hand-built id here goes through nid().
+    const nid = id => App.backend.nid(id);
     const ids = oldsList.map(o => o.id);
     const projConfig = await api.getConfig();
     const orgName = projConfig.org.replace(/\/$/, "");
     const projUrl = `https://dev.azure.com/${encodeURIComponent(orgName)}/${encodeURIComponent(projConfig.project)}`;
-    const rawItems = (await api.req("GET", `${projUrl}/_apis/wit/workitems?ids=${ids.join(",")}&$expand=relations&api-version=7.1`)).value || [];
+    const rawItems = (await api.req("GET", `${projUrl}/_apis/wit/workitems?ids=${ids.map(nid).join(",")}&$expand=relations&api-version=7.1`)).value || [];
     const relsMap = {};
     for (const item of rawItems) {
-      relsMap[item.id] = item.relations || [];
+      relsMap[String(item.id)] = item.relations || [];   // raw response is keyed by NATIVE id
     }
-    
+
     const batchOps = [];
     for (const o of oldsList) {
-      const rels = relsMap[o.id] || [];
+      const rels = relsMap[nid(o.id)] || [];
       const idx = rels.findIndex(r => r.rel === "System.LinkTypes.Hierarchy-Reverse");
       const list = [];
       if (idx >= 0) list.push({ op: "remove", path: `/relations/${idx}` });
       if (o.oldParent !== '' && o.oldParent != null) {
-        list.push({ op: "add", path: "/relations/-", value: { rel: "System.LinkTypes.Hierarchy-Reverse", url: `${projUrl}/_apis/wit/workitems/${o.oldParent | 0}` } });
+        list.push({ op: "add", path: "/relations/-", value: { rel: "System.LinkTypes.Hierarchy-Reverse", url: `${projUrl}/_apis/wit/workitems/${nid(o.oldParent)}` } });
       }
       if (list.length) {
         batchOps.push({
           method: 'PATCH',
-          uri: `/_apis/wit/workitems/${o.id}?api-version=7.1`,
+          uri: `/_apis/wit/workitems/${nid(o.id)}?api-version=7.1`,
           headers: { 'Content-Type': 'application/json-patch+json' },
           body: list
         });
