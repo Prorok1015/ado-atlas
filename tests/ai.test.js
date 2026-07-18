@@ -29,16 +29,22 @@ require("../src/ai/ai-search-service.js");
 require("../src/ai/ai-summarizer.js");
 
 let pass = 0, fail = 0;
+
+// Tests are QUEUED here and run sequentially at the bottom of the file, each one awaited.
+// Calling fn() directly would break every async test: fn() returns a pending promise, the
+// try/catch exits immediately, "ok" is printed BEFORE the assertions run, and a failed
+// assert surfaces as an unhandledRejection instead of a failure. Sequential (not parallel)
+// because the tests share module-level singletons like aiSearchService.
+const queued = [];
 function test(name, fn) {
-  try {
-    fn();
-    pass++;
-    console.log("  ok   " + name);
-  } catch (e) {
-    fail++;
-    console.error("FAIL   " + name + "\n       " + (e && e.message));
-  }
+  queued.push({ name, fn });
 }
+
+// A rejection escaping the runner must never be silent.
+process.on("unhandledRejection", (e) => {
+  console.error("UNHANDLED REJECTION\n       " + (e && e.stack || e));
+  process.exit(1);
+});
 
 // Tests
 test("AIProviderRegistry registers and returns providers", () => {
@@ -700,10 +706,17 @@ test("AISummarizer.summarize throws when no active provider", async () => {
 });
 
 (async () => {
-  // Wait a short time for any async tests to print their output
-  setTimeout(() => {
-    console.log(`\nAI Tests completed: ${pass} passed, ${fail} failed`);
-    if (fail > 0) process.exit(1);
-  }, 100);
+  for (const { name, fn } of queued) {
+    try {
+      await fn();
+      pass++;
+      console.log("  ok   " + name);
+    } catch (e) {
+      fail++;
+      console.error("FAIL   " + name + "\n       " + (e && e.message));
+    }
+  }
+  console.log(`\nAI Tests completed: ${pass} passed, ${fail} failed`);
+  if (fail > 0) process.exit(1);
 })();
 

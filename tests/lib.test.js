@@ -5,10 +5,15 @@ const lib = require("../src/core/lib.js");
 const FilterManager = require("../src/components/filter-manager.js");
 
 let pass = 0, fail = 0;
-function test(name, fn) {
-  try { fn(); pass++; console.log("  ok   " + name); }
-  catch (e) { fail++; console.error("FAIL   " + name + "\n       " + (e && e.message)); }
-}
+// Queued and awaited sequentially at the bottom. Calling fn() directly would silently
+// break any async test: "ok" prints before the assertions run. No async tests today —
+// this keeps the first one that gets added from lying.
+const queued = [];
+function test(name, fn) { queued.push({ name, fn }); }
+process.on("unhandledRejection", (e) => {
+  console.error("UNHANDLED REJECTION\n       " + (e && e.stack || e));
+  process.exit(1);
+});
 const utc = (...a) => new Date(Date.UTC(...a));
 
 // ---- formatMessage (i18n interpolation) ----
@@ -857,5 +862,11 @@ test("gid: composite work-item id encode/decode (BACKEND_PROVIDER §13.1)", () =
   assert.strictEqual(lib.gidNative(lib.gidMake("ado", 7)), "7");   // round-trip
 });
 
-console.log(`\n${pass} passed, ${fail} failed`);
-process.exit(fail ? 1 : 0);
+(async () => {
+  for (const { name, fn } of queued) {
+    try { await fn(); pass++; console.log("  ok   " + name); }
+    catch (e) { fail++; console.error("FAIL   " + name + "\n       " + (e && e.message)); }
+  }
+  console.log(`\n${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+})();

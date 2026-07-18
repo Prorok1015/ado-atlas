@@ -53,16 +53,16 @@ const code = fs.readFileSync(path.resolve(__dirname, "../src/core/api/http-auth.
 vm.runInThisContext(code);
 
 let pass = 0, fail = 0;
-function test(name, fn) {
-  try {
-    fn();
-    pass++;
-    console.log("  ok   " + name);
-  } catch (e) {
-    fail++;
-    console.error("FAIL   " + name + "\n       " + (e && e.stack || e));
-  }
-}
+
+// Queued and awaited sequentially at the bottom — see tests/ai.test.js for why calling
+// fn() synchronously makes every async test report a false pass.
+const queued = [];
+function test(name, fn) { queued.push({ name, fn }); }
+
+process.on("unhandledRejection", (e) => {
+  console.error("UNHANDLED REJECTION\n       " + (e && e.stack || e));
+  process.exit(1);
+});
 
 console.log("Running API tests...");
 
@@ -130,5 +130,11 @@ test("mapWorkItem: maps empty/falsy parent to null", () => {
   }
 });
 
-console.log(`API tests finished: ${pass} passed, ${fail} failed.`);
-process.exit(fail ? 1 : 0);
+(async () => {
+  for (const { name, fn } of queued) {
+    try { await fn(); pass++; console.log("  ok   " + name); }
+    catch (e) { fail++; console.error("FAIL   " + name + "\n       " + (e && e.stack || e)); }
+  }
+  console.log(`API tests finished: ${pass} passed, ${fail} failed.`);
+  process.exit(fail ? 1 : 0);
+})();
