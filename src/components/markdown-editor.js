@@ -647,6 +647,7 @@ function hydrateCodeBlocks(container) {
     
     const registry = (window.AdoLib && window.AdoLib.highlightRegistry) || {};
     const aliases = (window.AdoLib && window.AdoLib.langAliases) || {};
+    const meta = (window.AdoLib && window.AdoLib.langMeta) || {};
     
     let initialLang = pre.getAttribute("data-lang") || "";
     if (initialLang) {
@@ -656,27 +657,53 @@ function hydrateCodeBlocks(container) {
       }
     }
 
-    const select = document.createElement("select");
-    select.className = "md-lang-selector";
-    
-    const languages = [
-      { value: "", label: "text" },
-      ...Object.keys(registry).map(lang => ({
-        value: lang,
-        label: lang === "javascript" ? "js" : lang
-      }))
-    ];
-    
-    languages.forEach(l => {
-      const opt = document.createElement("option");
-      opt.value = l.value;
-      opt.textContent = l.label;
-      if (l.value === initialLang) {
-        opt.selected = true;
-      }
-      select.appendChild(opt);
-    });
+    const isExplicit = pre.hasAttribute("data-explicit");
 
+    // -- language indicator (top-left) --
+    const langWrap = document.createElement("span");
+    langWrap.className = "md-lang-indicator";
+
+    const dot = document.createElement("span");
+    dot.className = "md-lang-dot";
+    const dotColor = (meta[initialLang] && meta[initialLang].color) || (meta[''] && meta[''].color) || '#8b949e';
+    dot.style.background = dotColor;
+    langWrap.appendChild(dot);
+
+    let langControl;
+
+    if (isExplicit) {
+      const badge = document.createElement("span");
+      badge.className = "md-lang-badge";
+      const m = meta[initialLang] || meta[''];
+      badge.textContent = m ? m.label : (initialLang || 'Text');
+      langWrap.appendChild(badge);
+      langControl = langWrap;
+    } else {
+      const select = document.createElement("select");
+      select.className = "md-lang-selector";
+      
+      const languages = [
+        { value: "", label: (meta[''] && meta[''].label) || "Text" },
+        ...Object.keys(registry).map(lang => ({
+          value: lang,
+          label: (meta[lang] && meta[lang].label) || lang
+        }))
+      ];
+      
+      languages.forEach(l => {
+        const opt = document.createElement("option");
+        opt.value = l.value;
+        opt.textContent = l.label;
+        if (l.value === initialLang) {
+          opt.selected = true;
+        }
+        select.appendChild(opt);
+      });
+      langWrap.appendChild(select);
+      langControl = langWrap;
+    }
+
+    // -- copy button (top-right) --
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "md-copy-btn";
@@ -697,27 +724,36 @@ function hydrateCodeBlocks(container) {
       });
     });
 
-    pre.appendChild(select);
+    pre.appendChild(langControl);
     pre.appendChild(btn);
 
-    select.addEventListener("change", () => {
-      const newLang = select.value;
-      const highlightFn = (window.AdoLib && window.AdoLib.highlightCode);
-      if (!highlightFn) return;
-      const highlightedHtml = highlightFn(rawText, newLang);
-      
-      const children = Array.from(pre.childNodes);
-      children.forEach(child => {
-        if (child !== btn && child !== select) {
-          pre.removeChild(child);
+    if (!isExplicit) {
+      const select = langWrap.querySelector("select");
+      select.addEventListener("change", () => {
+        const newLang = select.value;
+        const highlightFn = (window.AdoLib && window.AdoLib.highlightCode);
+        if (!highlightFn) return;
+
+        // update dot color
+        const newColor = (meta[newLang] && meta[newLang].color) || (meta[''] && meta[''].color) || '#8b949e';
+        dot.style.background = newColor;
+
+        const highlightedHtml = highlightFn(rawText, newLang);
+        
+        const children = Array.from(pre.childNodes);
+        children.forEach(child => {
+          if (child !== btn && child !== langControl) {
+            pre.removeChild(child);
+          }
+        });
+        
+        const temp = document.createElement("div");
+        temp.innerHTML = highlightedHtml;
+        while (temp.firstChild) {
+          pre.insertBefore(temp.firstChild, langControl);
         }
       });
-      
-      const temp = document.createElement("div");
-      temp.innerHTML = highlightedHtml;
-      while (temp.firstChild) {
-        pre.insertBefore(temp.firstChild, select);
-      }
-    });
+    }
   });
 }
+

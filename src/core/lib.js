@@ -399,7 +399,8 @@
             }
           }
           
-          out += `<pre data-lang="${detectedLang || ''}">` + highlightCode(buf, detectedLang) + "</pre>";
+          const isExplicit = !!codeLang;
+          out += `<pre data-lang="${detectedLang || ''}"${isExplicit ? ' data-explicit="true"' : ''}>` + highlightCode(buf, detectedLang) + "</pre>";
           buf = "";
           code = false;
           codeLang = null;
@@ -749,8 +750,17 @@
   function gidNative(gid) { const s = String(gid); const i = s.indexOf(':'); return i >= 0 ? s.slice(i + 1) : s; }
   function gidProvider(gid) { const s = String(gid); const i = s.indexOf(':'); return i >= 0 ? s.slice(0, i) : null; }
 
+  // ---- Language display metadata (colors follow GitHub Linguist palette) ----
+  const langMeta = {
+    json:       { label: 'JSON',       color: '#292929' },
+    javascript: { label: 'JavaScript', color: '#f1e05a' },
+    html:       { label: 'HTML',       color: '#e34c26' },
+    css:        { label: 'CSS',        color: '#563d7c' },
+    '':         { label: 'Text',       color: '#8b949e' }
+  };
+
   return { formatMessage, wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml, highlightCode,
-           highlightRegistry, langAliases,
+           highlightRegistry, langAliases, langMeta,
            base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath,
            gidMake, gidNative, gidProvider };
 });

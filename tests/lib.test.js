@@ -894,7 +894,7 @@ test("gid: composite work-item id encode/decode (BACKEND_PROVIDER §13.1)", () =
 test("mdToHtml: code block parsing with language tags", () => {
   const code = "```js\nconst a = 123;\n```";
   const html = lib.mdToHtml(code);
-  assert.ok(html.includes('<pre data-lang="js">'));
+  assert.ok(html.includes('<pre data-lang="js" data-explicit="true">'));
   assert.ok(html.includes('<span class="hl-keyword">const</span>'));
   assert.ok(html.includes('<span class="hl-num">123</span>'));
 });
@@ -903,7 +903,7 @@ test("mdToHtml: JSON auto-formatting and highlighting", () => {
   // unformatted JSON
   const code = "```json\n{\"a\":1}\n```";
   const html = lib.mdToHtml(code);
-  assert.ok(html.includes('<pre data-lang="json">'));
+  assert.ok(html.includes('<pre data-lang="json" data-explicit="true">'));
   assert.ok(html.includes('<span class="hl-key">&quot;a&quot;</span>'));
   assert.ok(html.includes('<span class="hl-num">1</span>'));
   // formatted JSON contains spacing and spans
