@@ -162,7 +162,10 @@
         if (options.responseConstraint) {
           promptOptions.responseConstraint = options.responseConstraint;
         }
-        const fullUserMessage = `System Instructions:\n${systemPrompt}\n\nUser Query: "${userMessage}"\n\nJSON Filter Response:`;
+        const isJson = systemPrompt && (systemPrompt.toLowerCase().includes("json") || systemPrompt.toLowerCase().includes("classifier") || systemPrompt.toLowerCase().includes("comma-separated") || systemPrompt.toLowerCase().includes("output only"));
+        const fullUserMessage = isJson
+          ? `System Instructions:\n${systemPrompt}\n\nUser Query: "${userMessage}"\n\nJSON Filter Response:`
+          : `System Instructions:\n${systemPrompt}\n\nUser Query:\n${userMessage}`;
         const result = await sessionToUse.prompt(fullUserMessage, promptOptions);
         
         // Clean up session immediately to avoid memory leaks

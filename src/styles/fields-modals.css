@@ -225,7 +225,7 @@
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: scale(1); }
 }
-#confirm-box h1, #link-box h1 {
+#confirm-box h2, #link-box h2 {
   font-size: 1.154rem;
   margin: 0;
   font-weight: 600;
