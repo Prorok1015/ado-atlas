@@ -640,8 +640,7 @@ function hydrateCodeBlocks(container) {
   if (!container) return;
   const pres = container.querySelectorAll("pre");
   pres.forEach(pre => {
-    if (pre.querySelector(".md-copy-btn")) return;
-    pre.style.position = "relative";
+    if (pre.closest(".md-code-block")) return;
     
     const rawText = pre.textContent.replace(/\n$/, '');
     
@@ -659,25 +658,30 @@ function hydrateCodeBlocks(container) {
 
     const isExplicit = pre.hasAttribute("data-explicit");
 
-    // -- language indicator (top-left) --
-    const langWrap = document.createElement("span");
-    langWrap.className = "md-lang-indicator";
+    // -- build wrapper --
+    const wrapper = document.createElement("div");
+    wrapper.className = "md-code-block";
+
+    // -- header bar --
+    const header = document.createElement("div");
+    header.className = "md-code-header";
+
+    // left side: language indicator
+    const langSide = document.createElement("span");
+    langSide.className = "md-lang-indicator";
 
     const dot = document.createElement("span");
     dot.className = "md-lang-dot";
     const dotColor = (meta[initialLang] && meta[initialLang].color) || (meta[''] && meta[''].color) || '#8b949e';
     dot.style.background = dotColor;
-    langWrap.appendChild(dot);
-
-    let langControl;
+    langSide.appendChild(dot);
 
     if (isExplicit) {
       const badge = document.createElement("span");
       badge.className = "md-lang-badge";
       const m = meta[initialLang] || meta[''];
       badge.textContent = m ? m.label : (initialLang || 'Text');
-      langWrap.appendChild(badge);
-      langControl = langWrap;
+      langSide.appendChild(badge);
     } else {
       const select = document.createElement("select");
       select.className = "md-lang-selector";
@@ -699,16 +703,17 @@ function hydrateCodeBlocks(container) {
         }
         select.appendChild(opt);
       });
-      langWrap.appendChild(select);
-      langControl = langWrap;
+      langSide.appendChild(select);
     }
 
-    // -- copy button (top-right) --
+    header.appendChild(langSide);
+
+    // right side: copy button
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "md-copy-btn";
-    const COPY_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-    const CHECK_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#26a269" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    const COPY_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+    const CHECK_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#26a269" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
     btn.innerHTML = COPY_ICON;
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -724,36 +729,26 @@ function hydrateCodeBlocks(container) {
       });
     });
 
-    pre.appendChild(langControl);
-    pre.appendChild(btn);
+    header.appendChild(btn);
 
+    // -- assemble: replace pre in DOM with wrapper(header + pre) --
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(header);
+    wrapper.appendChild(pre);
+
+    // -- language change handler for auto-detected blocks --
     if (!isExplicit) {
-      const select = langWrap.querySelector("select");
+      const select = langSide.querySelector("select");
       select.addEventListener("change", () => {
         const newLang = select.value;
         const highlightFn = (window.AdoLib && window.AdoLib.highlightCode);
         if (!highlightFn) return;
 
-        // update dot color
         const newColor = (meta[newLang] && meta[newLang].color) || (meta[''] && meta[''].color) || '#8b949e';
         dot.style.background = newColor;
 
-        const highlightedHtml = highlightFn(rawText, newLang);
-        
-        const children = Array.from(pre.childNodes);
-        children.forEach(child => {
-          if (child !== btn && child !== langControl) {
-            pre.removeChild(child);
-          }
-        });
-        
-        const temp = document.createElement("div");
-        temp.innerHTML = highlightedHtml;
-        while (temp.firstChild) {
-          pre.insertBefore(temp.firstChild, langControl);
-        }
+        pre.innerHTML = highlightFn(rawText, newLang);
       });
     }
   });
 }
-

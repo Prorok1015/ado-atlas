@@ -491,58 +491,60 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
 #status{font-size:0.923rem;color:var(--muted);min-height:1.231rem}
 #statusbar{flex:none;background:var(--panel);border-top:1px solid var(--line);padding:0.231rem 0.923rem;font-size:0.923rem;min-height:1.538rem;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* Code highlight toolbar — language indicator (left) + copy button (right) */
+/* ================================================================
+   Code block wrapper — integrated header bar (GitHub / VS Code style)
+   Structure: .md-code-block > .md-code-header + pre
+   ================================================================ */
 
-/* ---- shared base for all code-block overlay controls ---- */
-.md-copy-btn, .md-lang-indicator {
-  position: absolute;
-  top: 6px;
-  height: 22px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  z-index: 10;
-  pointer-events: auto;
+/* Outer wrapper: owns the border and radius */
+.md-code-block {
+  border: 1px solid var(--line);
+  border-radius: 0.462rem;
+  overflow: hidden;
+  margin: 0.5rem 0;
 }
 
-pre:hover .md-copy-btn,
-pre:hover .md-lang-indicator {
-  opacity: 1;
+/* Header bar: always visible, thin, sits above the code */
+.md-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  padding: 0 0.5rem;
+  height: 26px;
+  min-height: 26px;
 }
 
-/* ---- language indicator wrapper (top-left) ---- */
+/* Language indicator (left side of header) */
 .md-lang-indicator {
-  left: 6px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 0 8px;
-  box-sizing: border-box;
   font-size: 0.692rem;
   font-weight: 600;
   color: var(--muted);
   letter-spacing: 0.02em;
+  user-select: none;
 }
 
-/* GitHub-style colored language dot */
+/* GitHub Linguist-style colored dot */
 .md-lang-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
 }
 
-/* static badge (explicit language) */
+/* Static badge for explicitly tagged blocks */
 .md-lang-badge {
-  line-height: 20px;
+  line-height: 1;
   white-space: nowrap;
-  user-select: none;
 }
 
-/* select dropdown (auto-detected, changeable) */
-.md-lang-indicator .md-lang-selector {
+/* Select dropdown for auto-detected blocks */
+.md-lang-selector {
   appearance: none;
   -webkit-appearance: none;
   border: none;
@@ -552,55 +554,62 @@ pre:hover .md-lang-indicator {
   font-weight: 600;
   font-family: inherit;
   letter-spacing: 0.02em;
-  padding: 0;
+  padding: 0 12px 0 0;
   margin: 0;
   cursor: pointer;
   outline: none;
-  line-height: 20px;
+  line-height: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+  background-size: 8px;
 }
-.md-lang-indicator .md-lang-selector:hover {
+.md-lang-selector:hover {
   color: var(--txt);
 }
-.md-lang-indicator .md-lang-selector option {
+.md-lang-selector option {
   background: var(--panel);
   color: var(--txt);
 }
 
-/* ---- copy button (top-right) ---- */
-.md-copy-btn {
-  right: 6px;
-  width: 22px;
+/* Copy button (right side of header) */
+.md-code-header .md-copy-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
   color: var(--muted);
   cursor: pointer;
-  box-sizing: border-box;
-  transition: opacity 0.2s ease, background 0.2s, border-color 0.2s, color 0.2s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.md-copy-btn:hover {
+.md-code-header .md-copy-btn:hover {
   background: var(--panel2);
   color: var(--txt);
-  border-color: var(--accent);
+  border-color: var(--line);
 }
-.md-copy-btn.success {
-  border-color: #26a269;
+.md-code-header .md-copy-btn.success {
   color: #26a269;
-  opacity: 1;
+  border-color: #26a269;
 }
 
-/* Code highlights syntax classes */
-.hl-key { color: var(--hl-key); }
-.hl-string { color: var(--hl-string); }
-.hl-num { color: var(--hl-num); }
-.hl-keyword { color: var(--hl-keyword); }
-.hl-comment { color: var(--hl-comment); font-style: italic; }
+/* Code content: no own border (wrapper has it), just padding */
+.md-code-block pre {
+  background: var(--panel2);
+  border: none;
+  border-radius: 0;
+  padding: 0.615rem;
+  margin: 0;
+  overflow: auto;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+}
 
-/* Code block pre elements styles for preview & comments */
+/* Standalone pre (not hydrated yet or outside preview) keeps its own border */
 .mdview pre, .atext pre {
   background: var(--panel2);
   border: 1px solid var(--line);
@@ -610,6 +619,22 @@ pre:hover .md-lang-indicator {
   font-family: ui-monospace, Consolas, monospace;
   font-size: 0.85rem;
 }
+/* When pre is inside a wrapper, remove duplicate border */
+.md-code-block .mdview pre,
+.md-code-block .atext pre,
+.mdview .md-code-block pre,
+.atext .md-code-block pre {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+/* Code highlights syntax classes */
+.hl-key { color: var(--hl-key); }
+.hl-string { color: var(--hl-string); }
+.hl-num { color: var(--hl-num); }
+.hl-keyword { color: var(--hl-keyword); }
+.hl-comment { color: var(--hl-comment); font-style: italic; }
 
 /* Markdown tables styling inside side panel preview & activity comments */
 .mdview table, .atext table {
@@ -633,8 +658,6 @@ pre:hover .md-lang-indicator {
 body.light .mdview tr:nth-child(even), body.light .atext tr:nth-child(even) {
   background: rgba(0, 0, 0, 0.02);
 }
-
-
 
 
 
