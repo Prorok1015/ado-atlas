@@ -287,7 +287,7 @@ async function bulkApply(field,val){
     // App.state.bulkSel holds GLOBAL ids ("ado:123"). The api.* facade strips those for its
     // named methods, but req()/batchUpdate() are raw — anything hand-built here must be
     // converted with nid() or ADO gets "/workitems/ado:123" and rejects the whole batch.
-    const nid = id => App.backend.nid(id);
+    const nid = id => App.backend.rawNid(id);
 
     let relationsMap = {};
     if (field === 'parent') {
@@ -544,7 +544,7 @@ async function undoParentBatch(oldsList) {
   try {
     // Same global-id → native-id rule as bulkApply: req()/batchUpdate() are raw, so every
     // hand-built id here goes through nid().
-    const nid = id => App.backend.nid(id);
+    const nid = id => App.backend.rawNid(id);
     const ids = oldsList.map(o => o.id);
     const projConfig = await api.getConfig();
     const orgName = projConfig.org.replace(/\/$/, "");

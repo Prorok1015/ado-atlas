@@ -55,7 +55,17 @@
       const L = global.AdoLib;
       return L ? L.gidMake(_activeId || 'ado', s) : ((_activeId || 'ado') + ':' + s);
     },
-    nid(gid) { const L = global.AdoLib; return L ? L.gidNative(gid) : (function(){ const s=String(gid); const i=s.indexOf(':'); return i>=0?s.slice(i+1):s; })(); },
+    rawNid(gid) {
+      const L = global.AdoLib;
+      return L ? L.gidNative(gid) : (function(){ const s=String(gid); const i=s.indexOf(':'); return i>=0?s.slice(i+1):s; })();
+    },
+    nid(gid) {
+      const active = Backend.active;
+      if (active && typeof active.nid === 'function') {
+        return active.nid(gid);
+      }
+      return this.rawNid(gid);
+    },
   };
   App.backend = Backend;
 

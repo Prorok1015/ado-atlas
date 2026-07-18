@@ -22,9 +22,16 @@
   const listeners = [];
 
   function cleanGlobalIds(val) {
-    if (typeof val === 'string' && val.startsWith('ado:')) {
+    if (typeof val === 'string' && val.indexOf(':') >= 0) {
       const idx = val.indexOf(':');
-      return val.slice(idx + 1);
+      const prefix = val.slice(0, idx);
+      const isGlobalId = prefix === 'ado' || (global.App && global.App.backend && typeof global.App.backend.get === 'function' && global.App.backend.get(prefix));
+      if (isGlobalId) {
+        if (global.App && global.App.backend && typeof global.App.backend.nid === 'function') {
+          return global.App.backend.nid(val);
+        }
+        return val.slice(idx + 1);
+      }
     }
     if (Array.isArray(val)) {
       return val.map(cleanGlobalIds);
