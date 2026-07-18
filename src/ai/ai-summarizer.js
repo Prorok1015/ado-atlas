@@ -156,7 +156,8 @@
 
       // Show cached summary if it exists and we're not forcing regeneration
       if (!force && summaryCache[wid]) {
-        document.getElementById('ai-summary-title').textContent = L('ai.summary.titleFor', 'AI Summary for #{id}', { id: wid });
+        const nid = (window.App && window.App.backend) ? window.App.backend.nid(wid) : wid;
+        document.getElementById('ai-summary-title').textContent = L('ai.summary.titleFor', 'AI Summary for #{id}', { id: nid });
         const contentEl = document.getElementById('ai-summary-modal-content');
         renderAiMarkdown(contentEl, summaryCache[wid]);
 
@@ -184,7 +185,8 @@
       }
 
       // Show loader in modal content
-      document.getElementById('ai-summary-title').textContent = L('ai.summary.titleFor', 'AI Summary for #{id}', { id: wid });
+      const nid = (window.App && window.App.backend) ? window.App.backend.nid(wid) : wid;
+      document.getElementById('ai-summary-title').textContent = L('ai.summary.titleFor', 'AI Summary for #{id}', { id: nid });
       const contentEl = document.getElementById('ai-summary-modal-content');
       contentEl.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; padding:40px 0; color:var(--muted);">

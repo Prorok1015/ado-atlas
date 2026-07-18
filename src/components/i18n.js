@@ -21,6 +21,24 @@
   let fallbackDict = {}; // English, loaded once and kept resident
   const listeners = [];
 
+  function cleanGlobalIds(val) {
+    if (typeof val === 'string' && val.startsWith('ado:')) {
+      const idx = val.indexOf(':');
+      return val.slice(idx + 1);
+    }
+    if (Array.isArray(val)) {
+      return val.map(cleanGlobalIds);
+    }
+    if (val && typeof val === 'object') {
+      const copy = {};
+      for (const [k, v] of Object.entries(val)) {
+        copy[k] = cleanGlobalIds(v);
+      }
+      return copy;
+    }
+    return val;
+  }
+
   async function load(l) {
     try {
       const res = await fetch(chrome.runtime.getURL(`src/locales/${l}.json`));
@@ -60,7 +78,7 @@
              : key;
         actualParams = fallbackOrParams;
       }
-      return interpolate(tmpl, actualParams);
+      return interpolate(tmpl, cleanGlobalIds(actualParams));
     },
 
     getLang() { return lang; },
