@@ -505,13 +505,13 @@ async function createChild(){
   delete App.state.store.kids[App.state.cur];                          // parent's child list is now stale → reloads on next expand
   recordCreateUndo(r.id,body);
   $('c_title').value='';$('c_title').focus();       // keep form open for rapid multi-create
-  setStatus(`created #${r.id} (${type}) under #${App.state.cur}`);
+  setStatus(`created #${App.backend.nid(r.id)} (${type}) under #${App.backend.nid(App.state.cur)}`);
   refresh();
 }
 // create undo/redo: undo deletes the item; redo re-creates it (new id, rebound).
 function recordCreateUndo(id,createBody){
   const ref={id},cbody={...createBody};
-  pushAction(`create #${id}`,
+  pushAction(`create #${App.backend.nid(id)}`,
     async()=>{await api.deleteItem(ref.id);if(App.state.cur===ref.id)closePanel(true);await afterUndo(null);},
     async()=>{const nn=await api.createItem(cbody);ref.id=nn.id;await afterUndo(null);});
 }

@@ -529,7 +529,8 @@ class MarkdownEditor {
         this.insertAtCursor(md);
       }
       renderAttachments();
-      setStatus(MD_L('md.attached', '#' + wid + ' attached ' + up.name, { id: wid, name: up.name }));
+      const nwid = (window.App && window.App.backend) ? window.App.backend.nid(wid) : wid;
+      setStatus(MD_L('md.attached', '#' + nwid + ' attached ' + up.name, { id: nwid, name: up.name }));
     }
   }
 
