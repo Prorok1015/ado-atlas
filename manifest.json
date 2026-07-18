@@ -6,7 +6,7 @@
   "description": "__MSG_appDesc__",
   "author": "Zakhar Lebediuk",
   "homepage_url": "https://prorok1015.github.io/ado-atlas/",
-  "permissions": ["storage", "identity", "alarms", "notifications", "tabs"],
+  "permissions": ["storage", "identity", "alarms", "notifications"],
   "host_permissions": [
     "https://dev.azure.com/*",
     "https://app.vssps.visualstudio.com/*",
@@ -31,11 +31,5 @@
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["src/components/tutorials/*.json", "src/locales/*.json"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }
