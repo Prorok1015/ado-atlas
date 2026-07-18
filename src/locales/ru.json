@@ -808,5 +808,8 @@
   "common.prev": "Назад",
   "common.skip": "Пропустить",
   "common.finish": "Завершить",
-  "common.next": "Далее"
+  "common.next": "Далее",
+  "sidebar.openParent": "Открыть родительский элемент",
+  "sidebar.showChildren": "Показать дочерние элементы",
+  "sidebar.childrenLabel": "дочерние"
 }

@@ -377,9 +377,10 @@ async function loadTimeline(id){
 // that expands an inline, clickable child list — so you can walk the tree both
 // ways without leaving the editor.
 function renderItemContext(d){
-  const up=d.parent?`<a class="ctxnav" id="s_par" title="open parent">↑ #${d.parent}</a>`:'';
+  const up=d.parent?`<a class="ctxnav" id="s_par" title="${htmlEsc(window.i18n.t('sidebar.openParent', 'Open parent'))}">↑ #${App.backend.nid(d.parent)}</a>`:'';
   const n=App.state.store.nodes[d.id],cc=n?n.childCount:undefined;
-  $('s_ctx').innerHTML=up+`<a class="ctxnav" id="s_kidsbtn" title="show children">↓ children${cc!=null?' ('+cc+')':''}</a>`;
+  const childrenText = window.i18n.t('sidebar.childrenLabel', 'children');
+  $('s_ctx').innerHTML=up+`<a class="ctxnav" id="s_kidsbtn" title="${htmlEsc(window.i18n.t('sidebar.showChildren', 'Show children'))}">↓ ${htmlEsc(childrenText)}${cc!=null?' ('+cc+')':''}</a>`;
   if(d.parent)$('s_par').onclick=()=>openItem(d.parent);
   const kb=$('s_kidsbtn'),box=$('s_kidlist');
   box.style.display='none';box.innerHTML='';

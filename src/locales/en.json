@@ -809,5 +809,8 @@
   "common.prev": "Prev",
   "common.skip": "Skip",
   "common.finish": "Finish",
-  "common.next": "Next"
+  "common.next": "Next",
+  "sidebar.openParent": "Open parent",
+  "sidebar.showChildren": "Show children",
+  "sidebar.childrenLabel": "children"
 }

@@ -809,5 +809,8 @@
   "common.prev": "Prev",
   "common.skip": "Skip",
   "common.finish": "Finish",
-  "common.next": "Next"
+  "common.next": "Next",
+  "sidebar.openParent": "Abrir elemento primario",
+  "sidebar.showChildren": "Mostrar elementos secundarios",
+  "sidebar.childrenLabel": "secundarios"
 }

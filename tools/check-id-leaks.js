@@ -38,7 +38,7 @@ files.forEach(file => {
     if (templateMatch) {
       templateMatch.forEach(match => {
         const inner = match.slice(2, -1).trim();
-        const isIdVar = /\b(id|cur|wid)\b/i.test(inner);
+        const isIdVar = /\b(id|cur|wid|parent)\b/i.test(inner);
         const isWrapped = /\b(nid|rawNid|gidNative|displayId)\b/.test(inner);
         const isExcluded = /\b(identity|widget|guid|rev|valid|provider|client|slider|grid|idx)\b/i.test(inner);
         
@@ -51,9 +51,9 @@ files.forEach(file => {
     }
 
     // 2. String concatenation: e.g. + id, + n.id, id + '...'
-    const concatMatch = line.match(/(?:\+\s*|\b(?:id|n\.id|node\.id|item\.id|cur|wid)\s*\+\s*['"`])/i);
+    const concatMatch = line.match(/(?:\+\s*|\b(?:id|n\.id|node\.id|item\.id|parent|cur|wid)\s*\+\s*['"`])/i);
     if (concatMatch && !/\b(nid|rawNid|gidNative|displayId|guid|identity|rev)\b/.test(line)) {
-      const hasIdConcat = /\b(id|cur|wid|n\.id|node\.id|item\.id)\b/i.test(line) && (line.includes('+') || line.includes('`'));
+      const hasIdConcat = /\b(id|cur|wid|parent|n\.id|node\.id|item\.id)\b/i.test(line) && (line.includes('+') || line.includes('`'));
       if (hasIdConcat && !line.includes('//') && !line.includes('console.')) {
         console.warn(`[LEAK WARNING] ${relativePath}:${index + 1}: Potential ID concatenation without nid()`);
         console.warn(`  Line: ${line.trim()}`);
