@@ -16,6 +16,7 @@ async function oauthTokenRequest(tenant, body) {
   const resp = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
   const text = await resp.text();
   let data = {}; try { data = JSON.parse(text); } catch (_) { /* keep */ }
+
   if (!resp.ok) throw new Error("OAuth: " + (data.error_description || data.error || text.slice(0, 300)));
   return data;
 }
@@ -55,14 +56,26 @@ async function oauthSignIn(clientId, tenant) {
   return await me();
 }
 
+let inFlightRefreshPromise = null;
+
 // Silent refresh using the stored refresh token (no UI).
-async function oauthRefresh() {
-  const { oauthClientId, oauthTenant, oauthRefresh } = await getConfig();
-  if (!oauthRefresh) throw new Error("Session expired — sign in again");
-  const tok = await oauthTokenRequest(oauthTenant, AdoLib.oauthTokenBody({
-    client_id: oauthClientId, grant_type: "refresh_token", refresh_token: oauthRefresh, scope: OAUTH_SCOPE,
-  }));
-  await storeTokens(tok);
+function oauthRefresh() {
+  if (inFlightRefreshPromise) {
+    return inFlightRefreshPromise;
+  }
+  inFlightRefreshPromise = (async () => {
+    try {
+      const { oauthClientId, oauthTenant, oauthRefresh } = await getConfig();
+      if (!oauthRefresh) throw new Error("Session expired — sign in again");
+      const tok = await oauthTokenRequest(oauthTenant, AdoLib.oauthTokenBody({
+        client_id: oauthClientId, grant_type: "refresh_token", refresh_token: oauthRefresh, scope: OAUTH_SCOPE,
+      }));
+      await storeTokens(tok);
+    } finally {
+      inFlightRefreshPromise = null;
+    }
+  })();
+  return inFlightRefreshPromise;
 }
 
 // A valid access token, refreshed if it's missing or within 2 min of expiry.
@@ -114,6 +127,30 @@ function retryDelay(resp, attempt) {
 function isBinaryBody(b) {
   return b instanceof ArrayBuffer || b instanceof Blob || (typeof b === "object" && b && ArrayBuffer.isView(b));
 }
+
+function isRetryableRequest(method, body) {
+  const m = (method || "").toUpperCase();
+  if (m === "GET" || m === "PUT" || m === "DELETE" || m === "HEAD") {
+    return true;
+  }
+  if (m === "PATCH") {
+    if (Array.isArray(body)) {
+      return body.some(op => op && op.op === "test" && op.path === "/rev");
+    }
+    if (typeof body === "string") {
+      try {
+        const parsed = JSON.parse(body);
+        if (Array.isArray(parsed)) {
+          return parsed.some(op => op && op.op === "test" && op.path === "/rev");
+        }
+      } catch (_) {
+        return body.includes('"op":"test"') && body.includes('"path":"/rev"');
+      }
+    }
+  }
+  return false;
+}
+
 async function req(method, url, body, ctype, options) {
   const headers = { Authorization: await authHeader() };
   // Make ADO return a plain 401 instead of redirecting to its sign-in page —
@@ -128,7 +165,7 @@ async function req(method, url, body, ctype, options) {
       resp = await fetch(url, { method, headers, body: payload, signal: options && options.signal });
     } catch (err) {
       if (err.name === 'AbortError') throw err; // Don't retry user aborts
-      if (attempt < MAX_RETRIES) {
+      if (attempt < MAX_RETRIES && isRetryableRequest(method, body)) {
         await sleep(Math.min(500 * Math.pow(2, attempt), 8000) + Math.floor(Math.random() * 250));
         continue;
       }
@@ -150,7 +187,10 @@ async function req(method, url, body, ctype, options) {
     }
     // Retry throttling (429) and transient server errors (5xx) with backoff.
     const retryable = resp.status === 429 || (resp.status >= 500 && resp.status < 600);
-    if (retryable && attempt < MAX_RETRIES) { await sleep(retryDelay(resp, attempt)); continue; }
+    if (retryable && attempt < MAX_RETRIES && isRetryableRequest(method, body)) {
+      await sleep(retryDelay(resp, attempt));
+      continue;
+    }
     throw await errorFrom(resp);
   }
 }
@@ -170,15 +210,22 @@ function mapWorkItem(rawItem, descField) {
   if (!rawItem) return null;
   const f = rawItem.fields || {};
   
+  let targetField = FIELD_REGISTRY.target.ref;
   if (FIELD_REGISTRY.finish.ref in f) {
-    detectedTargetField = FIELD_REGISTRY.finish.ref;
+    targetField = FIELD_REGISTRY.finish.ref;
   } else if (FIELD_REGISTRY.target.ref in f) {
-    detectedTargetField = FIELD_REGISTRY.target.ref;
+    targetField = FIELD_REGISTRY.target.ref;
+  } else {
+    const wtype = f[FIELD_REGISTRY.type.ref];
+    if (wtype === "Product Backlog Item") {
+      targetField = FIELD_REGISTRY.finish.ref;
+    }
   }
 
   const mapped = {
     id: AdoLib.gidMake('ado', rawItem.id),
     rev: rawItem.rev ?? (f["System.Rev"] ?? ""),
+    targetField: targetField
   };
 
   // Map fields dynamically based on FIELD_REGISTRY
@@ -207,7 +254,7 @@ function mapWorkItem(rawItem, descField) {
       mapped.est = v;
       mapped.estimate = v;
     } else if (key === 'target') {
-      mapped.target = v || f[FIELD_REGISTRY.finish.ref] || f[FIELD_REGISTRY.target.ref] || f[FIELD_REGISTRY.due.ref] || "";
+      mapped.target = f[targetField] || v || f[FIELD_REGISTRY.due.ref] || "";
     } else if (key === 'desc' || key === 'ac' || val.type === 'html' || val.type === 'plaintext') {
       mapped[key] = htmlToMarkdown(v || "");
     } else {
@@ -240,4 +287,3 @@ function mapWorkItem(rawItem, descField) {
   }
   return mapped;
 }
-

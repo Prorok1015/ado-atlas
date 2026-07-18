@@ -130,6 +130,48 @@ test("mapWorkItem: maps empty/falsy parent to null", () => {
   }
 });
 
+test("isRetryableRequest: retry is allowed for GET, PUT, DELETE, and HEAD", () => {
+  assert.strictEqual(global.isRetryableRequest("GET"), true);
+  assert.strictEqual(global.isRetryableRequest("PUT"), true);
+  assert.strictEqual(global.isRetryableRequest("DELETE"), true);
+  assert.strictEqual(global.isRetryableRequest("HEAD"), true);
+});
+
+test("isRetryableRequest: retry is NOT allowed for POST", () => {
+  assert.strictEqual(global.isRetryableRequest("POST"), false);
+});
+
+test("isRetryableRequest: PATCH with test /rev is retryable", () => {
+  const body = [{ op: "test", path: "/rev", value: 3 }, { op: "add", path: "/fields/System.Title", value: "New" }];
+  assert.strictEqual(global.isRetryableRequest("PATCH", body), true);
+});
+
+test("isRetryableRequest: PATCH without test /rev is NOT retryable", () => {
+  const body = [{ op: "add", path: "/fields/System.Title", value: "New" }];
+  assert.strictEqual(global.isRetryableRequest("PATCH", body), false);
+});
+
+test("oauthRefresh: concurrent calls reuse the same promise", async () => {
+  let callCount = 0;
+  // Mock oauthTokenRequest to simulate delay
+  global.oauthTokenRequest = async () => {
+    callCount++;
+    return new Promise(resolve => setTimeout(() => resolve({ access_token: "tok1", expires_in: 3600 }), 50));
+  };
+  global.getConfig = async () => ({ oauthClientId: "cid", oauthTenant: "ten", oauthRefresh: "ref" });
+  global.setConfig = async () => {};
+  global.OAUTH_SCOPE = "scope";
+
+  // Trigger concurrent refreshes
+  const p1 = global.oauthRefresh();
+  const p2 = global.oauthRefresh();
+  
+  assert.strictEqual(p1, p2, "Promises must be the exact same instance");
+  await Promise.all([p1, p2]);
+  assert.strictEqual(callCount, 1, "Should only have called token endpoint once");
+});
+
+
 (async () => {
   for (const { name, fn } of queued) {
     try { await fn(); pass++; console.log("  ok   " + name); }

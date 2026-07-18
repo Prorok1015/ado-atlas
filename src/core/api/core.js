@@ -88,8 +88,6 @@ const DEFAULT_FIELDS = [
   "System.Rev",
 ];
 
-let detectedTargetField = null;
-
 const AC_TYPES = new Set(["User Story", "Feature", "Epic", "Issue", "Product Backlog Item"]);
 
 // Same filter registry the chip UI uses. Mirrors FILTER_FIELDS in the old
@@ -155,7 +153,8 @@ async function clearConfig() {
 // ---------- HTTP ----------
 function resolveField(k, wtype) {
   if (k.toLowerCase() === "target") {
-    return detectedTargetField || FIELD_REGISTRY.target.ref;
+    if (wtype === "Product Backlog Item") return FIELD_REGISTRY.finish.ref;
+    return FIELD_REGISTRY.target.ref;
   }
   if (k.toLowerCase() === "desc" || k.toLowerCase() === "description") {
     // If wtype is provided, resolve dynamically; otherwise fallback
