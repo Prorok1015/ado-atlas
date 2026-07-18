@@ -736,6 +736,7 @@
     box.innerHTML=h;
     hydratePreviewImages(box);
     colorMentions(box);
+    hydrateCodeBlocks(box);
 
     if (box && !box.dataset.wired) {
       box.dataset.wired = 'true';
@@ -768,10 +769,46 @@
       };
     }
   }
+
+  function hydrateCodeBlocks(container) {
+    if (!container) return;
+    const pres = container.querySelectorAll("pre");
+    pres.forEach(pre => {
+      if (pre.querySelector(".md-copy-btn")) return;
+      pre.style.position = "relative";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "md-copy-btn";
+      const COPY_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+      const CHECK_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#26a269" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+      btn.innerHTML = COPY_ICON;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const clone = pre.cloneNode(true);
+        const copyBtn = clone.querySelector(".md-copy-btn");
+        if (copyBtn) {
+          copyBtn.remove();
+        }
+        const textToCopy = clone.textContent.replace(/\n$/, '');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          btn.innerHTML = CHECK_ICON;
+          btn.classList.add("success");
+          setTimeout(() => {
+            btn.innerHTML = COPY_ICON;
+            btn.classList.remove("success");
+          }, 2000);
+        }).catch(err => {
+          console.error("Failed to copy code: ", err);
+        });
+      });
+      pre.appendChild(btn);
+    });
+  }
+
   App.activity = {
     showEmojisModal, updateEmojiInputPreview, showEmojiRowError,
     closeEmojisModal, resetEmojis, saveEmojis,
     toggleActivityExpand, toggleActivityFullscreen, initActivityResizer,
-    closeEmojiPicker, loadActivity,
+    closeEmojiPicker, loadActivity, hydrateCodeBlocks,
   };
 })(window.App);

@@ -890,6 +890,70 @@ test("gid: composite work-item id encode/decode (BACKEND_PROVIDER §13.1)", () =
   assert.strictEqual(lib.gidNative(lib.gidMake("ado", 7)), "7");   // round-trip
 });
 
+// ---- Syntax Highlighting and Code Blocks ----
+test("mdToHtml: code block parsing with language tags", () => {
+  const code = "```js\nconst a = 123;\n```";
+  const html = lib.mdToHtml(code);
+  assert.ok(html.includes('<pre>'));
+  assert.ok(html.includes('<span class="hl-keyword">const</span>'));
+  assert.ok(html.includes('<span class="hl-num">123</span>'));
+});
+
+test("mdToHtml: JSON auto-formatting and highlighting", () => {
+  // unformatted JSON
+  const code = "```json\n{\"a\":1}\n```";
+  const html = lib.mdToHtml(code);
+  assert.ok(html.includes('<span class="hl-key">&quot;a&quot;</span>'));
+  assert.ok(html.includes('<span class="hl-num">1</span>'));
+  // formatted JSON contains spacing and spans
+  assert.ok(html.includes('\n  <span class="hl-key">&quot;a&quot;</span>: <span class="hl-num">1</span>\n'));
+});
+
+test("highlightCode: JS tokenization", () => {
+  const code = "/* comment */\nconst x = 'hello'; // inline\n123";
+  const html = lib.highlightCode(code, "js");
+  assert.ok(html.includes('<span class="hl-comment">/* comment */</span>'));
+  assert.ok(html.includes('<span class="hl-comment">// inline</span>'));
+  assert.ok(html.includes('<span class="hl-keyword">const</span>'));
+  assert.ok(html.includes('<span class="hl-string">&#39;hello&#39;</span>'));
+  assert.ok(html.includes('<span class="hl-num">123</span>'));
+});
+
+test("highlightCode: HTML tokenization", () => {
+  const code = "<!-- comment -->\n<div class=\"btn\">hello</div>";
+  const html = lib.highlightCode(code, "html");
+  assert.ok(html.includes('<span class="hl-comment">&lt;!-- comment --&gt;</span>'));
+  assert.ok(html.includes('&lt;<span class="hl-keyword">div</span> class=<span class="hl-string">&quot;btn&quot;</span>&gt;'));
+  assert.ok(html.includes('&lt;/<span class="hl-keyword">div</span>&gt;'));
+});
+
+test("highlightCode: CSS tokenization", () => {
+  const code = "/* comment */\nbody {\n  color: #fff;\n  margin: 10px;\n}";
+  const html = lib.highlightCode(code, "css");
+  assert.ok(html.includes('<span class="hl-comment">/* comment */</span>'));
+  assert.ok(html.includes('<span class="hl-keyword">color</span>'));
+  assert.ok(html.includes('<span class="hl-keyword">margin</span>'));
+  assert.ok(html.includes('<span class="hl-num">10px</span>'));
+});
+
+test("mdToHtml: auto-detect languages", () => {
+  // JSON auto-detect
+  const jsonHtml = lib.mdToHtml("```\n{\"x\": 42}\n```");
+  assert.ok(jsonHtml.includes('hl-key'));
+
+  // HTML auto-detect
+  const htmlHtml = lib.mdToHtml("```\n<div>test</div>\n```");
+  assert.ok(htmlHtml.includes('hl-keyword'));
+
+  // CSS auto-detect
+  const cssHtml = lib.mdToHtml("```\nbody {\n  color: red;\n}\n```");
+  assert.ok(cssHtml.includes('hl-keyword'));
+
+  // JS auto-detect
+  const jsHtml = lib.mdToHtml("```\nconst x = 5;\n```");
+  assert.ok(jsHtml.includes('hl-keyword'));
+});
+
 (async () => {
   for (const { name, fn } of queued) {
     try { await fn(); pass++; console.log("  ok   " + name); }

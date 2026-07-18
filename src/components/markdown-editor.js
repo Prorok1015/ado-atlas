@@ -56,6 +56,7 @@ class MarkdownEditor {
           <button type="button" class="dbtn dbtn-i-only" data-fmt="ol"     title="${htmlEsc(MD_L('md.numberedList', 'Numbered list'))}">1.</button>
           <button type="button" class="dbtn dbtn-i-only" data-fmt="quote"  title="${htmlEsc(MD_L('md.quote', 'Quote'))}">”</button>
           <button type="button" class="dbtn dbtn-i-only" data-fmt="link"   title="${htmlEsc(MD_L('md.insertLink', 'Insert link'))}"><ui-icon name="link"></ui-icon></button>
+          <button type="button" class="dbtn dbtn-i-only" data-fmt="table"  title="${htmlEsc(MD_L('md.insertTable', 'Insert table'))}"><ui-icon name="table"></ui-icon></button>
           <span class="dsep"></span>
           <button type="button" class="dbtn icon ai-btn" id="ai-fmt-btn" title="AI Edit Text" style="color:var(--accent)"><ui-icon name="sparkles"></ui-icon></button>
         </div>
@@ -72,6 +73,17 @@ class MarkdownEditor {
     `;
   }
 
+  adjustHeight() {
+    const ta = this.textarea;
+    if (!ta) return;
+    if (this.container.classList.contains('fullscreen')) {
+      ta.style.height = '';
+      return;
+    }
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  }
+
   initElements() {
     this.textarea = this.container.querySelector('textarea');
     this.previewDiv = this.container.querySelector('.mdview');
@@ -81,6 +93,7 @@ class MarkdownEditor {
     this.fileInput = this.container.querySelector('input[type="file"]');
     this.dropzone = this.container.querySelector('.desc-dropzone');
     this.wrap = this.container.querySelector('.desc-wrap');
+    this.adjustHeight();
   }
 
   bindEvents() {
@@ -180,10 +193,25 @@ class MarkdownEditor {
 
     this.textarea.oninput = () => {
       if (this.options.onInput) this.options.onInput();
+      this.adjustHeight();
     };
     this.textarea.onchange = () => {
       if (this.options.onInput) this.options.onInput();
+      this.adjustHeight();
     };
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => this.adjustHeight());
+      this.resizeObserver.observe(this.textarea);
+    } else {
+      if (!this._windowResizeBound) {
+        window.addEventListener('resize', () => this.adjustHeight());
+        this._windowResizeBound = true;
+      }
+    }
     this.textarea.addEventListener('keydown', (e) => {
       if (this.options.allowMentions) {
         App.state.activeEditor = this;
@@ -265,6 +293,7 @@ class MarkdownEditor {
     if (!this.isEditMode) {
       this.renderPreview();
     }
+    this.adjustHeight();
   }
 
   togglePreview(forceOn) {
@@ -349,6 +378,7 @@ class MarkdownEditor {
         this._origNextSibling = null;
       }
     }
+    this.adjustHeight();
   }
 
   renderPreview() {
@@ -363,6 +393,7 @@ class MarkdownEditor {
     this.previewDiv.innerHTML = html;
     hydratePreviewImages(this.previewDiv);
     if (typeof colorMentions === 'function') colorMentions(this.previewDiv);
+    hydrateCodeBlocks(this.previewDiv);
   }
 
   handleFormat(kind) {
@@ -376,6 +407,7 @@ class MarkdownEditor {
       case 'ol':     return this.prefixLines(i => (i + 1) + '. ', true);
       case 'quote':  return this.prefixLines(() => '> ', true);
       case 'link':   return this.insertLink();
+      case 'table':  return this.insertTable();
     }
   }
 
@@ -471,6 +503,21 @@ class MarkdownEditor {
     ta.value = v.slice(0, s) + ins + v.slice(e);
     ta.selectionStart = s + 1;
     ta.selectionEnd = s + 1 + result.text.length;
+    ta.focus();
+    this.fireChange();
+  }
+
+  insertTable() {
+    if (!this.isEditMode) this.togglePreview(false);
+    const ta = this.textarea;
+    const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
+    const tableTemplate = 
+`| Header 1 | Header 2 |
+| --- | --- |
+| Cell 1 | Cell 2 |`;
+    
+    ta.value = v.slice(0, s) + tableTemplate + v.slice(e);
+    ta.selectionStart = ta.selectionEnd = s + tableTemplate.length;
     ta.focus();
     this.fireChange();
   }
@@ -587,4 +634,39 @@ class MarkdownEditor {
       this.selectionIndicator.style.display = 'none';
     }
   }
+}
+
+function hydrateCodeBlocks(container) {
+  if (!container) return;
+  const pres = container.querySelectorAll("pre");
+  pres.forEach(pre => {
+    if (pre.querySelector(".md-copy-btn")) return;
+    pre.style.position = "relative";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "md-copy-btn";
+    const COPY_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+    const CHECK_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#26a269" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    btn.innerHTML = COPY_ICON;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const clone = pre.cloneNode(true);
+      const copyBtn = clone.querySelector(".md-copy-btn");
+      if (copyBtn) {
+        copyBtn.remove();
+      }
+      const textToCopy = clone.textContent.replace(/\n$/, '');
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        btn.innerHTML = CHECK_ICON;
+        btn.classList.add("success");
+        setTimeout(() => {
+          btn.innerHTML = COPY_ICON;
+          btn.classList.remove("success");
+        }, 2000);
+      }).catch(err => {
+        console.error("Failed to copy code: ", err);
+      });
+    });
+    pre.appendChild(btn);
+  });
 }

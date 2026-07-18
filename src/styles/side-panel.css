@@ -451,6 +451,10 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
 .md-editor.fullscreen textarea {
   resize: none;
 }
+.md-editor:not(.fullscreen) textarea {
+  resize: none;
+  overflow-y: hidden;
+}
 
 /* description editor wrap = relative anchor for the drop overlay */
 .desc-wrap{position:relative}
@@ -486,3 +490,76 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
 .mention-pop .mempty{padding:0.615rem 0.769rem;font-size:0.923rem;color:var(--muted)}
 #status{font-size:0.923rem;color:var(--muted);min-height:1.231rem}
 #statusbar{flex:none;background:var(--panel);border-top:1px solid var(--line);padding:0.231rem 0.923rem;font-size:0.923rem;min-height:1.538rem;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Code highlight copy button */
+.md-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s, border-color 0.2s;
+  z-index: 10;
+}
+.md-copy-btn:hover {
+  background: var(--panel2);
+  color: var(--txt);
+  border-color: var(--accent);
+}
+.md-copy-btn.success {
+  border-color: #26a269;
+}
+pre:hover .md-copy-btn {
+  opacity: 1;
+}
+
+/* Code highlights syntax classes */
+.hl-key { color: var(--hl-key); }
+.hl-string { color: var(--hl-string); }
+.hl-num { color: var(--hl-num); }
+.hl-keyword { color: var(--hl-keyword); }
+.hl-comment { color: var(--hl-comment); font-style: italic; }
+
+/* Code block pre elements styles for preview & comments */
+.mdview pre, .atext pre {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 0.462rem;
+  padding: 0.615rem;
+  overflow: auto;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+/* Markdown tables styling inside side panel preview & activity comments */
+.mdview table, .atext table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+.mdview th, .atext th,
+.mdview td, .atext td {
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.75rem;
+}
+.mdview th, .atext th {
+  background: var(--panel2);
+  font-weight: 600;
+}
+.mdview tr:nth-child(even), .atext tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+body.light .mdview tr:nth-child(even), body.light .atext tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+

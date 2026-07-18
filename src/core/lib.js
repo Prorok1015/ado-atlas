@@ -196,6 +196,110 @@
     return Math.round((exp - today) / 86400000);
   }
 
+  // ---- Syntax Highlighting ----
+  const highlightRegistry = {
+    json: [
+      { token: "hl-key", regex: /"(?:[^"\\]|\\.)*"\s*(?=:)/g },
+      { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"/g },
+      { token: "hl-num", regex: /\b-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g }
+    ],
+    javascript: [
+      { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
+      { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g },
+      { token: "hl-keyword", regex: /\b(const|let|var|function|class|import|export|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|try|catch|finally|throw|async|await|yield|default|extends|super|this)\b/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+    ],
+    html: [
+      { token: "hl-comment", regex: /<!--[\s\S]*?-->/g },
+      { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g },
+      { token: "hl-keyword", regex: /(?<=<\/?)[a-zA-Z0-9:-]+/g }
+    ],
+    css: [
+      { token: "hl-comment", regex: /\/\*[\s\S]*?\*\//g },
+      { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|url\([^)]*\)/g },
+      { token: "hl-keyword", regex: /\b(color|background|margin|padding|border|display|position|top|left|right|bottom|width|height|font|flex|grid|opacity|z-index|box-shadow|text-align|float|clear|overflow|visibility|clip-path|transform|transition|animation|media|keyframes|import)\b|!important|\b[a-zA-Z-]+\b(?=\s*:)/g },
+      { token: "hl-num", regex: /\b-?\d+(?:\.\d+)?(?:px|em|rem|%|s|ms|deg)?\b/g }
+    ]
+  };
+
+  const langAliases = {
+    js: "javascript",
+    ts: "javascript",
+    xml: "html"
+  };
+
+  function highlightCode(code, lang) {
+    const h = s => s.replace(/&(?!(?:[a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);)|[<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    if (lang) {
+      lang = lang.toLowerCase();
+      if (langAliases[lang]) {
+        lang = langAliases[lang];
+      }
+    }
+    
+    if (lang === "json") {
+      try {
+        const parsed = JSON.parse(code);
+        code = JSON.stringify(parsed, null, 2);
+      } catch (e) {
+        // use code as-is
+      }
+    }
+
+    const rules = highlightRegistry[lang];
+    if (!rules) {
+      return h(code);
+    }
+
+    const matches = [];
+    for (const rule of rules) {
+      rule.regex.lastIndex = 0;
+      let match;
+      while ((match = rule.regex.exec(code)) !== null) {
+        if (match[0].length === 0) {
+          rule.regex.lastIndex++;
+          continue;
+        }
+        matches.push({
+          start: match.index,
+          end: rule.regex.lastIndex,
+          token: rule.token,
+          content: match[0]
+        });
+      }
+    }
+
+    matches.sort((a, b) => {
+      if (a.start !== b.start) {
+        return a.start - b.start;
+      }
+      return (b.end - b.start) - (a.end - a.start);
+    });
+
+    const accepted = [];
+    let lastEnd = 0;
+    for (const m of matches) {
+      if (m.start >= lastEnd) {
+        accepted.push(m);
+        lastEnd = m.end;
+      }
+    }
+
+    let out = "";
+    let idx = 0;
+    for (const m of accepted) {
+      if (m.start > idx) {
+        out += h(code.slice(idx, m.start));
+      }
+      out += `<span class="${m.token}">${h(m.content)}</span>`;
+      idx = m.end;
+    }
+    if (idx < code.length) {
+      out += h(code.slice(idx));
+    }
+    return out;
+  }
+
   // ---- markdown-lite -> HTML (used for work-item Description preview) ----
   // Hardened: the inner escaper covers all five HTML-significant chars, and the
   // link rule requires an https?:// scheme with no whitespace, emitting
@@ -261,7 +365,7 @@
       }
       return parts.join("");
     }
-    const ls = (src || "").replace(/\r\n/g, "\n").split("\n"); let out = "", ul = false, ol = false, bq = false, code = false, buf = "";
+    const ls = (src || "").replace(/\r\n/g, "\n").split("\n"); let out = "", ul = false, ol = false, bq = false, code = false, buf = "", codeLang = null;
     const close = () => { if (ul) { out += "</ul>"; ul = false; } if (ol) { out += "</ol>"; ol = false; } if (bq) { out += "</blockquote>"; bq = false; } };
     
     const isTableRow = (line) => line && line.trim().startsWith('|') && line.trim().endsWith('|');
@@ -273,7 +377,39 @@
 
     for (let i = 0; i < ls.length; i++) {
       const raw = ls[i];
-      if (/^```/.test(raw)) { if (code) { out += "<pre>" + h(buf) + "</pre>"; buf = ""; code = false; } else { close(); code = true; } continue; }
+      const mCode = raw.match(/^```(.*)/);
+      if (mCode) {
+        if (code) {
+          let detectedLang = codeLang;
+          if (!detectedLang) {
+            const trimmedBuf = buf.trim();
+            if (trimmedBuf) {
+              try {
+                JSON.parse(trimmedBuf);
+                detectedLang = "json";
+              } catch (e) {
+                if (trimmedBuf.startsWith("<")) {
+                  detectedLang = "html";
+                } else if (trimmedBuf.includes("{") && trimmedBuf.includes("}") && /[\w.-]+\s*\{/.test(trimmedBuf)) {
+                  detectedLang = "css";
+                } else if (/\b(const|let|function|class|import)\b/.test(trimmedBuf) || ["const ", "let ", "function ", "class ", "import "].some(kw => trimmedBuf.includes(kw))) {
+                  detectedLang = "javascript";
+                }
+              }
+            }
+          }
+          
+          out += "<pre>" + highlightCode(buf, detectedLang) + "</pre>";
+          buf = "";
+          code = false;
+          codeLang = null;
+        } else {
+          close();
+          code = true;
+          codeLang = mCode[1].trim() || null;
+        }
+        continue;
+      }
       if (code) { buf += raw + "\n"; continue; }
 
       // Parse Markdown Tables
@@ -613,7 +749,7 @@
   function gidNative(gid) { const s = String(gid); const i = s.indexOf(':'); return i >= 0 ? s.slice(i + 1) : s; }
   function gidProvider(gid) { const s = String(gid); const i = s.indexOf(':'); return i >= 0 ? s.slice(0, i) : null; }
 
-  return { formatMessage, wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml,
+  return { formatMessage, wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml, highlightCode,
            base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath,
            gidMake, gidNative, gidProvider };
 });
