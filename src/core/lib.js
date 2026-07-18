@@ -208,7 +208,7 @@
     opts = opts || {};
     const base = (opts.workItemBase || "").replace(/\/+$/, "");
     const allowImg = opts.allowImages !== false;
-    const h = s => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    const h = s => s.replace(/&(?!(?:[a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);)|[<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
     // Inline pass: order matters — pull images out BEFORE links so ![]() isn't
     // mistaken for a literal "!" followed by [link](...), and pull @-mentions
     // and #123 BEFORE the regular link rule for the same reason.

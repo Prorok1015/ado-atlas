@@ -419,6 +419,13 @@ test("mdToHtml: angle-bracket injection is escaped", () => {
   assert.ok(out.includes("&lt;img"));
   assert.ok(!out.includes("<img"));
 });
+test("mdToHtml: HTML entities are preserved while raw ampersands are escaped", () => {
+  assert.strictEqual(lib.mdToHtml("a & b"), "<p>a &amp; b</p>");
+  assert.strictEqual(lib.mdToHtml("&#128225;"), "<p>&#128225;</p>");
+  assert.strictEqual(lib.mdToHtml("&#x1F4E1;"), "<p>&#x1F4E1;</p>");
+  assert.strictEqual(lib.mdToHtml("&nbsp;"), "<p>&nbsp;</p>");
+  assert.strictEqual(lib.mdToHtml("a &copy b"), "<p>a &amp;copy b</p>");
+});
 test("mdToHtml: strikethrough + underscore-bold + hr + blockquote", () => {
   assert.ok(lib.mdToHtml("~~gone~~").includes("<s>gone</s>"));
   assert.ok(lib.mdToHtml("__bold__").includes("<b>bold</b>"));
