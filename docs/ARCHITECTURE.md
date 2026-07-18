@@ -196,7 +196,6 @@ recursively, so new subfolders ship automatically.
 - **English Fallback**: English (`en.json`) is the primary dictionary and must load first or inline to serve as the fallback for any missing translation keys in other languages.
 - **Interpolation**: Variable interpolation (e.g., `{count} items`) is implemented in `lib.js` as a pure, dependency-free utility to remain fully unit-testable.
 - **DOM Translation Hooks**: Static DOM elements are translated using custom attributes: `data-i18n="translation_key"` updates text content, and `data-i18n-title="translation_key"` updates tooltips.
-- **RTL Language Support**: Setting a language automatically updates the root document direction (`dir="rtl"`) if that language is flagged as right-to-left.
 
 ### 11. Settings Manager (`App.prefs` Details)
 - **Hybrid Storage & Sync**: Houses preferences inside an asynchronous storage KV (`chrome.storage.local` or `chrome.storage.sync`) but maintains a synchronous in-memory cache populated once during early boot. This allows existing hot-path UI code to query preferences synchronously using `App.prefs.get(key)`.
