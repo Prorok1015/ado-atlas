@@ -678,7 +678,7 @@ function hydrateCodeBlocks(container) {
 
     if (isExplicit) {
       const badge = document.createElement("span");
-      badge.className = "md-lang-badge";
+      badge.className = "md-lang-lbl";
       const m = meta[initialLang] || meta[''];
       badge.textContent = m ? m.label : (initialLang || 'Text');
       langSide.appendChild(badge);

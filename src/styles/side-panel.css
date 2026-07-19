@@ -498,6 +498,7 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
 
 /* Outer wrapper: owns the border and radius */
 .md-code-block {
+  position: relative !important;
   border: 1px solid var(--line);
   border-radius: 0.462rem;
   overflow: hidden;
@@ -506,26 +507,32 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
 
 /* Header bar: always visible, thin, sits above the code */
 .md-code-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--panel);
-  border-bottom: 1px solid var(--line);
-  padding: 0 0.5rem;
-  height: 20px;
-  min-height: 20px;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: var(--panel) !important;
+  border-bottom: 1px solid var(--line) !important;
+  padding: 0 0.5rem !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  box-sizing: border-box !important;
 }
 
 /* Language indicator (left side of header) */
 .md-lang-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.615rem;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.02em;
-  user-select: none;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-size: 0.615rem !important;
+  font-weight: 600 !important;
+  color: var(--muted) !important;
+  letter-spacing: 0.02em !important;
+  user-select: none !important;
+  position: static !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* GitHub Linguist-style colored dot */
@@ -537,10 +544,21 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
 }
 
-/* Static badge for explicitly tagged blocks */
-.md-lang-badge {
-  line-height: 1;
-  white-space: nowrap;
+/* Static label for explicitly tagged blocks */
+.md-lang-lbl {
+  display: inline-block !important;
+  position: static !important;
+  font-size: 0.615rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  color: var(--muted) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
 }
 
 /* Select dropdown for auto-detected blocks */
