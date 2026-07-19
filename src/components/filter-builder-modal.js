@@ -1240,18 +1240,10 @@
           const doSave = (savedFilters) => {
             const maxFilters = getMaxSavedFilters();
             if (savedFilters.length >= maxFilters) {
-              // Show a clear message about the saved filters limit
-              let statusEl = saveDialog.querySelector('.fb-save-limit-msg');
-              if (!statusEl) {
-                statusEl = document.createElement('div');
-                statusEl.className = 'fb-save-limit-msg';
-                statusEl.style.cssText = 'color:#e74c3c; font-size:0.85rem; margin-bottom:8px; display:flex; align-items:center; gap:6px;';
-                saveInput.parentNode.insertBefore(statusEl, saveInput.nextSibling);
+              if (window.EntitlementManager && !window.EntitlementManager.gate('filter_presets')) {
+                saveDialog.style.display = 'none';
+                return;
               }
-              statusEl.innerHTML = `<ui-icon name="alert-triangle"></ui-icon> ` + L('filter.save.limitReached', { count: savedFilters.length, max: maxFilters }, `You already have ${savedFilters.length}/${maxFilters} saved filters. Delete one to save a new one.`);
-              saveInput.classList.add('error');
-              setTimeout(() => saveInput.classList.remove('error'), 1500);
-              return;
             }
             savedFilters.push({ id: Date.now().toString(), name, config: JSON.parse(JSON.stringify(currentIR)) });
             if (storage) {

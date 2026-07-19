@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "maxNodeModuleJsDepth": 2
+  },
+  "exclude": ["node_modules", "dist"]
+}

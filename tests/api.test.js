@@ -171,6 +171,104 @@ test("oauthRefresh: concurrent calls reuse the same promise", async () => {
   assert.strictEqual(callCount, 1, "Should only have called token endpoint once");
 });
 
+test("export: exports all items if bulk selection is empty", () => {
+  const exportJs = fs.readFileSync(path.join(__dirname, "../src/app/export.js"), "utf8");
+  
+  let lastDownloadedText = null;
+  global.Blob = class Blob {
+    constructor(parts) {
+      lastDownloadedText = parts[0];
+    }
+  };
+  global.URL = {
+    createObjectURL: () => "blob-url",
+    revokeObjectURL: () => {}
+  };
+  global.document = {
+    createElement: () => ({
+      click: () => {},
+      remove: () => {}
+    }),
+    body: {
+      appendChild: () => {}
+    }
+  };
+  
+  let lastStatus = null;
+  global.setStatus = (msg) => { lastStatus = msg; };
+  
+  global.App = {
+    state: {
+      store: {
+        roots: ["ado:1", "ado:2"],
+        nodes: {
+          "ado:1": { id: "ado:1", title: "Item 1", type: "Task" },
+          "ado:2": { id: "ado:2", title: "Item 2", type: "Bug" }
+        }
+      },
+      bulkSel: new Set()
+    }
+  };
+  global.window = { App: global.App };
+  
+  eval(exportJs);
+  
+  global.App.export.exportView("json");
+  
+  assert.ok(lastDownloadedText.includes("Item 1"));
+  assert.ok(lastDownloadedText.includes("Item 2"));
+  assert.ok(lastStatus.includes("exported 2"));
+});
+
+test("export: exports only selected items if bulk selection is not empty", () => {
+  const exportJs = fs.readFileSync(path.join(__dirname, "../src/app/export.js"), "utf8");
+  
+  let lastDownloadedText = null;
+  global.Blob = class Blob {
+    constructor(parts) {
+      lastDownloadedText = parts[0];
+    }
+  };
+  global.URL = {
+    createObjectURL: () => "blob-url",
+    revokeObjectURL: () => {}
+  };
+  global.document = {
+    createElement: () => ({
+      click: () => {},
+      remove: () => {}
+    }),
+    body: {
+      appendChild: () => {}
+    }
+  };
+  
+  let lastStatus = null;
+  global.setStatus = (msg) => { lastStatus = msg; };
+  
+  global.App = {
+    state: {
+      store: {
+        roots: ["ado:1", "ado:2"],
+        nodes: {
+          "ado:1": { id: "ado:1", title: "Item 1", type: "Task" },
+          "ado:2": { id: "ado:2", title: "Item 2", type: "Bug" }
+        }
+      },
+      bulkSel: new Set(["ado:2"])
+    }
+  };
+  global.window = { App: global.App };
+  
+  eval(exportJs);
+  
+  global.App.export.exportView("json");
+  
+  assert.ok(!lastDownloadedText.includes("Item 1"));
+  assert.ok(lastDownloadedText.includes("Item 2"));
+  assert.ok(lastStatus.includes("exported 1"));
+});
+
 
 (async () => {
   for (const { name, fn } of queued) {

@@ -11,14 +11,18 @@
     "https://dev.azure.com/*",
     "https://app.vssps.visualstudio.com/*",
     "https://login.microsoftonline.com/*",
-    "https://generativelanguage.googleapis.com/*",
-    "https://api.openai.com/*",
     "https://www.google-analytics.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.openai.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
-  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; connect-src https://dev.azure.com https://app.vssps.visualstudio.com https://login.microsoftonline.com https://generativelanguage.googleapis.com https://api.openai.com" },
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; connect-src https://dev.azure.com https://app.vssps.visualstudio.com https://login.microsoftonline.com https://generativelanguage.googleapis.com https://api.openai.com https://www.google-analytics.com; img-src 'self' data: blob: https://dev.azure.com https://*.visualstudio.com; style-src 'self' 'unsafe-inline'"
+  },
   "action": {
     "default_title": "ADO Atlas",
     "default_icon": {

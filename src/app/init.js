@@ -165,7 +165,11 @@ async function initialBoot(postSetup){
     const ss=App.prefs.get('sort');if(ss!==null)$('f_sort').value=ss;
     if(App.prefs.get('showEmpty')!=='0'){$('board').classList.add('showempty');$('empty_btn').classList.add('on');}
     const bg=App.prefs.get('boardGroup');if(bg){boardGroup=bg;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.g===bg));}
-    const tz2=App.prefs.get('tlZoom');if(tz2&&TL_PX[tz2]){App.state.tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.z===tz2));}
+    const tz2=App.prefs.get('tlZoom');if(tz2&&TL_PX[tz2]){App.state.tlZoom=tz2;$('tlzoom').querySelectorAll('button').forEach(x=>{
+      const isSel = x.dataset.z===tz2;
+      x.classList.toggle('on',isSel);
+      x.setAttribute('aria-selected', isSel ? 'true' : 'false');
+    });}
     const tg=App.prefs.get('tlGroup');if(tg){App.state.tlGroup=tg;$('tl_group').value=tg;}
     const sg=App.prefs.get('sprintGroup');if(sg)sprintGroup=sg;
     const au=App.prefs.get('auto');if(au!==null){$('f_auto').value=au;App.settings.setAutoRefresh(au);}
@@ -384,7 +388,11 @@ function wireControls(){
     if(App.state.mode==='board'&&boardGroup!=='sprint')App.board.renderBoard();};   // state/assignee add/remove empty columns in JS (sprints are CSS-only)
   $('grp').querySelectorAll('button').forEach(b=>b.onclick=()=>{boardGroup=b.dataset.g;$('grp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.prefs.set('boardGroup',boardGroup);App.board.renderBoard();});
   // timeline: zoom segment, group select, row click → editor
-  $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));App.prefs.set('tlZoom',App.state.tlZoom);App.timeline.render();});
+  $('tlzoom').querySelectorAll('button').forEach(b=>b.onclick=()=>{App.state.tlZoom=b.dataset.z;$('tlzoom').querySelectorAll('button').forEach(x=>{
+    const isSel = x===b;
+    x.classList.toggle('on',isSel);
+    x.setAttribute('aria-selected', isSel ? 'true' : 'false');
+  });App.prefs.set('tlZoom',App.state.tlZoom);App.timeline.render();});
   $('tl_group').onchange=()=>{App.state.tlGroup=$('tl_group').value;App.prefs.set('tlGroup',App.state.tlGroup);App.timeline.render();};
   $('timeline').addEventListener('click',e=>{const r=e.target.closest&&e.target.closest('.tlrow[data-id]');if(!r)return;
     const id=r.dataset.id;

@@ -119,6 +119,26 @@ function updateBulkBar(){
   const n=App.state.bulkSel.size;
   $('bulkbar').style.display=n?'flex':'none';
   $('bulk_count').textContent=n+' selected';
+  
+  const exportBtn = $('export_btn');
+  if (exportBtn) {
+    const label = window.i18n ? window.i18n.t('export.label', 'Export') : 'Export';
+    const exportSpan = exportBtn.querySelector('span[data-i18n="export.label"]');
+    if (exportSpan) {
+      exportSpan.textContent = n ? `${label} (${n})` : label;
+    }
+  }
+  const csvSpan = $('export_csv_btn')?.querySelector('span[data-i18n="export.csv"]');
+  if (csvSpan) {
+    const label = window.i18n ? window.i18n.t('export.csv', 'CSV') : 'CSV';
+    csvSpan.textContent = n ? `${label} (${n})` : label;
+  }
+  const jsonSpan = $('export_json_btn')?.querySelector('span[data-i18n="export.json"]');
+  if (jsonSpan) {
+    const label = window.i18n ? window.i18n.t('export.json', 'JSON') : 'JSON';
+    jsonSpan.textContent = n ? `${label} (${n})` : label;
+  }
+
   if (n) {
     syncBulkBarValues();
   }

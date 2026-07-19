@@ -153,15 +153,38 @@
     }
 
     async _fetch(url, options) {
+      const signal = options.signal;
+      if (signal && signal.aborted) {
+        return Promise.reject(new DOMException('Aborted', 'AbortError'));
+      }
+      
+      const requestId = Math.random().toString(36).substring(2, 15);
+      
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
         return new Promise((resolve, reject) => {
+          let aborted = false;
+          const onAbort = () => {
+            aborted = true;
+            chrome.runtime.sendMessage({ action: 'abortFetchCloudAI', requestId });
+            reject(new DOMException('Aborted', 'AbortError'));
+          };
+          if (signal) {
+            signal.addEventListener('abort', onAbort);
+          }
+          
           chrome.runtime.sendMessage({
             action: 'fetchCloudAI',
+            requestId,
             url,
             method: options.method,
             headers: options.headers,
             body: options.body
           }, (response) => {
+            if (signal) {
+              signal.removeEventListener('abort', onAbort);
+            }
+            if (aborted) return;
+            
             if (chrome.runtime.lastError) {
               reject(new Error(chrome.runtime.lastError.message));
               return;
@@ -171,7 +194,11 @@
               return;
             }
             if (response.error) {
-              reject(new Error(response.error));
+              if (response.error === 'AbortError' || response.error.includes('aborted') || response.error.includes('AbortError')) {
+                reject(new DOMException('Aborted', 'AbortError'));
+              } else {
+                reject(new Error(response.error));
+              }
               return;
             }
             resolve({

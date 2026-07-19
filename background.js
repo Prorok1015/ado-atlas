@@ -171,8 +171,19 @@ chrome.runtime.onStartup.addListener(async () => {
   await runAllNotificationChecks();
 });
 
+const activeAIRequests = new Map();
+
 // Listen to trigger checks from the frontend page
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === "abortFetchCloudAI") {
+    const controller = activeAIRequests.get(msg.requestId);
+    if (controller) {
+      controller.abort();
+      activeAIRequests.delete(msg.requestId);
+    }
+    if (sendResponse) sendResponse({ success: true });
+    return;
+  }
   if (msg.action === "checkMentionsAndFollows") {
     runAllNotificationChecks().then(() => {
       if (sendResponse) sendResponse({ success: true });
@@ -183,7 +194,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
   if (msg.action === "fetchCloudAI") {
-    const { url, method, headers, body } = msg;
+    const { requestId, url, method, headers, body } = msg;
     chrome.storage.local.get(["ai_custom_config", "ai_custom_providers"], (data) => {
       try {
         const allowedHosts = new Set(["generativelanguage.googleapis.com", "api.openai.com"]);
@@ -214,15 +225,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           throw new Error(`Security exception: domain ${targetUrl.hostname} is not in the allow-list.`);
         }
         
-        fetch(url, { method, headers, body })
+        const controller = new AbortController();
+        if (requestId) {
+          activeAIRequests.set(requestId, controller);
+        }
+        
+        const timeoutSignal = AbortSignal.timeout(30000);
+        const combinedSignal = AbortSignal.any([controller.signal, timeoutSignal]);
+        
+        fetch(url, { method, headers, body, signal: combinedSignal })
           .then(async (res) => {
+            if (requestId) activeAIRequests.delete(requestId);
             const text = await res.text();
             if (sendResponse) sendResponse({ status: res.status, statusText: res.statusText, text });
           })
           .catch((err) => {
-            if (sendResponse) sendResponse({ error: err.message });
+            if (requestId) activeAIRequests.delete(requestId);
+            if (sendResponse) {
+              sendResponse({ error: err.name === 'AbortError' || err.message.includes('aborted') ? 'AbortError' : err.message });
+            }
           });
       } catch (err) {
+        if (requestId) activeAIRequests.delete(requestId);
         if (sendResponse) sendResponse({ error: err.message });
       }
     });

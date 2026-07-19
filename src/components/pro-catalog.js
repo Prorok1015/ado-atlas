@@ -39,6 +39,7 @@
     ]},
     { group: 'proFeatures.group.ai', icon: 'sparkles', items: [
       { key: 'cloud_ai', tier: 'pro', status: 'stub', titleKey: 'proFeatures.item.cloudAi.title', descKey: 'proFeatures.item.cloudAi.desc', pitchTitleKey: 'paywall.feature.cloudAi.title', pitchDescKey: 'paywall.feature.cloudAi.desc' },
+      { key: 'deep_research', tier: 'pro', status: 'planned', titleKey: 'proFeatures.item.deepResearch.title', descKey: 'proFeatures.item.deepResearch.desc', pitchTitleKey: 'paywall.feature.deepResearch.title', pitchDescKey: 'paywall.feature.deepResearch.desc' },
       { key: 'ai_summary', tier: 'pro', status: 'planned', titleKey: 'proFeatures.item.aiSummary.title', descKey: 'proFeatures.item.aiSummary.desc' },
       { key: 'ai_deps', tier: 'pro', status: 'planned', titleKey: 'proFeatures.item.aiDeps.title', descKey: 'proFeatures.item.aiDeps.desc' },
       { key: 'ai_reports', tier: 'pro', status: 'planned', titleKey: 'proFeatures.item.aiReports.title', descKey: 'proFeatures.item.aiReports.desc' },

@@ -27,6 +27,7 @@
   let isDialogVisible = false;
   let isSearchingActive = false;
   let currentResult = null;
+  let activeSearchAbortController = null;
 
   // Background floating card elements
   let backgroundStatusEl = null;
@@ -195,11 +196,8 @@
     if (deepResearchToggle) {
       deepResearchToggle.addEventListener('change', () => {
         if (deepResearchToggle.checked) {
-          if (window.EntitlementManager && !window.EntitlementManager.isPro()) {
+          if (window.EntitlementManager && !window.EntitlementManager.gate('deep_research')) {
             deepResearchToggle.checked = false;
-            if (window.ProFeaturesPanel) {
-              window.ProFeaturesPanel.open();
-            }
           }
         }
       });
@@ -326,6 +324,10 @@
     };
     backgroundDismissBtn.onclick = () => {
       backgroundStatusEl.style.display = 'none';
+      if (activeSearchAbortController) {
+        activeSearchAbortController.abort();
+        activeSearchAbortController = null;
+      }
     };
     backgroundActionBtn.onclick = () => {
       backgroundStatusEl.style.display = 'none';
@@ -378,6 +380,22 @@
   let hideModelDropdown = () => {};
 
   async function testConnection(type, apiKey, endpoint) {
+    const host = endpoint || (type === 'openai' ? 'https://api.openai.com' : 'https://generativelanguage.googleapis.com');
+    try {
+      const u = new URL(host.includes('://') ? host : `https://${host}`);
+      const origin = `${u.protocol}//${u.host}/*`;
+      if (typeof chrome !== 'undefined' && chrome.permissions) {
+        const granted = await new Promise(resolve => {
+          chrome.permissions.request({ origins: [origin] }, resolve);
+        });
+        if (!granted) {
+          throw new Error(`Permission to connect to ${u.host} was not granted.`);
+        }
+      }
+    } catch (err) {
+      throw new Error(`Failed to request host permission: ${err.message}`);
+    }
+
     let url = '';
     let headers = { 'Content-Type': 'application/json' };
     
@@ -394,7 +412,8 @@
     } else {
       let baseUrl = endpoint || 'https://generativelanguage.googleapis.com';
       if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
-      url = `${baseUrl}/v1/models?key=${apiKey}`;
+      url = `${baseUrl}/v1/models`;
+      headers['x-goog-api-key'] = apiKey;
     }
 
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
@@ -794,6 +813,22 @@
 
     settingsSaveBtn.addEventListener('click', async () => {
       saveCurrentFormValues();
+      
+      // Request permissions for all custom/optional endpoints configured
+      for (const p of localProviders) {
+        const host = p.endpoint || (p.providerType === 'openai' ? 'https://api.openai.com' : 'https://generativelanguage.googleapis.com');
+        try {
+          const u = new URL(host.includes('://') ? host : `https://${host}`);
+          const origin = `${u.protocol}//${u.host}/*`;
+          if (typeof chrome !== 'undefined' && chrome.permissions) {
+            await new Promise(resolve => {
+              chrome.permissions.request({ origins: [origin] }, resolve);
+            });
+          }
+        } catch (e) {
+          console.error("Failed to request permission for", host, e);
+        }
+      }
       
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         await chrome.storage.local.set({ ai_custom_providers: localProviders });
@@ -1335,6 +1370,11 @@
     const query = textInput.value.trim();
     if (!query) return;
 
+    if (activeSearchAbortController) {
+      activeSearchAbortController.abort();
+    }
+    activeSearchAbortController = new AbortController();
+
     clearStatus();
     textInput.setAttribute('disabled', 'true');
     submitBtn.setAttribute('disabled', 'true');
@@ -1358,6 +1398,7 @@
       const result = await global.aiSearchService.search(query, {
         reasoningLevel: selectedLevel,
         deepResearch: deepResearchToggle ? deepResearchToggle.checked : false,
+        signal: activeSearchAbortController.signal,
         onProgress: (status, percent) => {
           showProgress(status, percent);
         }
@@ -1414,6 +1455,15 @@
       isSearchingActive = false;
       downloadProgressActive = false;
       hideProgress();
+      
+      if (e.name === 'AbortError') {
+        backgroundStatusEl.style.display = 'none';
+        if (isDialogVisible) {
+          textInput.removeAttribute('disabled');
+          handleTextInput();
+        }
+        return;
+      }
       
       if (isDialogVisible) {
         textInput.removeAttribute('disabled');

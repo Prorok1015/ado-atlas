@@ -8,7 +8,13 @@
 
   const EXPORT_COLS = ['id','type','title','state','assigned','priority','iteration','parent','start','target','est','tags'];
 
-  function exportRows() { return App.state.store.roots.map(id => App.state.store.nodes[id]).filter(Boolean); }
+  function exportRows() {
+    const allRows = App.state.store.roots.map(id => App.state.store.nodes[id]).filter(Boolean);
+    if (App.state.bulkSel && App.state.bulkSel.size > 0) {
+      return allRows.filter(n => App.state.bulkSel.has(n.id));
+    }
+    return allRows;
+  }
 
   function downloadFile(name, mime, text) {
     const url = URL.createObjectURL(new Blob([text], { type: mime }));

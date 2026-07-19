@@ -241,7 +241,11 @@ let tlLabelWidth = 240;                           // sticky left label column wi
 function setMode(m){
   $('sprintview').classList.remove('show');openSprintPath=null;   // leaving board closes the sprint detail
   if(m!=='graph')App.graph.depHandleHide();             // dep drag-handle is graph-only
-  App.state.mode=m;$('mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  App.state.mode=m;$('mode').querySelectorAll('button').forEach(b=>{
+    const isSelected = b.dataset.m===m;
+    b.classList.toggle('on',isSelected);
+    b.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+  });
   $('tree').classList.toggle('show',m==='tree');$('cy').classList.toggle('show',m==='graph');
   $('board').classList.toggle('show',m==='board');$('timeline').classList.toggle('show',m==='timeline');
   $('emode').style.display=$('dir').style.display=(m==='graph')?'inline-flex':'none';
@@ -300,7 +304,7 @@ function renderViewHelp(){
 }
 // The legend is built in JS from VIEW_HELP, so it won't pick up data-i18n DOM
 // updates — re-render it (and the badge panel if open) when the language changes.
-if(window.i18n&&window.i18n.onChange)window.i18n.onChange(()=>{ if($('viewhelp'))renderViewHelp(); if($('badgepanel')&&$('badgepanel').style.display!=='none')renderBadgePanel(); });
+if(window.i18n&&window.i18n.onChange)window.i18n.onChange(()=>{ if($('viewhelp'))renderViewHelp(); if($('badgepanel')&&$('badgepanel').style.display!=='none')renderBadgePanel(); if(typeof updateBulkBar==='function')updateBulkBar(); });
 // Per-view "Show on …" popover (anchored on the Controls box's bottom-left corner).
 // Toggling a checkbox re-renders the matching view so the change shows immediately.
 const BADGE_PANEL_HEADER={graph:'badgePanel.graph',board:'badgePanel.board',tree:'badgePanel.tree',timeline:'badgePanel.timeline'};
