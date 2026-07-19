@@ -469,6 +469,9 @@ test("htmlToMarkdown: headings and lists", () => {
 });
 test("htmlToMarkdown: entities unescaped, tags stripped", () => {
   assert.strictEqual(lib.htmlToMarkdown("<div>a &amp; b</div>"), "a & b");
+  assert.strictEqual(lib.htmlToMarkdown("Gather details fom @&lt;6621C613-53EB-6959-A778-171E7A15A349&gt;"), "Gather details fom @<6621C613-53EB-6959-A778-171E7A15A349>");
+  assert.strictEqual(lib.htmlToMarkdown("fom @<6621C613-53EB-6959-A778-171E7A15A349>"), "fom @<6621C613-53EB-6959-A778-171E7A15A349>");
+  assert.strictEqual(lib.htmlToMarkdown("if x &lt; y and y &gt; z"), "if x < y and y > z");
 });
 test("md round-trip: html -> markdown -> html keeps formatting", () => {
   const html = lib.mdToHtml(lib.htmlToMarkdown("<b>bold</b> and <a href=\"https://x.io\">link</a>"));

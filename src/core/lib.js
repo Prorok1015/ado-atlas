@@ -604,18 +604,20 @@
   // ---- HTML -> markdown-lite (the reverse, so an ADO description round-trips
   // through the editor without losing bold/italic/strike/code/links/headings/
   // lists/blockquotes). Used to populate the Description/AC fields on load. ----
+  const TAG_RE = /<\/?(?:[a-zA-Z][a-zA-Z0-9:-]*)\b[^>]*>|<!--[\s\S]*?-->/g;
+
   function inlineHtmlToMd(s) {
     return String(s)
-      .replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "**" + c.replace(/<[^>]+>/g, "") + "**")
-      .replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "*" + c.replace(/<[^>]+>/g, "") + "*")
-      .replace(/<(s|strike|del)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "~~" + c.replace(/<[^>]+>/g, "") + "~~")
-      .replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (m, c) => "`" + c.replace(/<[^>]+>/g, "") + "`")
+      .replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "**" + c.replace(TAG_RE, "") + "**")
+      .replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "*" + c.replace(TAG_RE, "") + "*")
+      .replace(/<(s|strike|del)\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, _t, c) => "~~" + c.replace(TAG_RE, "") + "~~")
+      .replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (m, c) => "`" + c.replace(TAG_RE, "") + "`")
       // Anchors. Three special cases handled BEFORE the generic [text](url):
       //   - ADO mention (data-vss-mention="version:2.0,<descriptor>")  → @[Name](descriptor)
       //   - work-item edit URL ending in /_workitems/edit/<id>          → #<id>
       //   - plain anchor                                                → [text](url)
       .replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (m, attrs, inner) => {
-        const text = inner.replace(/<[^>]+>/g, "").trim();
+        const text = inner.replace(TAG_RE, "").trim();
         const dm = attrs.match(/\bdata-vss-mention\s*=\s*"version:2\.0,([a-f0-9-]+)"/i);
         if (dm) return "@[" + text.replace(/^@/, "") + "](" + dm[1] + ")";
         const hrefM = attrs.match(/\bhref\s*=\s*"([^"]*)"/i);
@@ -639,8 +641,8 @@
     let t = String(s).replace(/\r\n/g, "\n");
     // Strip ACK control characters that ADO injects as sentinels in comment renderedText
     t = t.replace(/\u0006/g, "");
-    t = t.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (m, c) => "\n```\n" + htmlUnesc(c.replace(/<[^>]+>/g, "")).replace(/\n+$/, "") + "\n```\n");
-    t = t.replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (m, n, c) => "\n" + "#".repeat(Math.max(1, (+n) - 2)) + " " + inlineHtmlToMd(c).replace(/<[^>]+>/g, "").trim() + "\n");
+    t = t.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (m, c) => "\n```\n" + htmlUnesc(c.replace(TAG_RE, "")).replace(/\n+$/, "") + "\n```\n");
+    t = t.replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (m, n, c) => "\n" + "#".repeat(Math.max(1, (+n) - 2)) + " " + inlineHtmlToMd(c).replace(TAG_RE, "").trim() + "\n");
     t = t.replace(/<table\b[^>]*>([\s\S]*?)<\/table>/gi, (m, tableContent) => {
       let headerCols = [];
       const theadMatch = tableContent.match(/<thead\b[^>]*>([\s\S]*?)<\/thead>/i);
@@ -651,7 +653,7 @@
         const thRegex = /<th\b[^>]*>([\s\S]*?)<\/th>/gi;
         let thMatch;
         while ((thMatch = thRegex.exec(trHeadMatch[1])) !== null) {
-          headerCols.push(inlineHtmlToMd(thMatch[1]).replace(/<[^>]+>/g, "").trim());
+          headerCols.push(inlineHtmlToMd(thMatch[1]).replace(TAG_RE, "").trim());
         }
       }
       
@@ -661,7 +663,7 @@
           const tdRegex = /<td\b[^>]*>([\s\S]*?)<\/td>/gi;
           let tdMatch;
           while ((tdMatch = tdRegex.exec(trFirstMatch[1])) !== null) {
-            headerCols.push(inlineHtmlToMd(tdMatch[1]).replace(/<[^>]+>/g, "").trim());
+            headerCols.push(inlineHtmlToMd(tdMatch[1]).replace(TAG_RE, "").trim());
           }
         }
       }
@@ -684,7 +686,7 @@
         const tdRegex = /<td\b[^>]*>([\s\S]*?)<\/td>/gi;
         let tdMatch;
         while ((tdMatch = tdRegex.exec(trMatch[1])) !== null) {
-          cols.push(inlineHtmlToMd(tdMatch[1]).replace(/<[^>]+>/g, "").trim());
+          cols.push(inlineHtmlToMd(tdMatch[1]).replace(TAG_RE, "").trim());
         }
         if (cols.length > 0) {
           dataRows.push(cols);
@@ -704,9 +706,9 @@
     });
 
     t = t.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (m, c) => "\n" + htmlToMarkdown(c).split("\n").map(l => (l ? "> " + l : ">")).join("\n") + "\n");
-    t = t.replace(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (m, c) => { let i = 0; return "\n" + c.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (mm, li) => (++i) + ". " + inlineHtmlToMd(li).replace(/<[^>]+>/g, "").trim() + "\n"); });
+    t = t.replace(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (m, c) => { let i = 0; return "\n" + c.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (mm, li) => (++i) + ". " + inlineHtmlToMd(li).replace(TAG_RE, "").trim() + "\n"); });
     t = t.replace(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (m, c) => "\n" + c.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (mm, li) => {
-      let text = inlineHtmlToMd(li).replace(/<[^>]+>/g, "").trim();
+      let text = inlineHtmlToMd(li).replace(TAG_RE, "").trim();
       const hasChecked = /<input[^>]*checkbox[^>]*checked/i.test(li);
       const hasUnchecked = /<input[^>]*checkbox/i.test(li);
       if (hasChecked) return "- [x] " + text + "\n";
@@ -717,7 +719,7 @@
     t = t.replace(/<br\s*\/?>/gi, "\n");
     t = inlineHtmlToMd(t);
     t = t.replace(/<\/(p|div|tr)>/gi, "\n").replace(/<(p|div)\b[^>]*>/gi, "");
-    t = t.replace(/<[^>]+>/g, "");                       // strip any remaining tags
+    t = t.replace(TAG_RE, "");                       // strip any remaining tags
     t = htmlUnesc(t);
     t = t.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n");
     return t.trim();
