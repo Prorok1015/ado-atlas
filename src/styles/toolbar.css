@@ -77,7 +77,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-size:1rem;l
 .btn-primary:hover:not(:disabled){filter:brightness(1.15)}
 .btn-secondary{background:var(--panel2);color:var(--txt);border-color:var(--line)}
 .btn-secondary:hover:not(:disabled){border-color:var(--accent)}
-select,#bar input{background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:0.462rem;padding:0.308rem 0.538rem;font:inherit;font-size:0.923rem}
+#bar input{background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:0.462rem;padding:0.308rem 0.538rem;font:inherit;font-size:0.923rem}
 /* Force all toolbar controls to the same outer height: line-height 18 + vertical pad 6 (+border 2 for .btn / select; +seg border 2 wraps inner 24) = 2rem */
 #bar > .btn, #bar > .popwrap > .btn, #bar > .projbadge, #bar > select{padding-top:0.231rem;padding-bottom:0.231rem;line-height:1.385rem;box-sizing:border-box}
 #bar > .seg > button{padding-top:0.231rem;padding-bottom:0.231rem;line-height:1.385rem;box-sizing:border-box}

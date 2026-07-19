@@ -203,6 +203,28 @@ async function initialBoot(postSetup){
   } catch (e) {
     console.error('Failed to initialize TutorialManager:', e);
   }
+  // Initialize CustomSelect on all current select elements, and watch for dynamic additions
+  if (window.CustomSelect) {
+    window.CustomSelect.initAll('select');
+    
+    const dynamicSelectObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType !== Node.ELEMENT_NODE) continue;
+          if (node.localName === 'select') {
+            window.CustomSelect.initSingle(node);
+          } else {
+            node.querySelectorAll('select').forEach(window.CustomSelect.initSingle);
+          }
+        }
+      }
+    });
+    dynamicSelectObserver.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
   setupSettingsTooltips();
 }
 

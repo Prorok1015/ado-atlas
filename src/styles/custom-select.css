@@ -1,0 +1,175 @@
+/* Custom Select Container */
+.custom-select-container {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Trigger Button */
+.custom-select-trigger {
+  width: 100%;
+  min-height: 2rem;
+  background: var(--field);
+  color: var(--txt);
+  border: 1px solid var(--line);
+  border-radius: 0.462rem;
+  padding: 0.308rem 2rem 0.308rem 0.538rem;
+  font-family: inherit;
+  font-size: 0.923rem;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa7b4' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.692rem center;
+  background-size: 0.769rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+body.light .custom-select-trigger {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6b7b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+body.theme-ultra .custom-select-trigger {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23878e99' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.custom-select-trigger:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.custom-select-trigger:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(76, 139, 245, 0.25);
+}
+
+.custom-select-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--panel2);
+}
+
+/* Dropdown Menu (Options List) */
+@keyframes selectSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.custom-select-dropdown {
+  position: absolute;
+  z-index: 21000; /* Stacks above dialogs */
+  background: rgba(23, 28, 35, 0.85); /* Semitransparent glassmorphism background */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+  border-radius: 0.615rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  padding: 0.308rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  box-sizing: border-box;
+  animation: selectSlideUp 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.154rem;
+  width: max-content;
+  max-width: 24rem;
+}
+
+body.light .custom-select-dropdown {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+body.theme-ultra .custom-select-dropdown {
+  background: rgba(10, 11, 13, 0.95);
+  border-color: var(--line);
+}
+
+/* Individual Option */
+.custom-select-option {
+  padding: 0.462rem 0.769rem;
+  color: var(--txt);
+  font-size: 0.923rem;
+  border-radius: 0.385rem;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.custom-select-option:hover,
+.custom-select-option:focus-visible {
+  background: var(--panel2);
+  color: var(--accent);
+}
+
+.custom-select-option.selected {
+  background: var(--sel);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Inline/Mini Custom Select for Code Blocks */
+.md-lang-indicator .custom-select-container {
+  display: inline-block;
+}
+
+.md-lang-indicator .custom-select-trigger {
+  min-height: auto;
+  height: auto;
+  border: none;
+  background-color: transparent !important;
+  color: var(--muted) !important;
+  font-size: 0.615rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0 12px 0 0;
+  margin: 0;
+  box-shadow: none !important;
+  border-radius: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+  background-position: right 0 center !important;
+  background-size: 8px !important;
+}
+
+.md-lang-indicator .custom-select-trigger:hover:not(:disabled) {
+  color: var(--txt) !important;
+  border: none;
+}
+
+.md-lang-indicator .custom-select-trigger:focus-visible {
+  box-shadow: none;
+  color: var(--txt) !important;
+  border: none;
+}
+
+.md-lang-indicator .custom-select-dropdown {
+  max-height: 12rem;
+  font-size: 0.8rem;
+}
+
+.md-lang-indicator .custom-select-option {
+  font-size: 0.8rem;
+  padding: 0.3rem 0.5rem;
+}
+
+/* Hide native select elements once custom select is initialized */
+select[data-custom-select-initialized="true"] {
+  display: none !important;
+}

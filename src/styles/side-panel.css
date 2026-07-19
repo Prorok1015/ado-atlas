@@ -54,7 +54,8 @@
 #side h2{font-size:1rem;margin:0;color:var(--muted);font-weight:600}
 .ttl{font-size:1.154rem;font-weight:600}
 label{display:block;font-size:0.769rem;color:var(--muted);text-transform:uppercase;letter-spacing:.0.308rem;margin:0.154rem 0 0.077rem}
-input,textarea,#side select{background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:0.462rem;padding:0.308rem 0.538rem;font:inherit;font-size:0.923rem;width:100%}
+input,textarea{background:var(--field);color:var(--txt);border:1px solid var(--line);border-radius:0.462rem;padding:0.308rem 0.538rem;font:inherit;font-size:0.923rem;width:100%}
+#side select{width:100%;font:inherit}
 textarea{resize:vertical;min-height:4.308rem;font-family:ui-monospace,Consolas,monospace}
 .row{display:flex;gap:0.615rem}.row>*{flex:1}
 .actions{display:flex;gap:0.615rem;margin-top:0.462rem;flex-wrap:wrap;align-items:center}.actions .btn{flex:1}
