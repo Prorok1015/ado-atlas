@@ -6,6 +6,9 @@
   let cachedProject = '';
   let activeView = 'cycle_time';
   let selectedArenaMetric = 'tasks';
+  let selectedSprintPath = '';
+  let burndownMetric = 'points';
+  let throughputTimeframe = 'last4weeks';
   let currentController = null;
   let currentRenderToken = 0;
 
@@ -65,6 +68,15 @@
           </button>
           <button class="analytics-menu-btn" data-view="leaderboard">
             <ui-icon name="trophy"></ui-icon> <span>${L('analytics.menu.leaderboard', 'Team Arena')}</span>
+          </button>
+          <button class="analytics-menu-btn" data-view="burndown">
+            <ui-icon name="trending-down"></ui-icon> <span>${L('analytics.menu.burndown', 'Burndown Chart')}</span>
+          </button>
+          <button class="analytics-menu-btn" data-view="velocity">
+            <ui-icon name="trending-up"></ui-icon> <span>${L('analytics.menu.velocity', 'Sprint Velocity')}</span>
+          </button>
+          <button class="analytics-menu-btn" data-view="throughput">
+            <ui-icon name="users"></ui-icon> <span>${L('analytics.menu.throughput', 'Team Throughput')}</span>
           </button>
         </div>
         <div class="analytics-main">
@@ -200,6 +212,12 @@
       renderBlockedTime(content, items);
     } else if (activeView === 'leaderboard') {
       renderLeaderboard(content, items);
+    } else if (activeView === 'burndown') {
+      renderBurndown(content, items);
+    } else if (activeView === 'velocity') {
+      renderVelocity(content, items);
+    } else if (activeView === 'throughput') {
+      renderThroughput(content, items);
     }
   }
 
@@ -834,6 +852,451 @@
         drawActiveView();
       };
     });
+  }
+
+  // --- 7. Burndown View ---
+  async function renderBurndown(container, items) {
+    let sprints = [];
+    try {
+      if (typeof getIterations === 'function') {
+        sprints = await getIterations();
+      }
+    } catch (_) {}
+
+    // Filter to sprints that have start and end dates
+    const datedSprints = sprints.filter(s => s.start && s.finish);
+
+    if (datedSprints.length === 0) {
+      container.innerHTML = `
+        <div class="analytics-header">
+          <h2>${L('analytics.burndown.title', 'Burndown / Burnup Chart')}</h2>
+          <p class="analytics-desc">${L('analytics.burndown.desc', 'Track day-by-day sprint scope against completed work to assess sprint delivery success.')}</p>
+        </div>
+        <div class="analytics-empty-section">No dated iterations (sprints) found in this project.</div>
+      `;
+      return;
+    }
+
+    // Default selected sprint if empty
+    if (!selectedSprintPath || !datedSprints.some(s => s.path === selectedSprintPath)) {
+      const active = datedSprints.find(isCurrentSprint);
+      selectedSprintPath = active ? active.path : datedSprints[0].path;
+    }
+
+    const selectedSprint = datedSprints.find(s => s.path === selectedSprintPath);
+
+    // Reconstruct list of dates in this sprint (daily array)
+    const start = new Date(selectedSprint.start);
+    const end = new Date(selectedSprint.finish);
+    const sprintDates = [];
+    let cur = new Date(start);
+    while (cur <= end) {
+      sprintDates.push(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+      if (sprintDates.length > 45) break; // sanity safeguard
+    }
+
+    // Fetch revision cache history mapped to item dictionary
+    const historyDict = {};
+    items.forEach(it => {
+      historyDict[it.id] = revisionCache.get(it.id) || [];
+    });
+
+    // Run pure math function from AdoLib
+    const dataPoints = AdoLib.generateBurndownData(items, historyDict, sprintDates, selectedSprint.path);
+
+    // Compute Y max scale
+    const isPoints = burndownMetric === 'points';
+    let yMax = 0;
+    dataPoints.forEach(p => {
+      const val = isPoints ? p.totalPoints : p.totalTasks;
+      if (val > yMax) yMax = val;
+    });
+    if (yMax <= 0) yMax = 10;
+    const yMaxRounded = Math.ceil(yMax / 5) * 5;
+
+    // SVG parameters
+    const svgW = 680;
+    const svgH = 340;
+    const padL = 50;
+    const padR = 20;
+    const padT = 30;
+    const padB = 50;
+    const chartW = svgW - padL - padR;
+    const chartH = svgH - padT - padB;
+
+    const scaleX = (idx) => padL + (idx / (dataPoints.length - 1)) * chartW;
+    const scaleY = (val) => padT + chartH - (val / yMaxRounded) * chartH;
+
+    // Ideal trend path (Diagonal line from start total to 0 at end)
+    const firstPoint = dataPoints[0];
+    const initialVal = isPoints ? firstPoint.totalPoints : firstPoint.totalTasks;
+    const idealX1 = scaleX(0);
+    const idealY1 = scaleY(initialVal);
+    const idealX2 = scaleX(dataPoints.length - 1);
+    const idealY2 = scaleY(0);
+
+    // Build SVG remaining & total scope points path
+    let remainingPathD = '';
+    let totalPathD = '';
+
+    dataPoints.forEach((p, idx) => {
+      const remVal = isPoints ? p.remainingPoints : p.remainingTasks;
+      const totVal = isPoints ? p.totalPoints : p.totalTasks;
+      const x = scaleX(idx);
+      const yRem = scaleY(remVal);
+      const yTot = scaleY(totVal);
+
+      if (idx === 0) {
+        remainingPathD = `M ${x} ${yRem}`;
+        totalPathD = `M ${x} ${yTot}`;
+      } else {
+        // Stepped line renderer: draw horizontal, then vertical to next point
+        const prevX = scaleX(idx - 1);
+        remainingPathD += ` L ${x} ${scaleY(isPoints ? dataPoints[idx-1].remainingPoints : dataPoints[idx-1].remainingTasks)} L ${x} ${yRem}`;
+        totalPathD += ` L ${x} ${scaleY(isPoints ? dataPoints[idx-1].totalPoints : dataPoints[idx-1].totalTasks)} L ${x} ${yTot}`;
+      }
+    });
+
+    // Render Y gridlines & axis labels
+    const gridLines = [];
+    for (let i = 0; i <= 5; i++) {
+      const val = (yMaxRounded / 5) * i;
+      const y = scaleY(val);
+      gridLines.push(`
+        <line x1="${padL}" y1="${y}" x2="${svgW - padR}" y2="${y}" stroke="var(--line)" stroke-dasharray="2 2" />
+        <text x="${padL - 10}" y="${y + 4}" fill="var(--muted)" font-size="11" text-anchor="end">${Math.round(val)}</text>
+      `);
+    }
+
+    // Render X gridlines & dates
+    const xLabels = [];
+    const dateStep = Math.max(1, Math.round(dataPoints.length / 6));
+    dataPoints.forEach((p, idx) => {
+      if (idx % dateStep === 0 || idx === dataPoints.length - 1) {
+        const x = scaleX(idx);
+        const pretty = p.date.slice(5); // e.g. "07-01"
+        xLabels.push(`
+          <line x1="${x}" y1="${padT}" x2="${x}" y2="${padT + chartH}" stroke="var(--line)" stroke-dasharray="2 2" />
+          <text x="${x}" y="${padT + chartH + 18}" fill="var(--muted)" font-size="11" text-anchor="middle">${pretty}</text>
+        `);
+      }
+    });
+
+    container.innerHTML = `
+      <div class="analytics-header">
+        <h2>${L('analytics.burndown.title', 'Burndown / Burnup Chart')}</h2>
+        <p class="analytics-desc">${L('analytics.burndown.desc', 'Track day-by-day sprint scope against completed work to assess sprint delivery success.')}</p>
+      </div>
+
+      <div class="chart-controls-panel">
+        <div class="control-group">
+          <label>${L('analytics.burndown.sprint', 'Select Sprint:')}</label>
+          <select id="burndown_sprint_select">
+            ${datedSprints.map(s => `<option value="${htmlEsc(s.path)}" ${s.path === selectedSprintPath ? 'selected' : ''}>${htmlEsc(s.name)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>${L('analytics.burndown.metric', 'Toggle Metric:')}</label>
+          <div class="arena-toggle-group" style="margin: 0;">
+            <button class="arena-toggle-btn ${isPoints ? 'active' : ''}" data-metric="points">Story Points</button>
+            <button class="arena-toggle-btn ${!isPoints ? 'active' : ''}" data-metric="tasks">Task Count</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-container" style="padding: 1.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 0.615rem;">
+        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" style="display: block; overflow: visible;">
+          <!-- Grid & Ticks -->
+          ${gridLines.join('')}
+          ${xLabels.join('')}
+
+          <!-- Ideal burndown dashed diagonal line -->
+          <line x1="${idealX1}" y1="${idealY1}" x2="${idealX2}" y2="${idealY2}" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="2" />
+
+          <!-- Total Scope line (scope tracking) -->
+          <path d="${totalPathD}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-opacity="0.4" stroke-dasharray="3 1" />
+
+          <!-- Remaining points line (stepped line) -->
+          <path d="${remainingPathD}" fill="none" stroke="var(--accent)" stroke-width="3" />
+
+          <!-- Circle Points -->
+          ${dataPoints.map((p, idx) => {
+            const remVal = isPoints ? p.remainingPoints : p.remainingTasks;
+            const x = scaleX(idx);
+            const y = scaleY(remVal);
+            return `
+              <circle cx="${x}" cy="${y}" r="4" fill="var(--accent)" stroke="var(--panel)" stroke-width="2" style="cursor: pointer;">
+                <title>${p.date}: ${remVal} ${isPoints ? 'SP' : 'Tasks'} remaining / ${isPoints ? p.totalPoints : p.totalTasks} total</title>
+              </circle>
+            `;
+          }).join('')}
+        </svg>
+
+        <div class="chart-legend" style="margin-top: 1rem; display: flex; justify-content: center; gap: 1.5rem; font-size: 0.846rem;">
+          <div style="display: flex; align-items: center; gap: 0.385rem;">
+            <span style="display:inline-block; width:1rem; height:0.2rem; border-top:2px dashed var(--muted);"></span>
+            <span>${L('analytics.burndown.legend.ideal', 'Ideal Burndown')}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.385rem;">
+            <span style="display:inline-block; width:1rem; height:0.2rem; background:var(--accent);"></span>
+            <span>${L('analytics.burndown.legend.remaining', 'Remaining Work')}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.385rem;">
+            <span style="display:inline-block; width:1rem; height:0.2rem; border-top:2px dashed var(--accent); opacity: 0.5;"></span>
+            <span>${L('analytics.burndown.legend.total', 'Total Scope')}</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Wire up events
+    container.querySelector('#burndown_sprint_select').onchange = (e) => {
+      selectedSprintPath = e.target.value;
+      drawActiveView();
+    };
+
+    container.querySelectorAll('.chart-controls-panel .arena-toggle-btn').forEach(btn => {
+      btn.onclick = () => {
+        burndownMetric = btn.dataset.metric;
+        drawActiveView();
+      };
+    });
+  }
+
+  // --- 8. Sprint Velocity View ---
+  async function renderVelocity(container, items) {
+    let sprints = [];
+    try {
+      if (typeof getIterations === 'function') {
+        sprints = await getIterations();
+      }
+    } catch (_) {}
+
+    const datedSprints = sprints.filter(s => s.start && s.finish);
+
+    if (datedSprints.length === 0) {
+      container.innerHTML = `
+        <div class="analytics-header">
+          <h2>${L('analytics.velocity.title', 'Historical Sprint Velocity')}</h2>
+          <p class="analytics-desc">${L('analytics.velocity.desc', 'Compare committed vs delivered work items and story points across recent sprints.')}</p>
+        </div>
+        <div class="analytics-empty-section">No dated iterations (sprints) found.</div>
+      `;
+      return;
+    }
+
+    // Sort chronologically and take last 5 sprints
+    const recentSprints = datedSprints
+      .sort((a, b) => new Date(a.start) - new Date(b.start))
+      .slice(-5);
+
+    const historyDict = {};
+    items.forEach(it => {
+      historyDict[it.id] = revisionCache.get(it.id) || [];
+    });
+
+    // Run pure math calculation
+    const velocityData = AdoLib.calculateSprintVelocity(items, historyDict, recentSprints);
+
+    // Compute max scale
+    let yMax = 0;
+    velocityData.forEach(s => {
+      if (s.committedPoints > yMax) yMax = s.committedPoints;
+      if (s.deliveredPoints > yMax) yMax = s.deliveredPoints;
+    });
+    if (yMax <= 0) yMax = 10;
+    const yMaxRounded = Math.ceil(yMax / 10) * 10;
+
+    const svgW = 680;
+    const svgH = 340;
+    const padL = 50;
+    const padR = 20;
+    const padT = 30;
+    const padB = 50;
+    const chartW = svgW - padL - padR;
+    const chartH = svgH - padT - padB;
+
+    const scaleY = (val) => padT + chartH - (val / yMaxRounded) * chartH;
+    const numSprints = velocityData.length;
+    const groupW = chartW / numSprints;
+    const barW = groupW * 0.35;
+
+    // Y axis labels & grid lines
+    const gridLines = [];
+    for (let i = 0; i <= 5; i++) {
+      const val = (yMaxRounded / 5) * i;
+      const y = scaleY(val);
+      gridLines.push(`
+        <line x1="${padL}" y1="${y}" x2="${svgW - padR}" y2="${y}" stroke="var(--line)" stroke-dasharray="2 2" />
+        <text x="${padL - 10}" y="${y + 4}" fill="var(--muted)" font-size="11" text-anchor="end">${Math.round(val)}</text>
+      `);
+    }
+
+    // Render bars for each sprint
+    const barsMarkup = [];
+    velocityData.forEach((s, idx) => {
+      const groupX = padL + idx * groupW;
+      const commX = groupX + groupW * 0.15;
+      const delivX = commX + barW + groupW * 0.05;
+
+      const commY = scaleY(s.committedPoints);
+      const delivY = scaleY(s.deliveredPoints);
+
+      const commH = Math.max(0, padT + chartH - commY);
+      const delivH = Math.max(0, padT + chartH - delivY);
+
+      barsMarkup.push(`
+        <!-- Committed Bar (Gray/Blue) -->
+        <rect x="${commX}" y="${commY}" width="${barW}" height="${commH}" fill="var(--line)" rx="3" style="transition: all 0.3s ease;">
+          <title>Committed: ${s.committedPoints} SP (${s.committedTasks} tasks)</title>
+        </rect>
+        <text x="${commX + barW/2}" y="${commY - 6}" fill="var(--muted)" font-size="10" font-weight="bold" text-anchor="middle">${Math.round(s.committedPoints)}</text>
+
+        <!-- Delivered Bar (Green/Accent) -->
+        <rect x="${delivX}" y="${delivY}" width="${barW}" height="${delivH}" fill="var(--accent)" rx="3" style="transition: all 0.3s ease;">
+          <title>Delivered: ${s.deliveredPoints} SP (${s.deliveredTasks} tasks)</title>
+        </rect>
+        <text x="${delivX + barW/2}" y="${delivY - 6}" fill="var(--accent)" font-size="10" font-weight="bold" text-anchor="middle">${Math.round(s.deliveredPoints)}</text>
+
+        <!-- Sprint Title -->
+        <text x="${groupX + groupW/2}" y="${padT + chartH + 20}" fill="var(--txt)" font-size="11" font-weight="500" text-anchor="middle">${htmlEsc(s.sprintName)}</text>
+      `);
+    });
+
+    container.innerHTML = `
+      <div class="analytics-header">
+        <h2>${L('analytics.velocity.title', 'Historical Sprint Velocity')}</h2>
+        <p class="analytics-desc">${L('analytics.velocity.desc', 'Compare committed vs delivered work items and story points across recent sprints.')}</p>
+      </div>
+
+      <div class="chart-container" style="padding: 1.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 0.615rem; margin-top: 1.5rem;">
+        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" style="display: block; overflow: visible;">
+          ${gridLines.join('')}
+          ${barsMarkup.join('')}
+        </svg>
+
+        <div class="chart-legend" style="margin-top: 1rem; display: flex; justify-content: center; gap: 1.5rem; font-size: 0.846rem;">
+          <div style="display: flex; align-items: center; gap: 0.385rem;">
+            <span style="display:inline-block; width:1rem; height:0.6rem; background:var(--line); border-radius:2px;"></span>
+            <span>${L('analytics.velocity.legend.committed', 'Committed')}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.385rem;">
+            <span style="display:inline-block; width:1rem; height:0.6rem; background:var(--accent); border-radius:2px;"></span>
+            <span>${L('analytics.velocity.legend.delivered', 'Delivered')}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // --- 9. Team Throughput View ---
+  function renderThroughput(container, items) {
+    const now = new Date();
+    let startDate = '';
+    const endDate = now.toISOString();
+
+    if (throughputTimeframe === 'last4weeks') {
+      const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+      startDate = fourWeeksAgo.toISOString();
+    } else {
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      startDate = ninetyDaysAgo.toISOString();
+    }
+
+    const historyDict = {};
+    items.forEach(it => {
+      historyDict[it.id] = revisionCache.get(it.id) || [];
+    });
+
+    // Run pure math team throughput calculation
+    const counts = AdoLib.calculateTeamThroughput(items, historyDict, startDate, endDate);
+
+    // Convert to sorted array
+    const data = Object.keys(counts).map(name => ({
+      name,
+      count: counts[name]
+    })).sort((a, b) => b.count - a.count);
+
+    if (data.length === 0) {
+      container.innerHTML = `
+        <div class="analytics-header">
+          <h2>${L('analytics.throughput.title', 'Team Throughput')}</h2>
+          <p class="analytics-desc">${L('analytics.throughput.desc', 'Compare tasks completed by each team member within the selected date range.')}</p>
+        </div>
+        <div class="chart-controls-panel">
+          <div class="control-group">
+            <label>${L('analytics.throughput.range', 'Select Range:')}</label>
+            <select id="throughput_range_select">
+              <option value="last4weeks" ${throughputTimeframe === 'last4weeks' ? 'selected' : ''}>${L('analytics.throughput.range.last4weeks', 'Last 4 Weeks')}</option>
+              <option value="last90days" ${throughputTimeframe === 'last90days' ? 'selected' : ''}>${L('analytics.throughput.range.last90days', 'Last 90 Days')}</option>
+            </select>
+          </div>
+        </div>
+        <div class="analytics-empty-section">No tasks were completed in this timeframe.</div>
+      `;
+      return;
+    }
+
+    // Set SVG sizing based on number of assignees (horizontal bar chart)
+    const rowH = 40;
+    const padL = 120;
+    const padR = 40;
+    const padT = 20;
+    const padB = 20;
+    const svgW = 680;
+    const chartW = svgW - padL - padR;
+    const svgH = padT + padB + data.length * rowH;
+
+    const maxCount = Math.max(...data.map(x => x.count));
+    const scaleX = (val) => (val / maxCount) * chartW;
+
+    const bars = data.map((x, idx) => {
+      const y = padT + idx * rowH;
+      const barW = Math.max(10, scaleX(x.count));
+      return `
+        <!-- Assignee Name -->
+        <text x="${padL - 10}" y="${y + 24}" fill="var(--txt)" font-size="11" font-weight="600" text-anchor="end">${htmlEsc(x.name)}</text>
+        
+        <!-- Throughput Bar -->
+        <rect x="${padL}" y="${y + 10}" width="${barW}" height="20" fill="var(--accent)" rx="4">
+          <title>${x.count} tasks completed</title>
+        </rect>
+        
+        <!-- Score label inside or outside the bar -->
+        <text x="${padL + barW + 8}" y="${y + 24}" fill="var(--accent)" font-size="11" font-weight="bold">${x.count}</text>
+      `;
+    });
+
+    container.innerHTML = `
+      <div class="analytics-header">
+        <h2>${L('analytics.throughput.title', 'Team Throughput')}</h2>
+        <p class="analytics-desc">${L('analytics.throughput.desc', 'Compare tasks completed by each team member within the selected date range.')}</p>
+      </div>
+
+      <div class="chart-controls-panel">
+        <div class="control-group">
+          <label>${L('analytics.throughput.range', 'Select Range:')}</label>
+          <select id="throughput_range_select" style="min-width: 10rem;">
+            <option value="last4weeks" ${throughputTimeframe === 'last4weeks' ? 'selected' : ''}>${L('analytics.throughput.range.last4weeks', 'Last 4 Weeks')}</option>
+            <option value="last90days" ${throughputTimeframe === 'last90days' ? 'selected' : ''}>${L('analytics.throughput.range.last90days', 'Last 90 Days')}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="chart-container" style="padding: 1.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 0.615rem; margin-top: 1.5rem;">
+        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" style="display: block; overflow: visible;">
+          ${bars.join('')}
+        </svg>
+      </div>
+    `;
+
+    // Wire up timeframe selection change
+    container.querySelector('#throughput_range_select').onchange = (e) => {
+      throughputTimeframe = e.target.value;
+      drawActiveView();
+    };
   }
 
   // Export module interface

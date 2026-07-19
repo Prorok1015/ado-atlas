@@ -593,5 +593,49 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
   top: 0;
 }
 
+/* SVG Chart Panels & Selectors */
+.chart-controls-panel {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  margin: 1rem 0 1.5rem;
+  flex-wrap: wrap;
+}
+.chart-controls-panel .control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.chart-controls-panel label {
+  font-size: 0.846rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.chart-controls-panel select {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  padding: 0.385rem 0.769rem;
+  border-radius: 0.385rem;
+  font: inherit;
+  font-size: 0.846rem;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.chart-controls-panel select:hover {
+  border-color: var(--muted);
+}
+.chart-controls-panel select:focus {
+  border-color: var(--accent);
+}
+.chart-container svg text {
+  font-family: inherit;
+}
+.chart-legend span {
+  vertical-align: middle;
+}
+
+
 
 

@@ -983,6 +983,68 @@ test("mdToHtml: auto-detect languages", () => {
   assert.ok(shHtml.includes('data-lang="bash"'), 'Shell detected');
 });
 
+test("generateBurndownData: tracks daily remaining effort", () => {
+  const items = [
+    { id: "ado:1", state: "Done", storypoints: 5, iteration: "Sprint 1", createddate: "2026-07-01T00:00:00Z" },
+    { id: "ado:2", state: "New", storypoints: 3, iteration: "Sprint 1", createddate: "2026-07-02T00:00:00Z" }
+  ];
+  const histories = {
+    "ado:1": [
+      { date: "2026-07-04T12:00:00Z", changes: [{ field: "State", from: "Active", to: "Done" }] }
+    ],
+    "ado:2": []
+  };
+  const sprintDates = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05"];
+  const res = lib.generateBurndownData(items, histories, sprintDates, "Sprint 1");
+
+  assert.strictEqual(res.length, 5);
+  assert.deepStrictEqual(res[0], { date: "2026-07-01", remainingPoints: 5, remainingTasks: 1, totalPoints: 5, totalTasks: 1 });
+  assert.deepStrictEqual(res[1], { date: "2026-07-02", remainingPoints: 8, remainingTasks: 2, totalPoints: 8, totalTasks: 2 });
+  assert.deepStrictEqual(res[3], { date: "2026-07-04", remainingPoints: 3, remainingTasks: 1, totalPoints: 8, totalTasks: 2 });
+});
+
+test("calculateSprintVelocity: calculates committed vs delivered points", () => {
+  const items = [
+    { id: "ado:1", state: "Done", storypoints: 8, iteration: "Sprint 1" },
+    { id: "ado:2", state: "Active", storypoints: 5, iteration: "Sprint 1" }
+  ];
+  const histories = {
+    "ado:1": [
+      { date: "2026-07-10T10:00:00Z", changes: [{ field: "State", from: "Active", to: "Done" }] }
+    ],
+    "ado:2": []
+  };
+  const sprints = [
+    { name: "Sprint 1", startDate: "2026-07-01", endDate: "2026-07-14", path: "Sprint 1" }
+  ];
+  const res = lib.calculateSprintVelocity(items, histories, sprints);
+  assert.strictEqual(res.length, 1);
+  assert.deepStrictEqual(res[0], {
+    sprintName: "Sprint 1",
+    committedPoints: 13,
+    committedTasks: 2,
+    deliveredPoints: 8,
+    deliveredTasks: 1
+  });
+});
+
+test("calculateTeamThroughput: aggregates completed tasks per assignee", () => {
+  const items = [
+    { id: "ado:1", state: "Done", assigned: "Alice" },
+    { id: "ado:2", state: "Done", assigned: "Bob" }
+  ];
+  const histories = {
+    "ado:1": [
+      { date: "2026-07-05T10:00:00Z", changes: [{ field: "State", from: "Active", to: "Done" }] }
+    ],
+    "ado:2": [
+      { date: "2026-07-12T10:00:00Z", changes: [{ field: "State", from: "Active", to: "Done" }] }
+    ]
+  };
+  const res = lib.calculateTeamThroughput(items, histories, "2026-07-01", "2026-07-10");
+  assert.deepStrictEqual(res, { Alice: 1 });
+});
+
 (async () => {
   for (const { name, fn } of queued) {
     try { await fn(); pass++; console.log("  ok   " + name); }

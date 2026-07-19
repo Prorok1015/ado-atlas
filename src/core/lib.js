@@ -896,8 +896,206 @@
     '':         { label: 'Text',       color: '#8b949e' }
   };
 
+  function isCompletedState(state) {
+    if (!state) return false;
+    const s = String(state).toLowerCase();
+    return s === 'closed' || s === 'done' || s === 'completed' || s === 'resolved' || s === 'removed';
+  }
+
+  function generateBurndownData(items, histories, sprintDates, sprintIterationPath) {
+    const dates = sprintDates.map(d => new Date(d));
+    const result = [];
+
+    for (const d of dates) {
+      const dTime = new Date(d);
+      dTime.setUTCHours(23, 59, 59, 999);
+
+      let remainingPoints = 0;
+      let remainingTasks = 0;
+      let totalPoints = 0;
+      let totalTasks = 0;
+
+      for (const item of items) {
+        const hist = histories[item.id] || [];
+
+        const createdDateStr = item.createddate || (hist[hist.length - 1] ? hist[hist.length - 1].date : null);
+        if (createdDateStr) {
+          const createdDate = new Date(createdDateStr);
+          if (createdDate > dTime) {
+            continue;
+          }
+        }
+
+        let currentState = item.state;
+        let currentEstimate = Number(item.storypoints || item.estimate || 0);
+        let currentIteration = item.iteration || '';
+
+        for (const update of hist) {
+          const updateDate = new Date(update.date);
+          if (updateDate > dTime) {
+            for (const change of (update.changes || [])) {
+              if (change.field === 'State') {
+                currentState = change.from;
+              } else if (change.field === 'Estimate') {
+                currentEstimate = change.from;
+              } else if (change.field === 'Iteration') {
+                currentIteration = change.from;
+              }
+            }
+          }
+        }
+
+        if (sprintIterationPath && currentIteration !== sprintIterationPath) {
+          continue;
+        }
+
+        const est = Number(currentEstimate) || 0;
+        const isCompleted = isCompletedState(currentState);
+
+        totalTasks++;
+        totalPoints += est;
+
+        if (!isCompleted) {
+          remainingTasks++;
+          remainingPoints += est;
+        }
+      }
+
+      result.push({
+        date: d.toISOString().slice(0, 10),
+        remainingPoints: Math.round(remainingPoints * 10) / 10,
+        remainingTasks,
+        totalPoints: Math.round(totalPoints * 10) / 10,
+        totalTasks
+      });
+    }
+
+    return result;
+  }
+
+  function calculateSprintVelocity(items, histories, sprints) {
+    const result = [];
+
+    for (const sprint of sprints) {
+      const startOfSprint = new Date(sprint.startDate);
+      startOfSprint.setUTCHours(0, 0, 0, 0);
+
+      const endD = new Date(sprint.endDate);
+      endD.setUTCHours(23, 59, 59, 999);
+
+      let committedPoints = 0;
+      let committedTasks = 0;
+      let deliveredPoints = 0;
+      let deliveredTasks = 0;
+
+      for (const item of items) {
+        const hist = histories[item.id] || [];
+
+        // Committed (at start)
+        let commitState = item.state;
+        let commitEstimate = Number(item.storypoints || item.estimate || 0);
+        let commitIteration = item.iteration || '';
+
+        for (const update of hist) {
+          const updateDate = new Date(update.date);
+          if (updateDate > startOfSprint) {
+            for (const change of (update.changes || [])) {
+              if (change.field === 'State') commitState = change.from;
+              else if (change.field === 'Estimate') commitEstimate = change.from;
+              else if (change.field === 'Iteration') commitIteration = change.from;
+            }
+          }
+        }
+
+        if (commitIteration === sprint.path) {
+          const est = Number(commitEstimate) || 0;
+          committedPoints += est;
+          committedTasks++;
+        }
+
+        // Delivered (at end)
+        let deliverState = item.state;
+        let deliverEstimate = Number(item.storypoints || item.estimate || 0);
+        let deliverIteration = item.iteration || '';
+
+        for (const update of hist) {
+          const updateDate = new Date(update.date);
+          if (updateDate > endD) {
+            for (const change of (update.changes || [])) {
+              if (change.field === 'State') deliverState = change.from;
+              else if (change.field === 'Estimate') deliverEstimate = change.from;
+              else if (change.field === 'Iteration') deliverIteration = change.from;
+            }
+          }
+        }
+
+        if (deliverIteration === sprint.path && isCompletedState(deliverState)) {
+          const est = Number(deliverEstimate) || 0;
+          deliveredPoints += est;
+          deliveredTasks++;
+        }
+      }
+
+      result.push({
+        sprintName: sprint.name,
+        committedPoints: Math.round(committedPoints * 10) / 10,
+        committedTasks,
+        deliveredPoints: Math.round(deliveredPoints * 10) / 10,
+        deliveredTasks
+      });
+    }
+
+    return result;
+  }
+
+  function calculateTeamThroughput(items, histories, startDate, endDate) {
+    const startD = new Date(startDate);
+    startD.setUTCHours(0, 0, 0, 0);
+    const endD = new Date(endDate);
+    endD.setUTCHours(23, 59, 59, 999);
+
+    const result = {};
+
+    for (const item of items) {
+      const hist = histories[item.id] || [];
+
+      let completionDate = null;
+      let completedBy = null;
+
+      for (let i = hist.length - 1; i >= 0; i--) {
+        const update = hist[i];
+        const stateChange = (update.changes || []).find(c => c.field === 'State');
+        if (stateChange && isCompletedState(stateChange.to)) {
+          completionDate = new Date(update.date);
+          completedBy = update.by;
+          break;
+        }
+      }
+
+      if (completionDate && completionDate >= startD && completionDate <= endD) {
+        let assigneeAtCompletion = item.assigned || 'Unassigned';
+        for (const update of hist) {
+          const updateDate = new Date(update.date);
+          if (updateDate > completionDate) {
+            const assignChange = (update.changes || []).find(c => c.field === 'Assigned');
+            if (assignChange) {
+              assigneeAtCompletion = assignChange.from;
+            }
+          }
+        }
+
+        const name = assigneeAtCompletion || 'Unassigned';
+        if (name !== 'Unassigned') {
+          result[name] = (result[name] || 0) + 1;
+        }
+      }
+    }
+
+    return result;
+  }
+
   return { formatMessage, wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml, highlightCode,
            highlightRegistry, langAliases, langMeta,
            base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath,
-           gidMake, gidNative, gidProvider };
+           gidMake, gidNative, gidProvider, generateBurndownData, calculateSprintVelocity, calculateTeamThroughput };
 });
