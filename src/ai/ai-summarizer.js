@@ -61,7 +61,11 @@
     // Bind events
     modalEl.querySelector('#ai-summary-modal-close-btn').onclick = closeModal;
     modalEl.querySelector('#ai-summary-modal-ok-btn').onclick = closeModal;
-    backdropEl.onclick = closeModal;
+    backdropEl.onclick = (e) => {
+      if (e.target === backdropEl) {
+        closeModal();
+      }
+    };
     modalEl.querySelector('#ai-summary-modal-regenerate-btn').onclick = () => {
       AISummarizer.summarizeCurrentItem(true);
     };
@@ -237,20 +241,48 @@
           }).join('\n');
         }
 
+        const langCode = (window.i18n && typeof window.i18n.getLang === 'function') ? window.i18n.getLang() : 'en';
+        let langName = 'English';
+        let hOverview = 'Overview';
+        let hObjectives = 'Key Objectives & Details';
+        let hDiscussion = 'Discussion & Progress';
+        let hNextSteps = 'Next Steps / Blockers';
+
+        if (langCode === 'ru') {
+          langName = 'Russian';
+          hOverview = 'Обзор';
+          hObjectives = 'Основные цели и детали';
+          hDiscussion = 'Обсуждение и прогресс';
+          hNextSteps = 'Следующие шаги / Блокаторы';
+        } else if (langCode === 'es') {
+          langName = 'Spanish';
+          hOverview = 'Resumen';
+          hObjectives = 'Objetivos clave y detalles';
+          hDiscussion = 'Discusión y progreso';
+          hNextSteps = 'Próximos pasos / Bloqueadores';
+        } else if (langCode === 'de') {
+          langName = 'German';
+          hOverview = 'Übersicht';
+          hObjectives = 'Wichtigste Ziele & Details';
+          hDiscussion = 'Diskussion & Fortschritt';
+          hNextSteps = 'Nächste Schritte / Hindernisse';
+        }
+
         const systemPrompt = `You are an expert project manager and lead software engineer.
 Analyze the provided Azure DevOps work item details and write a clear, highly structured, professional, and actionable summary.
+Important: The entire summary (including the section headers and their contents) MUST be written in ${langName}.
 
 Format your response in Markdown using the following exact structure:
-### Overview
+### ${hOverview}
 Provide a 1-2 sentence high-level summary of what this work item is about.
 
-### Key Objectives & Details
+### ${hObjectives}
 - Bullet points detailing the core requirements, expected outcomes, or bug symptoms/logs.
 
-### Discussion & Progress
+### ${hDiscussion}
 - Summarize the comments and discussions (if any) to highlight what has been resolved, debated, or investigated.
 
-### Next Steps / Blockers
+### ${hNextSteps}
 - Actionable next steps or highlighted blockers from the details.`;
 
         const userMessage = `Work Item Details:
