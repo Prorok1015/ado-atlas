@@ -863,5 +863,17 @@
   "analytics.table.cycle": "Zykluszeit",
   "analytics.table.age": "Alter im Zustand",
   "analytics.table.inactive": "Inaktiv seit",
-  "analytics.table.tags": "Tags"
+  "analytics.table.tags": "Tags",
+  "analytics.menu.leaderboard": "Team-Arena",
+  "analytics.arena.title": "Team-Arena",
+  "analytics.arena.desc": "Feiern Sie die Teamleistung mit freundschaftlichem Wettbewerb. Schalten Sie Metriken um, um die aktuellen Führenden zu sehen.",
+  "analytics.arena.slayer": "Aufgaben-Jäger",
+  "analytics.arena.velocity": "Geschwindigkeits-Champion",
+  "analytics.arena.speed": "Speedrunner",
+  "analytics.arena.hunter": "Bug-Jäger",
+  "analytics.arena.empty": "Nicht genügend abgeschlossene Elemente, um die Bestenliste zu erstellen.",
+  "analytics.arena.tasks": "Aufgaben",
+  "analytics.arena.points": "Story Points",
+  "analytics.arena.speedDays": "Tage (Avg)",
+  "analytics.arena.bugs": "Bugs"
 }

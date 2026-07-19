@@ -5,6 +5,7 @@
   const revisionCache = new Map();
   let cachedProject = '';
   let activeView = 'cycle_time';
+  let selectedArenaMetric = 'tasks';
   let currentController = null;
   let currentRenderToken = 0;
 
@@ -61,6 +62,9 @@
           </button>
           <button class="analytics-menu-btn" data-view="blocked_time">
             <ui-icon name="slash"></ui-icon> <span>${L('analytics.menu.blocked', 'Blocked Time')}</span>
+          </button>
+          <button class="analytics-menu-btn" data-view="leaderboard">
+            <ui-icon name="trophy"></ui-icon> <span>${L('analytics.menu.leaderboard', 'Team Arena')}</span>
           </button>
         </div>
         <div class="analytics-main">
@@ -194,6 +198,8 @@
       renderStaleItems(content, items);
     } else if (activeView === 'blocked_time') {
       renderBlockedTime(content, items);
+    } else if (activeView === 'leaderboard') {
+      renderLeaderboard(content, items);
     }
   }
 
@@ -614,6 +620,220 @@
         `}
       </div>
     `;
+  }
+
+  // --- 6. Team Arena (Leaderboards) View ---
+  function renderLeaderboard(container, items) {
+    const statsMap = new Map();
+
+    items.forEach(item => {
+      if (!isCompletedState(item.state)) return;
+      const history = revisionCache.get(item.id) || [];
+      const chronological = history.slice().reverse();
+
+      // Calculation logic matching report 1
+      const createdDate = item.createddate || (chronological[0] ? chronological[0].date : null);
+      if (!createdDate) return;
+
+      let completionDate = null;
+      for (let i = history.length - 1; i >= 0; i--) {
+        const update = history[i];
+        const stateChange = (update.changes || []).find(c => c.field === 'State');
+        if (stateChange && isCompletedState(stateChange.to)) {
+          completionDate = update.date;
+          break;
+        }
+      }
+      if (!completionDate) completionDate = item.changeddate || createdDate;
+
+      let startDate = null;
+      for (const update of chronological) {
+        const stateChange = (update.changes || []).find(c => c.field === 'State');
+        if (stateChange && isInProgressState(stateChange.to)) {
+          startDate = update.date;
+          break;
+        }
+      }
+      if (!startDate) startDate = createdDate;
+
+      const cycle = daysBetween(startDate, completionDate);
+      const sp = Number(item.storypoints || item.est || 0);
+      const isBug = (item.type || '').toLowerCase() === 'bug';
+      const assigneeName = item.assigned || 'Unassigned';
+
+      if (assigneeName === 'Unassigned') return; // exclude unassigned from team podiums
+
+      if (!statsMap.has(assigneeName)) {
+        statsMap.set(assigneeName, {
+          name: assigneeName,
+          tasks: 0,
+          points: 0,
+          bugs: 0,
+          cycles: []
+        });
+      }
+
+      const st = statsMap.get(assigneeName);
+      st.tasks++;
+      st.points += sp;
+      if (isBug) st.bugs++;
+      st.cycles.push(cycle);
+    });
+
+    const team = [];
+    for (const [name, st] of statsMap.entries()) {
+      const avgCycle = st.cycles.length ? (st.cycles.reduce((sum, x) => sum + x, 0) / st.cycles.length) : null;
+      team.push({
+        name,
+        tasks: st.tasks,
+        points: Math.round(st.points * 10) / 10,
+        bugs: st.bugs,
+        avgCycle
+      });
+    }
+
+    if (team.length === 0) {
+      container.innerHTML = `
+        <div class="analytics-header">
+          <h2>${L('analytics.arena.title', 'Team Arena')}</h2>
+          <p class="analytics-desc">${L('analytics.arena.desc', 'Celebrate team performance with friendly competition. Toggle metrics to see who currently leads the board.')}</p>
+        </div>
+        <div class="analytics-empty-section">${L('analytics.arena.empty', 'Not enough completed items to build the leaderboard.')}</div>
+      `;
+      return;
+    }
+
+    // Sort the team list based on active toggle metric
+    team.sort((a, b) => {
+      if (selectedArenaMetric === 'tasks') return b.tasks - a.tasks;
+      if (selectedArenaMetric === 'points') return b.points - a.points;
+      if (selectedArenaMetric === 'bugs') return b.bugs - a.bugs;
+      if (selectedArenaMetric === 'speed') {
+        if (a.avgCycle === null) return 1;
+        if (b.avgCycle === null) return -1;
+        return a.avgCycle - b.avgCycle; // shorter cycle is higher rank
+      }
+      return 0;
+    });
+
+    // Extract podium members (1st, 2nd, 3rd)
+    const first = team[0] || null;
+    const second = team[1] || null;
+    const third = team[2] || null;
+
+    const valStr = (x) => {
+      if (!x) return '';
+      if (selectedArenaMetric === 'tasks') return `${x.tasks} ${L('analytics.arena.tasks', 'Tasks')}`;
+      if (selectedArenaMetric === 'points') return `${x.points} SP`;
+      if (selectedArenaMetric === 'bugs') return `${x.bugs} ${L('analytics.arena.bugs', 'Bugs')}`;
+      if (selectedArenaMetric === 'speed') return x.avgCycle !== null ? `${x.avgCycle.toFixed(1)}d` : '—';
+      return '';
+    };
+
+    container.innerHTML = `
+      <div class="analytics-header">
+        <h2>${L('analytics.arena.title', 'Team Arena')}</h2>
+        <p class="analytics-desc">${L('analytics.arena.desc', 'Celebrate team performance with friendly competition. Toggle metrics to see who currently leads the board.')}</p>
+      </div>
+
+      <div class="arena-toggle-group">
+        <button class="arena-toggle-btn ${selectedArenaMetric === 'tasks' ? 'active' : ''}" data-metric="tasks">
+          <ui-icon name="check-square"></ui-icon> <span>${L('analytics.arena.slayer', 'Task Slayer')}</span>
+        </button>
+        <button class="arena-toggle-btn ${selectedArenaMetric === 'points' ? 'active' : ''}" data-metric="points">
+          <ui-icon name="zap"></ui-icon> <span>${L('analytics.arena.velocity', 'Velocity Champion')}</span>
+        </button>
+        <button class="arena-toggle-btn ${selectedArenaMetric === 'speed' ? 'active' : ''}" data-metric="speed">
+          <ui-icon name="clock"></ui-icon> <span>${L('analytics.arena.speed', 'Speedrunner')}</span>
+        </button>
+        <button class="arena-toggle-btn ${selectedArenaMetric === 'bugs' ? 'active' : ''}" data-metric="bugs">
+          <ui-icon name="target"></ui-icon> <span>${L('analytics.arena.hunter', 'Bug Hunter')}</span>
+        </button>
+      </div>
+
+      <div class="podium-wrapper">
+        <!-- 2nd Place Column (Left) -->
+        <div class="podium-col second">
+          ${second ? `
+            <div class="podium-avatar">${second.name.slice(0,2).toUpperCase()}</div>
+            <div class="podium-name">${htmlEsc(second.name)}</div>
+            <div class="podium-value">${valStr(second)}</div>
+            <div class="podium-bar">
+              <span class="podium-medal">🥈</span>
+            </div>
+          ` : '<div class="podium-bar empty"></div>'}
+        </div>
+
+        <!-- 1st Place Column (Center) -->
+        <div class="podium-col first">
+          ${first ? `
+            <div class="podium-avatar">${first.name.slice(0,2).toUpperCase()}</div>
+            <div class="podium-name">${htmlEsc(first.name)}</div>
+            <div class="podium-value">${valStr(first)}</div>
+            <div class="podium-bar">
+              <span class="podium-medal">🥇</span>
+            </div>
+          ` : '<div class="podium-bar empty"></div>'}
+        </div>
+
+        <!-- 3rd Place Column (Right) -->
+        <div class="podium-col third">
+          ${third ? `
+            <div class="podium-avatar">${third.name.slice(0,2).toUpperCase()}</div>
+            <div class="podium-name">${htmlEsc(third.name)}</div>
+            <div class="podium-value">${valStr(third)}</div>
+            <div class="podium-bar">
+              <span class="podium-medal">🥉</span>
+            </div>
+          ` : '<div class="podium-bar empty"></div>'}
+        </div>
+      </div>
+
+      <div class="analytics-section">
+        <h3>Team Scoreboard</h3>
+        <div class="table-container">
+          <table class="analytics-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Assignee</th>
+                <th>${L('analytics.arena.tasks', 'Tasks')}</th>
+                <th>${L('analytics.arena.points', 'Story Points')}</th>
+                <th>${L('analytics.arena.speedDays', 'Days Avg')}</th>
+                <th>${L('analytics.arena.bugs', 'Bugs')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${team.map((x, idx) => {
+                let badge = `${idx + 1}`;
+                if (idx === 0) badge = '🥇';
+                else if (idx === 1) badge = '🥈';
+                else if (idx === 2) badge = '🥉';
+
+                return `
+                  <tr>
+                    <td><strong>${badge}</strong></td>
+                    <td class="table-title"><strong>${htmlEsc(x.name)}</strong></td>
+                    <td>${x.tasks}</td>
+                    <td>${x.points} SP</td>
+                    <td>${x.avgCycle !== null ? `${x.avgCycle.toFixed(1)}d` : '—'}</td>
+                    <td>${x.bugs}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Wire up toggle clicks
+    container.querySelectorAll('.arena-toggle-btn').forEach(btn => {
+      btn.onclick = () => {
+        selectedArenaMetric = btn.dataset.metric;
+        drawActiveView();
+      };
+    });
   }
 
   // Export module interface

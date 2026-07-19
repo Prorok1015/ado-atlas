@@ -863,5 +863,17 @@
   "analytics.table.cycle": "Время цикла",
   "analytics.table.age": "Возраст в состоянии",
   "analytics.table.inactive": "Неактивно",
-  "analytics.table.tags": "Теги"
+  "analytics.table.tags": "Теги",
+  "analytics.menu.leaderboard": "Арена команд",
+  "analytics.arena.title": "Арена команд",
+  "analytics.arena.desc": "Празднуйте успехи команды в дружеском соревновании. Переключайте метрики, чтобы увидеть текущих лидеров.",
+  "analytics.arena.slayer": "Истребитель задач",
+  "analytics.arena.velocity": "Чемпион скорости",
+  "analytics.arena.speed": "Спидраннер",
+  "analytics.arena.hunter": "Охотник на баги",
+  "analytics.arena.empty": "Недостаточно выполненных задач для построения таблицы лидеров.",
+  "analytics.arena.tasks": "Задач",
+  "analytics.arena.points": "Story Points",
+  "analytics.arena.speedDays": "Дней в ср.",
+  "analytics.arena.bugs": "Багов"
 }

@@ -863,5 +863,17 @@
   "analytics.table.cycle": "[!Cycle Time!]",
   "analytics.table.age": "[!Age in State!]",
   "analytics.table.inactive": "[!Inactive For!]",
-  "analytics.table.tags": "[!Tags!]"
+  "analytics.table.tags": "[!Tags!]",
+  "analytics.menu.leaderboard": "[!Team Arena!]",
+  "analytics.arena.title": "[!Team Arena!]",
+  "analytics.arena.desc": "[!Celebrate team performance with friendly competition. Toggle metrics to see who currently leads the board.!]",
+  "analytics.arena.slayer": "[!Task Slayer!]",
+  "analytics.arena.velocity": "[!Velocity Champion!]",
+  "analytics.arena.speed": "[!Speedrunner!]",
+  "analytics.arena.hunter": "[!Bug Hunter!]",
+  "analytics.arena.empty": "[!Not enough completed items to build the leaderboard.!]",
+  "analytics.arena.tasks": "[!Tasks!]",
+  "analytics.arena.points": "[!Story Points!]",
+  "analytics.arena.speedDays": "[!Days Avg!]",
+  "analytics.arena.bugs": "[!Bugs!]"
 }

@@ -863,5 +863,17 @@
   "analytics.table.cycle": "Tiempo de ciclo",
   "analytics.table.age": "Edad en estado",
   "analytics.table.inactive": "Inactivo por",
-  "analytics.table.tags": "Etiquetas"
+  "analytics.table.tags": "Etiquetas",
+  "analytics.menu.leaderboard": "Arena de equipos",
+  "analytics.arena.title": "Arena de equipos",
+  "analytics.arena.desc": "Celebre el rendimiento del equipo con una competencia amistosa. Cambie las métricas para ver quién lidera actualmente.",
+  "analytics.arena.slayer": "Cazador de tareas",
+  "analytics.arena.velocity": "Campeón de velocidad",
+  "analytics.arena.speed": "Speedrunner",
+  "analytics.arena.hunter": "Cazador de errores",
+  "analytics.arena.empty": "No hay suficientes elementos completados para crear la tabla de clasificación.",
+  "analytics.arena.tasks": "Tareas",
+  "analytics.arena.points": "Puntos de historia",
+  "analytics.arena.speedDays": "Días prom.",
+  "analytics.arena.bugs": "Errores"
 }
