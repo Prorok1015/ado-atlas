@@ -248,6 +248,8 @@ function setMode(m){
   });
   $('tree').classList.toggle('show',m==='tree');$('cy').classList.toggle('show',m==='graph');
   $('board').classList.toggle('show',m==='board');$('timeline').classList.toggle('show',m==='timeline');
+  $('analytics').classList.toggle('show',m==='analytics');
+  if (m !== 'analytics' && App.analytics && App.analytics.cleanup) App.analytics.cleanup();
   $('emode').style.display=$('dir').style.display=(m==='graph')?'inline-flex':'none';
   $('fit').style.display=(m==='graph')?'inline-block':'none';   // Fit only makes sense on the graph
   if(m!=='graph'){

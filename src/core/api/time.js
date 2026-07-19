@@ -24,10 +24,10 @@ function parseTs(t) {
 // Business-second overlap (pure math in lib.js, bound to the current window).
 function businessSeconds(s, e, offset) { return AdoLib.businessSeconds(s, e, offset, workStart, workEnd); }
 
-async function updatesFor(wid) {
+async function updatesFor(wid, options) {
   const proj = await projUrl();
   try {
-    const r = await req("GET", `${proj}/_apis/wit/workItems/${wid}/updates?${API_VERSION}`);
+    const r = await req("GET", `${proj}/_apis/wit/workItems/${wid}/updates?${API_VERSION}`, undefined, undefined, options);
     return r.value || [];
   } catch (_) { return []; }
 }

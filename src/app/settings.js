@@ -318,8 +318,8 @@
     if(sec>0)autoTimer=setInterval(autoTick,sec*1000);
   }
   function switchMode(m){setMode(m);App.prefs.set('mode',m);
-    if(App.analytics)App.analytics.track('view_change',{mode:m});
-    if(m==='graph')App.graph.renderGraph({fit:true});else if(m==='board')App.board.renderBoard();else if(m==='timeline')App.timeline.render();else App.tree.renderTree();}
+    if(App.analytics && App.analytics.track)App.analytics.track('view_change',{mode:m});
+    if(m==='graph')App.graph.renderGraph({fit:true});else if(m==='board')App.board.renderBoard();else if(m==='timeline')App.timeline.render();else if(m==='analytics'){if(App.analytics&&App.analytics.renderAnalytics)App.analytics.renderAnalytics();}else App.tree.renderTree();}
 
   // The theme persists a value that may require an entitlement, so it registers a guard
   // instead of wiring onChange() itself. The manager guarantees it runs at boot and on

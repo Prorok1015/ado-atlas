@@ -476,8 +476,8 @@ const HISTORY_FIELDS = {
   [FIELD_REGISTRY.estimate.ref]: "Estimate",
   [FIELD_REGISTRY.tags.ref]: "Tags",
 };
-async function history(wid) {
-  const ups = await updatesFor(wid);
+async function history(wid, options) {
+  const ups = await updatesFor(wid, options);
   const out = [];
   for (const u of ups) {
     const f = u.fields || {};
