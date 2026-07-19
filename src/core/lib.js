@@ -197,72 +197,127 @@
   }
 
   // ---- Syntax Highlighting ----
+  // Tokens: hl-keyword, hl-string, hl-comment, hl-num, hl-key,
+  //         hl-func, hl-type, hl-tag, hl-attr, hl-op, hl-const
   const highlightRegistry = {
     json: [
       { token: "hl-key", regex: /"(?:[^"\\]|\\.)*"(?=\s*:)/g },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"/g },
       { token: "hl-num", regex: /\b-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g },
-      { token: "hl-keyword", regex: /\b(true|false|null)\b/g }
+      { token: "hl-const", regex: /\b(true|false|null)\b/g }
     ],
     javascript: [
       { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g },
-      { token: "hl-keyword", regex: /\b(const|let|var|function|class|import|export|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|try|catch|finally|throw|async|await|yield|default|extends|super|this|of|in|from)\b/g },
-      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+      { token: "hl-const", regex: /\b(true|false|null|undefined|NaN|Infinity)\b/g },
+      { token: "hl-keyword", regex: /\b(const|let|var|function|class|import|export|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|try|catch|finally|throw|async|await|yield|default|extends|super|this|of|in|from|delete|void)\b/g },
+      { token: "hl-type", regex: /\b(Array|Object|String|Number|Boolean|Map|Set|Promise|RegExp|Date|Error|Symbol|WeakMap|WeakSet|Int8Array|Float64Array)\b/g },
+      { token: "hl-func", regex: /\b[a-zA-Z_$][\w$]*(?=\s*\()/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g },
+      { token: "hl-op", regex: /=>|\.{3}|[!=]==?|[<>]=?|&&|\|\||[+\-*/%]=?/g }
     ],
     typescript: [
       { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g },
-      { token: "hl-keyword", regex: /\b(const|let|var|function|class|import|export|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|try|catch|finally|throw|async|await|yield|default|extends|super|this|of|in|from|type|interface|enum|namespace|abstract|implements|readonly|declare|as|is|keyof|infer|never|unknown|any)\b/g },
-      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+      { token: "hl-const", regex: /\b(true|false|null|undefined|NaN|Infinity)\b/g },
+      { token: "hl-keyword", regex: /\b(const|let|var|function|class|import|export|return|if|else|for|while|do|switch|case|break|continue|new|typeof|instanceof|try|catch|finally|throw|async|await|yield|default|extends|super|this|of|in|from|type|interface|enum|namespace|abstract|implements|readonly|declare|as|is|keyof|infer|never|unknown|any|delete|void)\b/g },
+      { token: "hl-type", regex: /\b(Array|Object|String|Number|Boolean|Map|Set|Promise|RegExp|Date|Error|Record|Partial|Required|Readonly|Pick|Omit|Exclude|Extract|ReturnType)\b/g },
+      { token: "hl-func", regex: /\b[a-zA-Z_$][\w$]*(?=\s*[\(<])/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g },
+      { token: "hl-op", regex: /=>|\.{3}|[!=]==?|[<>]=?|&&|\|\||[+\-*/%]=?|\?\??\.?/g }
     ],
     html: [
       { token: "hl-comment", regex: /<!--[\s\S]*?-->/g },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g },
-      { token: "hl-keyword", regex: /(?<=<\/?)[a-zA-Z0-9:-]+/g }
+      { token: "hl-attr", regex: /\b[a-zA-Z-]+(?=\s*=)/g },
+      { token: "hl-tag", regex: /(?<=<\/?)[a-zA-Z0-9:-]+/g },
+      { token: "hl-op", regex: /[<>\/=]/g }
     ],
     css: [
       { token: "hl-comment", regex: /\/\*[\s\S]*?\*\//g },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|url\([^)]*\)/g },
-      { token: "hl-keyword", regex: /\b(color|background|margin|padding|border|display|position|top|left|right|bottom|width|height|font|flex|grid|opacity|z-index|box-shadow|text-align|float|clear|overflow|visibility|clip-path|transform|transition|animation|media|keyframes|import)\b|!important|\b[a-zA-Z-]+\b(?=\s*:)/g },
-      { token: "hl-num", regex: /\b-?\d+(?:\.\d+)?(?:px|em|rem|%|s|ms|deg)?\b/g }
+      { token: "hl-const", regex: /!important/g },
+      { token: "hl-func", regex: /\b(var|calc|rgba?|hsla?|linear-gradient|radial-gradient|clamp|min|max|env|attr)(?=\s*\()/g },
+      { token: "hl-attr", regex: /\b[a-zA-Z-]+\b(?=\s*:)/g },
+      { token: "hl-keyword", regex: /@(media|keyframes|import|font-face|supports|layer|container|property)\b/g },
+      { token: "hl-num", regex: /\b-?\d+(?:\.\d+)?(?:px|em|rem|%|s|ms|deg|vw|vh|fr|ch)?\b|#[0-9a-fA-F]{3,8}\b/g },
+      { token: "hl-tag", regex: /[.#][\w-]+(?![0-9a-fA-F])|::?[\w-]+/g }
     ],
     python: [
       { token: "hl-comment", regex: /#.*/g },
       { token: "hl-string", regex: /"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|f"(?:[^"\\]|\\.)*"|f'(?:[^'\\]|\\.)*'/g },
-      { token: "hl-keyword", regex: /\b(def|class|import|from|return|if|elif|else|for|while|try|except|finally|with|as|raise|yield|lambda|pass|break|continue|and|or|not|is|in|True|False|None|self|async|await|print)\b/g },
-      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+      { token: "hl-const", regex: /\b(True|False|None)\b/g },
+      { token: "hl-keyword", regex: /\b(def|class|import|from|return|if|elif|else|for|while|try|except|finally|with|as|raise|yield|lambda|pass|break|continue|and|or|not|is|in|async|await|del|global|nonlocal|assert)\b/g },
+      { token: "hl-type", regex: /\b(int|float|str|bool|list|dict|tuple|set|bytes|type|object|Exception|range|enumerate|zip|map|filter)\b/g },
+      { token: "hl-func", regex: /\b[a-zA-Z_]\w*(?=\s*\()/g },
+      { token: "hl-attr", regex: /@\w+/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g },
+      { token: "hl-op", regex: /->|:=|\*\*|\/\/|[!=<>]=|[+\-*\/%@]=?/g }
     ],
     sql: [
       { token: "hl-comment", regex: /--.*|\/\*[\s\S]*?\*\//g },
       { token: "hl-string", regex: /'(?:[^'\\]|\\.)*'/g },
-      { token: "hl-keyword", regex: /\b(SELECT|FROM|WHERE|INSERT|INTO|UPDATE|SET|DELETE|CREATE|ALTER|DROP|TABLE|INDEX|VIEW|JOIN|INNER|LEFT|RIGHT|OUTER|FULL|ON|AND|OR|NOT|NULL|IS|IN|BETWEEN|LIKE|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|AS|DISTINCT|UNION|ALL|EXISTS|CASE|WHEN|THEN|ELSE|END|COUNT|SUM|AVG|MIN|MAX|VALUES|PRIMARY|KEY|FOREIGN|REFERENCES|DEFAULT|CONSTRAINT|CASCADE|TRIGGER|FUNCTION|PROCEDURE|BEGIN|COMMIT|ROLLBACK|GRANT|REVOKE|INT|VARCHAR|TEXT|BOOLEAN|DATE|TIMESTAMP|FLOAT|DECIMAL|SERIAL|BIGINT|IF)\b/gi },
-      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+      { token: "hl-const", regex: /\b(NULL|TRUE|FALSE)\b/gi },
+      { token: "hl-keyword", regex: /\b(SELECT|FROM|WHERE|INSERT|INTO|UPDATE|SET|DELETE|CREATE|ALTER|DROP|TABLE|INDEX|VIEW|JOIN|INNER|LEFT|RIGHT|OUTER|FULL|CROSS|ON|AND|OR|NOT|IN|BETWEEN|LIKE|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|AS|DISTINCT|UNION|ALL|EXISTS|CASE|WHEN|THEN|ELSE|END|VALUES|PRIMARY|KEY|FOREIGN|REFERENCES|DEFAULT|CONSTRAINT|CASCADE|TRIGGER|BEGIN|COMMIT|ROLLBACK|GRANT|REVOKE|IF|RETURNING|WITH|RECURSIVE)\b/gi },
+      { token: "hl-func", regex: /\b(COUNT|SUM|AVG|MIN|MAX|COALESCE|CAST|CONVERT|CONCAT|SUBSTRING|LENGTH|TRIM|UPPER|LOWER|NOW|EXTRACT|ROW_NUMBER|RANK|DENSE_RANK|LEAD|LAG)\b/gi },
+      { token: "hl-type", regex: /\b(INT|INTEGER|BIGINT|SMALLINT|SERIAL|VARCHAR|CHAR|TEXT|BOOLEAN|DATE|TIMESTAMP|TIMESTAMPTZ|FLOAT|DOUBLE|DECIMAL|NUMERIC|UUID|JSONB?|BYTEA|BLOB|CLOB|ARRAY)\b/gi },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g },
+      { token: "hl-op", regex: /[<>!=]=?|::|&&|\|\|/g }
     ],
     bash: [
       { token: "hl-comment", regex: /#.*/g },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'[^']*'/g },
-      { token: "hl-keyword", regex: /\b(if|then|else|elif|fi|for|while|do|done|case|esac|function|return|in|local|export|source|echo|exit|cd|ls|grep|sed|awk|cat|rm|mv|cp|mkdir|chmod|chown|sudo|apt|yum|npm|node|git|docker|curl|wget|pip|python|bash|sh|set|unset|readonly|declare|eval|exec|trap)\b/g },
-      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
+      { token: "hl-keyword", regex: /\b(if|then|else|elif|fi|for|while|do|done|case|esac|function|return|in|local|export|source|set|unset|readonly|declare|eval|exec|trap)\b/g },
+      { token: "hl-func", regex: /\b(echo|exit|cd|ls|grep|sed|awk|cat|rm|mv|cp|mkdir|chmod|chown|sudo|apt|yum|npm|node|git|docker|curl|wget|pip|python|bash|sh|read|printf|test|find|sort|xargs|tar|kill|ps|df|du)\b/g },
+      { token: "hl-attr", regex: /\$\{?\w+\}?/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g },
+      { token: "hl-op", regex: /\|\||&&|;;|[<>|&;]/g }
     ],
     csharp: [
-      { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
+      { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\/|\/\/\/.*$/gm },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|@"(?:[^"]|"")*"|\$"(?:[^"\\]|\\.)*"/g },
-      { token: "hl-keyword", regex: /\b(using|namespace|class|struct|interface|enum|public|private|protected|internal|static|abstract|virtual|override|sealed|readonly|const|new|return|if|else|for|foreach|while|do|switch|case|break|continue|try|catch|finally|throw|async|await|var|string|int|bool|void|null|true|false|this|base|get|set|value|partial|yield|where|select|from|in|ref|out|params|typeof|is|as|object|dynamic|decimal|float|double|long|byte|char|event|delegate|lock|task|Task)\b/g },
-      { token: "hl-num", regex: /\b\d+(?:\.\d+)?[fdmLuU]?\b/g }
+      { token: "hl-const", regex: /\b(true|false|null)\b/g },
+      { token: "hl-keyword", regex: /\b(using|namespace|class|struct|interface|enum|public|private|protected|internal|static|abstract|virtual|override|sealed|readonly|const|new|return|if|else|for|foreach|while|do|switch|case|break|continue|try|catch|finally|throw|async|await|var|partial|yield|where|select|from|in|ref|out|params|typeof|is|as|lock|delegate|event|get|set|value|this|base)\b/g },
+      { token: "hl-type", regex: /\b(string|int|bool|void|object|dynamic|decimal|float|double|long|short|byte|char|uint|ulong|ushort|sbyte|nint|nuint|Task|List|Dictionary|IEnumerable|Action|Func|Nullable|Span|Memory|ValueTask)\b/g },
+      { token: "hl-func", regex: /\b[A-Z]\w*(?=\s*[\(<])|(?<=\.)\w+(?=\s*\()/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?[fdmLuU]?\b/g },
+      { token: "hl-op", regex: /=>|[!=<>]=?|\?\?=?|\?\.|\.\./g }
+    ],
+    c: [
+      { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
+      { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g },
+      { token: "hl-const", regex: /\b(NULL|true|false|TRUE|FALSE|EOF|EXIT_SUCCESS|EXIT_FAILURE)\b/g },
+      { token: "hl-keyword", regex: /\b(if|else|for|while|do|switch|case|break|continue|return|goto|typedef|struct|union|enum|extern|static|const|volatile|register|inline|sizeof|signed|unsigned|auto|restrict|_Atomic|_Generic|_Static_assert)\b/g },
+      { token: "hl-type", regex: /\b(void|int|char|float|double|long|short|size_t|ssize_t|ptrdiff_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|bool|FILE|wchar_t)\b/g },
+      { token: "hl-attr", regex: /^\s*#\s*\w+/gm },
+      { token: "hl-func", regex: /\b[a-zA-Z_]\w*(?=\s*\()/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?[fFlLuU]*\b|0x[0-9a-fA-F]+\b/g },
+      { token: "hl-op", regex: /->|\+\+|--|<<|>>|[!=<>]=?|&&|\|\||[+\-*\/%&|^~]=?/g }
+    ],
+    cpp: [
+      { token: "hl-comment", regex: /\/\/.*|\/\*[\s\S]*?\*\//g },
+      { token: "hl-string", regex: /R"[^(]*\([^)]*\)[^"]*"|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g },
+      { token: "hl-const", regex: /\b(true|false|nullptr|NULL|this)\b/g },
+      { token: "hl-keyword", regex: /\b(if|else|for|while|do|switch|case|break|continue|return|goto|typedef|struct|union|enum|class|public|private|protected|virtual|override|final|static|const|constexpr|consteval|constinit|extern|inline|explicit|friend|mutable|volatile|register|template|typename|namespace|using|throw|try|catch|noexcept|new|delete|sizeof|alignof|decltype|auto|co_await|co_yield|co_return|concept|requires|export|module|import)\b/g },
+      { token: "hl-type", regex: /\b(void|int|char|float|double|long|short|bool|size_t|string|wstring|vector|map|unordered_map|set|unordered_set|list|deque|array|pair|tuple|optional|variant|any|shared_ptr|unique_ptr|weak_ptr|span|string_view|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t)\b/g },
+      { token: "hl-attr", regex: /^\s*#\s*\w+/gm },
+      { token: "hl-func", regex: /\b[a-zA-Z_]\w*(?=\s*[\(<])/g },
+      { token: "hl-num", regex: /\b\d+(?:\.\d+)?[fFlLuU]*\b|0x[0-9a-fA-F]+(?:'[0-9a-fA-F]+)*\b/g },
+      { token: "hl-op", regex: /->|\+\+|--|<<|>>|<=>|::|[!=<>]=?|&&|\|\||[+\-*\/%&|^~]=?/g }
     ],
     yaml: [
       { token: "hl-comment", regex: /#.*/g },
       { token: "hl-key", regex: /^[ \t]*[\w.\/-]+(?=\s*:)/gm },
       { token: "hl-string", regex: /"(?:[^"\\]|\\.)*"|'[^']*'/g },
-      { token: "hl-keyword", regex: /\b(true|false|null|yes|no|on|off)\b/gi },
+      { token: "hl-const", regex: /\b(true|false|null|yes|no|on|off)\b/gi },
       { token: "hl-num", regex: /\b\d+(?:\.\d+)?\b/g }
     ],
     markdown: [
       { token: "hl-keyword", regex: /^#{1,6}\s.*/gm },
       { token: "hl-string", regex: /\*\*[^*]+\*\*|__[^_]+__/g },
       { token: "hl-comment", regex: /^\s*>\s.*/gm },
-      { token: "hl-num", regex: /\[[^\]]+\]\([^)]+\)/g }
+      { token: "hl-func", regex: /\[[^\]]+\]\([^)]+\)/g },
+      { token: "hl-attr", regex: /`[^`]+`/g }
     ]
   };
 
@@ -281,7 +336,12 @@
     ps1: "bash",
     cs: "csharp",
     yml: "yaml",
-    md: "markdown"
+    md: "markdown",
+    h: "c",
+    hpp: "cpp",
+    cc: "cpp",
+    cxx: "cpp",
+    "c++": "cpp"
   };
 
   function highlightCode(code, lang) {
@@ -825,6 +885,8 @@
     sql:        { label: 'SQL',        color: '#e38c00' },
     bash:       { label: 'Shell',      color: '#89e051' },
     csharp:     { label: 'C#',         color: '#178600' },
+    c:          { label: 'C',          color: '#555555' },
+    cpp:        { label: 'C++',        color: '#f34b7d' },
     yaml:       { label: 'YAML',       color: '#cb171e' },
     markdown:   { label: 'Markdown',   color: '#083fa1' },
     '':         { label: 'Text',       color: '#8b949e' }

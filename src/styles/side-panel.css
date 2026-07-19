@@ -635,6 +635,12 @@ a[data-vss-mention]{background:rgba(59,125,224,0.1);color:var(--accent);padding:
 .hl-num { color: var(--hl-num); }
 .hl-keyword { color: var(--hl-keyword); }
 .hl-comment { color: var(--hl-comment); font-style: italic; }
+.hl-func { color: var(--hl-func); }
+.hl-type { color: var(--hl-type); }
+.hl-tag { color: var(--hl-tag); }
+.hl-attr { color: var(--hl-attr); }
+.hl-op { color: var(--hl-op); }
+.hl-const { color: var(--hl-const); font-weight: 600; }
 
 /* Markdown tables styling inside side panel preview & activity comments */
 .mdview table, .atext table {

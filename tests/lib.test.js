@@ -924,17 +924,19 @@ test("highlightCode: HTML tokenization", () => {
   const code = "<!-- comment -->\n<div class=\"btn\">hello</div>";
   const html = lib.highlightCode(code, "html");
   assert.ok(html.includes('<span class="hl-comment">&lt;!-- comment --&gt;</span>'));
-  assert.ok(html.includes('&lt;<span class="hl-keyword">div</span> class=<span class="hl-string">&quot;btn&quot;</span>&gt;'));
-  assert.ok(html.includes('&lt;/<span class="hl-keyword">div</span>&gt;'));
+  assert.ok(html.includes('<span class="hl-tag">div</span>'), 'div tag highlighted');
+  assert.ok(html.includes('<span class="hl-attr">class</span>'), 'class attribute highlighted');
+  assert.ok(html.includes('<span class="hl-string">&quot;btn&quot;</span>'), 'attr value highlighted');
 });
 
 test("highlightCode: CSS tokenization", () => {
   const code = "/* comment */\nbody {\n  color: #fff;\n  margin: 10px;\n}";
   const html = lib.highlightCode(code, "css");
   assert.ok(html.includes('<span class="hl-comment">/* comment */</span>'));
-  assert.ok(html.includes('<span class="hl-keyword">color</span>'));
-  assert.ok(html.includes('<span class="hl-keyword">margin</span>'));
+  assert.ok(html.includes('<span class="hl-attr">color</span>'), 'CSS property highlighted as attr');
+  assert.ok(html.includes('<span class="hl-attr">margin</span>'), 'CSS property highlighted as attr');
   assert.ok(html.includes('<span class="hl-num">10px</span>'));
+  assert.ok(html.includes('<span class="hl-num">#fff</span>'), 'hex color highlighted');
 });
 
 test("mdToHtml: auto-detect languages", () => {
@@ -944,7 +946,7 @@ test("mdToHtml: auto-detect languages", () => {
 
   // HTML auto-detect
   const htmlHtml = lib.mdToHtml("```\n<div>test</div>\n```");
-  assert.ok(htmlHtml.includes('hl-keyword'));
+  assert.ok(htmlHtml.includes('hl-tag'), 'HTML auto-detect finds tags');
 
   // CSS auto-detect
   const cssHtml = lib.mdToHtml("```\nbody {\n  color: red;\n}\n```");
