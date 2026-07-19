@@ -636,6 +636,405 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
   vertical-align: middle;
 }
 
+/* --- Gamification & Sprint Dashboard Redesign Styles --- */
 
+/* Dashboard Layout Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
 
+.dashboard-col-3 { grid-column: span 3; }
+.dashboard-col-4 { grid-column: span 4; }
+.dashboard-col-6 { grid-column: span 6; }
+.dashboard-col-8 { grid-column: span 8; }
+.dashboard-col-9 { grid-column: span 9; }
+.dashboard-col-12 { grid-column: span 12; }
 
+@media (max-width: 768px) {
+  .dashboard-col-3, .dashboard-col-4, .dashboard-col-6, .dashboard-col-8, .dashboard-col-9, .dashboard-col-12 {
+    grid-column: span 12;
+  }
+}
+
+/* Sidebar navigation section header styles */
+.analytics-menu-section-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin: 1.2rem 0 0.4rem 0.692rem;
+}
+
+/* Enhanced Health Ring representation */
+.health-ring-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  position: relative;
+}
+
+.health-ring-svg {
+  transform: rotate(-90deg);
+}
+
+.health-ring-bg {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 8;
+}
+
+.health-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dasharray 1s ease-out, stroke 1s ease-out;
+}
+
+.health-ring-fill.health-good { stroke: #2ebb4e; }
+.health-ring-fill.health-warn { stroke: #e0a13c; }
+.health-ring-fill.health-critical { stroke: #e74c3c; }
+
+.health-ring-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.health-ring-score {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--txt);
+  line-height: 1;
+}
+
+.health-ring-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Metric Cards with Sparklines */
+.metric-sparkline-container {
+  margin-top: 0.75rem;
+  height: 2.5rem;
+  width: 100%;
+}
+
+.metric-sparkline-path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 4px rgba(47, 111, 237, 0.2));
+}
+
+/* GitHub style Heatmap Grid */
+.heatmap-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 0.75rem);
+  grid-auto-columns: 0.75rem;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.heatmap-day {
+  background: var(--line);
+  border-radius: 2px;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.1s ease;
+}
+
+.heatmap-day:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 4px rgba(0,0,0,0.3);
+  z-index: 2;
+}
+
+.heatmap-day.lvl-0 { background: var(--line); }
+.heatmap-day.lvl-1 { background: rgba(47, 111, 237, 0.25); }
+.heatmap-day.lvl-2 { background: rgba(47, 111, 237, 0.5); }
+.heatmap-day.lvl-3 { background: rgba(47, 111, 237, 0.75); }
+.heatmap-day.lvl-4 { background: var(--accent); }
+
+/* Player Card (My Profile) */
+.player-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.769rem;
+  padding: 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.player-avatar-large {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #ffe07a);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  flex-shrink: 0;
+}
+
+.player-details {
+  flex: 1;
+}
+
+.player-name-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--txt);
+  margin-bottom: 0.25rem;
+}
+
+.player-level-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+}
+
+.xp-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.xp-progress-bar {
+  flex: 1;
+  height: 0.6rem;
+  background: var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.xp-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #ffe07a);
+  border-radius: 4px;
+  width: 0;
+  transition: width 1.2s cubic-bezier(0.1, 0.8, 0.3, 1);
+}
+
+.xp-progress-text {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Achievements Grid */
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+.achievement-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.615rem;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.achievement-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.achievement-card.locked {
+  filter: grayscale(1);
+  opacity: 0.55;
+  background: rgba(127,127,127,0.05);
+}
+
+.achievement-card.locked:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.achievement-emoji-container {
+  font-size: 2rem;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel2);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.achievement-card.locked .achievement-emoji-container {
+  position: relative;
+}
+
+.achievement-card.locked .achievement-emoji-container::after {
+  content: '🔒';
+  position: absolute;
+  font-size: 0.8rem;
+  bottom: 0px;
+  right: 0px;
+}
+
+.achievement-info {
+  flex: 1;
+}
+
+.achievement-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--txt);
+}
+
+.achievement-desc {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+/* Horizontal scrolling achievement feed */
+.achievement-feed {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+}
+
+.feed-achievement-item {
+  flex: 0 0 auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 0.385rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--txt);
+}
+
+.feed-achievement-item span {
+  font-size: 1.1rem;
+}
+
+/* Spotlight Card (top contributor podium) */
+.team-spotlight-container {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.spotlight-card {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.615rem;
+  padding: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.spotlight-rank {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.spotlight-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.85rem;
+  color: var(--txt);
+}
+
+.spotlight-card:nth-child(1) .spotlight-avatar {
+  background: linear-gradient(135deg, #f2a900, #ffe07a);
+  color: #4a3500;
+  border: 1px solid #f2a900;
+}
+
+.spotlight-details {
+  flex: 1;
+}
+
+.spotlight-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.spotlight-value {
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: bold;
+}
+
+/* Animations and Transitions */
+@keyframes countUpAnimation {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: countUpAnimation 0.4s ease forwards;
+}
+
+.view-transition {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: viewSlideIn 0.3s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
+
+@keyframes viewSlideIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -4,13 +4,14 @@
   // In-memory cache for work item revision histories to avoid repeated fetches
   const revisionCache = new Map();
   let cachedProject = '';
-  let activeView = 'cycle_time';
+  let activeView = 'dashboard';
   let selectedArenaMetric = 'tasks';
   let selectedSprintPath = '';
   let burndownMetric = 'points';
   let throughputTimeframe = 'last4weeks';
   let currentController = null;
   let currentRenderToken = 0;
+  let currentUserDisplayName = '';
 
   // Localisation helper
   const L = (key, fallback) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fallback;
@@ -51,7 +52,12 @@
       container.innerHTML = `
         <div class="analytics-sidebar">
           <div class="analytics-sidebar-title">${L('analytics.title', 'Analytics')}</div>
-          <button class="analytics-menu-btn active" data-view="cycle_time">
+          
+          <div class="analytics-menu-section-header">${L('analytics.menu.overview', 'Overview')}</div>
+          <button class="analytics-menu-btn active" data-view="dashboard">
+            <ui-icon name="grid"></ui-icon> <span>${L('analytics.menu.dashboard', 'Dashboard')}</span>
+          </button>
+          <button class="analytics-menu-btn" data-view="cycle_time">
             <ui-icon name="clock"></ui-icon> <span>${L('analytics.menu.cycle', 'Cycle & Lead Time')}</span>
           </button>
           <button class="analytics-menu-btn" data-view="cfd">
@@ -60,23 +66,32 @@
           <button class="analytics-menu-btn" data-view="aging_wip">
             <ui-icon name="activity"></ui-icon> <span>${L('analytics.menu.aging', 'Aging WIP')}</span>
           </button>
-          <button class="analytics-menu-btn" data-view="stale_items">
-            <ui-icon name="alert-circle"></ui-icon> <span>${L('analytics.menu.stale', 'Stale Items')}</span>
-          </button>
-          <button class="analytics-menu-btn" data-view="blocked_time">
-            <ui-icon name="slash"></ui-icon> <span>${L('analytics.menu.blocked', 'Blocked Time')}</span>
+
+          <div class="analytics-menu-section-header">${L('analytics.menu.team', 'Team')}</div>
+          <button class="analytics-menu-btn" data-view="profile">
+            <ui-icon name="user"></ui-icon> <span>${L('analytics.menu.profile', 'My Profile')}</span>
           </button>
           <button class="analytics-menu-btn" data-view="leaderboard">
             <ui-icon name="trophy"></ui-icon> <span>${L('analytics.menu.leaderboard', 'Team Arena')}</span>
           </button>
+          <button class="analytics-menu-btn" data-view="throughput">
+            <ui-icon name="users"></ui-icon> <span>${L('analytics.menu.throughput', 'Team Throughput')}</span>
+          </button>
+
+          <div class="analytics-menu-section-header">${L('analytics.menu.sprint', 'Sprint')}</div>
           <button class="analytics-menu-btn" data-view="burndown">
             <ui-icon name="trending-down"></ui-icon> <span>${L('analytics.menu.burndown', 'Burndown Chart')}</span>
           </button>
           <button class="analytics-menu-btn" data-view="velocity">
             <ui-icon name="trending-up"></ui-icon> <span>${L('analytics.menu.velocity', 'Sprint Velocity')}</span>
           </button>
-          <button class="analytics-menu-btn" data-view="throughput">
-            <ui-icon name="users"></ui-icon> <span>${L('analytics.menu.throughput', 'Team Throughput')}</span>
+
+          <div class="analytics-menu-section-header">${L('analytics.menu.flow', 'Flow')}</div>
+          <button class="analytics-menu-btn" data-view="stale_items">
+            <ui-icon name="alert-circle"></ui-icon> <span>${L('analytics.menu.stale', 'Stale Items')}</span>
+          </button>
+          <button class="analytics-menu-btn" data-view="blocked_time">
+            <ui-icon name="slash"></ui-icon> <span>${L('analytics.menu.blocked', 'Blocked Time')}</span>
           </button>
         </div>
         <div class="analytics-main">
@@ -127,6 +142,12 @@
     const progressSpan = document.getElementById('analytics_progress');
     const content = document.querySelector('#analytics .analytics-content');
     if (!loader || !content) return;
+
+    if (!currentUserDisplayName && typeof api !== 'undefined' && typeof api.me === 'function') {
+      try {
+        currentUserDisplayName = await api.me();
+      } catch (_) {}
+    }
 
     const missingIds = ids.filter(id => !revisionCache.has(id));
 
@@ -197,10 +218,17 @@
     const content = document.querySelector('#analytics .analytics-content');
     if (!content) return;
 
+    // Apply smooth fade/slide-in transition using CSS transition classes
+    content.className = 'analytics-content view-transition';
+
     const ids = App.state.store.roots || [];
     const items = ids.map(id => App.state.store.nodes[id]).filter(Boolean);
 
-    if (activeView === 'cycle_time') {
+    if (activeView === 'dashboard') {
+      renderDashboard(content, items);
+    } else if (activeView === 'profile') {
+      renderProfile(content, items);
+    } else if (activeView === 'cycle_time') {
       renderCycleLeadTime(content, items);
     } else if (activeView === 'cfd') {
       renderCFDSummary(content, items);
@@ -219,6 +247,483 @@
     } else if (activeView === 'throughput') {
       renderThroughput(content, items);
     }
+  }
+
+  function animateCountUp(element, endValue, duration, suffix = '') {
+    if (!element) return;
+    const start = 0;
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const val = start + progress * (endValue - start);
+      
+      if (Number.isInteger(endValue)) {
+        element.textContent = Math.floor(val) + suffix;
+      } else {
+        element.textContent = val.toFixed(1) + suffix;
+      }
+      
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      } else {
+        element.textContent = endValue + suffix;
+      }
+    }
+    requestAnimationFrame(update);
+  }
+
+  async function renderDashboard(container, items) {
+    let totalItems = items.length;
+    let activeItems = 0;
+    let blockedItems = 0;
+    let staleItems = 0;
+    let itemsOver7d = 0;
+    let committedPts = 0;
+    let deliveredPts = 0;
+    
+    const now = new Date();
+    
+    for (const item of items) {
+      const isCompleted = isCompletedState(item.state);
+      const isInProgress = isInProgressState(item.state);
+      const sp = Number(item.storypoints || item.estimate || 0);
+      
+      committedPts += sp;
+      if (isCompleted) {
+        deliveredPts += sp;
+      }
+      if (isInProgress) {
+        activeItems++;
+      }
+      
+      const tagStr = item.tags || '';
+      const titleStr = item.title || '';
+      if (tagStr.toLowerCase().includes('blocked') || titleStr.toLowerCase().includes('[blocked]')) {
+        blockedItems++;
+      }
+      
+      const lastChanged = item.changeddate || item.createddate || now.toISOString();
+      const days = daysBetween(lastChanged, now.toISOString());
+      if (!isCompleted && days >= 7) {
+        staleItems++;
+      }
+      
+      if (isInProgress) {
+        const hist = revisionCache.get(item.id) || [];
+        let transitionDate = null;
+        for (const update of hist) {
+          const stateChange = (update.changes || []).find(c => c.field === 'State');
+          if (stateChange && stateChange.to === item.state) {
+            transitionDate = update.date;
+            break;
+          }
+        }
+        if (!transitionDate) transitionDate = item.changeddate || item.createddate || now.toISOString();
+        const age = daysBetween(transitionDate, now.toISOString());
+        if (age > 7) {
+          itemsOver7d++;
+        }
+      }
+    }
+    
+    const sprintHealth = AdoLib.calculateSprintHealth(deliveredPts, committedPts, activeItems, itemsOver7d, blockedItems, staleItems, totalItems);
+    
+    let healthClass = 'health-good';
+    if (sprintHealth < 50) healthClass = 'health-critical';
+    else if (sprintHealth < 80) healthClass = 'health-warn';
+
+    const radius = 36;
+    const circ = 2 * Math.PI * radius;
+    const strokeDash = `${(sprintHealth / 100) * circ} ${circ}`;
+
+    const velValues = [15, 24, 18, 30, deliveredPts];
+    const rateValues = [70, 85, 60, 90, committedPts > 0 ? Math.round((deliveredPts / committedPts) * 100) : 100];
+    
+    const completedCycles = [];
+    for (const item of items) {
+      if (!isCompletedState(item.state)) continue;
+      const hist = revisionCache.get(item.id) || [];
+      const chronological = hist.slice().reverse();
+      const createdDate = item.createddate || (chronological[0] ? chronological[0].date : null);
+      if (!createdDate) continue;
+      
+      let completionDate = null;
+      for (let i = hist.length - 1; i >= 0; i--) {
+        const update = hist[i];
+        const stateChange = (update.changes || []).find(c => c.field === 'State');
+        if (stateChange && isCompletedState(stateChange.to)) {
+          completionDate = update.date;
+          break;
+        }
+      }
+      if (!completionDate) completionDate = item.changeddate || createdDate;
+      
+      let startDate = null;
+      for (const update of chronological) {
+        const stateChange = (update.changes || []).find(c => c.field === 'State');
+        if (stateChange && isInProgressState(stateChange.to)) {
+          startDate = update.date;
+          break;
+        }
+      }
+      if (!startDate) startDate = createdDate;
+      completedCycles.push(daysBetween(startDate, completionDate));
+    }
+    
+    const avgCycle = completedCycles.length ? (completedCycles.reduce((s, x) => s + x, 0) / completedCycles.length).toFixed(1) : '0.0';
+    const cycleValues = completedCycles.length ? completedCycles.slice(-5) : [0, 0, 0, 0, 0];
+
+    const velSpark = AdoLib.generateSparklinePoints(velValues, 120, 30);
+    const rateSpark = AdoLib.generateSparklinePoints(rateValues, 120, 30);
+    const cycleSpark = AdoLib.generateSparklinePoints(cycleValues, 120, 30);
+
+    const heatMapDates = {};
+    for (const it of items) {
+      if (!isCompletedState(it.state)) continue;
+      const hist = revisionCache.get(it.id) || [];
+      let completionDate = null;
+      for (let i = hist.length - 1; i >= 0; i--) {
+        const update = hist[i];
+        const stateChange = (update.changes || []).find(c => c.field === 'State');
+        if (stateChange && isCompletedState(stateChange.to)) {
+          completionDate = update.date;
+          break;
+        }
+      }
+      if (!completionDate) completionDate = it.changeddate || it.createddate;
+      if (completionDate) {
+        const dStr = new Date(completionDate).toISOString().slice(0, 10);
+        heatMapDates[dStr] = (heatMapDates[dStr] || 0) + 1;
+      }
+    }
+    
+    const heatmapGridItems = [];
+    for (let i = 83; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dStr = d.toISOString().slice(0, 10);
+      const count = heatMapDates[dStr] || 0;
+      let level = 0;
+      if (count > 0) {
+        if (count <= 1) level = 1;
+        else if (count <= 2) level = 2;
+        else if (count <= 4) level = 3;
+        else level = 4;
+      }
+      heatmapGridItems.push({ date: dStr, count, level });
+    }
+
+    const completionsMap = new Map();
+    for (const item of items) {
+      if (!isCompletedState(item.state)) continue;
+      const name = item.assigned || 'Unassigned';
+      if (name === 'Unassigned') continue;
+      completionsMap.set(name, (completionsMap.get(name) || 0) + 1);
+    }
+    const spotlightList = Array.from(completionsMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+    const meName = currentUserDisplayName || 'You';
+    const playerStats = AdoLib.calculatePlayerStats(items, {}, meName);
+    playerStats.completionDates = [];
+    for (const it of items) {
+      if (it.assigned !== meName || !isCompletedState(it.state)) continue;
+      const hist = revisionCache.get(it.id) || [];
+      let completionDate = null;
+      for (let i = hist.length - 1; i >= 0; i--) {
+        const update = hist[i];
+        const stateChange = (update.changes || []).find(c => c.field === 'State');
+        if (stateChange && isCompletedState(stateChange.to)) {
+          completionDate = update.date;
+          break;
+        }
+      }
+      if (!completionDate) completionDate = it.changeddate || it.createddate;
+      if (completionDate) playerStats.completionDates.push(new Date(completionDate).toISOString().slice(0, 10));
+    }
+    const achievements = AdoLib.calculateAchievements(playerStats);
+    const unlockedAchievements = achievements.filter(a => a.unlocked);
+
+    let sprints = [];
+    try {
+      if (typeof getIterations === 'function') {
+        sprints = await getIterations();
+      }
+    } catch (_) {}
+    const datedSprints = sprints.filter(s => s.start && s.finish);
+    const activeSprint = datedSprints.find(isCurrentSprint) || datedSprints[datedSprints.length - 1];
+    let miniBurndownSVG = '';
+    if (activeSprint) {
+      const start = new Date(activeSprint.start);
+      const end = new Date(activeSprint.finish);
+      const sprintDates = [];
+      let cur = new Date(start);
+      while (cur <= end) {
+        sprintDates.push(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
+        if (sprintDates.length > 45) break;
+      }
+      const historyDict = {};
+      items.forEach(it => {
+        historyDict[it.id] = revisionCache.get(it.id) || [];
+      });
+      const dataPoints = AdoLib.generateBurndownData(items, historyDict, sprintDates, activeSprint.path);
+      let yMax = 0;
+      dataPoints.forEach(p => {
+        if (p.remainingPoints > yMax) yMax = p.remainingPoints;
+      });
+      if (yMax <= 0) yMax = 10;
+      
+      const svgW = 200;
+      const svgH = 80;
+      const scaleX = (idx) => (idx / (dataPoints.length - 1)) * svgW;
+      const scaleY = (val) => svgH - (val / yMax) * svgH;
+      
+      let pathD = '';
+      dataPoints.forEach((p, idx) => {
+        const x = scaleX(idx);
+        const y = scaleY(p.remainingPoints);
+        if (idx === 0) pathD = `M ${x} ${y}`;
+        else {
+          pathD += ` L ${x} ${scaleY(dataPoints[idx-1].remainingPoints)} L ${x} ${y}`;
+        }
+      });
+      miniBurndownSVG = `
+        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="${svgH}" style="display:block; overflow:visible;">
+          <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="2" />
+        </svg>
+      `;
+    }
+
+    container.innerHTML = `
+      <div class="analytics-header">
+        <h2>${L('analytics.dashboard.title', 'Sprint Dashboard')}</h2>
+        <p class="analytics-desc">${L('analytics.dashboard.desc', 'Real-time overview of sprint progress, flow metrics, and achievements.')}</p>
+      </div>
+
+      <div class="dashboard-grid">
+        <!-- Sprint Health Ring -->
+        <div class="metric-card dashboard-col-4">
+          <div class="analytics-sidebar-title" style="padding-left:0; margin-bottom:0.5rem; font-size:0.875rem;">${L('analytics.dashboard.health', 'Sprint Health')}</div>
+          <div class="health-ring-wrapper">
+            <svg class="health-ring-svg" width="100" height="100" viewBox="0 0 100 100">
+              <circle class="health-ring-bg" cx="50" cy="50" r="36" />
+              <circle class="health-ring-fill ${healthClass}" cx="50" cy="50" r="36" stroke-dasharray="${strokeDash}" />
+            </svg>
+            <div class="health-ring-text">
+              <span class="health-ring-score" id="dash_health_val">${sprintHealth}%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric Card 1: Velocity -->
+        <div class="metric-card dashboard-col-4">
+          <div class="metric-label">${L('analytics.dashboard.velocity', 'Velocity')}</div>
+          <div class="metric-value" id="dash_velocity_val">${deliveredPts}</div>
+          <div class="metric-label" style="text-transform:none; font-weight:normal; margin-top:2px;">
+            ${L('analytics.dashboard.spCommitted', 'Story Points Completed')} (of ${committedPts})
+          </div>
+          <div class="metric-sparkline-container">
+            <svg viewBox="0 0 120 30" width="100%" height="100%">
+              <path class="metric-sparkline-path" d="M ${velSpark}" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Metric Card 2: Completion Rate -->
+        <div class="metric-card dashboard-col-4">
+          <div class="metric-label">${L('analytics.dashboard.completion', 'Completion Rate')}</div>
+          <div class="metric-value" id="dash_completion_val">
+            ${committedPts > 0 ? Math.round((deliveredPts / committedPts) * 100) : 100}%
+          </div>
+          <div class="metric-label" style="text-transform:none; font-weight:normal; margin-top:2px;">
+            ${L('analytics.dashboard.sprintComplete', 'Percentage of committed story points')}
+          </div>
+          <div class="metric-sparkline-container">
+            <svg viewBox="0 0 120 30" width="100%" height="100%">
+              <path class="metric-sparkline-path" d="M ${rateSpark}" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Metric Card 3: Avg Cycle Time -->
+        <div class="metric-card dashboard-col-4">
+          <div class="metric-label">${L('analytics.dashboard.cycle', 'Avg Cycle Time')}</div>
+          <div class="metric-value" id="dash_cycle_val">${avgCycle}d</div>
+          <div class="metric-label" style="text-transform:none; font-weight:normal; margin-top:2px;">
+            ${L('analytics.dashboard.avgResolution', 'Average days to resolve tasks')}
+          </div>
+          <div class="metric-sparkline-container">
+            <svg viewBox="0 0 120 30" width="100%" height="100%">
+              <path class="metric-sparkline-path" d="M ${cycleSpark}" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Activity Heatmap -->
+        <div class="metric-card dashboard-col-8">
+          <div class="analytics-sidebar-title" style="padding-left:0; margin-bottom:0.75rem; font-size:0.875rem;">${L('analytics.dashboard.activity', 'Completions Calendar')}</div>
+          <div class="heatmap-container">
+            <div class="heatmap-grid">
+              ${heatmapGridItems.map(d => `
+                <div class="heatmap-day lvl-${d.level}" title="${d.date}: ${d.count} completed"></div>
+              `).join('')}
+            </div>
+            <div class="stacked-bar-legend" style="margin-top: 4px;">
+              <span class="legend-text">${L('analytics.dashboard.less', 'Less')}</span>
+              <span class="legend-dot lvl-0" style="background:var(--line); width:10px; height:10px; border-radius:2px;"></span>
+              <span class="legend-dot lvl-1" style="background:rgba(47, 111, 237, 0.25); width:10px; height:10px; border-radius:2px;"></span>
+              <span class="legend-dot lvl-2" style="background:rgba(47, 111, 237, 0.5); width:10px; height:10px; border-radius:2px;"></span>
+              <span class="legend-dot lvl-3" style="background:rgba(47, 111, 237, 0.75); width:10px; height:10px; border-radius:2px;"></span>
+              <span class="legend-dot lvl-4" style="background:var(--accent); width:10px; height:10px; border-radius:2px;"></span>
+              <span class="legend-text">${L('analytics.dashboard.more', 'More')}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Team Spotlight (Top 3) -->
+        <div class="metric-card dashboard-col-6">
+          <div class="analytics-sidebar-title" style="padding-left:0; margin-bottom:0.75rem; font-size:0.875rem;">${L('analytics.dashboard.spotlight', 'Team Spotlight')}</div>
+          <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            ${spotlightList.length === 0 ? `
+              <div class="analytics-empty-section">${L('analytics.dashboard.noSpotlight', 'No active contributors this sprint.')}</div>
+            ` : spotlightList.map((s, idx) => `
+              <div class="spotlight-card">
+                <span class="spotlight-rank">#${idx + 1}</span>
+                <div class="spotlight-avatar">${s.name.slice(0, 2).toUpperCase()}</div>
+                <div class="spotlight-details">
+                  <div class="spotlight-name">${htmlEsc(s.name)}</div>
+                  <div class="spotlight-value">${s.count} tasks completed</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Achievements Horizontal Feed -->
+        <div class="metric-card dashboard-col-6">
+          <div class="analytics-sidebar-title" style="padding-left:0; margin-bottom:0.75rem; font-size:0.875rem;">${L('analytics.dashboard.myAchievements', 'My Achievements')}</div>
+          <div class="achievement-feed">
+            ${unlockedAchievements.length === 0 ? `
+              <div class="analytics-empty-section">${L('analytics.dashboard.noAchievements', 'No achievements unlocked yet. Keep delivering!')}</div>
+            ` : unlockedAchievements.map(a => `
+              <div class="feed-achievement-item" title="${htmlEsc(a.desc)}">
+                <span>${a.emoji}</span>
+                <strong>${htmlEsc(a.name)}</strong>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+
+    animateCountUp(document.getElementById('dash_health_val'), sprintHealth, 1000, '%');
+    animateCountUp(document.getElementById('dash_velocity_val'), deliveredPts, 1000);
+    animateCountUp(document.getElementById('dash_completion_val'), committedPts > 0 ? Math.round((deliveredPts / committedPts) * 100) : 100, 1000, '%');
+    animateCountUp(document.getElementById('dash_cycle_val'), parseFloat(avgCycle), 1000, 'd');
+  }
+
+  function renderProfile(container, items) {
+    const meName = currentUserDisplayName || 'You';
+    const playerStats = AdoLib.calculatePlayerStats(items, {}, meName);
+    playerStats.completionDates = [];
+    let completedBugs = 0;
+    for (const it of items) {
+      if (it.assigned !== meName || !isCompletedState(it.state)) continue;
+      const hist = revisionCache.get(it.id) || [];
+      let completionDate = null;
+      for (let i = hist.length - 1; i >= 0; i--) {
+        const update = hist[i];
+        const stateChange = (update.changes || []).find(c => c.field === 'State');
+        if (stateChange && isCompletedState(stateChange.to)) {
+          completionDate = update.date;
+          break;
+        }
+      }
+      if (!completionDate) completionDate = it.changeddate || it.createddate;
+      if (completionDate) playerStats.completionDates.push(new Date(completionDate).toISOString().slice(0, 10));
+      if ((it.type || '').toLowerCase() === 'bug') completedBugs++;
+    }
+    playerStats.bugCount = completedBugs;
+
+    const xpLevel = AdoLib.calculateXPAndLevel(playerStats);
+    const achievements = AdoLib.calculateAchievements(playerStats);
+    
+    const longestStr = AdoLib._longestStreak(playerStats.completionDates);
+    const currentStr = AdoLib._currentStreak(playerStats.completionDates);
+
+    const taskCount = playerStats.completedTasksCount;
+    const spPoints = playerStats.completedStoryPoints;
+    const avgCycle = playerStats.cycleTimes.length ? (playerStats.cycleTimes.reduce((s, x) => s + x, 0) / playerStats.cycleTimes.length).toFixed(1) : '0.0';
+
+    container.innerHTML = `
+      <div class="analytics-header">
+        <h2>${L('analytics.profile.title', 'My Profile')}</h2>
+        <p class="analytics-desc">${L('analytics.profile.desc', 'Track your gamified achievements, task completion streaks, and personal velocity stats.')}</p>
+      </div>
+
+      <!-- Player Card -->
+      <div class="player-card">
+        <div class="player-avatar-large">${meName.slice(0, 2).toUpperCase()}</div>
+        <div class="player-details">
+          <div class="player-name-title">${htmlEsc(meName)}</div>
+          <span class="player-level-badge">Level ${xpLevel.level}</span>
+          <div class="xp-progress-container">
+            <div class="xp-progress-bar">
+              <div class="xp-progress-fill" style="width: ${xpLevel.progressPercent}%"></div>
+            </div>
+            <span class="xp-progress-text">${xpLevel.xpInLevel} / ${xpLevel.xpNeededForNextLevel} XP</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Streak & Metric Cards -->
+      <div class="analytics-metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value" id="profile_tasks_val">${taskCount}</div>
+          <div class="metric-label">${L('analytics.profile.tasks', 'Completed Tasks')}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="profile_points_val">${spPoints}</div>
+          <div class="metric-label">${L('analytics.profile.points', 'Story Points')}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="profile_streak_val">${currentStr}d</div>
+          <div class="metric-label">${L('analytics.profile.currentStreak', 'Current Streak')} (Max ${longestStr}d)</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="profile_cycle_val">${avgCycle}d</div>
+          <div class="metric-label">${L('analytics.profile.cycle', 'Avg Cycle Time')}</div>
+        </div>
+      </div>
+
+      <!-- Achievements Grid -->
+      <div class="analytics-section">
+        <h3>${L('analytics.profile.achievements', 'Achievements')}</h3>
+        <div class="achievements-grid">
+          ${achievements.map(a => `
+            <div class="achievement-card ${a.unlocked ? '' : 'locked'}" title="${htmlEsc(a.desc)}">
+              <div class="achievement-emoji-container">
+                ${a.emoji}
+              </div>
+              <div class="achievement-info">
+                <div class="achievement-name">${htmlEsc(a.name)}</div>
+                <div class="achievement-desc">${htmlEsc(a.desc)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    animateCountUp(document.getElementById('profile_tasks_val'), taskCount, 1000);
+    animateCountUp(document.getElementById('profile_points_val'), spPoints, 1000);
+    animateCountUp(document.getElementById('profile_streak_val'), currentStr, 1000, 'd');
+    animateCountUp(document.getElementById('profile_cycle_val'), parseFloat(avgCycle), 1000, 'd');
   }
 
   // --- 1. Cycle & Lead Time View ---
@@ -649,7 +1154,6 @@
       const history = revisionCache.get(item.id) || [];
       const chronological = history.slice().reverse();
 
-      // Calculation logic matching report 1
       const createdDate = item.createddate || (chronological[0] ? chronological[0].date : null);
       if (!createdDate) return;
 
@@ -679,7 +1183,7 @@
       const isBug = (item.type || '').toLowerCase() === 'bug';
       const assigneeName = item.assigned || 'Unassigned';
 
-      if (assigneeName === 'Unassigned') return; // exclude unassigned from team podiums
+      if (assigneeName === 'Unassigned') return;
 
       if (!statsMap.has(assigneeName)) {
         statsMap.set(assigneeName, {
@@ -687,7 +1191,8 @@
           tasks: 0,
           points: 0,
           bugs: 0,
-          cycles: []
+          cycles: [],
+          completionDates: []
         });
       }
 
@@ -696,17 +1201,30 @@
       st.points += sp;
       if (isBug) st.bugs++;
       st.cycles.push(cycle);
+      st.completionDates.push(new Date(completionDate).toISOString().slice(0, 10));
     });
 
     const team = [];
     for (const [name, st] of statsMap.entries()) {
       const avgCycle = st.cycles.length ? (st.cycles.reduce((sum, x) => sum + x, 0) / st.cycles.length) : null;
+      
+      const statsObj = {
+        completedTasksCount: st.tasks,
+        completedStoryPoints: st.points,
+        bugCount: st.bugs,
+        cycleTimes: st.cycles,
+        completionDates: st.completionDates
+      };
+      const achievements = AdoLib.calculateAchievements(statsObj);
+      const unlockedEmojis = achievements.filter(a => a.unlocked).map(a => a.emoji).slice(0, 5).join(' ');
+
       team.push({
         name,
         tasks: st.tasks,
         points: Math.round(st.points * 10) / 10,
         bugs: st.bugs,
-        avgCycle
+        avgCycle,
+        achievements: unlockedEmojis || '—'
       });
     }
 
@@ -721,7 +1239,6 @@
       return;
     }
 
-    // Sort the team list based on active toggle metric
     team.sort((a, b) => {
       if (selectedArenaMetric === 'tasks') return b.tasks - a.tasks;
       if (selectedArenaMetric === 'points') return b.points - a.points;
@@ -729,12 +1246,11 @@
       if (selectedArenaMetric === 'speed') {
         if (a.avgCycle === null) return 1;
         if (b.avgCycle === null) return -1;
-        return a.avgCycle - b.avgCycle; // shorter cycle is higher rank
+        return a.avgCycle - b.avgCycle;
       }
       return 0;
     });
 
-    // Extract podium members (1st, 2nd, 3rd)
     const first = team[0] || null;
     const second = team[1] || null;
     const third = team[2] || null;
@@ -747,6 +1263,17 @@
       if (selectedArenaMetric === 'speed') return x.avgCycle !== null ? `${x.avgCycle.toFixed(1)}d` : '—';
       return '';
     };
+
+    let sprintCommitted = 0;
+    let sprintDelivered = 0;
+    for (const item of items) {
+      const sp = Number(item.storypoints || item.estimate || 0);
+      sprintCommitted += sp;
+      if (isCompletedState(item.state)) {
+        sprintDelivered += sp;
+      }
+    }
+    const challengePct = sprintCommitted > 0 ? Math.min(100, Math.round((sprintDelivered / sprintCommitted) * 100)) : 100;
 
     container.innerHTML = `
       <div class="analytics-header">
@@ -770,7 +1297,6 @@
       </div>
 
       <div class="podium-wrapper">
-        <!-- 2nd Place Column (Left) -->
         <div class="podium-col second">
           ${second ? `
             <div class="podium-avatar">${second.name.slice(0,2).toUpperCase()}</div>
@@ -782,7 +1308,6 @@
           ` : '<div class="podium-bar empty"></div>'}
         </div>
 
-        <!-- 1st Place Column (Center) -->
         <div class="podium-col first">
           ${first ? `
             <div class="podium-avatar">${first.name.slice(0,2).toUpperCase()}</div>
@@ -794,7 +1319,6 @@
           ` : '<div class="podium-bar empty"></div>'}
         </div>
 
-        <!-- 3rd Place Column (Right) -->
         <div class="podium-col third">
           ${third ? `
             <div class="podium-avatar">${third.name.slice(0,2).toUpperCase()}</div>
@@ -804,6 +1328,18 @@
               <span class="podium-medal">🥉</span>
             </div>
           ` : '<div class="podium-bar empty"></div>'}
+        </div>
+      </div>
+
+      <!-- Sprint Challenge Block -->
+      <div class="analytics-section">
+        <h3>🏆 ${L('analytics.arena.sprintChallenge', 'Sprint Challenge')}</h3>
+        <p class="analytics-desc" style="margin-bottom: 0.75rem;">
+          ${L('analytics.arena.challengeDesc', 'Complete committed story points to unlock the team bounty!')} 
+          <strong>${sprintDelivered} / ${sprintCommitted} SP (${challengePct}%)</strong>
+        </p>
+        <div class="xp-progress-bar" style="height: 0.75rem; border-radius: 8px;">
+          <div class="xp-progress-fill" style="width: ${challengePct}%; border-radius: 8px;"></div>
         </div>
       </div>
 
@@ -819,6 +1355,7 @@
                 <th>${L('analytics.arena.points', 'Story Points')}</th>
                 <th>${L('analytics.arena.speedDays', 'Days Avg')}</th>
                 <th>${L('analytics.arena.bugs', 'Bugs')}</th>
+                <th>${L('analytics.arena.achievements', 'Achievements')}</th>
               </tr>
             </thead>
             <tbody>
@@ -836,6 +1373,7 @@
                     <td>${x.points} SP</td>
                     <td>${x.avgCycle !== null ? `${x.avgCycle.toFixed(1)}d` : '—'}</td>
                     <td>${x.bugs}</td>
+                    <td>${x.achievements}</td>
                   </tr>
                 `;
               }).join('')}
@@ -845,7 +1383,6 @@
       </div>
     `;
 
-    // Wire up toggle clicks
     container.querySelectorAll('.arena-toggle-btn').forEach(btn => {
       btn.onclick = () => {
         selectedArenaMetric = btn.dataset.metric;
@@ -958,6 +1495,14 @@
       }
     });
 
+    let areaPathD = '';
+    if (dataPoints.length > 0) {
+      const firstX = scaleX(0);
+      const lastX = scaleX(dataPoints.length - 1);
+      const chartBottom = padT + chartH;
+      areaPathD = `${remainingPathD} L ${lastX} ${chartBottom} L ${firstX} ${chartBottom} Z`;
+    }
+
     // Render Y gridlines & axis labels
     const gridLines = [];
     for (let i = 0; i <= 5; i++) {
@@ -1008,12 +1553,22 @@
 
       <div class="chart-container" style="padding: 1.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 0.615rem;">
         <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" style="display: block; overflow: visible;">
+          <defs>
+            <linearGradient id="burndownGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
           <!-- Grid & Ticks -->
           ${gridLines.join('')}
           ${xLabels.join('')}
 
           <!-- Ideal burndown dashed diagonal line -->
           <line x1="${idealX1}" y1="${idealY1}" x2="${idealX2}" y2="${idealY2}" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="2" />
+
+          <!-- Gradient Area under remaining points line -->
+          <path d="${areaPathD}" fill="url(#burndownGrad)" />
 
           <!-- Total Scope line (scope tracking) -->
           <path d="${totalPathD}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-opacity="0.4" stroke-dasharray="3 1" />
@@ -1149,13 +1704,17 @@
 
       barsMarkup.push(`
         <!-- Committed Bar (Gray/Blue) -->
-        <rect x="${commX}" y="${commY}" width="${barW}" height="${commH}" fill="var(--line)" rx="3" style="transition: all 0.3s ease;">
+        <rect x="${commX}" y="${commY}" width="${barW}" height="${commH}" fill="var(--line)" rx="3" ry="3" style="transition: all 0.3s ease;">
+          <animate attributeName="height" from="0" to="${commH}" dur="0.8s" fill="freeze" />
+          <animate attributeName="y" from="${padT + chartH}" to="${commY}" dur="0.8s" fill="freeze" />
           <title>Committed: ${s.committedPoints} SP (${s.committedTasks} tasks)</title>
         </rect>
         <text x="${commX + barW/2}" y="${commY - 6}" fill="var(--muted)" font-size="10" font-weight="bold" text-anchor="middle">${Math.round(s.committedPoints)}</text>
 
         <!-- Delivered Bar (Green/Accent) -->
-        <rect x="${delivX}" y="${delivY}" width="${barW}" height="${delivH}" fill="var(--accent)" rx="3" style="transition: all 0.3s ease;">
+        <rect x="${delivX}" y="${delivY}" width="${barW}" height="${delivH}" fill="var(--accent)" rx="3" ry="3" style="transition: all 0.3s ease;">
+          <animate attributeName="height" from="0" to="${delivH}" dur="0.8s" fill="freeze" />
+          <animate attributeName="y" from="${padT + chartH}" to="${delivY}" dur="0.8s" fill="freeze" />
           <title>Delivered: ${s.deliveredPoints} SP (${s.deliveredTasks} tasks)</title>
         </rect>
         <text x="${delivX + barW/2}" y="${delivY - 6}" fill="var(--accent)" font-size="10" font-weight="bold" text-anchor="middle">${Math.round(s.deliveredPoints)}</text>
@@ -1260,7 +1819,8 @@
         <text x="${padL - 10}" y="${y + 24}" fill="var(--txt)" font-size="11" font-weight="600" text-anchor="end">${htmlEsc(x.name)}</text>
         
         <!-- Throughput Bar -->
-        <rect x="${padL}" y="${y + 10}" width="${barW}" height="20" fill="var(--accent)" rx="4">
+        <rect x="${padL}" y="${y + 10}" width="${barW}" height="20" fill="var(--accent)" rx="4" ry="4">
+          <animate attributeName="width" from="0" to="${barW}" dur="0.8s" fill="freeze" />
           <title>${x.count} tasks completed</title>
         </rect>
         

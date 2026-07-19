@@ -1094,8 +1094,365 @@
     return result;
   }
 
+  function _longestStreak(dates) {
+    if (!dates || dates.length === 0) return 0;
+    const uniqueDates = Array.from(new Set(dates)).sort();
+    let maxStreak = 0;
+    let currentStreak = 0;
+    let prevTime = null;
+
+    for (const dStr of uniqueDates) {
+      const curTime = new Date(dStr + 'T00:00:00Z');
+      if (prevTime === null) {
+        currentStreak = 1;
+      } else {
+        const diffDays = Math.round((curTime - prevTime) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          currentStreak++;
+        } else if (diffDays > 1) {
+          if (currentStreak > maxStreak) {
+            maxStreak = currentStreak;
+          }
+          currentStreak = 1;
+        }
+      }
+      prevTime = curTime;
+    }
+    if (currentStreak > maxStreak) {
+      maxStreak = currentStreak;
+    }
+    return maxStreak;
+  }
+
+  function _currentStreak(dates) {
+    if (!dates || dates.length === 0) return 0;
+    const uniqueDates = Array.from(new Set(dates)).sort();
+    const lastDateStr = uniqueDates[uniqueDates.length - 1];
+    
+    const lastDate = new Date(lastDateStr + 'T00:00:00Z');
+    const today = new Date();
+    
+    const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+    const lastDateUTC = new Date(Date.UTC(lastDate.getUTCFullYear(), lastDate.getUTCMonth(), lastDate.getUTCDate()));
+
+    const diffDaysToToday = Math.round((todayUTC - lastDateUTC) / (1000 * 60 * 60 * 24));
+    
+    if (diffDaysToToday > 1) {
+      return 0;
+    }
+
+    let streak = 0;
+    let checkDate = lastDateUTC;
+
+    while (true) {
+      const checkStr = checkDate.toISOString().slice(0, 10);
+      if (uniqueDates.includes(checkStr)) {
+        streak++;
+        checkDate.setUTCDate(checkDate.getUTCDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  function _consecutiveWeeks(dates) {
+    if (!dates || dates.length === 0) return 0;
+    const uniqueDates = Array.from(new Set(dates)).sort();
+    
+    const getWeekStart = (dateStr) => {
+      const d = new Date(dateStr + 'T00:00:00Z');
+      const day = d.getUTCDay();
+      const diff = d.getUTCDate() - day;
+      const sunday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), diff));
+      return sunday.getTime();
+    };
+
+    const weekStarts = Array.from(new Set(uniqueDates.map(getWeekStart))).sort();
+    if (weekStarts.length === 0) return 0;
+
+    let maxWeeks = 0;
+    let currentWeeks = 0;
+    let prevWeekStart = null;
+
+    const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+
+    for (const ws of weekStarts) {
+      if (prevWeekStart === null) {
+        currentWeeks = 1;
+      } else {
+        const diff = ws - prevWeekStart;
+        if (Math.round(diff / oneWeekMs) === 1) {
+          currentWeeks++;
+        } else if (diff > oneWeekMs) {
+          if (currentWeeks > maxWeeks) {
+            maxWeeks = currentWeeks;
+          }
+          currentWeeks = 1;
+        }
+      }
+      prevWeekStart = ws;
+    }
+    if (currentWeeks > maxWeeks) {
+      maxWeeks = currentWeeks;
+    }
+    return maxWeeks;
+  }
+
+  function calculatePlayerStats(items, histories, assigneeName) {
+    let completedTasksCount = 0;
+    let completedStoryPoints = 0;
+    let bugCount = 0;
+    const cycleTimes = [];
+    const completionDates = [];
+
+    const isCompleted = (state) => {
+      if (!state) return false;
+      const s = String(state).toLowerCase();
+      return s === 'closed' || s === 'done' || s === 'completed' || s === 'resolved' || s === 'removed';
+    };
+
+    const isInProgress = (state) => {
+      if (!state) return false;
+      const s = String(state).toLowerCase();
+      return s === 'active' || s === 'doing' || s === 'in progress' || s === 'committed' || s === 'started' || s === 'progress';
+    };
+
+    const daysBetween = (d1, d2) => {
+      const t1 = new Date(d1).getTime();
+      const t2 = new Date(d2).getTime();
+      if (isNaN(t1) || isNaN(t2)) return 0;
+      const diff = (t2 - t1) / (1000 * 60 * 60 * 24);
+      return Math.max(0, Math.round(diff * 10) / 10);
+    };
+
+    for (const item of items) {
+      if (item.assigned !== assigneeName) continue;
+      
+      const isBug = (item.type || '').toLowerCase() === 'bug';
+      const state = item.state;
+      const isDone = isCompleted(state);
+
+      if (isDone) {
+        completedTasksCount++;
+        const sp = Number(item.storypoints || item.estimate || 0);
+        completedStoryPoints += sp;
+        if (isBug) bugCount++;
+
+        const hist = histories[item.id] || [];
+        const chronological = hist.slice().reverse();
+
+        const createdDate = item.createddate || (chronological[0] ? chronological[0].date : null);
+        if (createdDate) {
+          let completionDate = null;
+          for (let i = hist.length - 1; i >= 0; i--) {
+            const update = hist[i];
+            const stateChange = (update.changes || []).find(c => c.field === 'State');
+            if (stateChange && isCompleted(stateChange.to)) {
+              completionDate = update.date;
+              break;
+            }
+          }
+          if (!completionDate) completionDate = item.changeddate || createdDate;
+
+          let startDate = null;
+          for (const update of chronological) {
+            const stateChange = (update.changes || []).find(c => c.field === 'State');
+            if (stateChange && isInProgress(stateChange.to)) {
+              startDate = update.date;
+              break;
+            }
+          }
+          if (!startDate) startDate = createdDate;
+
+          const cycle = daysBetween(startDate, completionDate);
+          cycleTimes.push(cycle);
+
+          const compD = new Date(completionDate);
+          if (!isNaN(compD.getTime())) {
+            completionDates.push(compD.toISOString().slice(0, 10));
+          }
+        }
+      }
+    }
+
+    completionDates.sort();
+
+    return {
+      completedTasksCount,
+      completedStoryPoints: Math.round(completedStoryPoints * 10) / 10,
+      bugCount,
+      cycleTimes,
+      completionDates
+    };
+  }
+
+  function calculateXPAndLevel(playerStats) {
+    const xp = (playerStats.completedTasksCount * 100) + (playerStats.completedStoryPoints * 20) + (playerStats.bugCount * 50);
+    
+    const level = Math.floor(Math.sqrt(xp / 500)) + 1;
+    const currentLevelXpStart = Math.pow(level - 1, 2) * 500;
+    const nextLevelXpStart = Math.pow(level, 2) * 500;
+    
+    const xpInLevel = xp - currentLevelXpStart;
+    const xpNeededForNextLevel = nextLevelXpStart - currentLevelXpStart;
+    const progressPercent = Math.min(100, Math.max(0, Math.round((xpInLevel / xpNeededForNextLevel) * 100)));
+
+    return {
+      xp,
+      level,
+      xpInLevel,
+      xpNeededForNextLevel,
+      progressPercent
+    };
+  }
+
+  function calculateAchievements(playerStats) {
+    const achievements = [];
+    
+    const taskCount = playerStats.completedTasksCount;
+    achievements.push({
+      id: 'task_slayer_1',
+      name: 'Task Slayer I',
+      desc: 'Complete 5 tasks',
+      unlocked: taskCount >= 5,
+      progress: taskCount,
+      target: 5,
+      emoji: '⚔️'
+    });
+    achievements.push({
+      id: 'task_slayer_2',
+      name: 'Task Slayer II',
+      desc: 'Complete 15 tasks',
+      unlocked: taskCount >= 15,
+      progress: taskCount,
+      target: 15,
+      emoji: '🛡️'
+    });
+    achievements.push({
+      id: 'task_slayer_3',
+      name: 'Task Slayer III',
+      desc: 'Complete 30 tasks',
+      unlocked: taskCount >= 30,
+      progress: taskCount,
+      target: 30,
+      emoji: '👑'
+    });
+
+    const spCount = playerStats.completedStoryPoints;
+    achievements.push({
+      id: 'velocity_novice',
+      name: 'Velocity Novice',
+      desc: 'Deliver 10 Story Points',
+      unlocked: spCount >= 10,
+      progress: spCount,
+      target: 10,
+      emoji: '⚡'
+    });
+    achievements.push({
+      id: 'velocity_master',
+      name: 'Velocity Master',
+      desc: 'Deliver 50 Story Points',
+      unlocked: spCount >= 50,
+      progress: spCount,
+      target: 50,
+      emoji: '🔥'
+    });
+
+    const bugs = playerStats.bugCount;
+    achievements.push({
+      id: 'bug_hunter_1',
+      name: 'Bug Squasher',
+      desc: 'Fix 1 bug',
+      unlocked: bugs >= 1,
+      progress: bugs,
+      target: 1,
+      emoji: '🐛'
+    });
+    achievements.push({
+      id: 'bug_hunter_2',
+      name: 'Bug Exterminator',
+      desc: 'Fix 5 bugs',
+      unlocked: bugs >= 5,
+      progress: bugs,
+      target: 5,
+      emoji: '👾'
+    });
+
+    const longestStr = _longestStreak(playerStats.completionDates);
+    achievements.push({
+      id: 'streak_3',
+      name: 'Streak Starter',
+      desc: 'Maintain a 3-day work completion streak',
+      unlocked: longestStr >= 3,
+      progress: longestStr,
+      target: 3,
+      emoji: '📅'
+    });
+    achievements.push({
+      id: 'streak_5',
+      name: 'Streak Warrior',
+      desc: 'Maintain a 5-day work completion streak',
+      unlocked: longestStr >= 5,
+      progress: longestStr,
+      target: 5,
+      emoji: '🏹'
+    });
+
+    const cycles = playerStats.cycleTimes || [];
+    const avgCycle = cycles.length ? (cycles.reduce((sum, x) => sum + x, 0) / cycles.length) : null;
+    achievements.push({
+      id: 'speed_demon',
+      name: 'Speed Demon',
+      desc: 'Maintain average cycle time under 2 days (min 3 tasks)',
+      unlocked: taskCount >= 3 && avgCycle !== null && avgCycle <= 2,
+      progress: avgCycle !== null ? Math.round(avgCycle * 10) / 10 : 0,
+      target: 2,
+      emoji: '🚀',
+      isLowerBetter: true
+    });
+
+    return achievements;
+  }
+
+  function calculateSprintHealth(deliveredPts, committedPts, activeItems, itemsOver7d, blockedItems, staleItems, totalItems) {
+    if (totalItems === 0) return 100;
+    
+    let score = committedPts > 0 ? (deliveredPts / committedPts) * 100 : 100;
+    score = Math.min(100, score);
+    
+    const blockedPenalty = (blockedItems || 0) * 10;
+    const stalePenalty = (staleItems || 0) * 5;
+    const agePenalty = (itemsOver7d || 0) * 5;
+    
+    score = score - blockedPenalty - stalePenalty - agePenalty;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }
+
+  function generateSparklinePoints(values, width, height) {
+    if (!values || values.length === 0) return '';
+    const w = Number(width) || 100;
+    const h = Number(height) || 30;
+    
+    if (values.length === 1) {
+      return `0,${h/2} ${w},${h/2}`;
+    }
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min;
+    const stepX = w / (values.length - 1);
+
+    return values.map((val, idx) => {
+      const x = idx * stepX;
+      const y = range === 0 ? h / 2 : h - ((val - min) / range) * h;
+      return `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`;
+    }).join(' ');
+  }
+
   return { formatMessage, wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml, highlightCode,
            highlightRegistry, langAliases, langMeta,
            base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath,
-           gidMake, gidNative, gidProvider, generateBurndownData, calculateSprintVelocity, calculateTeamThroughput };
+           gidMake, gidNative, gidProvider, generateBurndownData, calculateSprintVelocity, calculateTeamThroughput,
+           _longestStreak, _currentStreak, _consecutiveWeeks, calculatePlayerStats, calculateXPAndLevel, calculateAchievements, calculateSprintHealth, generateSparklinePoints };
 });

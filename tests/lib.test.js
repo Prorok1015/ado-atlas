@@ -1045,6 +1045,101 @@ test("calculateTeamThroughput: aggregates completed tasks per assignee", () => {
   assert.deepStrictEqual(res, { Alice: 1 });
 });
 
+test("gamification: _longestStreak, _currentStreak, _consecutiveWeeks", () => {
+  // Empty array
+  assert.strictEqual(lib._longestStreak([]), 0);
+  assert.strictEqual(lib._currentStreak([]), 0);
+  assert.strictEqual(lib._consecutiveWeeks([]), 0);
+
+  // Normal streak
+  const dates = ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-05", "2026-07-06"];
+  assert.strictEqual(lib._longestStreak(dates), 3);
+  assert.strictEqual(lib._consecutiveWeeks(dates), 2);
+
+  // current streak relative to today
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+  assert.strictEqual(lib._currentStreak([todayStr]), 1);
+  assert.strictEqual(lib._currentStreak([yesterdayStr, todayStr]), 2);
+  
+  // Stale current streak
+  assert.strictEqual(lib._currentStreak(["2026-07-01"]), 0);
+});
+
+test("gamification: calculatePlayerStats", () => {
+  const items = [
+    { id: "ado:1", state: "Done", assigned: "Alice", storypoints: 5, type: "User Story" },
+    { id: "ado:2", state: "Done", assigned: "Alice", storypoints: 3, type: "Bug" },
+    { id: "ado:3", state: "Active", assigned: "Alice", storypoints: 2, type: "User Story" },
+    { id: "ado:4", state: "Done", assigned: "Bob", storypoints: 8, type: "User Story" }
+  ];
+  const histories = {
+    "ado:1": [
+      { date: "2026-07-05T10:00:00Z", changes: [{ field: "State", from: "Active", to: "Done" }] }
+    ],
+    "ado:2": [
+      { date: "2026-07-06T10:00:00Z", changes: [{ field: "State", from: "Active", to: "Done" }] }
+    ]
+  };
+
+  const stats = lib.calculatePlayerStats(items, histories, "Alice");
+  assert.strictEqual(stats.completedTasksCount, 2);
+  assert.strictEqual(stats.completedStoryPoints, 8);
+  assert.strictEqual(stats.bugCount, 1);
+  assert.deepStrictEqual(stats.completionDates, ["2026-07-05", "2026-07-06"]);
+});
+
+test("gamification: calculateXPAndLevel and calculateAchievements", () => {
+  const playerStats = {
+    completedTasksCount: 5,
+    completedStoryPoints: 12,
+    bugCount: 2,
+    cycleTimes: [1, 2, 3],
+    completionDates: ["2026-07-01", "2026-07-02", "2026-07-03"]
+  };
+
+  const xpLevel = lib.calculateXPAndLevel(playerStats);
+  // XP = (5 * 100) + (12 * 20) + (2 * 50) = 500 + 240 + 100 = 840
+  assert.strictEqual(xpLevel.xp, 840);
+  // level = floor(sqrt(840 / 500)) + 1 = floor(1.29) + 1 = 2
+  assert.strictEqual(xpLevel.level, 2);
+  assert.strictEqual(xpLevel.xpInLevel, 340);
+  assert.strictEqual(xpLevel.xpNeededForNextLevel, 1500);
+
+  const achievements = lib.calculateAchievements(playerStats);
+  const taskSlayer1 = achievements.find(a => a.id === 'task_slayer_1');
+  assert.ok(taskSlayer1);
+  assert.strictEqual(taskSlayer1.unlocked, true);
+
+  const taskSlayer2 = achievements.find(a => a.id === 'task_slayer_2');
+  assert.strictEqual(taskSlayer2.unlocked, false);
+
+  const bugSquasher = achievements.find(a => a.id === 'bug_hunter_1');
+  assert.strictEqual(bugSquasher.unlocked, true);
+});
+
+test("gamification: calculateSprintHealth and generateSparklinePoints", () => {
+  const health = lib.calculateSprintHealth(20, 20, 0, 0, 0, 0, 10);
+  assert.strictEqual(health, 100);
+
+  const healthyButBlocked = lib.calculateSprintHealth(20, 25, 2, 1, 1, 1, 10);
+  // Base = (20/25)*100 = 80
+  // Penalties: blocked 10, stale 5, age 5. Total = 20
+  // Result = 80 - 20 = 60
+  assert.strictEqual(healthyButBlocked, 60);
+
+  const sparkline = lib.generateSparklinePoints([10, 20, 30], 100, 50);
+  // min 10, max 30, range 20. h = 50
+  // v[0]: y = 50 - 0 = 50
+  // v[1]: y = 50 - 25 = 25
+  // v[2]: y = 50 - 50 = 0
+  // x: stepX = 50
+  assert.strictEqual(sparkline, "0,50 50,25 100,0");
+});
+
 (async () => {
   for (const { name, fn } of queued) {
     try { await fn(); pass++; console.log("  ok   " + name); }
