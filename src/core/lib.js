@@ -465,7 +465,9 @@
       // goes into data-vss-mention exactly so the saved HTML triggers a real
       // notification when round-tripped back.
       out = out.replace(MENTION_RE, (m, name, guid) =>
-      `<a href="#" data-vss-mention="version:2.0,${guid}">@${name}</a>`);
+        `<a href="#" data-vss-mention="version:2.0,${guid}">@${name}</a>`);
+      out = out.replace(/@&lt;([a-f0-9-]{36})&gt;/gi, (m, guid) =>
+        `<a href="#" data-vss-mention="version:2.0,${guid}">@${guid}</a>`);
       out = out.replace(LINK_RE, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
       if (base) out = autolinkWidOutsideTags(out, base);
       return out;

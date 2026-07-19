@@ -493,6 +493,11 @@ test("mdToHtml: @[Name](descriptor) -> mention anchor with data-vss-mention", ()
   assert.ok(out.includes('data-vss-mention="version:2.0,e401e150-a645-7c8e-b903-3994dbead567"'));
   assert.ok(out.includes(">@Jane Doe</a>"));
 });
+test("mdToHtml: @<guid> -> mention anchor with data-vss-mention", () => {
+  const out = lib.mdToHtml("hello @<e401e150-a645-7c8e-b903-3994dbead567>");
+  assert.ok(out.includes('data-vss-mention="version:2.0,e401e150-a645-7c8e-b903-3994dbead567"'));
+  assert.ok(out.includes(">@e401e150-a645-7c8e-b903-3994dbead567</a>"));
+});
 test("mdToHtml: mention descriptor with bad chars is NOT a mention", () => {
   const out = lib.mdToHtml("@[X](<script>)");
   assert.ok(!out.includes("data-vss-mention"));
