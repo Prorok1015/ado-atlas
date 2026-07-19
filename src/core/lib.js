@@ -435,7 +435,7 @@
     const MENTION_RE = /@\[([^\]\n]{1,80})\]\(([a-f0-9-]{36})\)/gi;
     const IMG_RE     = /!\[([^\]\n]{0,200})\]\(((?:https:\/\/|\/|\?|File\?)[^)\s"<>]+)\)/gi;
     const LINK_RE    = /\[([^\]]+)\]\((https?:\/\/[^)\s"<>]+)\)/g;
-    const WID_RE     = /(^|[\s(,;:.])#(\d{1,8})\b/g;
+    const WID_RE     = /(^|[\s(,;:.\/\-])#(\d{1,8})\b/g;
     function inl(t) {
       let out = h(t)
         .replace(/`([^`]+)`/g, "<code>$1</code>")

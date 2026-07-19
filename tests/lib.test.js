@@ -495,9 +495,11 @@ test("mdToHtml: mention descriptor with bad chars is NOT a mention", () => {
   assert.ok(!out.includes("data-vss-mention"));
 });
 test("mdToHtml: #123 autolinks when workItemBase is set", () => {
-  const out = lib.mdToHtml("see #42 for context", { workItemBase: "https://dev.azure.com/o/p/_workitems/edit" });
+  const out = lib.mdToHtml("see #42 for context, also #645/#646/#647 and range #123-#124", { workItemBase: "https://dev.azure.com/o/p/_workitems/edit" });
   assert.ok(out.includes('<a href="https://dev.azure.com/o/p/_workitems/edit/42"'));
   assert.ok(out.includes(">#42</a>"));
+  assert.ok(out.includes('<a href="https://dev.azure.com/o/p/_workitems/edit/645" target="_blank" rel="noopener noreferrer">#645</a>/<a href="https://dev.azure.com/o/p/_workitems/edit/646" target="_blank" rel="noopener noreferrer">#646</a>/<a href="https://dev.azure.com/o/p/_workitems/edit/647" target="_blank" rel="noopener noreferrer">#647</a>'));
+  assert.ok(out.includes('<a href="https://dev.azure.com/o/p/_workitems/edit/123" target="_blank" rel="noopener noreferrer">#123</a>-<a href="https://dev.azure.com/o/p/_workitems/edit/124" target="_blank" rel="noopener noreferrer">#124</a>'));
 });
 test("mdToHtml: #123 stays plain when no workItemBase", () => {
   const out = lib.mdToHtml("see #42 for context");
