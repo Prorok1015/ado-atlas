@@ -521,7 +521,8 @@ async function searchIdentities(q, limit) {
   const lq = q.toLowerCase();
   const localMatches = roster.filter(r => 
     r.displayName.toLowerCase().includes(lq) || 
-    (r.mail && r.mail.toLowerCase().includes(lq))
+    (r.mail && r.mail.toLowerCase().includes(lq)) ||
+    (r.id && r.id.toLowerCase() === lq)
   );
   
   if (localMatches.length > 0) {

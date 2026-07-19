@@ -49,12 +49,46 @@ async function hydratePreviewImages(container){
     }
   }
 }
+const mentionCacheByGuid = {};
+
+async function resolveGuidToName(guid, element) {
+  try {
+    if (!window.api || typeof window.api.searchIdentities !== 'function') return;
+    const results = await window.api.searchIdentities(guid, 5);
+    const match = results.find(r => r.id && r.id.toLowerCase() === guid.toLowerCase());
+    if (match && match.displayName) {
+      mentionCacheByGuid[guid.toLowerCase()] = match.displayName;
+      if (element && element.parentNode) {
+        element.textContent = `@${match.displayName}`;
+        const baseColor = personColor(match.displayName);
+        const bg = baseColor.replace('hsl', 'hsla').replace(')', ', 0.12)');
+        element.style.color = baseColor;
+        element.style.background = bg;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to resolve mention GUID:', e);
+  }
+}
+
 function colorMentions(container){
   if(!container)return;
   const links=container.querySelectorAll('a[data-vss-mention]');
   links.forEach(a=>{
-    const name=a.textContent.replace(/^@/,'').trim();
+    let name=a.textContent.replace(/^@/,'').trim();
     if(!name)return;
+    
+    const isGuid = /^[a-f0-9-]{36}$/i.test(name);
+    if (isGuid) {
+      if (mentionCacheByGuid[name.toLowerCase()]) {
+        const resolvedName = mentionCacheByGuid[name.toLowerCase()];
+        a.textContent = `@${resolvedName}`;
+        name = resolvedName;
+      } else {
+        resolveGuidToName(name, a);
+      }
+    }
+    
     const baseColor=personColor(name);
     const bg=baseColor.replace('hsl','hsla').replace(')',', 0.12)');
     a.style.color=baseColor;
