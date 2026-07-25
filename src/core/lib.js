@@ -1246,6 +1246,10 @@
       return Math.max(0, Math.round(diff * 10) / 10);
     };
 
+    let weekendCompletions = 0;
+    let resolvedBlockedCount = 0;
+    const dateCounts = {};
+
     for (const item of items) {
       if (item.assigned !== assigneeName) continue;
       
@@ -1258,6 +1262,12 @@
         const sp = Number(item.storypoints || item.estimate || 0);
         completedStoryPoints += sp;
         if (isBug) bugCount++;
+
+        const tagStr = (item.tags || '').toLowerCase();
+        const titleStr = (item.title || '').toLowerCase();
+        if (tagStr.includes('blocked') || titleStr.includes('[blocked]')) {
+          resolvedBlockedCount++;
+        }
 
         const hist = histories[item.id] || [];
         const chronological = hist.slice().reverse();
@@ -1290,20 +1300,32 @@
 
           const compD = new Date(completionDate);
           if (!isNaN(compD.getTime())) {
-            completionDates.push(compD.toISOString().slice(0, 10));
+            const dayStr = compD.toISOString().slice(0, 10);
+            completionDates.push(dayStr);
+            dateCounts[dayStr] = (dateCounts[dayStr] || 0) + 1;
+            const dayOfWeek = compD.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+              weekendCompletions++;
+            }
           }
         }
       }
     }
 
     completionDates.sort();
+    const sameDayMaxCombo = Object.keys(dateCounts).length ? Math.max(...Object.values(dateCounts)) : 0;
+    const fastestCycleTime = cycleTimes.length ? Math.min(...cycleTimes) : null;
 
     return {
       completedTasksCount,
       completedStoryPoints: Math.round(completedStoryPoints * 10) / 10,
       bugCount,
       cycleTimes,
-      completionDates
+      completionDates,
+      weekendCompletions,
+      sameDayMaxCombo,
+      fastestCycleTime,
+      resolvedBlockedCount
     };
   }
 
@@ -1330,7 +1352,7 @@
   function calculateAchievements(playerStats) {
     const achievements = [];
     
-    const taskCount = playerStats.completedTasksCount;
+    const taskCount = playerStats.completedTasksCount || 0;
     achievements.push({
       id: 'task_slayer_1',
       name: 'Task Slayer I',
@@ -1358,8 +1380,17 @@
       target: 30,
       emoji: '👑'
     });
+    achievements.push({
+      id: 'task_slayer_4',
+      name: 'Legendary Hero',
+      desc: 'Complete 50 tasks',
+      unlocked: taskCount >= 50,
+      progress: taskCount,
+      target: 50,
+      emoji: '🏆'
+    });
 
-    const spCount = playerStats.completedStoryPoints;
+    const spCount = playerStats.completedStoryPoints || 0;
     achievements.push({
       id: 'velocity_novice',
       name: 'Velocity Novice',
@@ -1378,8 +1409,17 @@
       target: 50,
       emoji: '🔥'
     });
+    achievements.push({
+      id: 'velocity_titan',
+      name: 'Raid Titan',
+      desc: 'Deliver 100 Story Points (EXP)',
+      unlocked: spCount >= 100,
+      progress: spCount,
+      target: 100,
+      emoji: '🌟'
+    });
 
-    const bugs = playerStats.bugCount;
+    const bugs = playerStats.bugCount || 0;
     achievements.push({
       id: 'bug_hunter_1',
       name: 'Bug Squasher',
@@ -1398,8 +1438,17 @@
       target: 5,
       emoji: '👾'
     });
+    achievements.push({
+      id: 'bug_god',
+      name: 'Glitch Slayer',
+      desc: 'Fix 10 bugs',
+      unlocked: bugs >= 10,
+      progress: bugs,
+      target: 10,
+      emoji: '🐉'
+    });
 
-    const longestStr = _longestStreak(playerStats.completionDates);
+    const longestStr = _longestStreak(playerStats.completionDates || []);
     achievements.push({
       id: 'streak_3',
       name: 'Streak Starter',
@@ -1418,6 +1467,15 @@
       target: 5,
       emoji: '🏹'
     });
+    achievements.push({
+      id: 'streak_7',
+      name: 'Unstoppable Force',
+      desc: 'Maintain a 7-day work completion streak',
+      unlocked: longestStr >= 7,
+      progress: longestStr,
+      target: 7,
+      emoji: '💎'
+    });
 
     const cycles = playerStats.cycleTimes || [];
     const avgCycle = cycles.length ? (cycles.reduce((sum, x) => sum + x, 0) / cycles.length) : null;
@@ -1430,6 +1488,73 @@
       target: 2,
       emoji: '🚀',
       isLowerBetter: true
+    });
+
+    const fastest = playerStats.fastestCycleTime !== undefined && playerStats.fastestCycleTime !== null ? playerStats.fastestCycleTime : (cycles.length ? Math.min(...cycles) : null);
+    achievements.push({
+      id: 'speedrun_master',
+      name: 'Lightning Reflexes',
+      desc: 'Complete a task in <= 1 day (Speedrun clear)',
+      unlocked: fastest !== null && fastest <= 1,
+      progress: fastest !== null ? Math.round(fastest * 10) / 10 : 0,
+      target: 1,
+      emoji: '⚡',
+      isLowerBetter: true
+    });
+
+    const maxCombo = playerStats.sameDayMaxCombo || 0;
+    achievements.push({
+      id: 'combo_master',
+      name: 'Hyper Flow Combo',
+      desc: 'Complete 3 or more tasks in a single day',
+      unlocked: maxCombo >= 3,
+      progress: maxCombo,
+      target: 3,
+      emoji: '🌊'
+    });
+
+    const weekendCount = playerStats.weekendCompletions || 0;
+    achievements.push({
+      id: 'weekend_hero',
+      name: 'Weekend Raider',
+      desc: 'Complete at least 1 task during the weekend',
+      unlocked: weekendCount >= 1,
+      progress: weekendCount,
+      target: 1,
+      emoji: '🌙'
+    });
+
+    const blockedResolved = playerStats.resolvedBlockedCount || 0;
+    achievements.push({
+      id: 'blocker_breaker',
+      name: 'Shield Breaker',
+      desc: 'Resolve at least 1 blocked task',
+      unlocked: blockedResolved >= 1,
+      progress: blockedResolved,
+      target: 1,
+      emoji: '🛡️'
+    });
+
+    const totalXp = (taskCount * 100) + (spCount * 20) + (bugs * 50);
+    achievements.push({
+      id: 'exp_overload',
+      name: 'EXP Overload',
+      desc: 'Earn over 1,000 total Player EXP',
+      unlocked: totalXp >= 1000,
+      progress: totalXp,
+      target: 1000,
+      emoji: '✨'
+    });
+
+    const consecutiveWks = _consecutiveWeeks(playerStats.completionDates || []);
+    achievements.push({
+      id: 'guild_mvp',
+      name: 'Guild MVP',
+      desc: 'Stay active for 3 consecutive weeks',
+      unlocked: consecutiveWks >= 3,
+      progress: consecutiveWks,
+      target: 3,
+      emoji: '🎖️'
     });
 
     return achievements;
