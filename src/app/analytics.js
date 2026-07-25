@@ -1262,12 +1262,17 @@
           <div class="achievement-feed">
             ${unlockedAchievements.length === 0 ? `
               <div class="analytics-empty-section">${L('analytics.dashboard.noAchievements', 'No achievements unlocked yet. Keep delivering!')}</div>
-            ` : unlockedAchievements.map(a => `
-              <div class="feed-achievement-item" title="${htmlEsc(a.desc)}">
-                <span>${a.emoji}</span>
-                <strong>${htmlEsc(a.name)}</strong>
-              </div>
-            `).join('')}
+            ` : unlockedAchievements.map(a => {
+              const nameLoc = L(`achievement.${a.id}.name`, a.name);
+              const descLoc = L(`achievement.${a.id}.desc`, a.desc);
+              const titleText = `${nameLoc}: ${descLoc}`;
+              return `
+                <div class="feed-achievement-item" title="${htmlEsc(titleText)}">
+                  <span>${a.emoji}</span>
+                  <strong>${htmlEsc(nameLoc)}</strong>
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
       </div>
@@ -1361,17 +1366,23 @@
       <div class="analytics-section">
         <h3>${L('analytics.profile.achievements', 'Achievements')}</h3>
         <div class="achievements-grid">
-          ${achievements.map(a => `
-            <div class="achievement-card ${a.unlocked ? '' : 'locked'}" title="${htmlEsc(a.desc)}">
-              <div class="achievement-emoji-container">
-                ${a.emoji}
+          ${achievements.map(a => {
+            const nameLoc = L(`achievement.${a.id}.name`, a.name);
+            const descLoc = L(`achievement.${a.id}.desc`, a.desc);
+            const titleText = `${nameLoc}: ${descLoc}`;
+            return `
+              <div class="achievement-card ${a.unlocked ? '' : 'locked'}" title="${htmlEsc(titleText)}">
+                <div class="achievement-emoji-container">
+                  ${a.emoji}
+                </div>
+                <div class="achievement-info">
+                  <div class="achievement-name">${htmlEsc(nameLoc)}</div>
+                  <div class="achievement-desc">${htmlEsc(descLoc)}</div>
+                  ${!a.unlocked ? `<div class="achievement-progress" style="font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem;">${a.progress || 0} / ${a.target}</div>` : ''}
+                </div>
               </div>
-              <div class="achievement-info">
-                <div class="achievement-name">${htmlEsc(a.name)}</div>
-                <div class="achievement-desc">${htmlEsc(a.desc)}</div>
-              </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       </div>
     `;
@@ -1984,7 +1995,13 @@
         completionDates: st.completionDates
       };
       const achievements = AdoLib.calculateAchievements(statsObj);
-      const unlockedEmojis = achievements.filter(a => a.unlocked).map(a => a.emoji).slice(0, 5).join(' ');
+      const unlockedList = achievements.filter(a => a.unlocked);
+      const achievementsHtml = unlockedList.length === 0 ? '—' : unlockedList.slice(0, 8).map(a => {
+        const nameLoc = L(`achievement.${a.id}.name`, a.name);
+        const descLoc = L(`achievement.${a.id}.desc`, a.desc);
+        const titleText = `${nameLoc}: ${descLoc}`;
+        return `<span class="achievement-badge-icon" title="${htmlEsc(titleText)}" style="cursor: help; margin-right: 0.25rem; font-size: 1.15rem; display: inline-block; transition: transform 0.15s ease;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">${a.emoji}</span>`;
+      }).join('');
 
       team.push({
         name,
@@ -1992,7 +2009,7 @@
         points: Math.round(st.points * 10) / 10,
         bugs: st.bugs,
         avgCycle,
-        achievements: unlockedEmojis || '—'
+        achievements: achievementsHtml
       });
     }
 
