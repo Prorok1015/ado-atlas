@@ -912,6 +912,14 @@
 
     const raidBoss = AdoLib.calculateRaidBoss ? AdoLib.calculateRaidBoss(items) : { bossName: 'Sprint Titan', totalHp: 10, currentHp: 5, damageDealt: 5, criticalHits: 0, hpPercent: 50, isDefeated: false };
 
+    const completionPct = committedPts > 0 ? Math.round((deliveredPts / committedPts) * 100) : 100;
+    
+    let rankBadgeClass = 'b-rank';
+    let rankBadgeLabel = 'B-RANK';
+    if (sprintHealth >= 85) { rankBadgeClass = 's-rank'; rankBadgeLabel = 'S-RANK ⭐'; }
+    else if (sprintHealth >= 70) { rankBadgeClass = 'a-rank'; rankBadgeLabel = 'A-RANK'; }
+    else if (sprintHealth < 50) { rankBadgeClass = 'danger-rank'; rankBadgeLabel = 'DANGER ⚠️'; }
+
     container.innerHTML = `
       <div class="analytics-header">
         <h2>${L('analytics.dashboard.title', 'Sprint Dashboard')}</h2>
@@ -936,14 +944,6 @@
           <div style="height: 100%; width: ${raidBoss.hpPercent}%; background: linear-gradient(90deg, #ff416c, #ff4b2b); transition: width 0.5s ease;"></div>
         </div>
       </div>
-
-      const completionPct = committedPts > 0 ? Math.round((deliveredPts / committedPts) * 100) : 100;
-    
-      let rankBadgeClass = 'b-rank';
-      let rankBadgeLabel = 'B-RANK';
-      if (sprintHealth >= 85) { rankBadgeClass = 's-rank'; rankBadgeLabel = 'S-RANK ⭐'; }
-      else if (sprintHealth >= 70) { rankBadgeClass = 'a-rank'; rankBadgeLabel = 'A-RANK'; }
-      else if (sprintHealth < 50) { rankBadgeClass = 'danger-rank'; rankBadgeLabel = 'DANGER ⚠️'; }
 
       <div class="dashboard-grid">
         <!-- Metric Card 1: Sprint Health (Party HP) -->
