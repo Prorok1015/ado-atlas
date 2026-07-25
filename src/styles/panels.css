@@ -15,7 +15,7 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 .legend i{display:inline-block;width:0.769rem;height:0.769rem;border-radius:0.231rem;margin-right:0.308rem;vertical-align:-1px}
 /* ---- combined settings popover (theme, auto-refresh, timezone, work hours, connection) ---- */
 .popwrap{position:relative;display:inline-flex}
-#morepanel{position:absolute;top:calc(100% + 0.462rem);right:0;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:0.615rem;padding:0.769rem 0.923rem;display:flex;flex-direction:column;gap:0.692rem;min-width:17.692rem;box-shadow:0 0.462rem 1.692rem rgba(0,0,0,.4)}
+#morepanel{position:absolute;top:calc(100% + 0.462rem);left:0;right:auto;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:0.615rem;padding:0.769rem 0.923rem;display:flex;flex-direction:column;gap:0.692rem;min-width:17.692rem;max-width:calc(100vw - 1.5rem);box-sizing:border-box;box-shadow:0 0.462rem 1.692rem rgba(0,0,0,.4)}
 #morepanel .mrow{display:flex;align-items:center;justify-content:space-between;gap:0.923rem}
 #morepanel .ml{color:var(--muted);font-size:0.846rem;text-transform:uppercase;letter-spacing:.0.308rem;white-space:nowrap}
 #morepanel select{min-width:7.077rem}
@@ -27,7 +27,8 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
 #exportpanel {
   position: absolute;
   top: calc(100% + 0.462rem);
-  right: 0;
+  left: 0;
+  right: auto;
   z-index: 60;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -37,6 +38,8 @@ a.adolink{color:var(--accent);font-size:0.923rem;text-decoration:none}
   flex-direction: column;
   gap: 0.308rem;
   min-width: 10.769rem;
+  max-width: calc(100vw - 1.5rem);
+  box-sizing: border-box;
   box-shadow: 0 0.462rem 1.692rem rgba(0,0,0,.4);
 }
 #exportpanel .mrow-full {

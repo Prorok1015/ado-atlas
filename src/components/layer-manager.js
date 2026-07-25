@@ -67,6 +67,10 @@ const LayerManager = {
 
     this.stack.push(layer);
     this.recalculateZ();
+
+    if (options.isPopover) {
+      this.clampPopover(element);
+    }
     
     // Auto focus first element
     setTimeout(() => {
@@ -76,6 +80,30 @@ const LayerManager = {
         focusable[0].focus();
       }
     }, 10);
+  },
+
+  clampPopover(element) {
+    if (!element) return;
+    requestAnimationFrame(() => {
+      const rect = element.getBoundingClientRect();
+      const vw = window.innerWidth;
+      
+      if (rect.left < 8) {
+        element.style.left = '0';
+        element.style.right = 'auto';
+        const newRect = element.getBoundingClientRect();
+        if (newRect.left < 8) {
+          element.style.left = `${Math.max(0, 8 - newRect.left)}px`;
+        }
+      } else if (rect.right > vw - 8) {
+        element.style.right = '0';
+        element.style.left = 'auto';
+        const newRect = element.getBoundingClientRect();
+        if (newRect.right > vw - 8) {
+          element.style.right = `${Math.max(0, newRect.right - (vw - 8))}px`;
+        }
+      }
+    });
   },
 
   // Removes a layer and restores original z-indexes if any
