@@ -253,17 +253,14 @@ in pools — so N parallel requests at the expiry boundary will each call `oauth
 the same single-use refresh token. Entra rotates it; one wins, the rest get `invalid_grant`
 and the user is logged out mid-session. Cache the in-flight promise (like `populatePromise`).
 
-## 15. Caching
+## 15. Caching via `App.cache`
 
-Two layers: in-memory for the session, `chrome.storage.local` for persistence.
+All data and schema caches (`snapshot`, `state_categories`, `history`, etc.) route through `App.cache` (`cache-manager.js`). Two layers: in-memory for the session, `chrome.storage.local` for persistence.
 
-- **Schema caches need a TTL.** Without one, a new state or field in the ADO process never
-  appears until the user manually clears storage.
-- **`setConfig` must invalidate storage keys, not just memory** — otherwise switching projects
-  serves the previous project's schema.
-- **Don't persist raw `fields`** into the snapshot; store only what the render needs
-  (`id`, `type`, `title`, `state`, `parent`, `rev`). The full payload hits the storage quota,
-  `set()` throws, the error is swallowed, and the instant-first-paint feature silently dies.
+- **Centralized & Scoped**: Every key is automatically namespaced by `v1:${org}/${project}:${key}`.
+- **TTL Support**: `App.cache.get(key, { ttlMs })` validates expiration automatically.
+- **Project Switching**: `App.cache.clearProject()` purges memory and storage for the current scope without leaking stale schema or snapshot data across projects.
+- **Don't persist raw `fields`** into the snapshot; store only what the render needs (`id`, `type`, `title`, `state`, `parent`, `rev`). The full payload hits the storage quota, `set()` throws, the error is swallowed, and the instant-first-paint feature silently dies.
 
 ## 16. Feature gating goes through `gate()`
 
@@ -678,9 +675,17 @@ compiler to catch what the reformat broke (§7).
 Quotes: single in `src/app/`, double in `src/core/` — follow the file you're in. Semicolons always.
 `const` by default. **Comments are in English and explain _why_ / cross-file coupling**, not _what_.
 
+## 35. Backend Independence & Zero Hardcoded Domain Literals
+
+Never hardcode tracker-specific state names (e.g. `"Done"`, `"Closed"`, `"Готово"`, `"Active"`), work item type names, or workflow status literals anywhere in the codebase.
+
+- **Status classification**: `isCompletedState` and `isInProgressState` must rely strictly on dynamic backend category metadata (`StateCategory.COMPLETED`, `StateCategory.IN_PROGRESS`, `StateCategory.PROPOSED`, `StateCategory.REMOVED`) resolved via `App.backend.getStateCategory(state)` or `node.stateCategory`.
+- **Querying & vocabulary**: Use vendor-neutral `FilterIR` keys (`state`, `assignee`, `storypoints`) and provider vocabulary descriptors (`api.terms`).
+
 ---
 
 ## Quick checklist before you open a PR
+
 
 - [ ] `npm test` green — and I know it doesn't prove the app runs
 - [ ] Manually smoked the change in Chrome
@@ -702,5 +707,7 @@ Quotes: single in `src/app/`, double in `src/core/` — follow the file you're i
 - [ ] No `System.*` literal outside `src/core/api/`
 - [ ] 403 handled via `denyOnForbidden` (return value respected); new capability flag reset in `init.js`
 - [ ] Fan-out via `api.pool` (3 reads / 6 writes), ids chunked at 200
+- [ ] No hardcoded state names or domain literals; status classification uses `StateCategory` enum via `App.backend.getStateCategory()`
 - [ ] New file: header comment + the IIFE flavour of its directory + single export line
 - [ ] New persistent cache key carries a version **and** `${org}:${project}`
+

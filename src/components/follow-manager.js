@@ -11,17 +11,44 @@ window.FollowManager = {
     this.openItemCallback = openItemCallback;
 
     // Listen to messages from background
-    chrome.runtime.onMessage.addListener((msg) => {
-      if (msg.action === 'openItem' && msg.id && this.openItemCallback) {
-        this.openItemCallback(App.backend.gid(msg.id));
-      }
-    });
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener((msg) => {
+        if (msg.action === 'openItem' && msg.id && this.openItemCallback) {
+          this.openItemCallback(App.backend.gid(msg.id));
+        }
+      });
+    }
+  },
+
+  async _getFollowed() {
+    if (window.App && window.App.cache) {
+      const res = await window.App.cache.get('followed_items');
+      if (res) return res;
+    }
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        const res = await chrome.storage.local.get("followedItems");
+        return res.followedItems || {};
+      } catch (_) {}
+    }
+    return {};
+  },
+
+  async _saveFollowed(items) {
+    if (window.App && window.App.cache) {
+      await window.App.cache.set('followed_items', items);
+    }
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        await chrome.storage.local.set({ followedItems: items });
+      } catch (_) {}
+    }
   },
 
   async updateButtonState(itemId) {
     const btn = document.getElementById('s_follow');
     if (!btn) return;
-    const { followedItems } = await chrome.storage.local.get("followedItems");
+    const followedItems = await this._getFollowed();
     const isFollowed = !!(followedItems && followedItems[itemId]);
     btn.classList.toggle('active', isFollowed);
     btn.innerHTML = isFollowed ? '<ui-icon name="star-filled"></ui-icon>' : '<ui-icon name="star"></ui-icon>';
@@ -29,7 +56,7 @@ window.FollowManager = {
   },
 
   async toggleFollow(itemId, itemData) {
-    const { followedItems = {} } = await chrome.storage.local.get("followedItems");
+    const followedItems = await this._getFollowed();
     const isFollowed = !!followedItems[itemId];
     const btn = document.getElementById('s_follow');
     if (isFollowed) {
@@ -40,7 +67,7 @@ window.FollowManager = {
         btn.title = FOLLOW_L('follow.follow', 'Follow this item');
       }
     } else {
-      const { org, project } = await api.getConfig();
+      const { org, project } = (window.api && window.api.getConfig) ? (await window.api.getConfig()) : { org: '', project: '' };
       followedItems[itemId] = {
         id: itemData.id,
         title: itemData.title,
@@ -57,18 +84,18 @@ window.FollowManager = {
         btn.title = FOLLOW_L('follow.unfollow', 'Unfollow this item');
       }
     }
-    await chrome.storage.local.set({ followedItems });
+    await this._saveFollowed(followedItems);
   },
 
   async updateItemRev(itemId, newRev, state, title, assigned) {
-    const { followedItems } = await chrome.storage.local.get("followedItems");
+    const followedItems = await this._getFollowed();
     if (followedItems && followedItems[itemId]) {
       followedItems[itemId].rev = newRev;
       if (state !== undefined) followedItems[itemId].state = state;
       if (title !== undefined) followedItems[itemId].title = title;
       if (assigned !== undefined) followedItems[itemId].assigned = assigned;
       followedItems[itemId].updatedTime = new Date().toISOString();
-      await chrome.storage.local.set({ followedItems });
+      await this._saveFollowed(followedItems);
     }
   }
 };

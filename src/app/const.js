@@ -53,7 +53,17 @@ const typeNames=()=>typeList.length?typeList.map(t=>t.name):TYPES;
 function hexToRgb(h){h=String(h||'').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h||'0',16)||0;return [(n>>16)&255,(n>>8)&255,n&255];}
 const $=id=>document.getElementById(id);
 
+// Semantic state category Enum (backend-independent abstract taxonomy)
+const StateCategory = Object.freeze({
+  COMPLETED: 'completed',
+  IN_PROGRESS: 'inprogress',
+  PROPOSED: 'proposed',
+  REMOVED: 'removed'
+});
+window.StateCategory = StateCategory;
+
 // Forward namespace API (bare names above stay valid for current callers).
 // `$` and the mutable `typeList` are intentionally left as bare globals —
 // `$` is the universal DOM alias; `typeList` migrates to App.state later.
-App.const = { TYPE_COLOR, tyVar, tyColor, PRIO_COLOR, prioColor, STATE_COLOR, stateColor, STATE_ORDER, orderStates, cmpBySort, TYPES, typeNames, hexToRgb };
+App.const = { StateCategory, TYPE_COLOR, tyVar, tyColor, PRIO_COLOR, prioColor, STATE_COLOR, stateColor, STATE_ORDER, orderStates, cmpBySort, TYPES, typeNames, hexToRgb };
+

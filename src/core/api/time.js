@@ -27,7 +27,8 @@ function businessSeconds(s, e, offset) { return AdoLib.businessSeconds(s, e, off
 async function updatesFor(wid, options) {
   const proj = await projUrl();
   try {
-    const r = await req("GET", `${proj}/_apis/wit/workItems/${wid}/updates?${API_VERSION}`, undefined, undefined, options);
+    const nid = (typeof AdoLib !== 'undefined' && AdoLib.gidNative) ? AdoLib.gidNative(wid) : (String(wid).includes(':') ? String(wid).split(':').pop() : wid);
+    const r = await req("GET", `${proj}/_apis/wit/workItems/${nid}/updates?${API_VERSION}`, undefined, undefined, options);
     return r.value || [];
   } catch (_) { return []; }
 }

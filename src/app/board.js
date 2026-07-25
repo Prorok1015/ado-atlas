@@ -4,7 +4,7 @@
 
    STAY-BARE references (defined elsewhere in the shared scope):
    - shared sprint/date helpers (app/sprint-utils.js): prettyDate, getIterations, isCurrentSprint,
-     hh, colMeta, _sprint, iterCache, DONE_STATES, BOARD_TIME_CAP
+     hh, colMeta, _sprint, iterCache, isCompletedState, BOARD_TIME_CAP
    - badges (app/badges.js): badgeOn, BADGE_FIELDS_BY_VIEW
    - core state / helpers (app.js): $, htmlEsc, setStatus, openItem, refresh, loadStart, loadEnd,
      api, window.i18n, customConfirm, App.state.cy, mode, App.state.store, App.state.bulkSel, App.state.cur, boardBusy, pdrag, boardScroll,
@@ -157,7 +157,7 @@
   }
   function boardCard(n,finish,today){
     const due=n.target?n.target.slice(0,10):(finish?finish.slice(0,10):null);
-    const overdue=due&&due<today&&!DONE_STATES.includes(n.state);
+    const overdue=due&&due<today&&!isCompletedState(n.state);
     const c=document.createElement('div');c.className='bcard'+(overdue?' overdue':'')+(App.state.bulkSel.has(n.id)?' bulksel':'');
     c.style.borderLeftColor=tyColor(n.type);   // left marker = item TYPE colour
     c.dataset.id=n.id;c.dataset.est=(n.est!=null?n.est:'');
@@ -225,7 +225,7 @@
     pdrag={id,sx:e.clientX,sy:e.clientY,card,active:false,hot:null,clone:null};
   }
   document.addEventListener('mousemove',e=>{
-    if(!pdrag)return;
+    if(typeof pdrag === 'undefined' || !pdrag)return;
     if(!pdrag.active){
       if(Math.abs(e.clientX-pdrag.sx)+Math.abs(e.clientY-pdrag.sy)<5)return;   // movement threshold
       pdrag.active=true;
@@ -246,7 +246,7 @@
     pdrag.hot=c;if(c)c.classList.add('dropover');
   });
   document.addEventListener('mouseup',async ()=>{
-    if(!pdrag)return;const d=pdrag;pdrag=null;
+    if(typeof pdrag === 'undefined' || !pdrag)return;const d=pdrag;pdrag=null;
     if(!d.active)return;                              // was a plain click — let onclick handle it
     (d.dragEls||[d.card]).forEach(el=>el.classList.remove('dragging'));if(d.clone)d.clone.remove();
     $('board').classList.remove('drag');document.body.style.cursor='';

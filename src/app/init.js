@@ -280,6 +280,14 @@ async function loadIdentity(){
 //   - Tags:  distinct tags sampled from recent items
 //   - Sprint: dated iterations (chip value = path, label = short name)
 async function loadFilterData(){
+  if (window.App && window.App.cache) {
+    try {
+      const cachedCats = await window.App.cache.get('state_categories');
+      if (cachedCats) {
+        window.stateCategories = Object.assign(window.stateCategories || {}, cachedCats);
+      }
+    } catch (_) {}
+  }
   await App.types.loadTypes();                          // real work-item types first (drives the lines below + create dropdowns)
   await Promise.all([
     (async()=>{try{
@@ -292,6 +300,9 @@ async function loadFilterData(){
       }
       const all=[];per.forEach(arr=>arr.forEach(s=>{if(!all.includes(s))all.push(s);}));
       projectStates=all.length?orderStates(all):[];
+      if (window.App && window.App.cache && window.stateCategories) {
+        try { await window.App.cache.set('state_categories', window.stateCategories); } catch (_) {}
+      }
     }catch(e){projectStates=[];}})(),
     (async()=>{try{tagList=await api.tags();$('tagsdl').innerHTML=tagList.map(x=>`<option value="${htmlEsc(x)}">`).join('');}catch(e){tagList=[];}})(),
     (async()=>{try{const its=await getIterations();sprintPaths=its.map(i=>i.path);
@@ -640,7 +651,7 @@ function wireBulkBar(){
   $('bulk_follow_btn').onclick=async()=>{
     const ids=[...App.state.bulkSel];
     if(!ids.length)return;
-    const { followedItems = {} } = await chrome.storage.local.get("followedItems");
+    const followedItems = await FollowManager._getFollowed();
     const { org, project } = await api.getConfig();
     ids.forEach(id=>{
       const itemData = App.state.store.nodes[id];
@@ -657,7 +668,7 @@ function wireBulkBar(){
         };
       }
     });
-    await chrome.storage.local.set({ followedItems });
+    await FollowManager._saveFollowed(followedItems);
     if(App.state.cur!=null)FollowManager.updateButtonState(App.state.cur);
     updateFollowedBtnVisual();
     syncBulkBarValues();
@@ -665,11 +676,11 @@ function wireBulkBar(){
   $('bulk_unfollow_btn').onclick=async()=>{
     const ids=[...App.state.bulkSel];
     if(!ids.length)return;
-    const { followedItems = {} } = await chrome.storage.local.get("followedItems");
+    const followedItems = await FollowManager._getFollowed();
     ids.forEach(id=>{
       delete followedItems[id];
     });
-    await chrome.storage.local.set({ followedItems });
+    await FollowManager._saveFollowed(followedItems);
     if(App.state.cur!=null)FollowManager.updateButtonState(App.state.cur);
     updateFollowedBtnVisual();
     syncBulkBarValues();

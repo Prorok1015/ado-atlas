@@ -14,7 +14,7 @@
   let currentUserDisplayName = '';
 
   // Localisation helper
-  const L = (key, fallback) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fallback;
+  const L = (key, fallback, params) => (window.i18n && window.i18n.t) ? window.i18n.t(key, fallback, params) : fallback;
 
   function track(name, params) {
     try {
@@ -37,11 +37,32 @@
     }
   }
 
+  function exportToCsv(filename, headers, rows) {
+    const csvContent = [
+      headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+    ].join('\r\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   function renderAnalytics() {
     // Clear cache if project switched
     if (window.projectName !== cachedProject) {
       clearCache();
       cachedProject = window.projectName;
+    }
+
+    if (App.prefs && App.prefs.get && App.prefs.get('analytics_active_view')) {
+      activeView = App.prefs.get('analytics_active_view');
     }
 
     const container = document.getElementById('analytics');
@@ -54,7 +75,7 @@
           <div class="analytics-sidebar-title">${L('analytics.title', 'Analytics')}</div>
           
           <div class="analytics-menu-section-header">${L('analytics.menu.overview', 'Overview')}</div>
-          <button class="analytics-menu-btn active" data-view="dashboard">
+          <button class="analytics-menu-btn" data-view="dashboard">
             <ui-icon name="grid"></ui-icon> <span>${L('analytics.menu.dashboard', 'Dashboard')}</span>
           </button>
           <button class="analytics-menu-btn" data-view="cycle_time">
@@ -95,6 +116,34 @@
           </button>
         </div>
         <div class="analytics-main">
+          <div class="analytics-filter-toolbar" id="analytics_filter_toolbar">
+            <div class="analytics-filter-group">
+              <label>${L('analytics.filter.assignee', 'Assignee:')}</label>
+              <select id="an_sel_assignee" class="analytics-filter-select">
+                <option value="all">${L('analytics.filter.allAssignees', 'All Assignees')}</option>
+              </select>
+            </div>
+            <div class="analytics-filter-group">
+              <label>${L('analytics.filter.type', 'Item Type:')}</label>
+              <select id="an_sel_type" class="analytics-filter-select">
+                <option value="all">${L('analytics.filter.allTypes', 'All Item Types')}</option>
+                <option value="User Story">User Story</option>
+                <option value="Bug">Bug</option>
+                <option value="Task">Task</option>
+                <option value="Feature">Feature</option>
+                <option value="Epic">Epic</option>
+              </select>
+            </div>
+            <div class="analytics-filter-group">
+              <label>${L('analytics.filter.timeframe', 'Timeframe:')}</label>
+              <select id="an_sel_timeframe" class="analytics-filter-select">
+                <option value="all">${L('analytics.filter.allTime', 'All Time')}</option>
+                <option value="last30">${L('analytics.filter.last30', 'Last 30 Days')}</option>
+                <option value="last90">${L('analytics.filter.last90', 'Last 90 Days')}</option>
+              </select>
+            </div>
+          </div>
+
           <div class="analytics-loading" style="display:none">
             <div class="spinner-ring"></div>
             <div class="analytics-loading-text">${L('analytics.loading', 'Loading history...')} <span id="analytics_progress">0/0</span></div>
@@ -102,27 +151,207 @@
           <div class="analytics-content"></div>
         </div>
       `;
+    }
 
-      // Wire sidebar tab buttons
-      container.querySelectorAll('.analytics-menu-btn').forEach(btn => {
-        btn.onclick = () => {
-          container.querySelectorAll('.analytics-menu-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          activeView = btn.dataset.view;
-          drawActiveView();
-        };
+    // Update active highlight on menu buttons
+    container.querySelectorAll('.analytics-menu-btn').forEach(btn => {
+      const isActive = btn.dataset.view === activeView;
+      btn.classList.toggle('active', isActive);
+      btn.onclick = () => {
+        container.querySelectorAll('.analytics-menu-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeView = btn.dataset.view;
+        if (App.prefs && App.prefs.set) App.prefs.set('analytics_active_view', activeView);
+        refreshAnalyticsView();
+      };
+    });
+
+    refreshAnalyticsView();
+  }
+
+  const analyticsFilters = {
+    assignee: 'all',
+    type: 'all',
+    timeframe: 'all'
+  };
+
+  function getAnalyticsFilteredNodes(customNodes) {
+    const allNodes = customNodes || Object.values((App.state && App.state.store && App.state.store.nodes) || {});
+    if (allNodes.length === 0) return [];
+
+    const now = new Date();
+    return allNodes.filter(node => {
+      if (analyticsFilters.assignee !== 'all') {
+        const assignedName = (node.assigned || '').toLowerCase();
+        if (!assignedName.includes(analyticsFilters.assignee.toLowerCase())) {
+          return false;
+        }
+      }
+      if (analyticsFilters.type !== 'all') {
+        const itemType = (node.type || '').toLowerCase();
+        if (itemType !== analyticsFilters.type.toLowerCase()) {
+          return false;
+        }
+      }
+      if (analyticsFilters.timeframe !== 'all') {
+        const rawDate = node.changeddate || node.createddate || node.changedDate || node.createdDate;
+        if (rawDate) {
+          const itemDate = new Date(rawDate);
+          if (!isNaN(itemDate.getTime())) {
+            if (analyticsFilters.timeframe === 'last30') {
+              const past30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+              if (itemDate < past30) return false;
+            } else if (analyticsFilters.timeframe === 'last90') {
+              const past90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+              if (itemDate < past90) return false;
+            }
+          }
+        }
+      }
+      return true;
+    });
+  }
+
+  let analyticsItemsCache = null;
+
+  async function queryAnalyticsItemsForView(viewName) {
+    const rules = [];
+
+    // 1. Timeframe filter (if user selected last30 or last90)
+    if (analyticsFilters.timeframe === 'last30') {
+      rules.push({
+        kind: 'condition',
+        field: 'changeddate',
+        op: '>=',
+        value: '@today - 30'
+      });
+    } else if (analyticsFilters.timeframe === 'last90') {
+      rules.push({
+        kind: 'condition',
+        field: 'changeddate',
+        op: '>=',
+        value: '@today - 90'
       });
     }
 
-    const ids = (App.state.store.roots || []).slice();
+    // 2. Assignee filter (if active)
+    if (analyticsFilters.assignee && analyticsFilters.assignee !== 'all') {
+      rules.push({
+        kind: 'condition',
+        field: 'assigned',
+        op: '=',
+        value: analyticsFilters.assignee
+      });
+    }
+
+    // 3. Work Item Type filter (if active)
+    if (analyticsFilters.type && analyticsFilters.type !== 'all') {
+      rules.push({
+        kind: 'condition',
+        field: 'type',
+        op: '=',
+        value: analyticsFilters.type
+      });
+    }
+
+    const filterIR = {
+      where: {
+        kind: 'group',
+        logic: 'AND',
+        rules: rules
+      }
+    };
+
+    if (typeof api !== 'undefined' && typeof api.list === 'function') {
+      try {
+        const items = await api.list({ filters: filterIR, order: 'changeddate_desc' });
+        if (items && items.length > 0) {
+          analyticsItemsCache = items;
+          const storeMap = (App.state && App.state.store && App.state.store.nodes) || {};
+          items.forEach(node => {
+            if (node && node.id) storeMap[node.id] = node;
+          });
+          return items;
+        }
+      } catch (e) {
+        console.warn("Analytics api.list execution failed, falling back to cached items:", e);
+      }
+    }
+
+    if (analyticsItemsCache && analyticsItemsCache.length > 0) {
+      return getAnalyticsFilteredNodes(analyticsItemsCache);
+    }
+
+    const storeNodes = Object.values((App.state && App.state.store && App.state.store.nodes) || {});
+    return getAnalyticsFilteredNodes(storeNodes);
+  }
+
+  function getProjectAssignees() {
+    const nodes = Object.values((App.state && App.state.store && App.state.store.nodes) || {});
+    const set = new Set();
+    nodes.forEach(n => {
+      if (n.assigned) set.add(n.assigned);
+    });
+    if (Array.isArray(window.assignees)) {
+      window.assignees.forEach(a => set.add(a));
+    }
+    return [...set].sort();
+  }
+
+  function wireAnalyticsFilterBar(container) {
+    const bar = container.querySelector('#analytics_filter_toolbar');
+    if (!bar) return;
+
+    const viewsWithFilters = ['cycle_time', 'aging_wip', 'stale_items', 'blocked_time', 'cfd'];
+    const shouldShow = viewsWithFilters.includes(activeView);
+    bar.classList.toggle('hidden', !shouldShow);
+    bar.style.display = shouldShow ? 'flex' : 'none';
+    if (!shouldShow) return;
+
+    const assigneesList = getProjectAssignees();
+    const assSel = bar.querySelector('#an_sel_assignee');
+    const typeSel = bar.querySelector('#an_sel_type');
+    const tfSel = bar.querySelector('#an_sel_timeframe');
+
+    if (assSel && assSel.options.length <= 1) {
+      assSel.innerHTML = `<option value="all">${L('analytics.filter.allAssignees', 'All Assignees')}</option>` +
+        (Array.isArray(assigneesList) ? assigneesList : []).map(a => `<option value="${htmlEsc(a)}"${analyticsFilters.assignee === a ? ' selected' : ''}>${htmlEsc(a)}</option>`).join('');
+    }
+
+    if (assSel) assSel.onchange = (e) => { analyticsFilters.assignee = e.target.value; refreshAnalyticsView(); };
+    if (typeSel) typeSel.onchange = (e) => { analyticsFilters.type = e.target.value; refreshAnalyticsView(); };
+    if (tfSel) tfSel.onchange = (e) => { analyticsFilters.timeframe = e.target.value; refreshAnalyticsView(); };
+  }
+
+  let lastTargetNodes = null;
+
+  async function refreshAnalyticsView() {
+    if (App.state.mode !== 'analytics') return;
+    const container = document.getElementById('analytics');
+    if (container) wireAnalyticsFilterBar(container);
+
+    if (typeof loadFilterData === 'function' && (!window.stateCategories || Object.keys(window.stateCategories).length === 0)) {
+      try { await loadFilterData(); } catch (_) {}
+    }
+
+    const loader = document.querySelector('#analytics .analytics-loading');
+    if (loader) loader.style.display = 'flex';
+
+    let targetNodes = await queryAnalyticsItemsForView(activeView);
+    if (!targetNodes || targetNodes.length === 0) {
+      targetNodes = Object.values((App.state && App.state.store && App.state.store.nodes) || {});
+    }
+    lastTargetNodes = targetNodes;
+    const ids = targetNodes.map(n => n.id);
+
     if (ids.length === 0) {
       showEmptyState();
-      setStatus('0 items');
+      setStatus(`0 ${L('analytics.items', 'items')}`);
       return;
     }
 
-    setStatus(`${ids.length} items`);
-    fetchAndRender(ids);
+    setStatus(`${ids.length} ${L('analytics.items', 'items')}`);
+    fetchAndRender(ids, targetNodes);
   }
 
   function showEmptyState() {
@@ -137,7 +366,41 @@
     `;
   }
 
-  async function fetchAndRender(ids) {
+  async function loadPersistentHistoryCache(ids) {
+    if (!App.cache) return;
+    try {
+      const histMap = (await App.cache.get('history')) || {};
+      const storeNodes = (App.state && App.state.store && App.state.store.nodes) || {};
+      
+      for (const id of ids) {
+        if (revisionCache.has(id)) continue;
+        const cached = histMap[id];
+        const node = storeNodes[id];
+        if (cached && node && cached.rev === node.rev && Array.isArray(cached.hist)) {
+          revisionCache.set(id, cached.hist);
+        }
+      }
+    } catch (_) {}
+  }
+
+  async function savePersistentHistoryCache() {
+    if (!App.cache) return;
+    try {
+      const storeNodes = (App.state && App.state.store && App.state.store.nodes) || {};
+      const objToSave = {};
+      let count = 0;
+      for (const [id, hist] of revisionCache.entries()) {
+        if (count > 2000) break;
+        const node = storeNodes[id];
+        const rev = node ? node.rev : 1;
+        objToSave[id] = { rev, hist: hist || [] };
+        count++;
+      }
+      await App.cache.set('history', objToSave);
+    } catch (_) {}
+  }
+
+  async function fetchAndRender(ids, targetNodes) {
     const loader = document.querySelector('#analytics .analytics-loading');
     const progressSpan = document.getElementById('analytics_progress');
     const content = document.querySelector('#analytics .analytics-content');
@@ -148,6 +411,8 @@
         currentUserDisplayName = await api.me();
       } catch (_) {}
     }
+
+    await loadPersistentHistoryCache(ids);
 
     const missingIds = ids.filter(id => !revisionCache.has(id));
 
@@ -174,7 +439,7 @@
           if (myToken !== currentRenderToken) return;
           loadedCount++;
           progressSpan.textContent = `${loadedCount}/${missingIds.length}`;
-        }), 6);
+        }), 12);
       } catch (err) {
         if (err.name === 'AbortError' || myToken !== currentRenderToken) {
           return;
@@ -182,6 +447,7 @@
       }
 
       if (myToken !== currentRenderToken) return;
+      savePersistentHistoryCache();
       loader.style.display = 'none';
       content.style.display = 'block';
     } else {
@@ -189,7 +455,7 @@
       content.style.display = 'block';
     }
 
-    drawActiveView();
+    drawActiveView(targetNodes);
   }
 
   // --- Helper Date & State Functions ---
@@ -202,32 +468,27 @@
     return Math.max(0, Math.round(diff * 10) / 10);
   }
 
-  function isCompletedState(state) {
-    if (!state) return false;
-    const s = state.toLowerCase();
-    return s === 'closed' || s === 'done' || s === 'completed' || s === 'resolved' || s === 'removed';
-  }
+  function drawActiveView(overrideNodes) {
+    const container = document.getElementById('analytics');
+    if (container) wireAnalyticsFilterBar(container);
 
-  function isInProgressState(state) {
-    if (!state) return false;
-    const s = state.toLowerCase();
-    return s === 'active' || s === 'doing' || s === 'in progress' || s === 'committed' || s === 'started' || s === 'progress';
-  }
-
-  function drawActiveView() {
     const content = document.querySelector('#analytics .analytics-content');
     if (!content) return;
 
     // Apply smooth fade/slide-in transition using CSS transition classes
     content.className = 'analytics-content view-transition';
 
-    const ids = App.state.store.roots || [];
-    const items = ids.map(id => App.state.store.nodes[id]).filter(Boolean);
+    const sourceNodes = overrideNodes || lastTargetNodes;
+    const allItems = (sourceNodes && sourceNodes.length > 0)
+      ? sourceNodes
+      : Object.values((App.state && App.state.store && App.state.store.nodes) || {});
+
+    const items = getAnalyticsFilteredNodes(allItems);
 
     if (activeView === 'dashboard') {
-      renderDashboard(content, items);
+      renderDashboard(content, allItems);
     } else if (activeView === 'profile') {
-      renderProfile(content, items);
+      renderProfile(content, allItems);
     } else if (activeView === 'cycle_time') {
       renderCycleLeadTime(content, items);
     } else if (activeView === 'cfd') {
@@ -239,13 +500,13 @@
     } else if (activeView === 'blocked_time') {
       renderBlockedTime(content, items);
     } else if (activeView === 'leaderboard') {
-      renderLeaderboard(content, items);
+      renderLeaderboard(content, allItems);
     } else if (activeView === 'burndown') {
-      renderBurndown(content, items);
+      renderBurndown(content, allItems);
     } else if (activeView === 'velocity') {
-      renderVelocity(content, items);
+      renderVelocity(content, allItems);
     } else if (activeView === 'throughput') {
-      renderThroughput(content, items);
+      renderThroughput(content, allItems);
     }
   }
 
@@ -274,6 +535,156 @@
     requestAnimationFrame(update);
   }
 
+  function getItemPoints(item) {
+    if (!item) return 0;
+    let val = item.storypoints || item.estimate || item.storyPoints || item.effort || item.size || item.points;
+    if ((val === undefined || val === null || val === 0) && item.fields) {
+      val = item.fields['Microsoft.VSTS.Scheduling.StoryPoints'] ||
+            item.fields['Microsoft.VSTS.Scheduling.Effort'] ||
+            item.fields['Microsoft.VSTS.Scheduling.Size'] ||
+            item.fields['Custom.StoryPoints'];
+    }
+    const n = Number(val);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function getItemHist(id) {
+    if (!id) return [];
+    if (revisionCache.has(id)) return revisionCache.get(id) || [];
+    const rawId = App.backend ? App.backend.rawNid(id) : String(id).replace(/^[a-z]+:/, '');
+    if (revisionCache.has(rawId)) return revisionCache.get(rawId) || [];
+    const gid = App.backend ? App.backend.gid(id) : ('ado:' + rawId);
+    if (revisionCache.has(gid)) return revisionCache.get(gid) || [];
+    return [];
+  }
+
+  function buildGithubCalendarHTML(items) {
+    const heatMapDates = {};
+    for (const it of items) {
+      if (!isCompletedState(it.state)) continue;
+      const hist = getItemHist(it.id);
+      let completionDate = null;
+      for (let i = hist.length - 1; i >= 0; i--) {
+        const update = hist[i];
+        const stateChange = (update.changes || []).find(c => c.field === 'State');
+        if (stateChange && isCompletedState(stateChange.to)) {
+          completionDate = update.date;
+          break;
+        }
+      }
+      if (!completionDate) completionDate = it.changeddate || it.createddate;
+      if (completionDate) {
+        const dStr = new Date(completionDate).toISOString().slice(0, 10);
+        heatMapDates[dStr] = (heatMapDates[dStr] || 0) + 1;
+      }
+    }
+
+    const langCode = (window.i18n && typeof window.i18n.getLang === 'function')
+      ? window.i18n.getLang()
+      : (App.prefs ? App.prefs.get('lang') || 'ru' : 'ru');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // ISO Day of week: 0 = Mon, 1 = Tue, 2 = Wed, 3 = Thu, 4 = Fri, 5 = Sat, 6 = Sun
+    const isoDay = (today.getDay() + 6) % 7;
+    const numWeeks = 52;
+    const totalDays = numWeeks * 7 + isoDay;
+
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - totalDays);
+
+    const weeks = [];
+    const monthLabels = [];
+    let lastMonth = -1;
+
+    let curDate = new Date(startDate);
+    let totalCompletedYear = 0;
+
+    for (let w = 0; w < numWeeks + 1; w++) {
+      const weekDays = [];
+      for (let d = 0; d < 7; d++) {
+        if (curDate > today) {
+          weekDays.push(null);
+        } else {
+          const dStr = curDate.toISOString().slice(0, 10);
+          const count = heatMapDates[dStr] || 0;
+          totalCompletedYear += count;
+          let level = 0;
+          if (count > 0) {
+            if (count === 1) level = 1;
+            else if (count <= 3) level = 2;
+            else if (count <= 5) level = 3;
+            else level = 4;
+          }
+
+          const month = curDate.getMonth();
+          if (month !== lastMonth && d === 0) {
+            const mName = curDate.toLocaleString(langCode, { month: 'short' });
+            monthLabels.push({ name: mName, col: w });
+            lastMonth = month;
+          }
+
+          weekDays.push({
+            date: dStr,
+            dateObj: new Date(curDate),
+            count,
+            level
+          });
+        }
+        curDate.setDate(curDate.getDate() + 1);
+      }
+      weeks.push(weekDays);
+    }
+
+    const monthHeaderHTML = monthLabels.map(m => {
+      return `<span class="gh-month-label" style="grid-column: ${m.col + 2}">${htmlEsc(m.name)}</span>`;
+    }).join('');
+
+    const dayLabelsHTML = `
+      <span class="gh-day-label" style="grid-row: 2">${L('analytics.day.mon', 'Mon')}</span>
+      <span class="gh-day-label" style="grid-row: 4">${L('analytics.day.wed', 'Wed')}</span>
+      <span class="gh-day-label" style="grid-row: 6">${L('analytics.day.fri', 'Fri')}</span>
+    `;
+
+    let cellsHTML = '';
+    weeks.forEach((week, colIdx) => {
+      week.forEach((day, rowIdx) => {
+        if (!day) return;
+        const formattedDate = day.dateObj.toLocaleDateString(langCode, { year: 'numeric', month: 'long', day: 'numeric' });
+        const titleText = `${day.count} ${L('analytics.itemsCompletedOn', 'tasks completed on')} ${formattedDate}`;
+        cellsHTML += `<div class="heatmap-day lvl-${day.level}" style="grid-column: ${colIdx + 2}; grid-row: ${rowIdx + 2}" title="${htmlEsc(titleText)}"></div>`;
+      });
+    });
+
+    return `
+      <div class="gh-calendar-card">
+        <div class="gh-calendar-header">
+          <div class="analytics-sidebar-title" style="padding-left:0; margin:0; font-size:0.875rem;">${L('analytics.dashboard.activity', 'Completions Calendar')}</div>
+          <span class="gh-calendar-summary">${totalCompletedYear} ${L('analytics.dashboard.tasksCompletedInYear', 'tasks completed in the last year')}</span>
+        </div>
+        <div class="gh-calendar-wrapper">
+          <div class="gh-calendar-grid">
+            ${monthHeaderHTML}
+            ${dayLabelsHTML}
+            ${cellsHTML}
+          </div>
+        </div>
+        <div class="gh-calendar-footer">
+          <div class="stacked-bar-legend">
+            <span class="legend-text">${L('analytics.dashboard.less', 'Less')}</span>
+            <span class="legend-dot lvl-0" style="background:var(--line); width:10px; height:10px; border-radius:2px;"></span>
+            <span class="legend-dot lvl-1" style="background:rgba(47, 111, 237, 0.25); width:10px; height:10px; border-radius:2px;"></span>
+            <span class="legend-dot lvl-2" style="background:rgba(47, 111, 237, 0.5); width:10px; height:10px; border-radius:2px;"></span>
+            <span class="legend-dot lvl-3" style="background:rgba(47, 111, 237, 0.75); width:10px; height:10px; border-radius:2px;"></span>
+            <span class="legend-dot lvl-4" style="background:var(--accent); width:10px; height:10px; border-radius:2px;"></span>
+            <span class="legend-text">${L('analytics.dashboard.more', 'More')}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   async function renderDashboard(container, items) {
     let totalItems = items.length;
     let activeItems = 0;
@@ -288,7 +699,7 @@
     for (const item of items) {
       const isCompleted = isCompletedState(item.state);
       const isInProgress = isInProgressState(item.state);
-      const sp = Number(item.storypoints || item.estimate || 0);
+      const sp = getItemPoints(item);
       
       committedPts += sp;
       if (isCompleted) {
@@ -311,7 +722,7 @@
       }
       
       if (isInProgress) {
-        const hist = revisionCache.get(item.id) || [];
+        const hist = getItemHist(item.id);
         let transitionDate = null;
         for (const update of hist) {
           const stateChange = (update.changes || []).find(c => c.field === 'State');
@@ -344,7 +755,7 @@
     const completedCycles = [];
     for (const item of items) {
       if (!isCompletedState(item.state)) continue;
-      const hist = revisionCache.get(item.id) || [];
+      const hist = getItemHist(item.id);
       const chronological = hist.slice().reverse();
       const createdDate = item.createddate || (chronological[0] ? chronological[0].date : null);
       if (!createdDate) continue;
@@ -382,7 +793,7 @@
     const heatMapDates = {};
     for (const it of items) {
       if (!isCompletedState(it.state)) continue;
-      const hist = revisionCache.get(it.id) || [];
+      const hist = getItemHist(it.id);
       let completionDate = null;
       for (let i = hist.length - 1; i >= 0; i--) {
         const update = hist[i];
@@ -499,10 +910,31 @@
       `;
     }
 
+    const raidBoss = AdoLib.calculateRaidBoss ? AdoLib.calculateRaidBoss(items) : { bossName: 'Sprint Titan', totalHp: 10, currentHp: 5, damageDealt: 5, criticalHits: 0, hpPercent: 50, isDefeated: false };
+
     container.innerHTML = `
       <div class="analytics-header">
         <h2>${L('analytics.dashboard.title', 'Sprint Dashboard')}</h2>
         <p class="analytics-desc">${L('analytics.dashboard.desc', 'Real-time overview of sprint progress, flow metrics, and achievements.')}</p>
+      </div>
+
+      <!-- Sprint Raid Boss Widget -->
+      <div class="analytics-section raid-boss-card" style="background: linear-gradient(135deg, rgba(230, 81, 0, 0.1), rgba(245, 124, 0, 0.05)); border: 1px solid rgba(245, 124, 0, 0.3); border-radius: 0.769rem; padding: 1.2rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+          <div style="display: flex; align-items: center; gap: 0.615rem;">
+            <span style="font-size: 1.8rem;">${raidBoss.isDefeated ? '🏆' : '👾'}</span>
+            <div>
+              <h3 style="margin: 0; font-size: 1.154rem; color: var(--txt);">${htmlEsc(L('analytics.raidboss.titan', raidBoss.bossName))} ${raidBoss.isDefeated ? L('analytics.raidboss.defeated', '(Defeated!)') : ''}</h3>
+              <span style="font-size: 0.769rem; color: var(--muted);">${L('analytics.raidboss.title', 'Sprint Raid Boss')} • ${L('analytics.raidboss.damage', 'Damage Dealt')}: ${raidBoss.damageDealt} SP • ${L('analytics.raidboss.crits', 'Crits')}: ${raidBoss.criticalHits}</span>
+            </div>
+          </div>
+          <div style="font-size: 1.2rem; font-weight: 700; color: ${raidBoss.isDefeated ? 'var(--success)' : 'var(--danger)'};">
+            ${raidBoss.currentHp} / ${raidBoss.totalHp} HP
+          </div>
+        </div>
+        <div style="height: 12px; background: var(--line); border-radius: 6px; overflow: hidden;">
+          <div style="height: 100%; width: ${raidBoss.hpPercent}%; background: linear-gradient(90deg, #ff416c, #ff4b2b); transition: width 0.5s ease;"></div>
+        </div>
       </div>
 
       <div class="dashboard-grid">
@@ -525,7 +957,7 @@
           <div class="metric-label">${L('analytics.dashboard.velocity', 'Velocity')}</div>
           <div class="metric-value" id="dash_velocity_val">${deliveredPts}</div>
           <div class="metric-label" style="text-transform:none; font-weight:normal; margin-top:2px;">
-            ${L('analytics.dashboard.spCommitted', 'Story Points Completed')} (of ${committedPts})
+            ${L('analytics.dashboard.spCommitted', 'Story Points Completed')} (${L('analytics.dashboard.of', 'of')} ${committedPts})
           </div>
           <div class="metric-sparkline-container">
             <svg viewBox="0 0 120 30" width="100%" height="100%">
@@ -564,25 +996,9 @@
           </div>
         </div>
 
-        <!-- Activity Heatmap -->
-        <div class="metric-card dashboard-col-8">
-          <div class="analytics-sidebar-title" style="padding-left:0; margin-bottom:0.75rem; font-size:0.875rem;">${L('analytics.dashboard.activity', 'Completions Calendar')}</div>
-          <div class="heatmap-container">
-            <div class="heatmap-grid">
-              ${heatmapGridItems.map(d => `
-                <div class="heatmap-day lvl-${d.level}" title="${d.date}: ${d.count} completed"></div>
-              `).join('')}
-            </div>
-            <div class="stacked-bar-legend" style="margin-top: 4px;">
-              <span class="legend-text">${L('analytics.dashboard.less', 'Less')}</span>
-              <span class="legend-dot lvl-0" style="background:var(--line); width:10px; height:10px; border-radius:2px;"></span>
-              <span class="legend-dot lvl-1" style="background:rgba(47, 111, 237, 0.25); width:10px; height:10px; border-radius:2px;"></span>
-              <span class="legend-dot lvl-2" style="background:rgba(47, 111, 237, 0.5); width:10px; height:10px; border-radius:2px;"></span>
-              <span class="legend-dot lvl-3" style="background:rgba(47, 111, 237, 0.75); width:10px; height:10px; border-radius:2px;"></span>
-              <span class="legend-dot lvl-4" style="background:var(--accent); width:10px; height:10px; border-radius:2px;"></span>
-              <span class="legend-text">${L('analytics.dashboard.more', 'More')}</span>
-            </div>
-          </div>
+        <!-- Activity Heatmap (GitHub Style Calendar) -->
+        <div class="metric-card dashboard-col-12">
+          ${buildGithubCalendarHTML(items)}
         </div>
 
         <!-- Team Spotlight (Top 3) -->
@@ -597,7 +1013,7 @@
                 <div class="spotlight-avatar">${s.name.slice(0, 2).toUpperCase()}</div>
                 <div class="spotlight-details">
                   <div class="spotlight-name">${htmlEsc(s.name)}</div>
-                  <div class="spotlight-value">${s.count} tasks completed</div>
+                  <div class="spotlight-value">${s.count} ${L('analytics.dashboard.tasksCompleted', 'tasks completed')}</div>
                 </div>
               </div>
             `).join('')}
@@ -655,6 +1071,7 @@
     
     const longestStr = AdoLib._longestStreak(playerStats.completionDates);
     const currentStr = AdoLib._currentStreak(playerStats.completionDates);
+    const flowCombo = AdoLib.calculateFlowCombo ? AdoLib.calculateFlowCombo(playerStats.completionDates) : { multiplier: 1.0, label: 'No Active Combo' };
 
     const taskCount = playerStats.completedTasksCount;
     const spPoints = playerStats.completedStoryPoints;
@@ -670,7 +1087,10 @@
       <div class="player-card">
         <div class="player-avatar-large">${meName.slice(0, 2).toUpperCase()}</div>
         <div class="player-details">
-          <div class="player-name-title">${htmlEsc(meName)}</div>
+          <div class="player-name-title">
+            ${htmlEsc(meName)}
+            ${flowCombo.multiplier > 1.0 ? `<span class="flow-combo-badge" style="background: linear-gradient(135deg, #f12711, #f5af19); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.769rem; font-weight: 700; margin-left: 8px;">🔥 ${htmlEsc(flowCombo.label)}</span>` : ''}
+          </div>
           <span class="player-level-badge">Level ${xpLevel.level}</span>
           <div class="xp-progress-container">
             <div class="xp-progress-bar">
@@ -735,7 +1155,7 @@
       const chronological = history.slice().reverse();
 
       // Creation date from item metadata or first update
-      const createdDate = item.createddate || (chronological[0] ? chronological[0].date : null);
+      const createdDate = item.createdDate || item.createddate || (chronological[0] ? chronological[0].date : null);
       if (!createdDate) return;
 
       // Find completion date: last transition to closed/done state
@@ -748,7 +1168,7 @@
           break;
         }
       }
-      if (!completionDate) completionDate = item.changeddate || createdDate;
+      if (!completionDate) completionDate = item.changedDate || item.changeddate || createdDate;
 
       // Find start date: first transition to active/in-progress state
       let startDate = null;
@@ -1041,7 +1461,10 @@
       </div>
 
       <div class="analytics-section">
-        <h3>${L('analytics.stale.log', 'Stale Items Log')}</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="margin: 0;">${L('analytics.stale.log', 'Stale Items Log')}</h3>
+          ${stale.length > 0 ? `<button class="analytics-export-btn" id="export_stale_csv"><ui-icon name="download"></ui-icon> Export CSV</button>` : ''}
+        </div>
         ${stale.length === 0 ? `
           <div class="analytics-empty-section">${L('analytics.stale.empty', 'No stale items found. All active items have been updated recently.')}</div>
         ` : `
@@ -1072,6 +1495,13 @@
         `}
       </div>
     `;
+
+    const btn = container.querySelector('#export_stale_csv');
+    if (btn) {
+      btn.onclick = () => {
+        exportToCsv('stale_items.csv', ['ID', 'Title', 'State', 'Assigned', 'Days Inactive'], stale.map(x => [App.backend ? App.backend.nid(x.id) : x.id, x.title, x.state, x.assigned || 'Unassigned', x.days]));
+      };
+    }
   }
 
   // --- 5. Blocked Time View ---
@@ -1109,7 +1539,10 @@
       </div>
 
       <div class="analytics-section">
-        <h3>${L('analytics.blocked.log', 'Blocked Items Log')}</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="margin: 0;">${L('analytics.blocked.log', 'Blocked Items Log')}</h3>
+          ${blocked.length > 0 ? `<button class="analytics-export-btn" id="export_blocked_csv"><ui-icon name="download"></ui-icon> Export CSV</button>` : ''}
+        </div>
         ${blocked.length === 0 ? `
           <div class="analytics-empty-section">${L('analytics.blocked.empty', 'No blocked items found in the current filtered set.')}</div>
         ` : `
@@ -1143,6 +1576,13 @@
         `}
       </div>
     `;
+
+    const btn = container.querySelector('#export_blocked_csv');
+    if (btn) {
+      btn.onclick = () => {
+        exportToCsv('blocked_items.csv', ['ID', 'Title', 'State', 'Assigned', 'Tags'], blocked.map(x => [App.backend ? App.backend.nid(x.id) : x.id, x.title, x.state, x.assigned || 'Unassigned', x.tags]));
+      };
+    }
   }
 
   // --- 6. Team Arena (Leaderboards) View ---
@@ -1275,6 +1715,8 @@
     }
     const challengePct = sprintCommitted > 0 ? Math.min(100, Math.round((sprintDelivered / sprintCommitted) * 100)) : 100;
 
+    const seasonalTitles = AdoLib.calculateSeasonalTitles ? AdoLib.calculateSeasonalTitles(items) : {};
+
     container.innerHTML = `
       <div class="analytics-header">
         <h2>${L('analytics.arena.title', 'Team Arena')}</h2>
@@ -1344,7 +1786,10 @@
       </div>
 
       <div class="analytics-section">
-        <h3>Team Scoreboard</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="margin: 0;">Team Scoreboard</h3>
+          ${team.length > 0 ? `<button class="analytics-export-btn" id="export_leaderboard_csv"><ui-icon name="download"></ui-icon> Export CSV</button>` : ''}
+        </div>
         <div class="table-container">
           <table class="analytics-table">
             <thead>
@@ -1365,10 +1810,13 @@
                 else if (idx === 1) badge = '🥈';
                 else if (idx === 2) badge = '🥉';
 
+                const sTitle = seasonalTitles[x.name];
+                const titleBadgeHtml = sTitle ? ` <span class="seasonal-badge" style="background: var(--line); border-radius: 8px; padding: 2px 6px; font-size: 0.769rem;" title="${htmlEsc(sTitle.title)}">${sTitle.badge} ${htmlEsc(sTitle.title)}</span>` : '';
+
                 return `
                   <tr>
                     <td><strong>${badge}</strong></td>
-                    <td class="table-title"><strong>${htmlEsc(x.name)}</strong></td>
+                    <td class="table-title"><strong>${htmlEsc(x.name)}</strong>${titleBadgeHtml}</td>
                     <td>${x.tasks}</td>
                     <td>${x.points} SP</td>
                     <td>${x.avgCycle !== null ? `${x.avgCycle.toFixed(1)}d` : '—'}</td>
@@ -1382,6 +1830,13 @@
         </div>
       </div>
     `;
+
+    const expBtn = container.querySelector('#export_leaderboard_csv');
+    if (expBtn) {
+      expBtn.onclick = () => {
+        exportToCsv('team_leaderboard.csv', ['Rank', 'Assignee', 'Tasks', 'Points', 'Avg Days', 'Bugs'], team.map((x, idx) => [idx + 1, x.name, x.tasks, x.points, x.avgCycle !== null ? x.avgCycle.toFixed(1) : '—', x.bugs]));
+      };
+    }
 
     container.querySelectorAll('.arena-toggle-btn').forEach(btn => {
       btn.onclick = () => {
@@ -1552,7 +2007,7 @@
       </div>
 
       <div class="chart-container" style="padding: 1.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 0.615rem;">
-        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" style="display: block; overflow: visible;">
+        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="${svgH}" style="display: block; overflow: visible;">
           <defs>
             <linearGradient id="burndownGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.35"/>
@@ -1731,7 +2186,7 @@
       </div>
 
       <div class="chart-container" style="padding: 1.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 0.615rem; margin-top: 1.5rem;">
-        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" style="display: block; overflow: visible;">
+        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="${svgH}" style="display: block; overflow: visible;">
           ${gridLines.join('')}
           ${barsMarkup.join('')}
         </svg>
@@ -1846,7 +2301,7 @@
       </div>
 
       <div class="chart-container" style="padding: 1.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 0.615rem; margin-top: 1.5rem;">
-        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" style="display: block; overflow: visible;">
+        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="${svgH}" style="display: block; overflow: visible;">
           ${bars.join('')}
         </svg>
       </div>

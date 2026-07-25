@@ -76,7 +76,13 @@ const ICONS = {
   cloud: `<svg ${SVG_DEFAULTS}><path d="M18 10h-.79A7 7 0 0 0 5.455 14H5a4 4 0 0 0 0 8h13.09a5 5 0 0 0 .91-9.91A6.995 6.995 0 0 0 18 10z"/></svg>`,
   upload: `<svg ${SVG_DEFAULTS}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
   'file-code': `<svg ${SVG_DEFAULTS}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L15 2z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 13 6 15 8 17"/><polyline points="16 13 18 15 16 17"/><line x1="12" y1="13" x2="10" y2="17"/></svg>`,
-  table: `<svg ${SVG_DEFAULTS}><path d="M12 3v18"/><path d="M3 12h18"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>`
+  table: `<svg ${SVG_DEFAULTS}><path d="M12 3v18"/><path d="M3 12h18"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>`,
+  grid: `<svg ${SVG_DEFAULTS}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
+  trophy: `<svg ${SVG_DEFAULTS}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
+  users: `<svg ${SVG_DEFAULTS}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  'trending-down': `<svg ${SVG_DEFAULTS}><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>`,
+  'alert-circle': `<svg ${SVG_DEFAULTS}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  activity: `<svg ${SVG_DEFAULTS}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`
 };
 
 class UiIcon extends HTMLElement {

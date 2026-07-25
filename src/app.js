@@ -12,9 +12,9 @@ cytoscape.use(cytoscapeDagre);
 // Core view/render state now lives in app/state-globals.js (migrates to App.state in Phase 3).
 /* side-panel field-loading + sidebar lock (lockSidebar/lockSidebarHeavy/ensureFieldLoaded,
    customFieldsState/LAZY_GROUPS/HEAVY_FIELD_MAP/getCustomFieldElementId) -> app/side-panel.js (bare). */
-let boardBusy=false;                            // true while a card move PATCH is in flight
-let pdrag=null, suppressClick=false;            // custom pointer-based drag for board cards
-let boardScroll=null;                           // saved board scroll to restore from the sprint view
+var boardBusy=false;                            // true while a card move PATCH is in flight
+var pdrag=null, suppressClick=false;            // custom pointer-based drag for board cards
+var boardScroll=null;                           // saved board scroll to restore from the sprint view
 let boardGroup='sprint';                        // board grouping: 'sprint' | 'assignee' | 'state'
 let canCreateSprint=true;                       // show the "add sprint" column until a create is denied (403)
 let canEditSprint=true;                          // show the sprint "dates" button until an edit is denied (403)
@@ -260,6 +260,11 @@ function setMode(m){
   $('grp').style.display=(m==='board')?'inline-flex':'none';
   $('tlzoom').style.display=(m==='timeline')?'inline-flex':'none';
   $('tl_group').style.display=(m==='timeline')?'inline-block':'none';
+  if ($('filter-split')) $('filter-split').style.display = (m === 'analytics') ? 'none' : 'inline-flex';
+  if (m === 'analytics' && $('filterpanel')) {
+    $('filterpanel').style.display = 'none';
+    if (window.LayerManager) window.LayerManager.close($('filterpanel'));
+  }
   renderViewHelp();
 }
 // Per-view "what can I do here" legend, bottom-left. Each view has its own
@@ -425,6 +430,7 @@ async function _refresh(){
   if(App.state.mode==='graph')App.graph.renderGraph({relayout:true,fit:true});
   else if(App.state.mode==='board')App.board.renderBoard();
   else if(App.state.mode==='timeline')App.timeline.render();
+  else if(App.state.mode==='analytics'){if(App.analytics&&App.analytics.renderAnalytics)App.analytics.renderAnalytics();}
   if(openSprintPath&&$('sprintview').classList.contains('show'))App.board.renderSprint(openSprintPath);   // live-update open sprint
   App.snapshot.saveSnapshot();                        // cache this view for an instant first paint next session
   loadChildCounts(App.state.store.roots.slice());  // fill in n.childCount → hides empty-tree arrows, badges graph nodes

@@ -56,7 +56,16 @@ async function states(wtype) {
   const proj = await projUrl();
   try {
     const r = await req("GET", `${proj}/_apis/wit/workitemtypes/${encodeURIComponent(wtype)}/states?${API_VERSION}`);
-    return (r.value || []).map(s => s.name);
+    const list = r.value || [];
+    if (typeof window !== 'undefined') {
+      window.stateCategories = window.stateCategories || {};
+      list.forEach(s => {
+        if (s && s.name && s.category) {
+          window.stateCategories[s.name.toLowerCase()] = s.category;
+        }
+      });
+    }
+    return list.map(s => s.name);
   } catch (_) {
     return ["New", "Active", "Resolved", "Closed", "Removed"];
   }

@@ -90,23 +90,48 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
 
 async function openAppWindow(itemId) {
   const baseUrl = chrome.runtime.getURL("index.html");
-  const tabs = await chrome.tabs.query({ url: baseUrl + "*" });
-  const existing = tabs.find((t) => {
-    if (!t.url) return false;
+  let existing = null;
+
+  try {
+    const allTabs = await chrome.tabs.query({});
+    existing = allTabs.find((t) => {
+      const url = t.url || t.pendingUrl || '';
+      if (!url) return false;
+      try {
+        const tabUrlClean = url.split('?')[0].split('#')[0];
+        const baseUrlClean = baseUrl.split('?')[0].split('#')[0];
+        return tabUrlClean === baseUrlClean || url.startsWith(baseUrl);
+      } catch (_) {
+        return url.startsWith(baseUrl);
+      }
+    });
+  } catch (_) {}
+
+  if (!existing) {
     try {
-      const tabUrlClean = t.url.split('?')[0].split('#')[0];
-      const baseUrlClean = baseUrl.split('?')[0].split('#')[0];
-      return tabUrlClean === baseUrlClean;
-    } catch (_) {
-      return t.url.startsWith(baseUrl);
-    }
-  });
+      const matchTabs = await chrome.tabs.query({ url: [baseUrl + "*", "chrome-extension://" + chrome.runtime.id + "/*"] });
+      existing = matchTabs.find((t) => {
+        const url = t.url || t.pendingUrl || '';
+        return url && url.startsWith(baseUrl);
+      });
+    } catch (_) {}
+  }
+
   if (existing) {
     await chrome.tabs.update(existing.id, { active: true });
-    await chrome.windows.update(existing.windowId, { focused: true });
+    try {
+      const win = await chrome.windows.get(existing.windowId);
+      if (win && win.state === 'minimized') {
+        await chrome.windows.update(existing.windowId, { focused: true, state: 'normal' });
+      } else {
+        await chrome.windows.update(existing.windowId, { focused: true });
+      }
+    } catch (_) {
+      try { await chrome.windows.update(existing.windowId, { focused: true }); } catch (_) {}
+    }
     if (itemId) {
       // Send message to open the item immediately without reloading
-      chrome.tabs.sendMessage(existing.id, { action: "openItem", id: itemId });
+      chrome.tabs.sendMessage(existing.id, { action: "openItem", id: itemId }).catch(() => {});
     }
   } else {
     const url = itemId ? `${baseUrl}?root=${itemId}` : baseUrl;

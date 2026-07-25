@@ -6,7 +6,7 @@
   "description": "__MSG_appDesc__",
   "author": "Zakhar Lebediuk",
   "homepage_url": "https://prorok1015.github.io/ado-atlas/",
-  "permissions": ["storage", "identity", "alarms", "notifications"],
+  "permissions": ["storage", "identity", "alarms", "notifications", "tabs"],
   "host_permissions": [
     "https://dev.azure.com/*",
     "https://app.vssps.visualstudio.com/*",

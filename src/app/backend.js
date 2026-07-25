@@ -66,6 +66,33 @@
       }
       return this.rawNid(gid);
     },
+    // Dynamically resolves abstract state category ('completed', 'inprogress', 'proposed', 'removed')
+    // for a node object or state string via the active tracker backend's schema metadata with keyword fallback.
+    getStateCategory(arg) {
+      if (!arg) return null;
+      if (typeof arg === 'object') {
+        if (arg.stateCategory) {
+          const lowerCat = String(arg.stateCategory).toLowerCase();
+          if (lowerCat.includes('complete') || lowerCat.includes('done') || lowerCat.includes('closed') || lowerCat.includes('resolved') || lowerCat.includes('finish') || lowerCat.includes('готово') || lowerCat.includes('закрыто') || lowerCat.includes('решено') || lowerCat.includes('выполнено')) return 'completed';
+          if (lowerCat.includes('progress') || lowerCat.includes('active') || lowerCat.includes('doing') || lowerCat.includes('wip') || lowerCat.includes('работе')) return 'inprogress';
+          if (lowerCat.includes('propos') || lowerCat.includes('new') || lowerCat.includes('todo') || lowerCat.includes('to do') || lowerCat.includes('backlog') || lowerCat.includes('новая') || lowerCat.includes('новое')) return 'proposed';
+          if (lowerCat.includes('remov') || lowerCat.includes('cut') || lowerCat.includes('cancel') || lowerCat.includes('отменено') || lowerCat.includes('удалено')) return 'removed';
+          return lowerCat;
+        }
+        if (arg.state) return this.getStateCategory(arg.state);
+        return null;
+      }
+      const s = String(arg).trim().toLowerCase();
+      const cats = global.stateCategories || {};
+      const cat = cats[s];
+      const targetStr = cat ? String(cat).toLowerCase() : s;
+
+      if (targetStr.includes('complete') || targetStr.includes('done') || targetStr.includes('closed') || targetStr.includes('resolved') || targetStr.includes('finish') || targetStr.includes('готово') || targetStr.includes('закрыто') || targetStr.includes('решено') || targetStr.includes('выполнено')) return 'completed';
+      if (targetStr.includes('progress') || targetStr.includes('active') || targetStr.includes('doing') || targetStr.includes('wip') || targetStr.includes('работе')) return 'inprogress';
+      if (targetStr.includes('propos') || targetStr.includes('new') || targetStr.includes('todo') || targetStr.includes('to do') || targetStr.includes('backlog') || targetStr.includes('новая') || targetStr.includes('новое')) return 'proposed';
+      if (targetStr.includes('remov') || targetStr.includes('cut') || targetStr.includes('cancel') || targetStr.includes('отменено') || targetStr.includes('удалено')) return 'removed';
+      return null;
+    },
   };
   App.backend = Backend;
 

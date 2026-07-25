@@ -40,9 +40,18 @@ async function list({ wtype, parent, text, order, filters, signal } = {}) {
   for (const c of buildClauses(filters || {})) where.push(c);
   if (filters && filters.followed && filters.followed.in && filters.followed.in.includes('yes')) {
     const { org, project } = await getConfig();
-    const { followedItems } = await chrome.storage.local.get("followedItems");
+    let followedItems = {};
+    if (typeof globalThis !== 'undefined' && globalThis.App && globalThis.App.cache) {
+      followedItems = (await globalThis.App.cache.get('followed_items')) || {};
+    }
+    if (!Object.keys(followedItems).length && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        const res = await chrome.storage.local.get("followedItems");
+        followedItems = res.followedItems || {};
+      } catch (_) {}
+    }
     const activeIds = Object.values(followedItems || {})
-      .filter(item => item.org === org && item.project === project)
+      .filter(item => (!item.org || item.org === org) && (!item.project || item.project === project))
       .map(item => item.id);
     if (activeIds.length > 0) {
       where.push(`[System.Id] IN (${activeIds.join(",")})`);

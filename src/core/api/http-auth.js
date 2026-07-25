@@ -271,6 +271,11 @@ function mapWorkItem(rawItem, descField) {
     mapped.deps = depsFromRelations(rawItem.relations);
     mapped.attachments = attachmentsFromRelations(rawItem.relations);
   }
+  if (mapped.state) {
+    const cats = (typeof window !== 'undefined' && window.stateCategories) || (typeof globalThis !== 'undefined' && globalThis.stateCategories) || {};
+    const cat = cats[String(mapped.state).toLowerCase()];
+    if (cat) mapped.stateCategory = String(cat).toLowerCase();
+  }
   mapped.fields = f;
 
   if (mapped.parent) {

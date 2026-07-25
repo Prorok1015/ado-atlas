@@ -8,7 +8,6 @@ window.App = window.App || {};
 
 function prettyDate(s){if(!s)return '';const m=String(s).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return String(s).slice(0,10);
   return (+m[3])+' '+new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).toLocaleString(window.i18n.getLang(),{month:'short',timeZone:'UTC'})+' '+m[1];}
-const DONE_STATES=['Closed','Resolved','Removed','Done'];
 let iterCache=null;
 async function getIterations(){                     // sprint dates — fetched once, cached
   if(!iterCache){try{iterCache=await api.iterations();}catch(e){iterCache=[];setStatus('ERROR: '+e.message,true);}}

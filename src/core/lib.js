@@ -898,8 +898,28 @@
 
   function isCompletedState(state) {
     if (!state) return false;
-    const s = String(state).toLowerCase();
-    return s === 'closed' || s === 'done' || s === 'completed' || s === 'resolved' || s === 'removed';
+    const targetCat = (globalThis.StateCategory && globalThis.StateCategory.COMPLETED) || 'completed';
+    if (globalThis.App && globalThis.App.backend && typeof globalThis.App.backend.getStateCategory === 'function') {
+      const cat = globalThis.App.backend.getStateCategory(state);
+      if (cat) return cat === targetCat;
+    }
+    const raw = typeof state === 'object' ? (state.stateCategory || state.state) : String(state);
+    if (!raw) return false;
+    const cat = (globalThis.stateCategories && globalThis.stateCategories[String(raw).toLowerCase()]);
+    return cat ? String(cat).toLowerCase() === 'completed' : false;
+  }
+
+  function isInProgressState(state) {
+    if (!state) return false;
+    const targetCat = (globalThis.StateCategory && globalThis.StateCategory.IN_PROGRESS) || 'inprogress';
+    if (globalThis.App && globalThis.App.backend && typeof globalThis.App.backend.getStateCategory === 'function') {
+      const cat = globalThis.App.backend.getStateCategory(state);
+      if (cat) return cat === targetCat;
+    }
+    const raw = typeof state === 'object' ? (state.stateCategory || state.state) : String(state);
+    if (!raw) return false;
+    const cat = (globalThis.stateCategories && globalThis.stateCategories[String(raw).toLowerCase()]);
+    return cat ? String(cat).toLowerCase() === 'inprogress' : false;
   }
 
   function generateBurndownData(items, histories, sprintDates, sprintIterationPath) {
@@ -1421,9 +1441,10 @@
     let score = committedPts > 0 ? (deliveredPts / committedPts) * 100 : 100;
     score = Math.min(100, score);
     
-    const blockedPenalty = (blockedItems || 0) * 10;
-    const stalePenalty = (staleItems || 0) * 5;
-    const agePenalty = (itemsOver7d || 0) * 5;
+    const safeTotal = Math.max(1, totalItems);
+    const blockedPenalty = ((blockedItems || 0) / safeTotal) * 100;
+    const stalePenalty = ((staleItems || 0) / safeTotal) * 50;
+    const agePenalty = ((itemsOver7d || 0) / safeTotal) * 50;
     
     score = score - blockedPenalty - stalePenalty - agePenalty;
     return Math.max(0, Math.min(100, Math.round(score)));
@@ -1450,9 +1471,110 @@
     }).join(' ');
   }
 
+  function calculateRaidBoss(items) {
+    items = items || [];
+    let totalHp = 0;
+    let damageDealt = 0;
+    let unblockedCount = 0;
+    let bugCount = 0;
+
+    items.forEach(item => {
+      const isComp = isCompletedState(item.state);
+      const sp = Math.max(1, Number(item.storypoints || item.estimate || 1));
+      totalHp += sp;
+      if (isComp) damageDealt += sp;
+
+      const tagStr = (item.tags || '').toLowerCase();
+      const titleStr = (item.title || '').toLowerCase();
+      if (tagStr.includes('blocked') || titleStr.includes('[blocked]')) {
+        unblockedCount++;
+      }
+      if ((item.type || '').toLowerCase() === 'bug' || titleStr.includes('bug')) {
+        bugCount++;
+      }
+    });
+
+    if (totalHp === 0) totalHp = 1;
+    const currentHp = Math.max(0, totalHp - damageDealt);
+    const hpPercent = Math.min(100, Math.max(0, Math.round((currentHp / totalHp) * 100)));
+    const criticalHits = unblockedCount;
+    const bossName = bugCount > Math.max(1, items.length / 3) ? 'Hydra Bug Lord' : 'Sprint Titan';
+
+    return {
+      bossName,
+      totalHp,
+      currentHp,
+      damageDealt,
+      criticalHits,
+      hpPercent,
+      isDefeated: currentHp <= 0 && totalHp > 0
+    };
+  }
+
+  function calculateFlowCombo(completionDates) {
+    if (!completionDates || completionDates.length === 0) {
+      return { count: 0, multiplier: 1.0, label: 'No Active Combo' };
+    }
+    const sorted = completionDates.slice().sort();
+    const latestDate = sorted[sorted.length - 1];
+    const count = sorted.filter(d => d === latestDate).length;
+
+    let multiplier = 1.0;
+    let label = 'No Active Combo';
+    if (count >= 6) {
+      multiplier = 2.0;
+      label = 'ULTRA FLOW (2.0x XP)';
+    } else if (count >= 4) {
+      multiplier = 1.5;
+      label = 'Triple Flow (1.5x XP)';
+    } else if (count >= 2) {
+      multiplier = 1.25;
+      label = 'Double Flow (1.25x XP)';
+    }
+
+    return { count, latestDate, multiplier, label };
+  }
+
+  function calculateSeasonalTitles(items) {
+    items = items || [];
+    const statsMap = new Map();
+    items.forEach(item => {
+      if (!item.assigned || item.assigned === 'Unassigned') return;
+      if (!statsMap.has(item.assigned)) {
+        statsMap.set(item.assigned, { name: item.assigned, completedPts: 0, completedCount: 0, bugCount: 0 });
+      }
+      const s = statsMap.get(item.assigned);
+      if (isCompletedState(item.state)) {
+        s.completedCount++;
+        s.completedPts += Number(item.storypoints || item.estimate || 1);
+        if ((item.type || '').toLowerCase() === 'bug') s.bugCount++;
+      }
+    });
+
+    const list = Array.from(statsMap.values());
+    if (list.length === 0) return {};
+
+    const mvp = list.slice().sort((a, b) => b.completedPts - a.completedPts)[0];
+    const bugHunter = list.slice().sort((a, b) => b.bugCount - a.bugCount)[0];
+    const taskmaster = list.slice().sort((a, b) => b.completedCount - a.completedCount)[0];
+
+    const titles = {};
+    if (mvp && mvp.completedPts > 0) titles[mvp.name] = { title: 'MVP Titan', badge: '👑' };
+    if (bugHunter && bugHunter.bugCount > 0 && bugHunter.name !== (mvp && mvp.name)) {
+      titles[bugHunter.name] = { title: 'Bug Exterminator', badge: '👾' };
+    }
+    if (taskmaster && taskmaster.completedCount > 0 && !titles[taskmaster.name]) {
+      titles[taskmaster.name] = { title: 'Speed Demon', badge: '⚡' };
+    }
+
+    return titles;
+  }
+
   return { formatMessage, wiqlQuote, buildClauses, parseOperatorValue, htmlEsc, htmlUnesc, htmlToText, textToHtml, htmlToMarkdown, businessSeconds, patDaysLeft, mdToHtml, highlightCode,
            highlightRegistry, langAliases, langMeta,
            base64UrlEncode, oauthAuthorizeUrl, oauthTokenBody, parseRedirectParams, timeExprToMath, evaluateMath,
            gidMake, gidNative, gidProvider, generateBurndownData, calculateSprintVelocity, calculateTeamThroughput,
-           _longestStreak, _currentStreak, _consecutiveWeeks, calculatePlayerStats, calculateXPAndLevel, calculateAchievements, calculateSprintHealth, generateSparklinePoints };
+           isCompletedState, isInProgressState,
+           _longestStreak, _currentStreak, _consecutiveWeeks, calculatePlayerStats, calculateXPAndLevel, calculateAchievements, calculateSprintHealth, generateSparklinePoints,
+           calculateRaidBoss, calculateFlowCombo, calculateSeasonalTitles };
 });

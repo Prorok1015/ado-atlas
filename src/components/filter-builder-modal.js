@@ -1246,23 +1246,35 @@
               }
             }
             savedFilters.push({ id: Date.now().toString(), name, config: JSON.parse(JSON.stringify(currentIR)) });
-            if (storage) {
-              storage.set({ fbSavedFilters: savedFilters }, () => {
-                saveDialog.style.display = 'none';
-                flashSuccess(saveBtn, '<ui-icon name="save"></ui-icon> ' + L('common.save', null, 'Save'));
-              });
-            } else {
-              localStorage.setItem('fbSavedFilters', JSON.stringify(savedFilters));
+            const onDone = () => {
               saveDialog.style.display = 'none';
               flashSuccess(saveBtn, '<ui-icon name="save"></ui-icon> ' + L('common.save', null, 'Save'));
+            };
+            if (window.App && window.App.cache) {
+              window.App.cache.set('saved_filters', savedFilters);
+            }
+            if (storage) {
+              storage.set({ fbSavedFilters: savedFilters }, onDone);
+            } else {
+              localStorage.setItem('fbSavedFilters', JSON.stringify(savedFilters));
+              onDone();
             }
           };
 
-          if (storage) {
-            storage.get(['fbSavedFilters'], (res) => doSave(res.fbSavedFilters || []));
-          } else {
-            doSave(JSON.parse(localStorage.getItem('fbSavedFilters') || '[]'));
-          }
+          const loadSaved = async () => {
+            let res = null;
+            if (window.App && window.App.cache) {
+              res = await window.App.cache.get('saved_filters');
+            }
+            if (res) {
+              doSave(res);
+            } else if (storage) {
+              storage.get(['fbSavedFilters'], (r) => doSave(r.fbSavedFilters || []));
+            } else {
+              doSave(JSON.parse(localStorage.getItem('fbSavedFilters') || '[]'));
+            }
+          };
+          loadSaved();
         };
 
         document.getElementById('fb-save-confirm').onclick = doActualSave;
@@ -1574,6 +1586,9 @@
                     } else if (activeSavedFilterIndex > idx) {
                       activeSavedFilterIndex--;
                     }
+                    if (window.App && window.App.cache) {
+                      window.App.cache.set('saved_filters', savedFilters);
+                    }
                     if (storage) {
                       storage.set({ fbSavedFilters: savedFilters }, () => renderList(savedFilters));
                     } else {
@@ -1592,6 +1607,9 @@
                 favItemBtn.onclick = (e) => {
                   e.stopPropagation();
                   item.favorite = !item.favorite;
+                  if (window.App && window.App.cache) {
+                    window.App.cache.set('saved_filters', savedFilters);
+                  }
                   if (storage) {
                     storage.set({ fbSavedFilters: savedFilters }, () => renderList(savedFilters));
                   } else {
@@ -1639,8 +1657,13 @@
             }
             manageDialog.style.display = 'flex';
           };
- 
-          if (storage) {
+          if (window.App && window.App.cache) {
+            window.App.cache.get('saved_filters').then(res => {
+              if (res) renderList(res);
+              else if (storage) storage.get(['fbSavedFilters'], (r) => renderList(r.fbSavedFilters || []));
+              else renderList(JSON.parse(localStorage.getItem('fbSavedFilters') || '[]'));
+            });
+          } else if (storage) {
             storage.get(['fbSavedFilters'], (res) => renderList(res.fbSavedFilters || []));
           } else {
             renderList(JSON.parse(localStorage.getItem('fbSavedFilters') || '[]'));

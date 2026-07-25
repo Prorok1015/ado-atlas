@@ -86,16 +86,21 @@ function syncBulkBarValues() {
   syncBulkDatePicker(startVal || null, targetVal || null);
 
   // Sync follow buttons visibility based on followed states
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get("followedItems").then(({ followedItems = {} }) => {
-      let followCount = 0;
-      ids.forEach(id => {
-        if (followedItems[id]) {
-          followCount++;
-        }
-      });
-      const elFollow = $('bulk_follow_btn');
-      const elUnfollow = $('bulk_unfollow_btn');
+  (async () => {
+    let followedItems = {};
+    if (window.FollowManager && typeof window.FollowManager._getFollowed === 'function') {
+      followedItems = await window.FollowManager._getFollowed();
+    } else if (window.App && window.App.cache) {
+      followedItems = (await window.App.cache.get('followed_items')) || {};
+    }
+    let followCount = 0;
+    ids.forEach(id => {
+      if (followedItems[id]) {
+        followCount++;
+      }
+    });
+    const elFollow = $('bulk_follow_btn');
+    const elUnfollow = $('bulk_unfollow_btn');
       if (elFollow && elUnfollow) {
         if (followCount === ids.length) {
           // All are followed -> Show only unfollow button
@@ -111,8 +116,7 @@ function syncBulkBarValues() {
           elUnfollow.style.display = '';
         }
       }
-    }).catch(() => {});
-  }
+  })().catch(() => {});
 }
 
 function updateBulkBar(){

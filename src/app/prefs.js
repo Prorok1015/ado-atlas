@@ -109,6 +109,7 @@
     telemetry:     { default: null, scope: 'sync', area: 'sync', type: 'string', storageKey: 'telemetry',   worker: true },
     // ---- Device-scoped (screen/device specific — never roams) ----
     mode:                     { default: null, scope: 'device', area: 'local', type: 'string' }, // last active view
+    analytics_active_view:    { default: null, scope: 'device', area: 'local', type: 'string' },
     sideWidth:                { default: null, scope: 'device', area: 'local', type: 'string' },
     tlLabelWidth:             { default: null, scope: 'device', area: 'local', type: 'number' },
     activityHeight:           { default: null, scope: 'device', area: 'local', type: 'string' },

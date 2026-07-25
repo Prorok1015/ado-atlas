@@ -21,3 +21,31 @@ window.App.state = {
   store: { nodes: {}, kids: {}, roots: [], expanded: new Set(), parent: {}, showAllKids: new Set() },
   bulkSel: new Set(),                                        // ids checked in the tree for bulk edit
 };
+
+window.stateCategories = window.stateCategories || {};
+
+window.isCompletedState = function(state) {
+  if (!state) return false;
+  const targetCat = (window.StateCategory && window.StateCategory.COMPLETED) || 'completed';
+  if (window.App && window.App.backend && typeof window.App.backend.getStateCategory === 'function') {
+    const cat = window.App.backend.getStateCategory(state);
+    if (cat) return cat === targetCat;
+  }
+  const raw = typeof state === 'object' ? (state.stateCategory || state.state) : String(state);
+  if (!raw) return false;
+  const cat = window.stateCategories ? window.stateCategories[String(raw).toLowerCase()] : null;
+  return cat ? String(cat).toLowerCase() === 'completed' : false;
+};
+
+window.isInProgressState = function(state) {
+  if (!state) return false;
+  const targetCat = (window.StateCategory && window.StateCategory.IN_PROGRESS) || 'inprogress';
+  if (window.App && window.App.backend && typeof window.App.backend.getStateCategory === 'function') {
+    const cat = window.App.backend.getStateCategory(state);
+    if (cat) return cat === targetCat;
+  }
+  const raw = typeof state === 'object' ? (state.stateCategory || state.state) : String(state);
+  if (!raw) return false;
+  const cat = window.stateCategories ? window.stateCategories[String(raw).toLowerCase()] : null;
+  return cat ? String(cat).toLowerCase() === 'inprogress' : false;
+};

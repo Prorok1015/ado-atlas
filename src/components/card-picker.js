@@ -324,7 +324,7 @@ function cornerTagUri(text,color,corner,max){const w=cornerW(text,max),h=16,ro=8
 // node tags: parse the ";"-list, take the short name of an iteration path
 function tagList_(s){return String(s||'').split(/;\s*/).map(t=>t.trim()).filter(Boolean);}
 function sprintShort(path){if(!path)return '';return sprintNames[path]||String(path).split('\\').pop();}
-function isOverdue(n){const d=(n.target||n.due||'').slice(0,10);return !!d&&d<new Date().toISOString().slice(0,10)&&!DONE_STATES.includes(n.state);}
+function isOverdue(n){const d=(n.target||n.due||'').slice(0,10);return !!d&&d<new Date().toISOString().slice(0,10)&&!isCompletedState(n.state);}
 // a row of small, unobtrusive tag dots (max 6, "+N" overflow) as one image
 function tagDotsUri(tagsStr){const ts=tagList_(tagsStr);if(!ts.length)return null;
   const show=ts.slice(0,6),extra=ts.length-show.length,gap=8,pad=2,r=3;

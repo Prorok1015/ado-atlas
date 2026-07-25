@@ -227,20 +227,22 @@
   let applyTimer=null;
   function scheduleApply(){clearTimeout(applyTimer);applyTimer=setTimeout(refresh,500);}  // debounce (long enough to click several chips)
 
-  function renderFavoriteFilters() {
+  async function renderFavoriteFilters() {
     const favCont = $('fav-filters');
     if (!favCont) return;
     
     let saved = [];
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['fbSavedFilters'], (res) => {
+    if (window.App && window.App.cache) {
+      saved = (await window.App.cache.get('saved_filters')) || [];
+    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        const res = await chrome.storage.local.get(['fbSavedFilters']);
         saved = res.fbSavedFilters || [];
-        drawFavs(saved);
-      });
+      } catch (_) {}
     } else {
       saved = JSON.parse(localStorage.getItem('fbSavedFilters') || '[]');
-      drawFavs(saved);
     }
+    drawFavs(saved);
     
     function drawFavs(filters) {
       favCont.innerHTML = '';

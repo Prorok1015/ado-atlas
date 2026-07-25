@@ -1,6 +1,11 @@
 // Unit tests for the pure helpers in lib.js. No deps — run with: npm test
 // (or: node tests/lib.test.js). Exits non-zero if anything fails.
 const assert = require("node:assert");
+globalThis.stateCategories = {
+  'done': 'Completed',
+  'new': 'Proposed',
+  'active': 'InProgress'
+};
 const lib = require("../src/core/lib.js");
 const FilterManager = require("../src/components/filter-manager.js");
 
@@ -1132,12 +1137,75 @@ test("gamification: calculateSprintHealth and generateSparklinePoints", () => {
   assert.strictEqual(healthyButBlocked, 60);
 
   const sparkline = lib.generateSparklinePoints([10, 20, 30], 100, 50);
-  // min 10, max 30, range 20. h = 50
-  // v[0]: y = 50 - 0 = 50
-  // v[1]: y = 50 - 25 = 25
-  // v[2]: y = 50 - 50 = 0
-  // x: stepX = 50
   assert.strictEqual(sparkline, "0,50 50,25 100,0");
+});
+
+test("gamification: calculateRaidBoss, calculateFlowCombo, and calculateSeasonalTitles", () => {
+  const items = [
+    { id: "1", state: "Done", storypoints: 5, assigned: "Alice", type: "Task" },
+    { id: "2", state: "Active", storypoints: 3, assigned: "Alice", tags: "blocked", type: "Bug" },
+    { id: "3", state: "Done", storypoints: 8, assigned: "Bob", type: "Bug" }
+  ];
+
+  const raid = lib.calculateRaidBoss(items);
+  assert.strictEqual(raid.totalHp, 16);
+  assert.strictEqual(raid.damageDealt, 13);
+  assert.strictEqual(raid.currentHp, 3);
+  assert.strictEqual(raid.criticalHits, 1);
+  assert.strictEqual(raid.isDefeated, false);
+
+  const combo = lib.calculateFlowCombo(["2026-07-24", "2026-07-24", "2026-07-24", "2026-07-24"]);
+  assert.strictEqual(combo.multiplier, 1.5);
+  assert.strictEqual(combo.count, 4);
+
+  const titles = lib.calculateSeasonalTitles(items);
+  assert.ok(titles["Bob"]);
+  assert.strictEqual(titles["Bob"].badge, "👑");
+});
+
+test("backend independence: isCompletedState and isInProgressState resolve categories without hardcoded status names", () => {
+  globalThis.StateCategory = Object.freeze({
+    COMPLETED: 'completed',
+    IN_PROGRESS: 'inprogress',
+    PROPOSED: 'proposed',
+    REMOVED: 'removed'
+  });
+
+  globalThis.stateCategories = {
+    'done': 'Completed',
+    'готово': 'Completed',
+    'in progress': 'InProgress',
+    'в работе': 'InProgress'
+  };
+
+  globalThis.App = {
+    backend: {
+      getStateCategory(arg) {
+        if (!arg) return null;
+        if (typeof arg === 'object') {
+          if (arg.stateCategory) return String(arg.stateCategory).toLowerCase();
+          if (arg.state) return this.getStateCategory(arg.state);
+          return null;
+        }
+        const s = String(arg).trim().toLowerCase();
+        const cat = globalThis.stateCategories[s];
+        return cat ? cat.toLowerCase() : null;
+      }
+    }
+  };
+
+  assert.strictEqual(lib.isCompletedState('Done'), true);
+  assert.strictEqual(lib.isCompletedState('готово'), true);
+  assert.strictEqual(lib.isCompletedState({ state: 'Done' }), true);
+  assert.strictEqual(lib.isCompletedState({ stateCategory: 'completed' }), true);
+
+  assert.strictEqual(lib.isInProgressState('In Progress'), true);
+  assert.strictEqual(lib.isInProgressState('в работе'), true);
+  assert.strictEqual(lib.isInProgressState({ state: 'In Progress' }), true);
+  assert.strictEqual(lib.isInProgressState({ stateCategory: 'inprogress' }), true);
+
+  assert.strictEqual(lib.isCompletedState('UnknownState'), false);
+  assert.strictEqual(lib.isInProgressState('UnknownState'), false);
 });
 
 (async () => {
