@@ -1198,29 +1198,62 @@
     const avgLead = completed.length ? (completed.reduce((sum, x) => sum + x.lead, 0) / completed.length).toFixed(1) : '0.0';
     const avgCycle = completed.length ? (completed.reduce((sum, x) => sum + x.cycle, 0) / completed.length).toFixed(1) : '0.0';
 
+    const leadNum = Number(avgLead);
+    const cycleNum = Number(avgCycle);
+
+    let leadBadgeClass = 'a-rank';
+    let leadBadgeText = '⚡ SWIFT TEMPO';
+    if (leadNum <= 5) { leadBadgeClass = 's-rank'; leadBadgeText = '⚡ SPEEDRUN'; }
+    else if (leadNum > 20) { leadBadgeClass = 'danger-rank'; leadBadgeText = '🐢 HEAVY RAID'; }
+
+    let cycleBadgeClass = 'a-rank';
+    let cycleBadgeText = '🎯 FAST PACE';
+    if (cycleNum <= 3) { cycleBadgeClass = 's-rank'; cycleBadgeText = '⚡ LIGHTNING'; }
+    else if (cycleNum > 14) { cycleBadgeClass = 'danger-rank'; cycleBadgeText = '⚠️ SLOW FLOW'; }
+
     container.innerHTML = `
       <div class="analytics-header">
         <h2>${L('analytics.cycle.title', 'Cycle & Lead Time')}</h2>
         <p class="analytics-desc">${L('analytics.cycle.desc', 'Measure the time tasks spend in your development pipeline. Lead Time spans from creation to completion; Cycle Time measures from active start to completion.')}</p>
       </div>
 
-      <div class="analytics-metrics-grid">
-        <div class="metric-card">
-          <div class="metric-value">${avgLead}d</div>
-          <div class="metric-label">${L('analytics.cycle.avgLead', 'Avg Lead Time')}</div>
+      <div class="dashboard-grid">
+        <div class="metric-card gamified-card dashboard-col-4">
+          <div class="gamified-card-header">
+            <span class="metric-label">${L('analytics.cycle.avgLead', 'Avg Lead Time')}</span>
+            <span class="gamified-rank-badge ${leadBadgeClass}">${leadBadgeText}</span>
+          </div>
+          <div class="metric-value" style="color: #00d2ff;">${avgLead}<span style="font-size:1.2rem; font-weight:600;">d</span></div>
+          <div class="gamified-subtext">
+            <span>Creation to Completion</span>
+          </div>
         </div>
-        <div class="metric-card">
-          <div class="metric-value">${avgCycle}d</div>
-          <div class="metric-label">${L('analytics.cycle.avgCycle', 'Avg Cycle Time')}</div>
+
+        <div class="metric-card gamified-card dashboard-col-4">
+          <div class="gamified-card-header">
+            <span class="metric-label">${L('analytics.cycle.avgCycle', 'Avg Cycle Time')}</span>
+            <span class="gamified-rank-badge ${cycleBadgeClass}">${cycleBadgeText}</span>
+          </div>
+          <div class="metric-value" style="color: #2ecc71;">${avgCycle}<span style="font-size:1.2rem; font-weight:600;">d</span></div>
+          <div class="gamified-subtext">
+            <span>Active Start to Completion</span>
+          </div>
         </div>
-        <div class="metric-card">
-          <div class="metric-value">${completed.length}</div>
-          <div class="metric-label">${L('analytics.cycle.completed', 'Completed Items')}</div>
+
+        <div class="metric-card gamified-card dashboard-col-4">
+          <div class="gamified-card-header">
+            <span class="metric-label">${L('analytics.cycle.completed', 'Completed Items')}</span>
+            <span class="gamified-rank-badge s-rank">⚔️ LEGENDARY</span>
+          </div>
+          <div class="metric-value" style="color: #ffd700;">${completed.length}</div>
+          <div class="gamified-subtext">
+            <span>Cleared Quests in Selection</span>
+          </div>
         </div>
       </div>
 
       <div class="analytics-section">
-        <h3>${L('analytics.cycle.log', 'Completed Items Log')}</h3>
+        <h3>📜 ${L('analytics.cycle.log', 'Completed Items Log')}</h3>
         ${completed.length === 0 ? `
           <div class="analytics-empty-section">${L('analytics.cycle.empty', 'No completed items found in the current filtered set.')}</div>
         ` : `
@@ -1236,15 +1269,20 @@
                 </tr>
               </thead>
               <tbody>
-                ${completed.map(x => `
-                  <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
-                    <td>#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                    <td><span class="wi-type">${x.type}</span></td>
-                    <td class="table-title">${htmlEsc(x.title)}</td>
-                    <td><strong>${x.lead}d</strong></td>
-                    <td><strong>${x.cycle}d</strong></td>
-                  </tr>
-                `).join('')}
+                ${completed.map(x => {
+                  let badge = '<span class="rpg-badge speed-fast">🎯 Fast</span>';
+                  if (x.cycle <= 1) badge = '<span class="rpg-badge speed-swift">⚡ Lightning</span>';
+                  else if (x.cycle > 10) badge = '<span class="rpg-badge speed-long">⌛ Long Raid</span>';
+                  return `
+                    <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                      <td>#${App.backend ? App.backend.nid(x.id) : x.id}</td>
+                      <td><span class="wi-type">${x.type}</span></td>
+                      <td class="table-title">${htmlEsc(x.title)}</td>
+                      <td><strong>${x.lead}d</strong></td>
+                      <td>${badge} <strong>${x.cycle}d</strong></td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           </div>
@@ -1263,23 +1301,61 @@
     const statesList = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
     const total = items.length;
 
-    // Define colors for visual bar
-    const colors = ['#2f6fed', '#2ebb4e', '#e0a13c', '#9b59b6', '#e74c3c', '#7f8c8d'];
+    const colors = ['#2f6fed', '#00d2ff', '#ffd700', '#9b59b6', '#e74c3c', '#2ecc71'];
 
     const barSegments = statesList.map((state, idx) => {
-      const pct = ((counts[state] / total) * 100).toFixed(1);
+      const pct = total > 0 ? ((counts[state] / total) * 100).toFixed(1) : 0;
       const color = colors[idx % colors.length];
       return `<div style="width: ${pct}%; background: ${color};" title="${state}: ${counts[state]} (${pct}%)"></div>`;
     }).join('');
 
+    let inProgressCount = 0;
+    let backlogCount = 0;
+    let doneCount = 0;
+
+    items.forEach(it => {
+      if (isInProgressState(it.state)) inProgressCount++;
+      else if (isCompletedState(it.state)) doneCount++;
+      else backlogCount++;
+    });
+
     container.innerHTML = `
       <div class="analytics-header">
-        <h2>${L('analytics.cfd.title', 'Cumulative Flow (CFD) Summary')}</h2>
+        <h2>🌊 ${L('analytics.cfd.title', 'Cumulative Flow (CFD) Summary')}</h2>
         <p class="analytics-desc">${L('analytics.cfd.desc', 'Track task volumes by state to observe workflow stability, flow velocity, and bottleneck patterns.')}</p>
       </div>
 
+      <div class="dashboard-grid">
+        <div class="metric-card gamified-card dashboard-col-4">
+          <div class="gamified-card-header">
+            <span class="metric-label">🛡️ Active WIP Load</span>
+            <span class="gamified-rank-badge ${inProgressCount > 15 ? 'danger-rank' : 'a-rank'}">${inProgressCount > 15 ? '⚠️ HIGH WIP' : '⚡ BALANCED'}</span>
+          </div>
+          <div class="metric-value" style="color: #00d2ff;">${inProgressCount}</div>
+          <div class="gamified-subtext"><span>Active Quests in Raid</span></div>
+        </div>
+
+        <div class="metric-card gamified-card dashboard-col-4">
+          <div class="gamified-card-header">
+            <span class="metric-label">⚔️ Backlog Inventory</span>
+            <span class="gamified-rank-badge b-rank">QUEUED</span>
+          </div>
+          <div class="metric-value" style="color: #ffd700;">${backlogCount}</div>
+          <div class="gamified-subtext"><span>Upcoming Quests</span></div>
+        </div>
+
+        <div class="metric-card gamified-card dashboard-col-4">
+          <div class="gamified-card-header">
+            <span class="metric-label">✨ Victory Clearance</span>
+            <span class="gamified-rank-badge s-rank">CLEARED</span>
+          </div>
+          <div class="metric-value" style="color: #2ecc71;">${doneCount}</div>
+          <div class="gamified-subtext"><span>Resolved Quests</span></div>
+        </div>
+      </div>
+
       <div class="analytics-section">
-        <h3>${L('analytics.cfd.dist', 'State Distribution')}</h3>
+        <h3>🌊 ${L('analytics.cfd.dist', 'State Distribution')}</h3>
         <div class="stacked-bar-container">
           <div class="stacked-bar">${barSegments}</div>
         </div>
@@ -1289,7 +1365,7 @@
             return `
               <div class="legend-item">
                 <span class="legend-dot" style="background: ${color}"></span>
-                <span class="legend-text">${state}: <strong>${counts[state]}</strong> (${((counts[state]/total)*100).toFixed(0)}%)</span>
+                <span class="legend-text">${state}: <strong>${counts[state]}</strong> (${total > 0 ? ((counts[state]/total)*100).toFixed(0) : 0}%)</span>
               </div>
             `;
           }).join('')}
@@ -1335,7 +1411,6 @@
       if (!isInProgressState(item.state)) return;
       const history = revisionCache.get(item.id) || [];
 
-      // Find latest transition to the current state
       let transitionDate = null;
       for (const update of history) {
         const stateChange = (update.changes || []).find(c => c.field === 'State');
@@ -1359,22 +1434,31 @@
 
     active.sort((a, b) => b.age - a.age);
 
+    const agingWarnCount = active.filter(x => x.age > 7).length;
+
     container.innerHTML = `
       <div class="analytics-header">
-        <h2>${L('analytics.aging.title', 'Aging WIP (Work in Progress)')}</h2>
+        <h2>⏳ ${L('analytics.aging.title', 'Aging WIP (Work in Progress)')}</h2>
         <p class="analytics-desc">${L('analytics.aging.desc', 'Monitor active items to spot tasks that are taking longer than expected. Left unchecked, aging WIP slows pipeline delivery.')}</p>
       </div>
 
-      <div class="analytics-metrics-grid">
-        <div class="metric-card">
-          <div class="metric-value">${active.length}</div>
-          <div class="metric-label">${L('analytics.aging.active', 'Active Items')}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value">
-            ${active.filter(x => x.age > 7).length}
+      <div class="dashboard-grid">
+        <div class="metric-card gamified-card dashboard-col-6">
+          <div class="gamified-card-header">
+            <span class="metric-label">🛡️ Active Raid Party</span>
+            <span class="gamified-rank-badge a-rank">IN BATTLE</span>
           </div>
-          <div class="metric-label">${L('analytics.aging.warn', 'Aging > 7 Days')}</div>
+          <div class="metric-value" style="color: #00d2ff;">${active.length}</div>
+          <div class="gamified-subtext"><span>Active Work Items</span></div>
+        </div>
+
+        <div class="metric-card gamified-card dashboard-col-6">
+          <div class="gamified-card-header">
+            <span class="metric-label">⌛ Dungeon Decay (>7 Days)</span>
+            <span class="gamified-rank-badge ${agingWarnCount > 0 ? 'danger-rank' : 's-rank'}">${agingWarnCount > 0 ? '⚠️ STALE DANGER' : '✨ FRESH RAID'}</span>
+          </div>
+          <div class="metric-value" style="color: ${agingWarnCount > 0 ? '#ff4b2b' : '#2ecc71'};">${agingWarnCount}</div>
+          <div class="gamified-subtext"><span>Tasks needing urgent resolution</span></div>
         </div>
       </div>
 
@@ -1400,10 +1484,10 @@
                   let icon = '';
                   if (x.age > 14) {
                     alertClass = 'critical-age';
-                    icon = '<ui-icon name="alert-circle" style="color: var(--danger); vertical-align: text-bottom; margin-right: 4px;"></ui-icon>';
+                    icon = '<span class="rpg-badge speed-long">🔥 Critical Decay</span> ';
                   } else if (x.age > 7) {
                     alertClass = 'warn-age';
-                    icon = '<ui-icon name="alert-triangle" style="color: var(--accent); vertical-align: text-bottom; margin-right: 4px;"></ui-icon>';
+                    icon = '<span class="rpg-badge ghost-tag">⚠️ Aging</span> ';
                   }
                   return `
                     <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
@@ -1450,14 +1534,18 @@
 
     container.innerHTML = `
       <div class="analytics-header">
-        <h2>${L('analytics.stale.title', 'Stale Items')}</h2>
+        <h2>👻 ${L('analytics.stale.title', 'Stale Items')}</h2>
         <p class="analytics-desc">${L('analytics.stale.desc', 'Find items in non-completed states that have not had updates, comments, or revisions in the last 7 days.')}</p>
       </div>
 
-      <div class="analytics-metrics-grid">
-        <div class="metric-card">
-          <div class="metric-value">${stale.length}</div>
-          <div class="metric-label">${L('analytics.stale.metric', 'Stale Items (>= 7 Days)')}</div>
+      <div class="dashboard-grid">
+        <div class="metric-card gamified-card dashboard-col-12">
+          <div class="gamified-card-header">
+            <span class="metric-label">👻 Forgotten Quests & Idle Ghosts</span>
+            <span class="gamified-rank-badge ${stale.length > 0 ? 'danger-rank' : 's-rank'}">${stale.length > 0 ? '👻 IDLE GHOSTS' : '✨ ALL ACTIVE'}</span>
+          </div>
+          <div class="metric-value" style="color: ${stale.length > 0 ? '#9b59b6' : '#2ecc71'};">${stale.length}</div>
+          <div class="gamified-subtext"><span>Items unrevised for >= 7 days</span></div>
         </div>
       </div>
 
@@ -1487,7 +1575,7 @@
                     <td class="table-title">${htmlEsc(x.title)}</td>
                     <td><span class="state-badge">${x.state}</span></td>
                     <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
-                    <td><strong style="color: var(--danger);">${x.days} days</strong></td>
+                    <td><span class="rpg-badge ghost-tag">👻 Abandoned</span> <strong style="color: var(--danger);">${x.days} days</strong></td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -1528,14 +1616,18 @@
 
     container.innerHTML = `
       <div class="analytics-header">
-        <h2>${L('analytics.blocked.title', 'Blocked Time')}</h2>
+        <h2>🛡️ ${L('analytics.blocked.title', 'Blocked Time')}</h2>
         <p class="analytics-desc">${L('analytics.blocked.desc', 'Lists items currently marked as blocked (having "Blocked" in their tags or title prefix).')}</p>
       </div>
 
-      <div class="analytics-metrics-grid">
-        <div class="metric-card">
-          <div class="metric-value">${blocked.length}</div>
-          <div class="metric-label">${L('analytics.blocked.metric', 'Blocked Items')}</div>
+      <div class="dashboard-grid">
+        <div class="metric-card gamified-card dashboard-col-12">
+          <div class="gamified-card-header">
+            <span class="metric-label">🛡️ Raid Blockers & Boss Shields</span>
+            <span class="gamified-rank-badge ${blocked.length > 0 ? 'danger-rank' : 's-rank'}">${blocked.length > 0 ? '🛑 STUNNED' : '✨ SHIELD FREE'}</span>
+          </div>
+          <div class="metric-value" style="color: ${blocked.length > 0 ? '#ff4b2b' : '#2ecc71'};">${blocked.length}</div>
+          <div class="gamified-subtext"><span>Items currently blocked from progression</span></div>
         </div>
       </div>
 
@@ -1563,7 +1655,7 @@
                   <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
                     <td>#${App.backend ? App.backend.nid(x.id) : x.id}</td>
                     <td class="table-title">
-                      <ui-icon name="slash" style="color: var(--danger); vertical-align: text-bottom; margin-right: 4px;"></ui-icon>
+                      <span class="rpg-badge stun-tag">🛑 Stunned</span>
                       <strong class="critical-text">${htmlEsc(x.title)}</strong>
                     </td>
                     <td><span class="state-badge">${x.state}</span></td>
