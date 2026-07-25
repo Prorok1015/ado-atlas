@@ -1249,6 +1249,7 @@
     let weekendCompletions = 0;
     let resolvedBlockedCount = 0;
     const dateCounts = {};
+    const daysOfWeekMap = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
 
     for (const item of items) {
       if (item.assigned !== assigneeName) continue;
@@ -1304,6 +1305,7 @@
             completionDates.push(dayStr);
             dateCounts[dayStr] = (dateCounts[dayStr] || 0) + 1;
             const dayOfWeek = compD.getDay();
+            daysOfWeekMap[dayOfWeek] = (daysOfWeekMap[dayOfWeek] || 0) + 1;
             if (dayOfWeek === 0 || dayOfWeek === 6) {
               weekendCompletions++;
             }
@@ -1325,7 +1327,8 @@
       weekendCompletions,
       sameDayMaxCombo,
       fastestCycleTime,
-      resolvedBlockedCount
+      resolvedBlockedCount,
+      daysOfWeekMap
     };
   }
 
@@ -1351,211 +1354,224 @@
 
   function calculateAchievements(playerStats) {
     const achievements = [];
-    
     const taskCount = playerStats.completedTasksCount || 0;
-    achievements.push({
-      id: 'task_slayer_1',
-      name: 'Task Slayer I',
-      desc: 'Complete 5 tasks',
-      unlocked: taskCount >= 5,
-      progress: taskCount,
-      target: 5,
-      emoji: '⚔️'
-    });
-    achievements.push({
-      id: 'task_slayer_2',
-      name: 'Task Slayer II',
-      desc: 'Complete 15 tasks',
-      unlocked: taskCount >= 15,
-      progress: taskCount,
-      target: 15,
-      emoji: '🛡️'
-    });
-    achievements.push({
-      id: 'task_slayer_3',
-      name: 'Task Slayer III',
-      desc: 'Complete 30 tasks',
-      unlocked: taskCount >= 30,
-      progress: taskCount,
-      target: 30,
-      emoji: '👑'
-    });
-    achievements.push({
-      id: 'task_slayer_4',
-      name: 'Legendary Hero',
-      desc: 'Complete 50 tasks',
-      unlocked: taskCount >= 50,
-      progress: taskCount,
-      target: 50,
-      emoji: '🏆'
-    });
-
     const spCount = playerStats.completedStoryPoints || 0;
-    achievements.push({
-      id: 'velocity_novice',
-      name: 'Velocity Novice',
-      desc: 'Deliver 10 Story Points',
-      unlocked: spCount >= 10,
-      progress: spCount,
-      target: 10,
-      emoji: '⚡'
-    });
-    achievements.push({
-      id: 'velocity_master',
-      name: 'Velocity Master',
-      desc: 'Deliver 50 Story Points',
-      unlocked: spCount >= 50,
-      progress: spCount,
-      target: 50,
-      emoji: '🔥'
-    });
-    achievements.push({
-      id: 'velocity_titan',
-      name: 'Raid Titan',
-      desc: 'Deliver 100 Story Points (EXP)',
-      unlocked: spCount >= 100,
-      progress: spCount,
-      target: 100,
-      emoji: '🌟'
-    });
-
     const bugs = playerStats.bugCount || 0;
-    achievements.push({
-      id: 'bug_hunter_1',
-      name: 'Bug Squasher',
-      desc: 'Fix 1 bug',
-      unlocked: bugs >= 1,
-      progress: bugs,
-      target: 1,
-      emoji: '🐛'
-    });
-    achievements.push({
-      id: 'bug_hunter_2',
-      name: 'Bug Exterminator',
-      desc: 'Fix 5 bugs',
-      unlocked: bugs >= 5,
-      progress: bugs,
-      target: 5,
-      emoji: '👾'
-    });
-    achievements.push({
-      id: 'bug_god',
-      name: 'Glitch Slayer',
-      desc: 'Fix 10 bugs',
-      unlocked: bugs >= 10,
-      progress: bugs,
-      target: 10,
-      emoji: '🐉'
-    });
-
     const longestStr = _longestStreak(playerStats.completionDates || []);
-    achievements.push({
-      id: 'streak_3',
-      name: 'Streak Starter',
-      desc: 'Maintain a 3-day work completion streak',
-      unlocked: longestStr >= 3,
-      progress: longestStr,
-      target: 3,
-      emoji: '📅'
-    });
-    achievements.push({
-      id: 'streak_5',
-      name: 'Streak Warrior',
-      desc: 'Maintain a 5-day work completion streak',
-      unlocked: longestStr >= 5,
-      progress: longestStr,
-      target: 5,
-      emoji: '🏹'
-    });
-    achievements.push({
-      id: 'streak_7',
-      name: 'Unstoppable Force',
-      desc: 'Maintain a 7-day work completion streak',
-      unlocked: longestStr >= 7,
-      progress: longestStr,
-      target: 7,
-      emoji: '💎'
-    });
-
     const cycles = playerStats.cycleTimes || [];
     const avgCycle = cycles.length ? (cycles.reduce((sum, x) => sum + x, 0) / cycles.length) : null;
-    achievements.push({
-      id: 'speed_demon',
-      name: 'Speed Demon',
-      desc: 'Maintain average cycle time under 2 days (min 3 tasks)',
-      unlocked: taskCount >= 3 && avgCycle !== null && avgCycle <= 2,
-      progress: avgCycle !== null ? Math.round(avgCycle * 10) / 10 : 0,
-      target: 2,
-      emoji: '🚀',
-      isLowerBetter: true
-    });
-
     const fastest = playerStats.fastestCycleTime !== undefined && playerStats.fastestCycleTime !== null ? playerStats.fastestCycleTime : (cycles.length ? Math.min(...cycles) : null);
-    achievements.push({
-      id: 'speedrun_master',
-      name: 'Lightning Reflexes',
-      desc: 'Complete a task in <= 1 day (Speedrun clear)',
-      unlocked: fastest !== null && fastest <= 1,
-      progress: fastest !== null ? Math.round(fastest * 10) / 10 : 0,
-      target: 1,
-      emoji: '⚡',
-      isLowerBetter: true
-    });
-
     const maxCombo = playerStats.sameDayMaxCombo || 0;
-    achievements.push({
-      id: 'combo_master',
-      name: 'Hyper Flow Combo',
-      desc: 'Complete 3 or more tasks in a single day',
-      unlocked: maxCombo >= 3,
-      progress: maxCombo,
-      target: 3,
-      emoji: '🌊'
-    });
-
     const weekendCount = playerStats.weekendCompletions || 0;
-    achievements.push({
-      id: 'weekend_hero',
-      name: 'Weekend Raider',
-      desc: 'Complete at least 1 task during the weekend',
-      unlocked: weekendCount >= 1,
-      progress: weekendCount,
-      target: 1,
-      emoji: '🌙'
-    });
-
     const blockedResolved = playerStats.resolvedBlockedCount || 0;
-    achievements.push({
-      id: 'blocker_breaker',
-      name: 'Shield Breaker',
-      desc: 'Resolve at least 1 blocked task',
-      unlocked: blockedResolved >= 1,
-      progress: blockedResolved,
-      target: 1,
-      emoji: '🛡️'
-    });
-
-    const totalXp = (taskCount * 100) + (spCount * 20) + (bugs * 50);
-    achievements.push({
-      id: 'exp_overload',
-      name: 'EXP Overload',
-      desc: 'Earn over 1,000 total Player EXP',
-      unlocked: totalXp >= 1000,
-      progress: totalXp,
-      target: 1000,
-      emoji: '✨'
-    });
-
+    const daysMap = playerStats.daysOfWeekMap || { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    const xpInfo = calculateXPAndLevel(playerStats);
+    const totalXp = xpInfo.xp;
+    const playerLevel = xpInfo.level;
     const consecutiveWks = _consecutiveWeeks(playerStats.completionDates || []);
-    achievements.push({
-      id: 'guild_mvp',
-      name: 'Guild MVP',
-      desc: 'Stay active for 3 consecutive weeks',
-      unlocked: consecutiveWks >= 3,
-      progress: consecutiveWks,
-      target: 3,
-      emoji: '🎖️'
+    const speedrunClearsCount = cycles.filter(c => c <= 1).length;
+
+    // --- Category 1: ⚔️ Quest Slayer (Task Count Tiers - 10) ---
+    const taskTiers = [
+      { id: 'task_slayer_1', name: 'Task Slayer I', desc: 'Complete 5 tasks', target: 5, emoji: '⚔️' },
+      { id: 'task_slayer_2', name: 'Task Slayer II', desc: 'Complete 15 tasks', target: 15, emoji: '🛡️' },
+      { id: 'task_slayer_3', name: 'Task Slayer III', desc: 'Complete 30 tasks', target: 30, emoji: '👑' },
+      { id: 'task_slayer_4', name: 'Legendary Hero', desc: 'Complete 50 tasks', target: 50, emoji: '🏆' },
+      { id: 'task_slayer_5', name: 'Dungeon Runner', desc: 'Complete 75 tasks', target: 75, emoji: '🏃‍♂️' },
+      { id: 'task_slayer_6', name: 'Veteran Mercenary', desc: 'Complete 100 tasks', target: 100, emoji: '⚔️' },
+      { id: 'task_slayer_7', name: 'Epic Conqueror', desc: 'Complete 150 tasks', target: 150, emoji: '🎖️' },
+      { id: 'task_slayer_8', name: 'Grandmaster Crusader', desc: 'Complete 200 tasks', target: 200, emoji: '🌌' },
+      { id: 'task_slayer_9', name: 'God of War', desc: 'Complete 300 tasks', target: 300, emoji: '👑' },
+      { id: 'task_slayer_10', name: 'Mythic Overlord', desc: 'Complete 500 tasks', target: 500, emoji: '💎' }
+    ];
+    taskTiers.forEach(t => {
+      achievements.push({
+        id: t.id,
+        name: t.name,
+        desc: t.desc,
+        unlocked: taskCount >= t.target,
+        progress: taskCount,
+        target: t.target,
+        emoji: t.emoji
+      });
     });
+
+    // --- Category 2: ⚡ Raid Power (Story Points Tiers - 10) ---
+    const spTiers = [
+      { id: 'velocity_1', name: 'Spark of Energy', desc: 'Deliver 1 Story Point', target: 1, emoji: '⚡' },
+      { id: 'velocity_novice', name: 'Velocity Novice', desc: 'Deliver 10 Story Points', target: 10, emoji: '💥' },
+      { id: 'velocity_3', name: 'Power Surge', desc: 'Deliver 25 Story Points', target: 25, emoji: '⚡' },
+      { id: 'velocity_master', name: 'Velocity Master', desc: 'Deliver 50 Story Points', target: 50, emoji: '🔥' },
+      { id: 'velocity_titan', name: 'Raid Titan', desc: 'Deliver 75 Story Points', target: 75, emoji: '🌟' },
+      { id: 'velocity_7', name: 'Overclock Engine', desc: 'Deliver 100 Story Points', target: 100, emoji: '⚡' },
+      { id: 'velocity_8', name: 'Supernova Output', desc: 'Deliver 200 Story Points', target: 200, emoji: '💥' },
+      { id: 'velocity_9', name: 'Celestial Force', desc: 'Deliver 350 Story Points', target: 350, emoji: '🌌' },
+      { id: 'velocity_10', name: 'Infinity Generator', desc: 'Deliver 500 Story Points', target: 500, emoji: '💎' },
+      { id: 'velocity_11', name: 'Cosmic Singularity', desc: 'Deliver 1000 Story Points', target: 1000, emoji: '👑' }
+    ];
+    spTiers.forEach(t => {
+      achievements.push({
+        id: t.id,
+        name: t.name,
+        desc: t.desc,
+        unlocked: spCount >= t.target,
+        progress: spCount,
+        target: t.target,
+        emoji: t.emoji
+      });
+    });
+
+    // --- Category 3: 👾 Glitch Slayer (Bug Fix Tiers - 10) ---
+    const bugTiers = [
+      { id: 'bug_hunter_1', name: 'First Exorcism', desc: 'Fix 1 bug', target: 1, emoji: '🐛' },
+      { id: 'bug_hunter_2', name: 'Bug Squasher', desc: 'Fix 3 bugs', target: 3, emoji: '🧹' },
+      { id: 'bug_hunter_3', name: 'Bug Exterminator', desc: 'Fix 5 bugs', target: 5, emoji: '👾' },
+      { id: 'bug_god', name: 'Glitch Slayer', desc: 'Fix 10 bugs', target: 10, emoji: '🐉' },
+      { id: 'bug_hunter_5', name: 'Code Purifier', desc: 'Fix 15 bugs', target: 15, emoji: '✨' },
+      { id: 'bug_hunter_6', name: 'Zero-Day Hunter', desc: 'Fix 25 bugs', target: 25, emoji: '🛡️' },
+      { id: 'bug_hunter_7', name: 'De-Bugging Wizard', desc: 'Fix 40 bugs', target: 40, emoji: '🧙‍♂️' },
+      { id: 'bug_hunter_8', name: 'Anomaly Executioner', desc: 'Fix 60 bugs', target: 60, emoji: '⚡' },
+      { id: 'bug_hunter_9', name: 'System Architect', desc: 'Fix 100 bugs', target: 100, emoji: '🏗️' },
+      { id: 'bug_hunter_10', name: 'Matrix Restorer', desc: 'Fix 200 bugs', target: 200, emoji: '🌐' }
+    ];
+    bugTiers.forEach(t => {
+      achievements.push({
+        id: t.id,
+        name: t.name,
+        desc: t.desc,
+        unlocked: bugs >= t.target,
+        progress: bugs,
+        target: t.target,
+        emoji: t.emoji
+      });
+    });
+
+    // --- Category 4: 🔥 Daily Streak (Continuous Days - 10) ---
+    const streakTiers = [
+      { id: 'streak_1', name: 'Daily Habit', desc: '2-day work completion streak', target: 2, emoji: '📅' },
+      { id: 'streak_3', name: 'Streak Starter', desc: '3-day work completion streak', target: 3, emoji: '🗓️' },
+      { id: 'streak_5', name: 'Streak Warrior', desc: '5-day work completion streak', target: 5, emoji: '🏹' },
+      { id: 'streak_7', name: 'Unstoppable Force', desc: '7-day work completion streak', target: 7, emoji: '💎' },
+      { id: 'streak_10', name: 'Sprint Marathoner', desc: '10-day work completion streak', target: 10, emoji: '🏃' },
+      { id: 'streak_14', name: 'Iron Will', desc: '14-day work completion streak', target: 14, emoji: '🛡️' },
+      { id: 'streak_21', name: 'Monthly Crusader', desc: '21-day work completion streak', target: 21, emoji: '🌙' },
+      { id: 'streak_30', name: 'Perpetual Motion', desc: '30-day work completion streak', target: 30, emoji: '⚡' },
+      { id: 'streak_60', name: 'Eternal Flame', desc: '60-day work completion streak', target: 60, emoji: '🔥' },
+      { id: 'streak_100', name: 'Immortal Rhythm', desc: '100-day work completion streak', target: 100, emoji: '👑' }
+    ];
+    streakTiers.forEach(t => {
+      achievements.push({
+        id: t.id,
+        name: t.name,
+        desc: t.desc,
+        unlocked: longestStr >= t.target,
+        progress: longestStr,
+        target: t.target,
+        emoji: t.emoji
+      });
+    });
+
+    // --- Category 5: ⏱️ Speedrun & Agility (Cycle Times - 10) ---
+    achievements.push({ id: 'speed_1', name: 'Punctual Clearance', desc: 'Maintain cycle time <= 5 days', unlocked: taskCount >= 1 && avgCycle !== null && avgCycle <= 5, progress: avgCycle !== null ? Math.round(avgCycle * 10) / 10 : 0, target: 5, emoji: '⏱️', isLowerBetter: true });
+    achievements.push({ id: 'speed_2', name: 'Swift Operator', desc: 'Maintain cycle time <= 3.5 days', unlocked: taskCount >= 2 && avgCycle !== null && avgCycle <= 3.5, progress: avgCycle !== null ? Math.round(avgCycle * 10) / 10 : 0, target: 3.5, emoji: '🎯', isLowerBetter: true });
+    achievements.push({ id: 'speed_demon', name: 'Speed Demon', desc: 'Maintain cycle time <= 2 days', unlocked: taskCount >= 3 && avgCycle !== null && avgCycle <= 2, progress: avgCycle !== null ? Math.round(avgCycle * 10) / 10 : 0, target: 2, emoji: '🚀', isLowerBetter: true });
+    achievements.push({ id: 'speedrun_master', name: 'Lightning Reflexes', desc: 'Complete a task in <= 1 day', unlocked: fastest !== null && fastest <= 1, progress: fastest !== null ? Math.round(fastest * 10) / 10 : 0, target: 1, emoji: '⚡', isLowerBetter: true });
+    achievements.push({ id: 'speed_half_day', name: 'Half-Day Blitz', desc: 'Complete a task in <= 0.5 days (12h)', unlocked: fastest !== null && fastest <= 0.5, progress: fastest !== null ? Math.round(fastest * 10) / 10 : 0, target: 0.5, emoji: '⚡', isLowerBetter: true });
+    achievements.push({ id: 'speed_sub_hour', name: 'Sub-Hour Speedrun', desc: 'Complete a task in <= 0.1 days (~2h)', unlocked: fastest !== null && fastest <= 0.1, progress: fastest !== null ? Math.round(fastest * 10) / 10 : 0, target: 0.1, emoji: '⏱️', isLowerBetter: true });
+    achievements.push({ id: 'speedrun_5x', name: 'Speedrun Multi-Clear', desc: 'Perform 3 speedrun clears (<= 1d)', unlocked: speedrunClearsCount >= 3, progress: speedrunClearsCount, target: 3, emoji: '🏎️' });
+    achievements.push({ id: 'speedrun_10x', name: 'Speedrun Legend', desc: 'Perform 10 speedrun clears (<= 1d)', unlocked: speedrunClearsCount >= 10, progress: speedrunClearsCount, target: 10, emoji: '⚡' });
+    achievements.push({ id: 'time_lord', name: 'Time Lord', desc: 'Maintain average cycle <= 1.5d over 10 tasks', unlocked: taskCount >= 10 && avgCycle !== null && avgCycle <= 1.5, progress: avgCycle !== null ? Math.round(avgCycle * 10) / 10 : 0, target: 1.5, emoji: '⏳', isLowerBetter: true });
+    achievements.push({ id: 'hyperspeed', name: 'Hyperspeed Master', desc: 'Complete a task in <= 0.04 days (1h)', unlocked: fastest !== null && fastest <= 0.04, progress: fastest !== null ? Math.round(fastest * 10) / 10 : 0, target: 0.04, emoji: '🚀', isLowerBetter: true });
+
+    // --- Category 6: 🌊 Flow Combos (Same-Day Multi-Kills - 10) ---
+    const comboTiers = [
+      { id: 'combo_1', name: 'Double Hit', desc: '2 tasks completed in a single day', target: 2, emoji: '⚔️' },
+      { id: 'combo_master', name: 'Hyper Flow Combo', desc: '3 tasks completed in a single day', target: 3, emoji: '🌊' },
+      { id: 'combo_4', name: 'Triple Threat', desc: '4 tasks completed in a single day', target: 4, emoji: '🔥' },
+      { id: 'combo_5', name: 'Multi-Kill', desc: '5 tasks completed in a single day', target: 5, emoji: '💥' },
+      { id: 'combo_6', name: 'Unstoppable Rampage', desc: '6 tasks completed in a single day', target: 6, emoji: '🗡️' },
+      { id: 'combo_8', name: 'Dominating Streak', desc: '8 tasks completed in a single day', target: 8, emoji: '👑' },
+      { id: 'combo_10', name: 'Godlike Output', desc: '10 tasks completed in a single day', target: 10, emoji: '⚡' },
+      { id: 'combo_12', name: 'Overkill Surge', desc: '12 tasks completed in a single day', target: 12, emoji: '💥' },
+      { id: 'combo_15', name: 'Raid Slaughter', desc: '15 tasks completed in a single day', target: 15, emoji: '🌌' },
+      { id: 'combo_20', name: 'Apocalyptic Clearance', desc: '20 tasks completed in a single day', target: 20, emoji: '☄️' }
+    ];
+    comboTiers.forEach(t => {
+      achievements.push({
+        id: t.id,
+        name: t.name,
+        desc: t.desc,
+        unlocked: maxCombo >= t.target,
+        progress: maxCombo,
+        target: t.target,
+        emoji: t.emoji
+      });
+    });
+
+    // --- Category 7: 🌙 Raid Shift & Weekend Warfare (Time & Calendar - 10) ---
+    achievements.push({ id: 'weekend_hero', name: 'Weekend Raider', desc: '1 weekend task completed', unlocked: weekendCount >= 1, progress: weekendCount, target: 1, emoji: '🌙' });
+    achievements.push({ id: 'weekend_2', name: 'Weekend Warrior', desc: '3 weekend tasks completed', unlocked: weekendCount >= 3, progress: weekendCount, target: 3, emoji: '🌌' });
+    achievements.push({ id: 'weekend_3', name: 'Night Shift Defender', desc: '5 weekend tasks completed', unlocked: weekendCount >= 5, progress: weekendCount, target: 5, emoji: '🔮' });
+    achievements.push({ id: 'weekend_10', name: 'Overtime Overlord', desc: '10 weekend tasks completed', unlocked: weekendCount >= 10, progress: weekendCount, target: 10, emoji: '👑' });
+    achievements.push({ id: 'day_monday', name: 'Monday Kickstart', desc: 'Complete a task on Monday', unlocked: daysMap[1] >= 1, progress: daysMap[1], target: 1, emoji: '🌅' });
+    achievements.push({ id: 'day_friday', name: 'Friday Clearance', desc: 'Complete a task on Friday', unlocked: daysMap[5] >= 1, progress: daysMap[5], target: 1, emoji: '🍹' });
+    achievements.push({ id: 'day_wednesday', name: 'Mid-Week Surge', desc: 'Complete a task on Wednesday', unlocked: daysMap[3] >= 1, progress: daysMap[3], target: 1, emoji: '⚡' });
+    achievements.push({ id: 'day_thursday', name: 'Thursday Push', desc: 'Complete a task on Thursday', unlocked: daysMap[4] >= 1, progress: daysMap[4], target: 1, emoji: '🛡️' });
+    achievements.push({ id: 'day_tuesday', name: 'Tuesday Pacing', desc: 'Complete a task on Tuesday', unlocked: daysMap[2] >= 1, progress: daysMap[2], target: 1, emoji: '🏃' });
+    const fullWeekActive = Object.values(daysMap).filter(v => v > 0).length;
+    achievements.push({ id: 'full_week_hero', name: 'Calendar Conqueror', desc: 'Complete tasks across all 7 days of the week', unlocked: fullWeekActive >= 7, progress: fullWeekActive, target: 7, emoji: '🗓️' });
+
+    // --- Category 8: 🛡️ Boss Shields & Blocker Destroyer (10) ---
+    const blockerTiers = [
+      { id: 'blocker_breaker', name: 'Shield Breaker I', desc: 'Resolve 1 blocked task', target: 1, emoji: '🛡️' },
+      { id: 'blocker_2', name: 'Shield Breaker II', desc: 'Resolve 2 blocked tasks', target: 2, emoji: '⚔️' },
+      { id: 'blocker_3', name: 'Shield Breaker III', desc: 'Resolve 3 blocked tasks', target: 3, emoji: '🔨' },
+      { id: 'blocker_5', name: 'Raid Liberator', desc: 'Resolve 5 blocked tasks', target: 5, emoji: '💥' },
+      { id: 'blocker_10', name: 'Obstacle Destroyer', desc: 'Resolve 10 blocked tasks', target: 10, emoji: '🛡️' },
+      { id: 'blocker_15', name: 'Unstoppable Juggernaut', desc: 'Resolve 15 blocked tasks', target: 15, emoji: '🗡️' },
+      { id: 'blocker_25', name: 'Stun Immunity', desc: 'Resolve 25 blocked tasks', target: 25, emoji: '🌟' },
+      { id: 'blocker_35', name: 'Clean Shield Warden', desc: 'Resolve 35 blocked tasks', target: 35, emoji: '✨' },
+      { id: 'blocker_50', name: 'Aegis Destroyer', desc: 'Resolve 50 blocked tasks', target: 50, emoji: '💎' },
+      { id: 'blocker_100', name: 'Titan Shield Crusher', desc: 'Resolve 100 blocked tasks', target: 100, emoji: '👑' }
+    ];
+    blockerTiers.forEach(t => {
+      achievements.push({
+        id: t.id,
+        name: t.name,
+        desc: t.desc,
+        unlocked: blockedResolved >= t.target,
+        progress: blockedResolved,
+        target: t.target,
+        emoji: t.emoji
+      });
+    });
+
+    // --- Category 9: ✨ Player EXP & Level Milestones (10) ---
+    achievements.push({ id: 'xp_lvl_2', name: 'Novice Level 2', desc: 'Reach Player Level 2', unlocked: playerLevel >= 2, progress: playerLevel, target: 2, emoji: '🌟' });
+    achievements.push({ id: 'xp_lvl_5', name: 'Adept Level 5', desc: 'Reach Player Level 5', unlocked: playerLevel >= 5, progress: playerLevel, target: 5, emoji: '⚡' });
+    achievements.push({ id: 'xp_lvl_10', name: 'Veteran Level 10', desc: 'Reach Player Level 10', unlocked: playerLevel >= 10, progress: playerLevel, target: 10, emoji: '👑' });
+    achievements.push({ id: 'xp_lvl_15', name: 'Master Level 15', desc: 'Reach Player Level 15', unlocked: playerLevel >= 15, progress: playerLevel, target: 15, emoji: '🔥' });
+    achievements.push({ id: 'xp_lvl_20', name: 'Grandmaster Level 20', desc: 'Reach Player Level 20', unlocked: playerLevel >= 20, progress: playerLevel, target: 20, emoji: '💎' });
+    achievements.push({ id: 'xp_lvl_25', name: 'Legend Level 25', desc: 'Reach Player Level 25', unlocked: playerLevel >= 25, progress: playerLevel, target: 25, emoji: '🏆' });
+    achievements.push({ id: 'xp_lvl_30', name: 'Mythic Level 30', desc: 'Reach Player Level 30', unlocked: playerLevel >= 30, progress: playerLevel, target: 30, emoji: '🌌' });
+    achievements.push({ id: 'exp_overload', name: 'EXP Overload', desc: 'Earn 1,000 total Player EXP', unlocked: totalXp >= 1000, progress: totalXp, target: 1000, emoji: '✨' });
+    achievements.push({ id: 'exp_5000', name: 'EXP Millionaire', desc: 'Earn 5,000 total Player EXP', unlocked: totalXp >= 5000, progress: totalXp, target: 5000, emoji: '💰' });
+    achievements.push({ id: 'exp_10000', name: 'Level 99 Raid God', desc: 'Earn 10,000 total Player EXP', unlocked: totalXp >= 10000, progress: totalXp, target: 10000, emoji: '👑' });
+
+    // --- Category 10: 🎖️ Guild Consistency & Team Mastery (10) ---
+    achievements.push({ id: 'guild_1', name: 'Guild Member', desc: 'Active 1 week', unlocked: consecutiveWks >= 1, progress: consecutiveWks, target: 1, emoji: '📜' });
+    achievements.push({ id: 'guild_2', name: 'Guild Defender', desc: 'Active 2 consecutive weeks', unlocked: consecutiveWks >= 2, progress: consecutiveWks, target: 2, emoji: '🛡️' });
+    achievements.push({ id: 'guild_mvp', name: 'Guild MVP', desc: 'Active 3 consecutive weeks', unlocked: consecutiveWks >= 3, progress: consecutiveWks, target: 3, emoji: '🎖️' });
+    achievements.push({ id: 'guild_4', name: 'Guild Champion', desc: 'Active 4 consecutive weeks', unlocked: consecutiveWks >= 4, progress: consecutiveWks, target: 4, emoji: '👑' });
+    achievements.push({ id: 'guild_6', name: 'Guild Captain', desc: 'Active 6 consecutive weeks', unlocked: consecutiveWks >= 6, progress: consecutiveWks, target: 6, emoji: '⚔️' });
+    achievements.push({ id: 'guild_8', name: 'Guild Commander', desc: 'Active 8 consecutive weeks', unlocked: consecutiveWks >= 8, progress: consecutiveWks, target: 8, emoji: '🚩' });
+    achievements.push({ id: 'guild_12', name: 'Quarterly Legend', desc: 'Active 12 consecutive weeks', unlocked: consecutiveWks >= 12, progress: consecutiveWks, target: 12, emoji: '🏆' });
+    achievements.push({ id: 'guild_26', name: 'Half-Year Titan', desc: 'Active 26 consecutive weeks', unlocked: consecutiveWks >= 26, progress: consecutiveWks, target: 26, emoji: '💎' });
+    achievements.push({ id: 'guild_52', name: 'Year-Round Hero', desc: 'Active 52 consecutive weeks', unlocked: consecutiveWks >= 52, progress: consecutiveWks, target: 52, emoji: '🌌' });
+    
+    // Achievement #100: Hall of Fame (Unlocked 50+ total achievements)
+    const unlockedCount = achievements.filter(a => a.unlocked).length;
+    achievements.push({ id: 'hall_of_fame', name: 'Hall of Fame Omnipresence', desc: 'Unlock 50 or more achievements', unlocked: unlockedCount >= 50, progress: unlockedCount, target: 50, emoji: '🏆' });
 
     return achievements;
   }

@@ -1115,6 +1115,7 @@ test("gamification: calculateXPAndLevel and calculateAchievements", () => {
   assert.strictEqual(xpLevel.xpNeededForNextLevel, 1500);
 
   const achievements = lib.calculateAchievements(playerStats);
+  assert.strictEqual(achievements.length, 100, "Should generate exactly 100 unique achievements");
   const taskSlayer1 = achievements.find(a => a.id === 'task_slayer_1');
   assert.ok(taskSlayer1);
   assert.strictEqual(taskSlayer1.unlocked, true);
