@@ -190,8 +190,19 @@
             return this.items;
           }
         } catch (e) {
-          console.warn("AnalyticsStore loadAllProjectItems failed:", e);
+          console.warn("AnalyticsStore loadAllProjectItems api.list failed:", e);
         }
+      }
+      // Seed from storeNodes as robust fallback
+      const storeNodes = Object.values((App.state && App.state.store && App.state.store.nodes) || {});
+      if (storeNodes.length > 0) {
+        this.nodes = {};
+        storeNodes.forEach(n => {
+          if (n && n.id) this.nodes[n.id] = n;
+        });
+        this.items = storeNodes;
+        this.isLoaded = true;
+        return this.items;
       }
       return this.items;
     }
@@ -296,11 +307,10 @@
     const loader = document.querySelector('#analytics .analytics-loading');
     if (loader) loader.style.display = 'flex';
 
-    if (forceReload) {
-      await analyticsStore.loadAllProjectItems(true);
-    }
-
     let targetNodes = await queryAnalyticsItemsForView(activeView);
+    if ((!targetNodes || targetNodes.length === 0) || forceReload) {
+      targetNodes = await analyticsStore.loadAllProjectItems(true);
+    }
     lastTargetNodes = targetNodes;
     const ids = targetNodes.map(n => n.id);
 
@@ -331,11 +341,16 @@
     try {
       const histMap = (await App.cache.get('history')) || {};
       for (const id of ids) {
-        if (revisionCache.has(id)) continue;
-        const cached = histMap[id];
-        const node = analyticsStore.nodes[id];
-        if (cached && node && cached.rev === node.rev && Array.isArray(cached.hist)) {
-          revisionCache.set(id, cached.hist);
+        const rawId = App.backend ? App.backend.rawNid(id) : String(id).replace(/^[a-z]+:/, '');
+        const gid = App.backend ? App.backend.gid(id) : ('ado:' + rawId);
+        
+        if (getItemHist(id).length > 0) continue;
+
+        const cachedObj = histMap[id] || histMap[rawId] || histMap[gid];
+        if (cachedObj && Array.isArray(cachedObj.hist)) {
+          revisionCache.set(id, cachedObj.hist);
+          revisionCache.set(rawId, cachedObj.hist);
+          revisionCache.set(gid, cachedObj.hist);
         }
       }
     } catch (_) {}
