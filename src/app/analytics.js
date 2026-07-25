@@ -937,12 +937,23 @@
         </div>
       </div>
 
+      const completionPct = committedPts > 0 ? Math.round((deliveredPts / committedPts) * 100) : 100;
+    
+      let rankBadgeClass = 'b-rank';
+      let rankBadgeLabel = 'B-RANK';
+      if (sprintHealth >= 85) { rankBadgeClass = 's-rank'; rankBadgeLabel = 'S-RANK ⭐'; }
+      else if (sprintHealth >= 70) { rankBadgeClass = 'a-rank'; rankBadgeLabel = 'A-RANK'; }
+      else if (sprintHealth < 50) { rankBadgeClass = 'danger-rank'; rankBadgeLabel = 'DANGER ⚠️'; }
+
       <div class="dashboard-grid">
-        <!-- Sprint Health Ring -->
-        <div class="metric-card dashboard-col-4">
-          <div class="analytics-sidebar-title" style="padding-left:0; margin-bottom:0.5rem; font-size:0.875rem;">${L('analytics.dashboard.health', 'Sprint Health')}</div>
-          <div class="health-ring-wrapper">
-            <svg class="health-ring-svg" width="100" height="100" viewBox="0 0 100 100">
+        <!-- Metric Card 1: Sprint Health (Party HP) -->
+        <div class="metric-card gamified-card dashboard-col-3">
+          <div class="gamified-card-header">
+            <span class="metric-label">${L('analytics.dashboard.partyVitality', 'Party Vitality')}</span>
+            <span class="gamified-rank-badge ${rankBadgeClass}">${rankBadgeLabel}</span>
+          </div>
+          <div class="health-ring-wrapper" style="margin: 0.5rem auto;">
+            <svg class="health-ring-svg" width="90" height="90" viewBox="0 0 100 100">
               <circle class="health-ring-bg" cx="50" cy="50" r="36" />
               <circle class="health-ring-fill ${healthClass}" cx="50" cy="50" r="36" stroke-dasharray="${strokeDash}" />
             </svg>
@@ -950,48 +961,69 @@
               <span class="health-ring-score" id="dash_health_val">${sprintHealth}%</span>
             </div>
           </div>
+          <div class="gamified-subtext">
+            <span>${L('analytics.dashboard.debuffs', 'Debuffs')}: ${blockedItems} ${L('analytics.blocked.metric', 'Blocked')}</span>
+            <span>${staleItems} Stale</span>
+          </div>
         </div>
 
-        <!-- Metric Card 1: Velocity -->
-        <div class="metric-card dashboard-col-4">
-          <div class="metric-label">${L('analytics.dashboard.velocity', 'Velocity')}</div>
-          <div class="metric-value" id="dash_velocity_val">${deliveredPts}</div>
-          <div class="metric-label" style="text-transform:none; font-weight:normal; margin-top:2px;">
-            ${L('analytics.dashboard.spCommitted', 'Story Points Completed')} (${L('analytics.dashboard.of', 'of')} ${committedPts})
+        <!-- Metric Card 2: Raid Power (Velocity / EXP) -->
+        <div class="metric-card gamified-card dashboard-col-3">
+          <div class="gamified-card-header">
+            <span class="metric-label">${L('analytics.dashboard.raidPower', 'Raid Power & EXP')}</span>
+            <span class="gamified-rank-badge a-rank">⚡ EXP BOOST</span>
           </div>
-          <div class="metric-sparkline-container">
+          <div class="metric-value" id="dash_velocity_val" style="display:flex; align-items:baseline; gap:0.25rem;">
+            ${deliveredPts} <span style="font-size:0.85rem; color:var(--muted); font-weight:normal;">/ ${committedPts} EXP</span>
+          </div>
+          <div class="gamified-exp-bar-wrapper">
+            <div class="gamified-exp-bar-bg">
+              <div class="gamified-exp-bar-fill" style="width: ${committedPts > 0 ? Math.min(100, Math.round((deliveredPts/committedPts)*100)) : 0}%;"></div>
+            </div>
+          </div>
+          <div class="metric-sparkline-container" style="height: 1.8rem; margin-top: 0.5rem;">
             <svg viewBox="0 0 120 30" width="100%" height="100%">
               <path class="metric-sparkline-path" d="M ${velSpark}" />
             </svg>
           </div>
         </div>
 
-        <!-- Metric Card 2: Completion Rate -->
-        <div class="metric-card dashboard-col-4">
-          <div class="metric-label">${L('analytics.dashboard.completion', 'Completion Rate')}</div>
+        <!-- Metric Card 3: Quest Clearance -->
+        <div class="metric-card gamified-card dashboard-col-3">
+          <div class="gamified-card-header">
+            <span class="metric-label">${L('analytics.dashboard.questClearance', 'Quest Clearance')}</span>
+            <span class="gamified-rank-badge s-rank">⚔️ ${completionPct >= 100 ? 'CLEARED' : 'IN RAID'}</span>
+          </div>
           <div class="metric-value" id="dash_completion_val">
-            ${committedPts > 0 ? Math.round((deliveredPts / committedPts) * 100) : 100}%
+            ${completionPct}%
           </div>
-          <div class="metric-label" style="text-transform:none; font-weight:normal; margin-top:2px;">
-            ${L('analytics.dashboard.sprintComplete', 'Percentage of committed story points')}
+          <div class="gamified-exp-bar-wrapper">
+            <div class="gamified-exp-bar-bg">
+              <div class="gamified-exp-bar-fill" style="width: ${completionPct}%; background: linear-gradient(90deg, #ffd700, #ff8c00);"></div>
+            </div>
           </div>
-          <div class="metric-sparkline-container">
+          <div class="metric-sparkline-container" style="height: 1.8rem; margin-top: 0.5rem;">
             <svg viewBox="0 0 120 30" width="100%" height="100%">
-              <path class="metric-sparkline-path" d="M ${rateSpark}" />
+              <path class="metric-sparkline-path" d="M ${rateSpark}" style="stroke: #ffd700;" />
             </svg>
           </div>
         </div>
 
-        <!-- Metric Card 3: Avg Cycle Time -->
-        <div class="metric-card dashboard-col-4">
-          <div class="metric-label">${L('analytics.dashboard.cycle', 'Avg Cycle Time')}</div>
-          <div class="metric-value" id="dash_cycle_val">${avgCycle}d</div>
-          <div class="metric-label" style="text-transform:none; font-weight:normal; margin-top:2px;">
-            ${L('analytics.dashboard.avgResolution', 'Average days to resolve tasks')}
+        <!-- Metric Card 4: Agility & Speedrun -->
+        <div class="metric-card gamified-card dashboard-col-3">
+          <div class="gamified-card-header">
+            <span class="metric-label">${L('analytics.dashboard.agilityPace', 'Agility & Speedrun')}</span>
+            <span class="gamified-rank-badge b-rank">⏱️ ${Number(avgCycle) <= 5 ? 'SWIFT ⚡' : 'NORMAL'}</span>
           </div>
-          <div class="metric-sparkline-container">
+          <div class="metric-value" id="dash_cycle_val">
+            ${avgCycle}<span style="font-size: 1.2rem; font-weight:600;">d</span>
+          </div>
+          <div class="gamified-subtext">
+            <span>${L('analytics.dashboard.avgResolution', 'Average days to resolve tasks')}</span>
+          </div>
+          <div class="metric-sparkline-container" style="height: 1.8rem; margin-top: 0.5rem;">
             <svg viewBox="0 0 120 30" width="100%" height="100%">
-              <path class="metric-sparkline-path" d="M ${cycleSpark}" />
+              <path class="metric-sparkline-path" d="M ${cycleSpark}" style="stroke: #2ecc71;" />
             </svg>
           </div>
         </div>
