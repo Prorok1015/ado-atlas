@@ -440,7 +440,7 @@
     return Math.max(0, Math.round(diff * 10) / 10);
   }
 
-  function drawActiveView(overrideNodes) {
+  async function drawActiveView(overrideNodes) {
     const container = document.getElementById('analytics');
     if (container) wireAnalyticsFilterBar(container);
 
@@ -455,7 +455,7 @@
     const items = getAnalyticsFilteredNodes(allItems);
 
     if (activeView === 'dashboard') {
-      renderDashboard(content, allItems);
+      await renderDashboard(content, allItems);
     } else if (activeView === 'profile') {
       renderProfile(content, allItems);
     } else if (activeView === 'cycle_time') {
