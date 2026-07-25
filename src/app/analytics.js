@@ -493,22 +493,39 @@
   }
 
   function openMetricDetailModal(metricId, items) {
-    let backdrop = document.getElementById('metric_detail_backdrop');
-    if (!backdrop) {
-      backdrop = document.createElement('div');
-      backdrop.id = 'metric_detail_backdrop';
-      backdrop.className = 'modal-backdrop hidden';
-      document.body.appendChild(backdrop);
+    let overlay = document.getElementById('metric_detail_overlay');
+    let box;
+    
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'metric_detail_overlay';
+      overlay.className = 'modal-backdrop';
+      overlay.style.cssText = 'position: fixed; inset: 0; background: rgba(8, 11, 15, 0.82); display: none; align-items: center; justify-content: center; padding: 1.5rem;';
+      
+      box = document.createElement('div');
+      box.id = 'metric_detail_box';
+      box.className = 'custom-dialog';
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-modal', 'true');
+      box.style.cssText = 'background: var(--panel); border: 1px solid var(--line); border-radius: 0.923rem; width: 650px; max-width: 90vw; max-height: 85vh; box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.6); padding: 1.5rem; display: flex; flex-direction: column; animation: confirmPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.15); outline: none;';
+      
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      overlay.onclick = (e) => {
+        if (e.target === overlay) {
+          closeModal();
+        }
+      };
+    } else {
+      box = document.getElementById('metric_detail_box');
     }
 
-    let modal = document.getElementById('metric_detail_modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'metric_detail_modal';
-      modal.className = 'custom-dialog hidden';
-      modal.style.cssText = 'max-width: 650px; width: 90vw; background: var(--panel); border: 1px solid var(--line); border-radius: 0.769rem; padding: 1.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 10000;';
-      document.body.appendChild(modal);
-    }
+    const closeModal = () => {
+      overlay.style.display = 'none';
+      overlay.classList.remove('show');
+      if (window.LayerManager) window.LayerManager.close(box);
+    };
 
     let title = 'Metric Deep-Dive';
     let contentHtml = '';
@@ -672,30 +689,28 @@
       contentHtml = `<p style="color:var(--muted);">Total items in active selection: <strong>${items.length}</strong></p>`;
     }
 
-    modal.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--line); padding-bottom:0.75rem;">
-        <h3 style="margin:0; font-size:1.15rem; color:var(--txt);">${title}</h3>
-        <button id="close_metric_detail" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">&times;</button>
+    box.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.75rem;">
+        <h2 id="metric_detail_title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--txt);">${title}</h2>
+        <button id="close_metric_detail" aria-label="Close" style="background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; padding: 0.2rem 0.5rem; line-height: 1; border-radius: 4px; transition: color 0.15s ease;">&times;</button>
       </div>
-      <div style="max-height: 60vh; overflow-y: auto;">
+      <div style="flex: 1; overflow-y: auto; padding-right: 0.25rem;">
         ${contentHtml}
       </div>
     `;
 
-    backdrop.classList.remove('hidden');
-    modal.classList.remove('hidden');
+    box.setAttribute('aria-labelledby', 'metric_detail_title');
+
+    overlay.style.display = 'flex';
+    overlay.classList.add('show');
 
     if (window.LayerManager) {
-      window.LayerManager.open(modal, backdrop, { isPopover: true });
+      window.LayerManager.open(box, overlay);
     }
 
-    const closeBtn = modal.querySelector('#close_metric_detail');
+    const closeBtn = box.querySelector('#close_metric_detail');
     if (closeBtn) {
-      closeBtn.onclick = () => {
-        modal.classList.add('hidden');
-        backdrop.classList.add('hidden');
-        if (window.LayerManager) window.LayerManager.close(modal);
-      };
+      closeBtn.onclick = closeModal;
     }
   }
 
