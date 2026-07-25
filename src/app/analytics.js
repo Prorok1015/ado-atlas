@@ -2315,6 +2315,17 @@
     };
   }
 
+  // Subscribe to i18n language changes to dynamically re-render analytics interface
+  if (typeof window !== 'undefined' && window.i18n && typeof window.i18n.onChange === 'function') {
+    window.i18n.onChange(() => {
+      const container = document.getElementById('analytics');
+      if (container && App.state && App.state.mode === 'analytics') {
+        container.innerHTML = '';
+        renderAnalytics();
+      }
+    });
+  }
+
   // Export module interface
   App.analytics = { track, renderAnalytics, cleanup, clearCache };
 
