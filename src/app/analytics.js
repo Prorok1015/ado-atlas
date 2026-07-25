@@ -169,6 +169,34 @@
     refreshAnalyticsView();
   }
 
+  const analyticsStore = {
+    nodes: {},
+    items: [],
+    isLoaded: false,
+    async loadAllProjectItems(force = false) {
+      if (this.isLoaded && !force && this.items.length > 0) {
+        return this.items;
+      }
+      if (typeof api !== 'undefined' && typeof api.list === 'function') {
+        try {
+          const rawItems = await api.list({ order: 'changeddate_desc' });
+          if (rawItems && rawItems.length > 0) {
+            this.nodes = {};
+            rawItems.forEach(n => {
+              if (n && n.id) this.nodes[n.id] = n;
+            });
+            this.items = rawItems;
+            this.isLoaded = true;
+            return this.items;
+          }
+        } catch (e) {
+          console.warn("AnalyticsStore loadAllProjectItems failed:", e);
+        }
+      }
+      return this.items;
+    }
+  };
+
   const analyticsFilters = {
     assignee: 'all',
     type: 'all',
@@ -176,7 +204,7 @@
   };
 
   function getAnalyticsFilteredNodes(customNodes) {
-    const allNodes = customNodes || Object.values((App.state && App.state.store && App.state.store.nodes) || {});
+    const allNodes = customNodes || analyticsStore.items;
     if (allNodes.length === 0) return [];
 
     const now = new Date();
@@ -212,82 +240,13 @@
     });
   }
 
-  let analyticsItemsCache = null;
-
   async function queryAnalyticsItemsForView(viewName) {
-    const rules = [];
-
-    // 1. Timeframe filter (if user selected last30 or last90)
-    if (analyticsFilters.timeframe === 'last30') {
-      rules.push({
-        kind: 'condition',
-        field: 'changeddate',
-        op: '>=',
-        value: '@today - 30'
-      });
-    } else if (analyticsFilters.timeframe === 'last90') {
-      rules.push({
-        kind: 'condition',
-        field: 'changeddate',
-        op: '>=',
-        value: '@today - 90'
-      });
-    }
-
-    // 2. Assignee filter (if active)
-    if (analyticsFilters.assignee && analyticsFilters.assignee !== 'all') {
-      rules.push({
-        kind: 'condition',
-        field: 'assigned',
-        op: '=',
-        value: analyticsFilters.assignee
-      });
-    }
-
-    // 3. Work Item Type filter (if active)
-    if (analyticsFilters.type && analyticsFilters.type !== 'all') {
-      rules.push({
-        kind: 'condition',
-        field: 'type',
-        op: '=',
-        value: analyticsFilters.type
-      });
-    }
-
-    const filterIR = {
-      where: {
-        kind: 'group',
-        logic: 'AND',
-        rules: rules
-      }
-    };
-
-    if (typeof api !== 'undefined' && typeof api.list === 'function') {
-      try {
-        const items = await api.list({ filters: filterIR, order: 'changeddate_desc' });
-        if (items && items.length > 0) {
-          analyticsItemsCache = items;
-          const storeMap = (App.state && App.state.store && App.state.store.nodes) || {};
-          items.forEach(node => {
-            if (node && node.id) storeMap[node.id] = node;
-          });
-          return items;
-        }
-      } catch (e) {
-        console.warn("Analytics api.list execution failed, falling back to cached items:", e);
-      }
-    }
-
-    if (analyticsItemsCache && analyticsItemsCache.length > 0) {
-      return getAnalyticsFilteredNodes(analyticsItemsCache);
-    }
-
-    const storeNodes = Object.values((App.state && App.state.store && App.state.store.nodes) || {});
-    return getAnalyticsFilteredNodes(storeNodes);
+    const allItems = await analyticsStore.loadAllProjectItems();
+    return getAnalyticsFilteredNodes(allItems);
   }
 
   function getProjectAssignees() {
-    const nodes = Object.values((App.state && App.state.store && App.state.store.nodes) || {});
+    const nodes = analyticsStore.items;
     const set = new Set();
     nodes.forEach(n => {
       if (n.assigned) set.add(n.assigned);
@@ -325,7 +284,7 @@
 
   let lastTargetNodes = null;
 
-  async function refreshAnalyticsView() {
+  async function refreshAnalyticsView(forceReload = false) {
     if (App.state.mode !== 'analytics') return;
     const container = document.getElementById('analytics');
     if (container) wireAnalyticsFilterBar(container);
@@ -337,10 +296,11 @@
     const loader = document.querySelector('#analytics .analytics-loading');
     if (loader) loader.style.display = 'flex';
 
-    let targetNodes = await queryAnalyticsItemsForView(activeView);
-    if (!targetNodes || targetNodes.length === 0) {
-      targetNodes = Object.values((App.state && App.state.store && App.state.store.nodes) || {});
+    if (forceReload) {
+      await analyticsStore.loadAllProjectItems(true);
     }
+
+    let targetNodes = await queryAnalyticsItemsForView(activeView);
     lastTargetNodes = targetNodes;
     const ids = targetNodes.map(n => n.id);
 
@@ -370,12 +330,10 @@
     if (!App.cache) return;
     try {
       const histMap = (await App.cache.get('history')) || {};
-      const storeNodes = (App.state && App.state.store && App.state.store.nodes) || {};
-      
       for (const id of ids) {
         if (revisionCache.has(id)) continue;
         const cached = histMap[id];
-        const node = storeNodes[id];
+        const node = analyticsStore.nodes[id];
         if (cached && node && cached.rev === node.rev && Array.isArray(cached.hist)) {
           revisionCache.set(id, cached.hist);
         }
@@ -386,12 +344,11 @@
   async function savePersistentHistoryCache() {
     if (!App.cache) return;
     try {
-      const storeNodes = (App.state && App.state.store && App.state.store.nodes) || {};
       const objToSave = {};
       let count = 0;
       for (const [id, hist] of revisionCache.entries()) {
         if (count > 2000) break;
-        const node = storeNodes[id];
+        const node = analyticsStore.nodes[id];
         const rev = node ? node.rev : 1;
         objToSave[id] = { rev, hist: hist || [] };
         count++;
@@ -479,10 +436,7 @@
     content.className = 'analytics-content view-transition';
 
     const sourceNodes = overrideNodes || lastTargetNodes;
-    const allItems = (sourceNodes && sourceNodes.length > 0)
-      ? sourceNodes
-      : Object.values((App.state && App.state.store && App.state.store.nodes) || {});
-
+    const allItems = (sourceNodes && sourceNodes.length > 0) ? sourceNodes : analyticsStore.items;
     const items = getAnalyticsFilteredNodes(allItems);
 
     if (activeView === 'dashboard') {
