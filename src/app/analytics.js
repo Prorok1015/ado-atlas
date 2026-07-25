@@ -477,6 +477,226 @@
     } else if (activeView === 'throughput') {
       renderThroughput(content, allItems);
     }
+
+    // Wire up metric card click handlers for deep-dive detail modal
+    const gamifiedCards = container.querySelectorAll('.metric-card.gamified-card');
+    gamifiedCards.forEach(card => {
+      card.style.cursor = 'pointer';
+      card.onclick = (e) => {
+        e.stopPropagation();
+        const metricId = card.dataset.metricId;
+        if (metricId) {
+          openMetricDetailModal(metricId, items);
+        }
+      };
+    });
+  }
+
+  function openMetricDetailModal(metricId, items) {
+    let backdrop = document.getElementById('metric_detail_backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'metric_detail_backdrop';
+      backdrop.className = 'modal-backdrop hidden';
+      document.body.appendChild(backdrop);
+    }
+
+    let modal = document.getElementById('metric_detail_modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'metric_detail_modal';
+      modal.className = 'custom-dialog hidden';
+      modal.style.cssText = 'max-width: 650px; width: 90vw; background: var(--panel); border: 1px solid var(--line); border-radius: 0.769rem; padding: 1.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 10000;';
+      document.body.appendChild(modal);
+    }
+
+    let title = 'Metric Deep-Dive';
+    let contentHtml = '';
+
+    if (metricId === 'party_vitality') {
+      const blockedItems = items.filter(it => {
+        const tagStr = (it.tags || '').toLowerCase();
+        const titleStr = (it.title || '').toLowerCase();
+        return tagStr.includes('blocked') || titleStr.includes('[blocked]');
+      });
+      const now = new Date().toISOString();
+      const staleItems = items.filter(it => !isCompletedState(it.state) && daysBetween(it.changeddate || it.createddate || now, now) >= 7);
+
+      title = `🛡️ Party Vitality & Debuffs Deep-Dive`;
+      contentHtml = `
+        <div class="modal-section" style="margin-bottom: 1.2rem;">
+          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent);">Vitality Formula Breakdown</h4>
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0;">Party HP is calculated from target velocity fulfillment minus severe debuffs (-10% per blocked item, -5% per stale item).</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
+          <div style="background: rgba(235, 87, 87, 0.1); border: 1px solid rgba(235, 87, 87, 0.3); border-radius: 0.5rem; padding: 0.8rem;">
+            <div style="font-weight: 700; color: var(--danger); margin-bottom: 0.4rem;">🛑 Blocked Debuffs (${blockedItems.length})</div>
+            ${blockedItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No blocked items active.</div>` : blockedItems.slice(0, 5).map(it => `
+              <div style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.2rem;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                #${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
+              </div>
+            `).join('')}
+          </div>
+
+          <div style="background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); border-radius: 0.5rem; padding: 0.8rem;">
+            <div style="font-weight: 700; color: #9b59b6; margin-bottom: 0.4rem;">👻 Stale Debuffs (${staleItems.length})</div>
+            ${staleItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No stale items active.</div>` : staleItems.slice(0, 5).map(it => `
+              <div style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.2rem;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                #${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } else if (metricId === 'raid_power') {
+      let totalSP = 0;
+      let deliveredSP = 0;
+      const typeMap = {};
+
+      items.forEach(it => {
+        const pts = getItemPoints(it);
+        totalSP += pts;
+        const typeKey = it.type || 'Task';
+        if (!typeMap[typeKey]) typeMap[typeKey] = { total: 0, done: 0 };
+        typeMap[typeKey].total += pts;
+
+        if (isCompletedState(it.state)) {
+          deliveredSP += pts;
+          typeMap[typeKey].done += pts;
+        }
+      });
+
+      title = `⚡ Raid Power & Velocity Breakdown`;
+      contentHtml = `
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent);">EXP Output by Work Item Type</h4>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${Object.keys(typeMap).map(type => {
+              const info = typeMap[type];
+              const pct = info.total > 0 ? Math.round((info.done / info.total) * 100) : 0;
+              return `
+                <div style="font-size: 0.85rem;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+                    <span><strong>${htmlEsc(type)}</strong>: ${info.done} / ${info.total} EXP</span>
+                    <span>${pct}%</span>
+                  </div>
+                  <div style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; width: ${pct}%; background: linear-gradient(90deg, #2f6fed, #00d2ff);"></div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    } else if (metricId === 'quest_clearance' || metricId === 'cfd_done' || metricId === 'quest_cleared_count') {
+      let completedCount = 0;
+      let activeCount = 0;
+      let newCount = 0;
+
+      items.forEach(it => {
+        if (isCompletedState(it.state)) completedCount++;
+        else if (isInProgressState(it.state)) activeCount++;
+        else newCount++;
+      });
+
+      const totalCount = items.length;
+      const clearPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+      title = `⚔️ Quest Clearance Breakdown`;
+      contentHtml = `
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent);">Quest Progression Status (${totalCount} Quests)</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin-top: 0.8rem;">
+            <div style="background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); border-radius: 0.5rem; padding: 0.8rem; text-align: center;">
+              <div style="font-size: 1.5rem; font-weight: 700; color: #2ecc71;">${completedCount}</div>
+              <div style="font-size: 0.75rem; color: var(--muted);">Cleared (${clearPct}%)</div>
+            </div>
+            <div style="background: rgba(47, 111, 237, 0.1); border: 1px solid rgba(47, 111, 237, 0.3); border-radius: 0.5rem; padding: 0.8rem; text-align: center;">
+              <div style="font-size: 1.5rem; font-weight: 700; color: #00d2ff;">${activeCount}</div>
+              <div style="font-size: 0.75rem; color: var(--muted);">In Raid</div>
+            </div>
+            <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 0.5rem; padding: 0.8rem; text-align: center;">
+              <div style="font-size: 1.5rem; font-weight: 700; color: #ffd700;">${newCount}</div>
+              <div style="font-size: 0.75rem; color: var(--muted);">Queued</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (metricId === 'agility_pace' || metricId === 'lead_time_tempo' || metricId === 'cycle_time_agility') {
+      const cycleTimes = [];
+      items.forEach(it => {
+        if (!isCompletedState(it.state)) return;
+        const hist = revisionCache.get(it.id) || [];
+        const chronological = hist.slice().reverse();
+        const createdDate = it.createddate || (chronological[0] ? chronological[0].date : null);
+        if (!createdDate) return;
+        let completionDate = null;
+        for (let i = hist.length - 1; i >= 0; i--) {
+          if (isCompletedState((hist[i].changes || []).find(c => c.field === 'State')?.to)) {
+            completionDate = hist[i].date;
+            break;
+          }
+        }
+        if (!completionDate) completionDate = it.changeddate || createdDate;
+        let startDate = null;
+        for (const update of chronological) {
+          if (isInProgressState((update.changes || []).find(c => c.field === 'State')?.to)) {
+            startDate = update.date;
+            break;
+          }
+        }
+        if (!startDate) startDate = createdDate;
+        cycleTimes.push({ id: it.id, title: it.title, days: daysBetween(startDate, completionDate) });
+      });
+
+      cycleTimes.sort((a, b) => a.days - b.days);
+
+      title = `⏱️ Speedrun Agility & Pace Analysis`;
+      contentHtml = `
+        <div style="margin-bottom: 1.2rem;">
+          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent);">Fastest vs Slowest Quests</h4>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${cycleTimes.slice(0, 5).map(x => `
+              <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:0.4rem; background:rgba(255,255,255,0.03); border-radius:4px; cursor:pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80%;">#${App.backend ? App.backend.nid(x.id) : x.id} - ${htmlEsc(x.title)}</span>
+                <span class="rpg-badge speed-swift">⚡ ${x.days}d</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } else {
+      title = `📊 Metric Details (${metricId})`;
+      contentHtml = `<p style="color:var(--muted);">Total items in active selection: <strong>${items.length}</strong></p>`;
+    }
+
+    modal.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--line); padding-bottom:0.75rem;">
+        <h3 style="margin:0; font-size:1.15rem; color:var(--txt);">${title}</h3>
+        <button id="close_metric_detail" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">&times;</button>
+      </div>
+      <div style="max-height: 60vh; overflow-y: auto;">
+        ${contentHtml}
+      </div>
+    `;
+
+    backdrop.classList.remove('hidden');
+    modal.classList.remove('hidden');
+
+    if (window.LayerManager) {
+      window.LayerManager.open(modal, backdrop, { isPopover: true });
+    }
+
+    const closeBtn = modal.querySelector('#close_metric_detail');
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        modal.classList.add('hidden');
+        backdrop.classList.add('hidden');
+        if (window.LayerManager) window.LayerManager.close(modal);
+      };
+    }
   }
 
   function animateCountUp(element, endValue, duration, suffix = '') {
@@ -916,7 +1136,7 @@
 
       <div class="dashboard-grid">
         <!-- Metric Card 1: Sprint Health (Party HP) -->
-        <div class="metric-card gamified-card dashboard-col-3">
+        <div class="metric-card gamified-card dashboard-col-3" data-metric-id="party_vitality">
           <div class="gamified-card-header">
             <span class="metric-label">${L('analytics.dashboard.partyVitality', 'Party Vitality')}</span>
             <span class="gamified-rank-badge ${rankBadgeClass}">${rankBadgeLabel}</span>
@@ -937,7 +1157,7 @@
         </div>
 
         <!-- Metric Card 2: Raid Power (Velocity / EXP) -->
-        <div class="metric-card gamified-card dashboard-col-3">
+        <div class="metric-card gamified-card dashboard-col-3" data-metric-id="raid_power">
           <div class="gamified-card-header">
             <span class="metric-label">${L('analytics.dashboard.raidPower', 'Raid Power & EXP')}</span>
             <span class="gamified-rank-badge a-rank">⚡ EXP BOOST</span>
@@ -958,7 +1178,7 @@
         </div>
 
         <!-- Metric Card 3: Quest Clearance -->
-        <div class="metric-card gamified-card dashboard-col-3">
+        <div class="metric-card gamified-card dashboard-col-3" data-metric-id="quest_clearance">
           <div class="gamified-card-header">
             <span class="metric-label">${L('analytics.dashboard.questClearance', 'Quest Clearance')}</span>
             <span class="gamified-rank-badge s-rank">⚔️ ${completionPct >= 100 ? 'CLEARED' : 'IN RAID'}</span>
@@ -979,7 +1199,7 @@
         </div>
 
         <!-- Metric Card 4: Agility & Speedrun -->
-        <div class="metric-card gamified-card dashboard-col-3">
+        <div class="metric-card gamified-card dashboard-col-3" data-metric-id="agility_pace">
           <div class="gamified-card-header">
             <span class="metric-label">${L('analytics.dashboard.agilityPace', 'Agility & Speedrun')}</span>
             <span class="gamified-rank-badge b-rank">⏱️ ${Number(avgCycle) <= 5 ? 'SWIFT ⚡' : 'NORMAL'}</span>
@@ -1218,7 +1438,7 @@
       </div>
 
       <div class="dashboard-grid">
-        <div class="metric-card gamified-card dashboard-col-4">
+        <div class="metric-card gamified-card dashboard-col-4" data-metric-id="lead_time_tempo">
           <div class="gamified-card-header">
             <span class="metric-label">${L('analytics.cycle.avgLead', 'Avg Lead Time')}</span>
             <span class="gamified-rank-badge ${leadBadgeClass}">${leadBadgeText}</span>
@@ -1229,7 +1449,7 @@
           </div>
         </div>
 
-        <div class="metric-card gamified-card dashboard-col-4">
+        <div class="metric-card gamified-card dashboard-col-4" data-metric-id="cycle_time_agility">
           <div class="gamified-card-header">
             <span class="metric-label">${L('analytics.cycle.avgCycle', 'Avg Cycle Time')}</span>
             <span class="gamified-rank-badge ${cycleBadgeClass}">${cycleBadgeText}</span>
@@ -1240,7 +1460,7 @@
           </div>
         </div>
 
-        <div class="metric-card gamified-card dashboard-col-4">
+        <div class="metric-card gamified-card dashboard-col-4" data-metric-id="quest_cleared_count">
           <div class="gamified-card-header">
             <span class="metric-label">${L('analytics.cycle.completed', 'Completed Items')}</span>
             <span class="gamified-rank-badge s-rank">⚔️ LEGENDARY</span>
@@ -1326,7 +1546,7 @@
       </div>
 
       <div class="dashboard-grid">
-        <div class="metric-card gamified-card dashboard-col-4">
+        <div class="metric-card gamified-card dashboard-col-4" data-metric-id="cfd_wip">
           <div class="gamified-card-header">
             <span class="metric-label">🛡️ Active WIP Load</span>
             <span class="gamified-rank-badge ${inProgressCount > 15 ? 'danger-rank' : 'a-rank'}">${inProgressCount > 15 ? '⚠️ HIGH WIP' : '⚡ BALANCED'}</span>
@@ -1335,7 +1555,7 @@
           <div class="gamified-subtext"><span>Active Quests in Raid</span></div>
         </div>
 
-        <div class="metric-card gamified-card dashboard-col-4">
+        <div class="metric-card gamified-card dashboard-col-4" data-metric-id="cfd_backlog">
           <div class="gamified-card-header">
             <span class="metric-label">⚔️ Backlog Inventory</span>
             <span class="gamified-rank-badge b-rank">QUEUED</span>
@@ -1344,7 +1564,7 @@
           <div class="gamified-subtext"><span>Upcoming Quests</span></div>
         </div>
 
-        <div class="metric-card gamified-card dashboard-col-4">
+        <div class="metric-card gamified-card dashboard-col-4" data-metric-id="cfd_done">
           <div class="gamified-card-header">
             <span class="metric-label">✨ Victory Clearance</span>
             <span class="gamified-rank-badge s-rank">CLEARED</span>
@@ -1443,7 +1663,7 @@
       </div>
 
       <div class="dashboard-grid">
-        <div class="metric-card gamified-card dashboard-col-6">
+        <div class="metric-card gamified-card dashboard-col-6" data-metric-id="aging_active">
           <div class="gamified-card-header">
             <span class="metric-label">🛡️ Active Raid Party</span>
             <span class="gamified-rank-badge a-rank">IN BATTLE</span>
@@ -1452,7 +1672,7 @@
           <div class="gamified-subtext"><span>Active Work Items</span></div>
         </div>
 
-        <div class="metric-card gamified-card dashboard-col-6">
+        <div class="metric-card gamified-card dashboard-col-6" data-metric-id="aging_danger">
           <div class="gamified-card-header">
             <span class="metric-label">⌛ Dungeon Decay (>7 Days)</span>
             <span class="gamified-rank-badge ${agingWarnCount > 0 ? 'danger-rank' : 's-rank'}">${agingWarnCount > 0 ? '⚠️ STALE DANGER' : '✨ FRESH RAID'}</span>
@@ -1539,7 +1759,7 @@
       </div>
 
       <div class="dashboard-grid">
-        <div class="metric-card gamified-card dashboard-col-12">
+        <div class="metric-card gamified-card dashboard-col-12" data-metric-id="stale_ghosts">
           <div class="gamified-card-header">
             <span class="metric-label">👻 Forgotten Quests & Idle Ghosts</span>
             <span class="gamified-rank-badge ${stale.length > 0 ? 'danger-rank' : 's-rank'}">${stale.length > 0 ? '👻 IDLE GHOSTS' : '✨ ALL ACTIVE'}</span>
@@ -1621,7 +1841,7 @@
       </div>
 
       <div class="dashboard-grid">
-        <div class="metric-card gamified-card dashboard-col-12">
+        <div class="metric-card gamified-card dashboard-col-12" data-metric-id="blocked_stun">
           <div class="gamified-card-header">
             <span class="metric-label">🛡️ Raid Blockers & Boss Shields</span>
             <span class="gamified-rank-badge ${blocked.length > 0 ? 'danger-rank' : 's-rank'}">${blocked.length > 0 ? '🛑 STUNNED' : '✨ SHIELD FREE'}</span>
