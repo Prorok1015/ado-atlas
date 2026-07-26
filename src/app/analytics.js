@@ -529,6 +529,7 @@
 
     let title = 'Metric Deep-Dive';
     let contentHtml = '';
+    const now = new Date().toISOString();
 
     if (metricId === 'party_vitality') {
       const blockedItems = items.filter(it => {
@@ -536,35 +537,34 @@
         const titleStr = (it.title || '').toLowerCase();
         return tagStr.includes('blocked') || titleStr.includes('[blocked]');
       });
-      const now = new Date().toISOString();
       const staleItems = items.filter(it => !isCompletedState(it.state) && daysBetween(it.changeddate || it.createddate || now, now) >= 7);
 
       title = `🛡️ Party Vitality & Debuffs Deep-Dive`;
       contentHtml = `
         <div class="modal-section" style="margin-bottom: 1.2rem;">
-          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent);">Vitality Formula Breakdown</h4>
+          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent); font-size: 0.95rem;">Vitality Formula Breakdown</h4>
           <p style="font-size: 0.85rem; color: var(--muted); margin: 0;">Party HP is calculated from target velocity fulfillment minus severe debuffs (-10% per blocked item, -5% per stale item).</p>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
-          <div style="background: rgba(235, 87, 87, 0.1); border: 1px solid rgba(235, 87, 87, 0.3); border-radius: 0.5rem; padding: 0.8rem;">
-            <div style="font-weight: 700; color: var(--danger); margin-bottom: 0.4rem;">🛑 Blocked Debuffs (${blockedItems.length})</div>
-            ${blockedItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No blocked items active.</div>` : blockedItems.slice(0, 5).map(it => {
+          <div style="background: rgba(235, 87, 87, 0.08); border: 1px solid rgba(235, 87, 87, 0.25); border-radius: 0.5rem; padding: 0.9rem;">
+            <div style="font-weight: 700; color: var(--danger); margin-bottom: 0.5rem; font-size: 0.9rem;">🛑 Blocked Debuffs (${blockedItems.length})</div>
+            ${blockedItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No blocked items active.</div>` : blockedItems.slice(0, 6).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.25rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                <div style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.3rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
                   <i class="dot" style="background: ${cColor}; margin-right: 4px; display: inline-block;"></i>#${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
                 </div>
               `;
             }).join('')}
           </div>
 
-          <div style="background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); border-radius: 0.5rem; padding: 0.8rem;">
-            <div style="font-weight: 700; color: #9b59b6; margin-bottom: 0.4rem;">👻 Stale Debuffs (${staleItems.length})</div>
-            ${staleItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No stale items active.</div>` : staleItems.slice(0, 5).map(it => {
+          <div style="background: rgba(155, 89, 182, 0.08); border: 1px solid rgba(155, 89, 182, 0.25); border-radius: 0.5rem; padding: 0.9rem;">
+            <div style="font-weight: 700; color: #9b59b6; margin-bottom: 0.5rem; font-size: 0.9rem;">👻 Stale Debuffs (${staleItems.length})</div>
+            ${staleItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No stale items active.</div>` : staleItems.slice(0, 6).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.25rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                <div style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.3rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
                   <i class="dot" style="background: ${cColor}; margin-right: 4px; display: inline-block;"></i>#${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
                 </div>
               `;
@@ -593,20 +593,178 @@
       title = `⚡ Raid Power & Velocity Breakdown`;
       contentHtml = `
         <div style="margin-bottom: 1.2rem;">
-          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent);">EXP Output by Work Item Type</h4>
-          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent); font-size: 0.95rem;">EXP Output by Work Item Type</h4>
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.8rem;">
             ${Object.keys(typeMap).map(type => {
               const info = typeMap[type];
               const pct = info.total > 0 ? Math.round((info.done / info.total) * 100) : 0;
+              const cColor = typeof tyColor === 'function' ? tyColor(type) : 'var(--accent)';
               return `
                 <div style="font-size: 0.85rem;">
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
-                    <span><strong>${htmlEsc(type)}</strong>: ${info.done} / ${info.total} EXP</span>
-                    <span>${pct}%</span>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span><strong style="color: ${cColor};">${htmlEsc(type)}</strong>: ${info.done} / ${info.total} EXP</span>
+                    <span style="font-weight: 600; color: var(--txt);">${pct}%</span>
                   </div>
-                  <div style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
-                    <div style="height: 100%; width: ${pct}%; background: linear-gradient(90deg, #2f6fed, #00d2ff);"></div>
+                  <div style="height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+                    <div style="height: 100%; width: ${pct}%; background: ${cColor}; border-radius: 4px; transition: width 0.4s ease;"></div>
                   </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    } else if (metricId === 'stale_ghosts') {
+      const staleList = items.filter(it => !isCompletedState(it.state) && daysBetween(it.changeddate || it.createddate || now, now) >= 7)
+        .map(it => ({
+          ...it,
+          days: daysBetween(it.changeddate || it.createddate || now, now)
+        }))
+        .sort((a, b) => b.days - a.days);
+
+      title = `👻 Forgotten Quests & Idle Ghosts (${staleList.length})`;
+      contentHtml = `
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.8rem 0;">Work items in non-completed states that have not received comments, status changes, or updates for 7+ days.</p>
+          ${staleList.length === 0 ? `
+            <div style="font-size: 0.85rem; color: var(--muted); text-align: center; padding: 1.5rem;">✨ No idle ghosts found! All active tasks are up to date.</div>
+          ` : `
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+              ${staleList.slice(0, 15).map(it => {
+                const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
+                return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; transition: background 0.15s ease;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                    <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
+                      <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
+                      <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
+                      <span style="font-size: 0.85rem; font-weight: 500; color: ${cColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${htmlEsc(it.title)}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+                      <span style="font-size: 0.75rem; color: var(--muted);">${htmlEsc(it.assigned || 'Unassigned')}</span>
+                      <span class="rpg-badge ghost-tag">👻 ${it.days}d idle</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    } else if (metricId === 'blocked_stun') {
+      const blockedList = items.filter(it => {
+        const tagStr = (it.tags || '').toLowerCase();
+        const titleStr = (it.title || '').toLowerCase();
+        return tagStr.includes('blocked') || titleStr.includes('[blocked]');
+      });
+
+      title = `🛑 Raid Blockers & Boss Shields (${blockedList.length})`;
+      contentHtml = `
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.8rem 0;">Items marked as blocked by tags or title tags. Resolving these removes party vitality debuffs.</p>
+          ${blockedList.length === 0 ? `
+            <div style="font-size: 0.85rem; color: var(--muted); text-align: center; padding: 1.5rem;">✨ No blocked items active in current raid!</div>
+          ` : `
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+              ${blockedList.map(it => {
+                const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
+                return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(235, 87, 87, 0.05); border: 1px solid rgba(235, 87, 87, 0.25); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                    <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
+                      <span class="rpg-badge stun-tag" style="flex-shrink: 0;">🛑 Blocked</span>
+                      <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
+                      <span style="font-size: 0.85rem; font-weight: 500; color: ${cColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${htmlEsc(it.title)}</span>
+                    </div>
+                    <span style="font-size: 0.75rem; color: var(--muted); flex-shrink: 0;">${htmlEsc(it.assigned || 'Unassigned')}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    } else if (metricId === 'aging_danger') {
+      const activeDanger = items.filter(it => isInProgressState(it.state))
+        .map(it => {
+          const history = revisionCache.get(it.id) || [];
+          let transitionDate = null;
+          for (const update of history) {
+            const stateChange = (update.changes || []).find(c => c.field === 'State');
+            if (stateChange && stateChange.to === it.state) { transitionDate = update.date; break; }
+          }
+          if (!transitionDate) transitionDate = it.changeddate || it.createddate || now;
+          return { ...it, age: daysBetween(transitionDate, now) };
+        })
+        .filter(it => it.age > 7)
+        .sort((a, b) => b.age - a.age);
+
+      title = `⌛ Dungeon Decay (>7 Days In Progress) (${activeDanger.length})`;
+      contentHtml = `
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.8rem 0;">Active tasks stuck in development for over 7 days.</p>
+          ${activeDanger.length === 0 ? `
+            <div style="font-size: 0.85rem; color: var(--muted); text-align: center; padding: 1.5rem;">✨ Fresh Raid! No aging items detected.</div>
+          ` : `
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+              ${activeDanger.map(it => {
+                const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
+                return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(235, 87, 87, 0.05); border: 1px solid rgba(235, 87, 87, 0.2); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                    <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
+                      <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
+                      <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
+                      <span style="font-size: 0.85rem; font-weight: 500; color: ${cColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${htmlEsc(it.title)}</span>
+                    </div>
+                    <span class="rpg-badge speed-long">🔥 ${it.age}d in progress</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    } else if (metricId === 'cfd_wip' || metricId === 'aging_active') {
+      const activeList = items.filter(it => isInProgressState(it.state));
+      title = `🛡️ Active Raid Party (WIP) (${activeList.length})`;
+      contentHtml = `
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.8rem 0;">Items currently being actively worked on in sprint or active pipeline.</p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+            ${activeList.slice(0, 15).map(it => {
+              const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
+              return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                  <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
+                    <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
+                    <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
+                    <span style="font-size: 0.85rem; font-weight: 500; color: ${cColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${htmlEsc(it.title)}</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+                    <span class="state-badge">${htmlEsc(it.state)}</span>
+                    <span style="font-size: 0.75rem; color: var(--muted);">${htmlEsc(it.assigned || 'Unassigned')}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    } else if (metricId === 'cfd_backlog') {
+      const backlogList = items.filter(it => !isCompletedState(it.state) && !isInProgressState(it.state));
+      title = `📦 Backlog & Queued Quests (${backlogList.length})`;
+      contentHtml = `
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.8rem 0;">Proposed or unstarted work items awaiting active assignment or pickup.</p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+            ${backlogList.slice(0, 15).map(it => {
+              const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
+              return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                  <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
+                    <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
+                    <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
+                    <span style="font-size: 0.85rem; font-weight: 500; color: ${cColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${htmlEsc(it.title)}</span>
+                  </div>
+                  <span class="state-badge">${htmlEsc(it.state)}</span>
                 </div>
               `;
             }).join('')}
@@ -627,10 +785,10 @@
       const totalCount = items.length;
       const clearPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-      title = `⚔️ Quest Clearance Breakdown`;
+      title = `⚔️ Quest Clearance Breakdown (${completedCount} / ${totalCount})`;
       contentHtml = `
         <div style="margin-bottom: 1.2rem;">
-          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent);">Quest Progression Status (${totalCount} Quests)</h4>
+          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent); font-size: 0.95rem;">Quest Progression Status (${totalCount} Quests)</h4>
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin-top: 0.8rem;">
             <div style="background: rgba(46, 204, 113, 0.1); border: 1px solid rgba(46, 204, 113, 0.3); border-radius: 0.5rem; padding: 0.8rem; text-align: center;">
               <div style="font-size: 1.5rem; font-weight: 700; color: #2ecc71;">${completedCount}</div>
@@ -671,7 +829,7 @@
           }
         }
         if (!startDate) startDate = createdDate;
-        cycleTimes.push({ id: it.id, title: it.title, days: daysBetween(startDate, completionDate) });
+        cycleTimes.push({ id: it.id, title: it.title, type: it.type, days: daysBetween(startDate, completionDate) });
       });
 
       cycleTimes.sort((a, b) => a.days - b.days);
@@ -679,20 +837,32 @@
       title = `⏱️ Speedrun Agility & Pace Analysis`;
       contentHtml = `
         <div style="margin-bottom: 1.2rem;">
-          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent);">Fastest vs Slowest Quests</h4>
+          <h4 style="margin: 0 0 0.5rem 0; color: var(--accent); font-size: 0.95rem;">Fastest Speedrun Clears</h4>
           <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-            ${cycleTimes.slice(0, 5).map(x => `
-              <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:0.4rem; background:rgba(255,255,255,0.03); border-radius:4px; cursor:pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
-                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80%;">#${App.backend ? App.backend.nid(x.id) : x.id} - ${htmlEsc(x.title)}</span>
-                <span class="rpg-badge speed-swift">⚡ ${x.days}d</span>
-              </div>
-            `).join('')}
+            ${cycleTimes.slice(0, 8).map(x => {
+              const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
+              return `
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding:0.5rem 0.8rem; background:rgba(255,255,255,0.03); border:1px solid var(--line); border-radius:6px; cursor:pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                  <div style="display:flex; align-items:center; gap:8px; overflow:hidden; padding-right:0.5rem;">
+                    <span class="wi-type" style="border-color:${cColor}; color:${cColor}; font-size:0.72rem; flex-shrink:0;">${htmlEsc(x.type)}</span>
+                    <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(x.id) : x.id}</span>
+                    <span style="color:${cColor}; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${htmlEsc(x.title)}</span>
+                  </div>
+                  <span class="rpg-badge speed-swift" style="flex-shrink:0;">⚡ ${x.days}d</span>
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
       `;
     } else {
-      title = `📊 Metric Details (${metricId})`;
-      contentHtml = `<p style="color:var(--muted);">Total items in active selection: <strong>${items.length}</strong></p>`;
+      title = `📊 Metric Overview (${htmlEsc(metricId)})`;
+      contentHtml = `
+        <div style="padding: 1rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px;">
+          <p style="color:var(--txt); margin: 0 0 0.5rem 0; font-weight: 600;">Active Selection Breakdown</p>
+          <p style="color:var(--muted); margin: 0; font-size: 0.85rem;">Total items evaluated in this selection: <strong>${items.length}</strong></p>
+        </div>
+      `;
     }
 
     box.innerHTML = `
