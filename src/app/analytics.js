@@ -549,20 +549,26 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
           <div style="background: rgba(235, 87, 87, 0.1); border: 1px solid rgba(235, 87, 87, 0.3); border-radius: 0.5rem; padding: 0.8rem;">
             <div style="font-weight: 700; color: var(--danger); margin-bottom: 0.4rem;">🛑 Blocked Debuffs (${blockedItems.length})</div>
-            ${blockedItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No blocked items active.</div>` : blockedItems.slice(0, 5).map(it => `
-              <div style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.2rem;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
-                #${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
-              </div>
-            `).join('')}
+            ${blockedItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No blocked items active.</div>` : blockedItems.slice(0, 5).map(it => {
+              const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
+              return `
+                <div style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.25rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                  <i class="dot" style="background: ${cColor}; margin-right: 4px; display: inline-block;"></i>#${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
+                </div>
+              `;
+            }).join('')}
           </div>
 
           <div style="background: rgba(155, 89, 182, 0.1); border: 1px solid rgba(155, 89, 182, 0.3); border-radius: 0.5rem; padding: 0.8rem;">
             <div style="font-weight: 700; color: #9b59b6; margin-bottom: 0.4rem;">👻 Stale Debuffs (${staleItems.length})</div>
-            ${staleItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No stale items active.</div>` : staleItems.slice(0, 5).map(it => `
-              <div style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.2rem;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
-                #${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
-              </div>
-            `).join('')}
+            ${staleItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No stale items active.</div>` : staleItems.slice(0, 5).map(it => {
+              const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
+              return `
+                <div style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.25rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                  <i class="dot" style="background: ${cColor}; margin-right: 4px; display: inline-block;"></i>#${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
       `;
@@ -1519,13 +1525,14 @@
                   let badge = '<span class="rpg-badge speed-fast">🎯 Fast</span>';
                   if (x.cycle <= 1) badge = '<span class="rpg-badge speed-swift">⚡ Lightning</span>';
                   else if (x.cycle > 10) badge = '<span class="rpg-badge speed-long">⌛ Long Raid</span>';
+                  const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
                   return `
                     <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
-                      <td>#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                      <td><span class="wi-type">${x.type}</span></td>
-                      <td class="table-title">${htmlEsc(x.title)}</td>
-                      <td><strong>${x.lead}d</strong></td>
-                      <td>${badge} <strong>${x.cycle}d</strong></td>
+                      <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
+                      <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                      <td class="table-title" style="color: ${cColor}; font-weight: 600;"><i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}</td>
+                      <td style="white-space: nowrap;"><strong>${x.lead}d</strong></td>
+                      <td style="white-space: nowrap;"><div style="display: inline-flex; align-items: center; gap: 0.5rem;">${badge} <strong style="font-size: 0.85rem;">${x.cycle}d</strong></div></td>
                     </tr>
                   `;
                 }).join('')}
@@ -1632,15 +1639,18 @@
               </tr>
             </thead>
             <tbody>
-              ${items.map(x => `
-                <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
-                  <td>#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                  <td><span class="wi-type">${x.type}</span></td>
-                  <td class="table-title">${htmlEsc(x.title)}</td>
-                  <td><span class="state-badge">${x.state}</span></td>
-                  <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
-                </tr>
-              `).join('')}
+              ${items.map(x => {
+                const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
+                return `
+                  <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                    <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
+                    <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                    <td class="table-title" style="color: ${cColor}; font-weight: 600;"><i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}</td>
+                    <td><span class="state-badge">${htmlEsc(x.state)}</span></td>
+                    <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -1735,13 +1745,15 @@
                     alertClass = 'warn-age';
                     icon = '<span class="rpg-badge ghost-tag">⚠️ Aging</span> ';
                   }
+                  const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
                   return `
                     <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
-                      <td>#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                      <td class="table-title">${htmlEsc(x.title)}</td>
-                      <td><span class="state-badge">${x.state}</span></td>
+                      <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
+                      <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                      <td class="table-title" style="color: ${cColor}; font-weight: 600;"><i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}</td>
+                      <td><span class="state-badge">${htmlEsc(x.state)}</span></td>
                       <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
-                      <td class="${alertClass}">${icon}<strong>${x.age}d</strong></td>
+                      <td class="${alertClass}" style="white-space: nowrap;"><div style="display: inline-flex; align-items: center; gap: 0.4rem;">${icon}<strong>${x.age}d</strong></div></td>
                     </tr>
                   `;
                 }).join('')}
@@ -1815,15 +1827,19 @@
                 </tr>
               </thead>
               <tbody>
-                ${stale.map(x => `
-                  <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
-                    <td>#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                    <td class="table-title">${htmlEsc(x.title)}</td>
-                    <td><span class="state-badge">${x.state}</span></td>
-                    <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
-                    <td><span class="rpg-badge ghost-tag">👻 Abandoned</span> <strong style="color: var(--danger);">${x.days} days</strong></td>
-                  </tr>
-                `).join('')}
+                ${stale.map(x => {
+                  const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
+                  return `
+                    <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                      <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
+                      <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                      <td class="table-title" style="color: ${cColor}; font-weight: 600;"><i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}</td>
+                      <td><span class="state-badge">${htmlEsc(x.state)}</span></td>
+                      <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
+                      <td style="white-space: nowrap;"><div style="display: inline-flex; align-items: center; gap: 0.4rem;"><span class="rpg-badge ghost-tag">👻 Abandoned</span> <strong style="color: var(--danger);">${x.days}d</strong></div></td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           </div>
@@ -1890,6 +1906,7 @@
               <thead>
                 <tr>
                   <th>${L('analytics.table.id', 'ID')}</th>
+                  <th>${L('analytics.table.type', 'Type')}</th>
                   <th>${L('analytics.table.title', 'Title')}</th>
                   <th>${L('analytics.table.state', 'State')}</th>
                   <th>${L('analytics.table.assigned', 'Assigned To')}</th>
@@ -1897,18 +1914,22 @@
                 </tr>
               </thead>
               <tbody>
-                ${blocked.map(x => `
-                  <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
-                    <td>#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                    <td class="table-title">
-                      <span class="rpg-badge stun-tag">🛑 Stunned</span>
-                      <strong class="critical-text">${htmlEsc(x.title)}</strong>
-                    </td>
-                    <td><span class="state-badge">${x.state}</span></td>
-                    <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
-                    <td class="table-tags">${htmlEsc(x.tags)}</td>
-                  </tr>
-                `).join('')}
+                ${blocked.map(x => {
+                  const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
+                  return `
+                    <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                      <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
+                      <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                      <td class="table-title" style="color: ${cColor}; font-weight: 600;">
+                        <span class="rpg-badge stun-tag" style="margin-right: 6px;">🛑 Stunned</span>
+                        <i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}
+                      </td>
+                      <td><span class="state-badge">${htmlEsc(x.state)}</span></td>
+                      <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
+                      <td class="table-tags">${htmlEsc(x.tags)}</td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           </div>

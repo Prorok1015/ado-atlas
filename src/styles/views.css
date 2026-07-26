@@ -1215,11 +1215,14 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
 .rpg-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.25rem;
-  padding: 0.15rem 0.45rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .rpg-badge.speed-swift {
