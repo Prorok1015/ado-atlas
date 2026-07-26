@@ -1341,8 +1341,9 @@
               <span class="health-ring-score" id="dash_health_val">${sprintHealth}%</span>
             </div>
           </div>
-          <div class="gamified-subtext">
+          <div class="gamified-subtext" style="gap: 0.25rem; font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; justify-content: center;">
             <span>${L('analytics.dashboard.debuffs', 'Debuffs')}: ${blockedItems} ${L('analytics.blocked.metric', 'Blocked')}</span>
+            <span style="opacity: 0.4;">•</span>
             <span>${staleItems} Stale</span>
           </div>
         </div>
