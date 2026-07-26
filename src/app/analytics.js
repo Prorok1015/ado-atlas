@@ -2783,6 +2783,7 @@
   }
 
   // --- 9. Team Throughput View ---
+  // --- 9. Team Throughput View (RPG Guild Leaderboard) ---
   function renderThroughput(container, items) {
     const now = new Date();
     let startDate = '';
@@ -2810,16 +2811,20 @@
       count: counts[name]
     })).sort((a, b) => b.count - a.count);
 
+    const totalClears = data.reduce((sum, x) => sum + x.count, 0);
+    const avgClears = data.length > 0 ? (totalClears / data.length).toFixed(1) : 0;
+    const topHero = data[0] ? data[0].name : 'N/A';
+
     if (data.length === 0) {
       container.innerHTML = `
         <div class="analytics-header">
-          <h2>${L('analytics.throughput.title', 'Team Throughput')}</h2>
+          <h2>⚔️ ${L('analytics.throughput.title', 'Guild Member Raid Performance')}</h2>
           <p class="analytics-desc">${L('analytics.throughput.desc', 'Compare tasks completed by each team member within the selected date range.')}</p>
         </div>
         <div class="chart-controls-panel">
           <div class="control-group">
             <label>${L('analytics.throughput.range', 'Select Range:')}</label>
-            <select id="throughput_range_select">
+            <select id="throughput_range_select" style="min-width: 10rem;">
               <option value="last4weeks" ${throughputTimeframe === 'last4weeks' ? 'selected' : ''}>${L('analytics.throughput.range.last4weeks', 'Last 4 Weeks')}</option>
               <option value="last90days" ${throughputTimeframe === 'last90days' ? 'selected' : ''}>${L('analytics.throughput.range.last90days', 'Last 90 Days')}</option>
             </select>
@@ -2830,57 +2835,131 @@
       return;
     }
 
-    // Set SVG sizing based on number of assignees (horizontal bar chart)
-    const rowH = 40;
-    const padL = 120;
-    const padR = 40;
-    const padT = 20;
-    const padB = 20;
-    const svgW = 680;
-    const chartW = svgW - padL - padR;
-    const svgH = padT + padB + data.length * rowH;
-
-    const maxCount = Math.max(...data.map(x => x.count));
-    const scaleX = (val) => (val / maxCount) * chartW;
-
-    const bars = data.map((x, idx) => {
-      const y = padT + idx * rowH;
-      const barW = Math.max(10, scaleX(x.count));
-      return `
-        <!-- Assignee Name -->
-        <text x="${padL - 10}" y="${y + 24}" fill="var(--txt)" font-size="11" font-weight="600" text-anchor="end">${htmlEsc(x.name)}</text>
-        
-        <!-- Throughput Bar -->
-        <rect x="${padL}" y="${y + 10}" width="${barW}" height="20" fill="var(--accent)" rx="4" ry="4">
-          <animate attributeName="width" from="0" to="${barW}" dur="0.8s" fill="freeze" />
-          <title>${x.count} tasks completed</title>
-        </rect>
-        
-        <!-- Score label inside or outside the bar -->
-        <text x="${padL + barW + 8}" y="${y + 24}" fill="var(--accent)" font-size="11" font-weight="bold">${x.count}</text>
-      `;
-    });
+    const maxCount = Math.max(...data.map(x => x.count), 1);
 
     container.innerHTML = `
       <div class="analytics-header">
-        <h2>${L('analytics.throughput.title', 'Team Throughput')}</h2>
+        <h2>⚔️ ${L('analytics.throughput.title', 'Guild Member Raid Performance')}</h2>
         <p class="analytics-desc">${L('analytics.throughput.desc', 'Compare tasks completed by each team member within the selected date range.')}</p>
       </div>
 
-      <div class="chart-controls-panel">
+      <div class="chart-controls-panel" style="margin-bottom: 1.2rem;">
         <div class="control-group">
-          <label>${L('analytics.throughput.range', 'Select Range:')}</label>
-          <select id="throughput_range_select" style="min-width: 10rem;">
+          <label style="font-weight: 700; color: var(--accent);">${L('analytics.throughput.range', 'Select Range:')}</label>
+          <select id="throughput_range_select" style="min-width: 11rem; background: var(--panel2); color: var(--txt); border: 1px solid var(--line); border-radius: 0.4rem; padding: 0.35rem 0.7rem;">
             <option value="last4weeks" ${throughputTimeframe === 'last4weeks' ? 'selected' : ''}>${L('analytics.throughput.range.last4weeks', 'Last 4 Weeks')}</option>
             <option value="last90days" ${throughputTimeframe === 'last90days' ? 'selected' : ''}>${L('analytics.throughput.range.last90days', 'Last 90 Days')}</option>
           </select>
         </div>
       </div>
 
-      <div class="chart-container" style="padding: 1.5rem; background: var(--panel); border: 1px solid var(--line); border-radius: 0.615rem; margin-top: 1.5rem;">
-        <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="${svgH}" style="display: block; overflow: visible;">
-          ${bars.join('')}
-        </svg>
+      <!-- Guild Summary Cards -->
+      <div class="dashboard-grid" style="margin-bottom: 1.5rem;">
+        <div class="metric-card gamified-card dashboard-col-3">
+          <div class="gamified-card-header">
+            <span class="metric-label">🏆 Guild MVP</span>
+            <span class="gamified-rank-badge s-rank">👑 1ST PLACE</span>
+          </div>
+          <div class="metric-value" style="font-size: 1.25rem; font-weight: 700; color: #ffd700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${htmlEsc(topHero)}
+          </div>
+          <div class="gamified-subtext"><span>${data[0] ? data[0].count : 0} Quests Cleared</span></div>
+        </div>
+
+        <div class="metric-card gamified-card dashboard-col-3">
+          <div class="gamified-card-header">
+            <span class="metric-label">⚔️ Total Guild Clears</span>
+            <span class="gamified-rank-badge a-rank">⚡ EXP OUTPUT</span>
+          </div>
+          <div class="metric-value" style="font-size: 1.5rem; font-weight: 700; color: #00d2ff;">
+            ${totalClears}
+          </div>
+          <div class="gamified-subtext"><span>Quests completed in timeframe</span></div>
+        </div>
+
+        <div class="metric-card gamified-card dashboard-col-3">
+          <div class="gamified-card-header">
+            <span class="metric-label">📊 Guild Member Avg</span>
+            <span class="gamified-rank-badge b-rank">🎯 PACING</span>
+          </div>
+          <div class="metric-value" style="font-size: 1.5rem; font-weight: 700; color: #2ecc71;">
+            ${avgClears}
+          </div>
+          <div class="gamified-subtext"><span>Avg Quests / Hero</span></div>
+        </div>
+
+        <div class="metric-card gamified-card dashboard-col-3">
+          <div class="gamified-card-header">
+            <span class="metric-label">👑 Active Raid Party</span>
+            <span class="gamified-rank-badge a-rank">🛡️ GUILD SIZE</span>
+          </div>
+          <div class="metric-value" style="font-size: 1.5rem; font-weight: 700; color: var(--txt);">
+            ${data.length}
+          </div>
+          <div class="gamified-subtext"><span>Contributing Heroes</span></div>
+        </div>
+      </div>
+
+      <!-- Gamified Leaderboard Bars -->
+      <div class="analytics-section">
+        <h3 style="margin-bottom: 1.2rem;">📊 ${L('analytics.throughput.chart', 'Team Throughput Arena')}</h3>
+        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+          ${data.map((x, idx) => {
+            const pct = Math.round((x.count / maxCount) * 100);
+            let rankBadge = `<span style="width: 2rem; font-weight: 800; font-size: 0.9rem; color: var(--muted); text-align: center;">#${idx + 1}</span>`;
+            let barGradient = 'linear-gradient(90deg, #27ae60, #2ecc71)';
+            let titleBadge = '<span class="rpg-badge speed-fast">⚔️ Raider</span>';
+            let nameColor = 'var(--txt)';
+
+            if (idx === 0) {
+              rankBadge = `<span style="width: 2rem; font-weight: 900; font-size: 1.1rem; color: #ffd700; text-align: center;">🥇</span>`;
+              barGradient = 'linear-gradient(90deg, #ffd700, #ff8c00)';
+              titleBadge = '<span class="rpg-badge s-rank">👑 Guild MVP</span>';
+              nameColor = '#ffd700';
+            } else if (idx === 1) {
+              rankBadge = `<span style="width: 2rem; font-weight: 900; font-size: 1.1rem; color: #00d2ff; text-align: center;">🥈</span>`;
+              barGradient = 'linear-gradient(90deg, #2f6fed, #00d2ff)';
+              titleBadge = '<span class="rpg-badge a-rank">⚡ Grand Champion</span>';
+              nameColor = '#00d2ff';
+            } else if (idx === 2) {
+              rankBadge = `<span style="width: 2rem; font-weight: 900; font-size: 1.1rem; color: #e67e22; text-align: center;">🥉</span>`;
+              barGradient = 'linear-gradient(90deg, #d35400, #e67e22)';
+              titleBadge = '<span class="rpg-badge b-rank">🛡️ Vanguard</span>';
+              nameColor = '#e67e22';
+            }
+
+            const initials = x.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+            return `
+              <div style="display: flex; align-items: center; gap: 0.9rem; padding: 0.65rem 1rem; background: var(--panel2); border: 1px solid var(--line); border-radius: 0.6rem; transition: transform 0.15s ease, border-color 0.15s ease;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--line)'">
+                ${rankBadge}
+                
+                <div style="width: 2.2rem; height: 2.2rem; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: ${nameColor}; flex-shrink: 0;">
+                  ${initials}
+                </div>
+
+                <div style="width: 140px; min-width: 120px; flex-shrink: 0; overflow: hidden;">
+                  <div style="font-weight: 700; font-size: 0.88rem; color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${htmlEsc(x.name)}</div>
+                  <div style="margin-top: 2px;">${titleBadge}</div>
+                </div>
+
+                <div style="flex: 1; min-width: 0; margin: 0 0.5rem;">
+                  <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.3rem;">
+                    <span style="color: var(--muted); font-weight: 600;">${pct}% Output</span>
+                    <span style="font-weight: 700; color: var(--txt);">${x.count} Quests</span>
+                  </div>
+                  <div style="height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; position: relative;">
+                    <div style="height: 100%; width: ${pct}%; background: ${barGradient}; border-radius: 5px; transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);"></div>
+                  </div>
+                </div>
+
+                <div style="font-family: var(--font-mono, monospace); font-weight: 800; font-size: 1.1rem; color: ${nameColor}; flex-shrink: 0; min-width: 2.5rem; text-align: right;">
+                  ${x.count}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
       </div>
     `;
 
