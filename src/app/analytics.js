@@ -855,6 +855,122 @@
           </div>
         </div>
       `;
+    } else if (metricId === 'throughput_mvp') {
+      const historyDict = {};
+      items.forEach(it => { historyDict[it.id] = revisionCache.get(it.id) || []; });
+      const counts = AdoLib.calculateTeamThroughput(items, historyDict, '', now);
+      const sorted = Object.keys(counts).map(n => ({ name: n, count: counts[n] })).sort((a, b) => b.count - a.count);
+      const topHeroName = sorted[0] ? sorted[0].name : 'N/A';
+      const topHeroCount = sorted[0] ? sorted[0].count : 0;
+      const topItems = items.filter(it => isCompletedState(it.state) && (it.assigned || '') === topHeroName);
+
+      title = `🏆 Guild MVP Deep-Dive: ${htmlEsc(topHeroName)}`;
+      contentHtml = `
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.8rem 0;">Showing <strong>${topHeroCount}</strong> quests cleared by top performer <strong>${htmlEsc(topHeroName)}</strong>.</p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+            ${topItems.slice(0, 15).map(it => {
+              const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
+              return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,215,0,0.04); border: 1px solid rgba(255,215,0,0.2); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                  <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
+                    <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
+                    <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
+                    <span style="font-size: 0.85rem; font-weight: 500; color: ${cColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${htmlEsc(it.title)}</span>
+                  </div>
+                  <span class="rpg-badge s-rank">👑 Cleared</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    } else if (metricId === 'throughput_clears') {
+      const completedList = items.filter(it => isCompletedState(it.state));
+      title = `⚔️ Total Guild Clears & EXP Output (${completedList.length})`;
+      contentHtml = `
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.8rem 0;">All completed work items delivered across the current raid selection.</p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+            ${completedList.slice(0, 15).map(it => {
+              const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
+              return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                  <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
+                    <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
+                    <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
+                    <span style="font-size: 0.85rem; font-weight: 500; color: ${cColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${htmlEsc(it.title)}</span>
+                  </div>
+                  <span style="font-size: 0.75rem; color: var(--muted); flex-shrink: 0;">${htmlEsc(it.assigned || 'Unassigned')}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    } else if (metricId === 'throughput_avg') {
+      const historyDict = {};
+      items.forEach(it => { historyDict[it.id] = revisionCache.get(it.id) || []; });
+      const counts = AdoLib.calculateTeamThroughput(items, historyDict, '', now);
+      const sorted = Object.keys(counts).map(n => ({ name: n, count: counts[n] })).sort((a, b) => b.count - a.count);
+      const totalClears = sorted.reduce((sum, x) => sum + x.count, 0);
+      const avg = sorted.length > 0 ? (totalClears / sorted.length).toFixed(1) : 0;
+
+      title = `📊 Guild Member Pacing & Output Average (${avg} Avg)`;
+      contentHtml = `
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.8rem 0;">Comparing individual member clears against the guild average of <strong>${avg} quests / hero</strong>.</p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+            ${sorted.map(x => {
+              const diff = (x.count - Number(avg)).toFixed(1);
+              const isAbove = x.count >= Number(avg);
+              return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px;">
+                  <div style="font-weight: 600; font-size: 0.85rem; color: var(--txt);">${htmlEsc(x.name)}</div>
+                  <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <span class="rpg-badge ${isAbove ? 'speed-fast' : 'ghost-tag'}">${isAbove ? '▲ +' + diff : '▼ ' + diff} vs avg</span>
+                    <strong style="font-size: 0.9rem; font-family: var(--font-mono, monospace); color: var(--accent);">${x.count} Quests</strong>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    } else if (metricId === 'throughput_party') {
+      const historyDict = {};
+      items.forEach(it => { historyDict[it.id] = revisionCache.get(it.id) || []; });
+      const counts = AdoLib.calculateTeamThroughput(items, historyDict, '', now);
+      const sorted = Object.keys(counts).map(n => ({ name: n, count: counts[n] })).sort((a, b) => b.count - a.count);
+
+      title = `👑 Active Raid Party Roster (${sorted.length} Heroes)`;
+      contentHtml = `
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 0.8rem 0;">All contributing team members active in the current raid timeframe.</p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto;">
+            ${sorted.map((x, idx) => {
+              const initials = x.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+              let rankLabel = `#${idx + 1} Raider`;
+              if (idx === 0) rankLabel = '🥇 Guild MVP';
+              else if (idx === 1) rankLabel = '🥈 Grand Champion';
+              else if (idx === 2) rankLabel = '🥉 Vanguard';
+
+              return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 2rem; height: 2rem; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700;">${initials}</div>
+                    <div style="font-weight: 600; font-size: 0.85rem; color: var(--txt);">${htmlEsc(x.name)}</div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <span class="rpg-badge ghost-tag">${rankLabel}</span>
+                    <strong style="font-size: 0.9rem; font-family: var(--font-mono, monospace); color: var(--txt);">${x.count} Clears</strong>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
     } else {
       title = `📊 Metric Overview (${htmlEsc(metricId)})`;
       contentHtml = `
