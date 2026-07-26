@@ -489,7 +489,7 @@
       if (metricCard) {
         const metricId = metricCard.dataset.metricId;
         if (metricId) {
-          openMetricDetailModal(metricId, items);
+          openMetricDetailModal(metricId, (activeView === 'throughput' || activeView === 'leaderboard' || activeView === 'profile' || activeView === 'velocity') ? allItems : items);
         }
         return;
       }
@@ -2992,7 +2992,7 @@
 
       <!-- Guild Summary Cards -->
       <div class="dashboard-grid" style="margin-bottom: 1.5rem;">
-        <div class="metric-card gamified-card dashboard-col-3">
+        <div class="metric-card gamified-card dashboard-col-3" data-metric-id="throughput_mvp">
           <div class="gamified-card-header">
             <span class="metric-label">🏆 Guild MVP</span>
             <span class="gamified-rank-badge s-rank">👑 1ST PLACE</span>
@@ -3003,7 +3003,7 @@
           <div class="gamified-subtext"><span>${data[0] ? data[0].count : 0} Quests Cleared</span></div>
         </div>
 
-        <div class="metric-card gamified-card dashboard-col-3">
+        <div class="metric-card gamified-card dashboard-col-3" data-metric-id="throughput_clears">
           <div class="gamified-card-header">
             <span class="metric-label">⚔️ Total Guild Clears</span>
             <span class="gamified-rank-badge a-rank">⚡ EXP OUTPUT</span>
@@ -3014,7 +3014,7 @@
           <div class="gamified-subtext"><span>Quests completed in timeframe</span></div>
         </div>
 
-        <div class="metric-card gamified-card dashboard-col-3">
+        <div class="metric-card gamified-card dashboard-col-3" data-metric-id="throughput_avg">
           <div class="gamified-card-header">
             <span class="metric-label">📊 Guild Member Avg</span>
             <span class="gamified-rank-badge b-rank">🎯 PACING</span>
@@ -3025,7 +3025,7 @@
           <div class="gamified-subtext"><span>Avg Quests / Hero</span></div>
         </div>
 
-        <div class="metric-card gamified-card dashboard-col-3">
+        <div class="metric-card gamified-card dashboard-col-3" data-metric-id="throughput_party">
           <div class="gamified-card-header">
             <span class="metric-label">👑 Active Raid Party</span>
             <span class="gamified-rank-badge a-rank">🛡️ GUILD SIZE</span>
