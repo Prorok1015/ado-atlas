@@ -478,18 +478,29 @@
       renderThroughput(content, allItems);
     }
 
-    // Wire up metric card click handlers for deep-dive detail modal
+    // Wire up metric card click handlers for deep-dive detail modal and item row clicks via event delegation
     const gamifiedCards = container.querySelectorAll('.metric-card.gamified-card');
     gamifiedCards.forEach(card => {
       card.style.cursor = 'pointer';
-      card.onclick = (e) => {
-        e.stopPropagation();
-        const metricId = card.dataset.metricId;
+    });
+
+    container.onclick = (e) => {
+      const metricCard = e.target.closest('.metric-card.gamified-card');
+      if (metricCard) {
+        const metricId = metricCard.dataset.metricId;
         if (metricId) {
           openMetricDetailModal(metricId, items);
         }
-      };
-    });
+        return;
+      }
+      const itemRow = e.target.closest('[data-item-id]');
+      if (itemRow) {
+        const id = itemRow.getAttribute('data-item-id');
+        if (id && window.App && window.App.sidePanel) {
+          window.App.sidePanel.openItem(id);
+        }
+      }
+    };
   }
 
   function openMetricDetailModal(metricId, items) {
@@ -552,7 +563,7 @@
             ${blockedItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No blocked items active.</div>` : blockedItems.slice(0, 6).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.35rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')" title="${htmlEsc(it.title)}">
+                <div data-item-id="${it.id}" style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.35rem; color: ${cColor}; font-weight: 500;" title="${htmlEsc(it.title)}">
                   <i class="dot" style="background: ${cColor}; margin-right: 4px; display: inline-block;"></i>#${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
                 </div>
               `;
@@ -564,7 +575,7 @@
             ${staleItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No stale items active.</div>` : staleItems.slice(0, 6).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.35rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')" title="${htmlEsc(it.title)}">
+                <div data-item-id="${it.id}" style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.35rem; color: ${cColor}; font-weight: 500;" title="${htmlEsc(it.title)}">
                   <i class="dot" style="background: ${cColor}; margin-right: 4px; display: inline-block;"></i>#${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
                 </div>
               `;
@@ -633,7 +644,7 @@
               ${staleList.slice(0, 15).map(it => {
                 const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
                 return `
-                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; transition: background 0.15s ease;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                  <div data-item-id="${it.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; transition: background 0.15s ease;">
                     <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
                       <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
                       <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
@@ -668,7 +679,7 @@
               ${blockedList.map(it => {
                 const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
                 return `
-                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(235, 87, 87, 0.05); border: 1px solid rgba(235, 87, 87, 0.25); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                  <div data-item-id="${it.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(235, 87, 87, 0.05); border: 1px solid rgba(235, 87, 87, 0.25); border-radius: 6px; cursor: pointer;">
                     <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
                       <span class="rpg-badge stun-tag" style="flex-shrink: 0;">🛑 Blocked</span>
                       <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
@@ -708,7 +719,7 @@
               ${activeDanger.map(it => {
                 const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
                 return `
-                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(235, 87, 87, 0.05); border: 1px solid rgba(235, 87, 87, 0.2); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                  <div data-item-id="${it.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(235, 87, 87, 0.05); border: 1px solid rgba(235, 87, 87, 0.2); border-radius: 6px; cursor: pointer;">
                     <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
                       <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
                       <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
@@ -732,7 +743,7 @@
             ${activeList.slice(0, 15).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                <div data-item-id="${it.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer;">
                   <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
                     <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
                     <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
@@ -758,7 +769,7 @@
             ${backlogList.slice(0, 15).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                <div data-item-id="${it.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer;">
                   <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
                     <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
                     <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
@@ -842,7 +853,7 @@
             ${cycleTimes.slice(0, 8).map(x => {
               const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
               return `
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding:0.5rem 0.8rem; background:rgba(255,255,255,0.03); border:1px solid var(--line); border-radius:6px; cursor:pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                <div data-item-id="${x.id}" style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; padding:0.5rem 0.8rem; background:rgba(255,255,255,0.03); border:1px solid var(--line); border-radius:6px; cursor:pointer;">
                   <div style="display:flex; align-items:center; gap:8px; overflow:hidden; padding-right:0.5rem;">
                     <span class="wi-type" style="border-color:${cColor}; color:${cColor}; font-size:0.72rem; flex-shrink:0;">${htmlEsc(x.type)}</span>
                     <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(x.id) : x.id}</span>
@@ -872,7 +883,7 @@
             ${topItems.slice(0, 15).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,215,0,0.04); border: 1px solid rgba(255,215,0,0.2); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                <div data-item-id="${it.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,215,0,0.04); border: 1px solid rgba(255,215,0,0.2); border-radius: 6px; cursor: pointer;">
                   <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
                     <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
                     <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
@@ -895,7 +906,7 @@
             ${completedList.slice(0, 15).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                <div data-item-id="${it.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; cursor: pointer;">
                   <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; padding-right: 0.5rem;">
                     <span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; font-size: 0.72rem; flex-shrink: 0;">${htmlEsc(it.type)}</span>
                     <span style="font-family: var(--font-mono, monospace); font-size: 0.8rem; color: var(--muted); flex-shrink: 0;">#${App.backend ? App.backend.nid(it.id) : it.id}</span>
@@ -1000,10 +1011,20 @@
       window.LayerManager.open(box, overlay);
     }
 
-    const closeBtn = box.querySelector('#close_metric_detail');
-    if (closeBtn) {
-      closeBtn.onclick = closeModal;
-    }
+    box.onclick = (e) => {
+      const closeBtn = e.target.closest('#close_metric_detail');
+      if (closeBtn) {
+        closeModal();
+        return;
+      }
+      const itemEl = e.target.closest('[data-item-id]');
+      if (itemEl) {
+        const id = itemEl.getAttribute('data-item-id');
+        if (id && window.App && window.App.sidePanel) {
+          window.App.sidePanel.openItem(id);
+        }
+      }
+    };
   }
 
   function animateCountUp(element, endValue, duration, suffix = '') {
@@ -1814,7 +1835,7 @@
                   else if (x.cycle > 10) badge = '<span class="rpg-badge speed-long">⌛ Long Raid</span>';
                   const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
                   return `
-                    <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                    <tr data-item-id="${x.id}">
                       <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
                       <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
                       <td class="table-title" style="color: ${cColor}; font-weight: 500;">
@@ -1939,7 +1960,7 @@
               ${items.map(x => {
                 const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
                 return `
-                  <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                  <tr data-item-id="${x.id}">
                     <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
                     <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
                     <td class="table-title" style="color: ${cColor}; font-weight: 500;">
@@ -2050,7 +2071,7 @@
                   }
                   const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
                   return `
-                    <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                    <tr data-item-id="${x.id}">
                       <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
                       <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
                       <td class="table-title" style="color: ${cColor}; font-weight: 500;">
@@ -2144,7 +2165,7 @@
                 ${stale.map(x => {
                   const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
                   return `
-                    <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                    <tr data-item-id="${x.id}">
                       <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
                       <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
                       <td class="table-title" style="color: ${cColor}; font-weight: 500;">
@@ -2241,7 +2262,7 @@
                 ${blocked.map(x => {
                   const cColor = typeof tyColor === 'function' ? tyColor(x.type) : 'var(--txt)';
                   return `
-                    <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
+                    <tr data-item-id="${x.id}">
                       <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
                       <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
                       <td class="table-title" style="color: ${cColor}; font-weight: 500;">
@@ -2348,7 +2369,7 @@
         const nameLoc = L(`achievement.${a.id}.name`, a.name);
         const descLoc = L(`achievement.${a.id}.desc`, a.desc);
         const titleText = `${nameLoc}: ${descLoc}`;
-        return `<span class="achievement-badge-icon" title="${htmlEsc(titleText)}" style="cursor: help; margin-right: 0.25rem; font-size: 1.15rem; display: inline-block; transition: transform 0.15s ease;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">${a.emoji}</span>`;
+        return `<span class="achievement-badge-icon" title="${htmlEsc(titleText)}">${a.emoji}</span>`;
       }).join('');
 
       team.push({
@@ -3047,7 +3068,7 @@
             const initials = x.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
             return `
-              <div style="display: flex; align-items: center; gap: 0.9rem; padding: 0.65rem 1rem; background: var(--panel2); border: 1px solid var(--line); border-radius: 0.6rem; transition: transform 0.15s ease, border-color 0.15s ease;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--line)'">
+              <div class="throughput-row-card">
                 ${rankBadge}
                 
                 <div style="width: 2.2rem; height: 2.2rem; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: ${nameColor}; flex-shrink: 0;">
