@@ -1513,11 +1513,11 @@
             <table class="analytics-table">
               <thead>
                 <tr>
-                  <th>${L('analytics.table.id', 'ID')}</th>
-                  <th>${L('analytics.table.type', 'Type')}</th>
-                  <th>${L('analytics.table.title', 'Title')}</th>
-                  <th>${L('analytics.table.lead', 'Lead Time')}</th>
-                  <th>${L('analytics.table.cycle', 'Cycle Time')}</th>
+                  <th style="width: 75px; text-align: left;">${L('analytics.table.id', 'ID')}</th>
+                  <th style="width: 110px; text-align: left;">${L('analytics.table.type', 'Type')}</th>
+                  <th style="text-align: left;">${L('analytics.table.title', 'Title')}</th>
+                  <th style="width: 100px; text-align: right;">${L('analytics.table.lead', 'Lead Time')}</th>
+                  <th style="width: 180px; text-align: right;">${L('analytics.table.cycle', 'Cycle Time')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1529,10 +1529,20 @@
                   return `
                     <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
                       <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                      <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
-                      <td class="table-title" style="color: ${cColor}; font-weight: 600;"><i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}</td>
-                      <td style="white-space: nowrap;"><strong>${x.lead}d</strong></td>
-                      <td style="white-space: nowrap;"><div style="display: inline-flex; align-items: center; gap: 0.5rem;">${badge} <strong style="font-size: 0.85rem;">${x.cycle}d</strong></div></td>
+                      <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                      <td class="table-title" style="color: ${cColor}; font-weight: 500;">
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                          <i class="dot" style="background: ${cColor}; margin-top: 5px; flex-shrink: 0; display: inline-block;"></i>
+                          <span style="word-break: break-word;">${htmlEsc(x.title)}</span>
+                        </div>
+                      </td>
+                      <td style="text-align: right; white-space: nowrap;"><strong>${x.lead}d</strong></td>
+                      <td style="text-align: right; white-space: nowrap;">
+                        <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.5rem; width: 100%;">
+                          ${badge}
+                          <strong style="font-size: 0.85rem; min-width: 2.8rem; text-align: right;">${x.cycle}d</strong>
+                        </div>
+                      </td>
                     </tr>
                   `;
                 }).join('')}
@@ -1631,11 +1641,11 @@
           <table class="analytics-table">
             <thead>
               <tr>
-                <th>${L('analytics.table.id', 'ID')}</th>
-                <th>${L('analytics.table.type', 'Type')}</th>
+                <th style="width: 75px;">${L('analytics.table.id', 'ID')}</th>
+                <th style="width: 110px;">${L('analytics.table.type', 'Type')}</th>
                 <th>${L('analytics.table.title', 'Title')}</th>
-                <th>${L('analytics.table.state', 'State')}</th>
-                <th>${L('analytics.table.assigned', 'Assigned To')}</th>
+                <th style="width: 120px;">${L('analytics.table.state', 'State')}</th>
+                <th style="width: 160px;">${L('analytics.table.assigned', 'Assigned To')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1644,10 +1654,15 @@
                 return `
                   <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
                     <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                    <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
-                    <td class="table-title" style="color: ${cColor}; font-weight: 600;"><i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}</td>
-                    <td><span class="state-badge">${htmlEsc(x.state)}</span></td>
-                    <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
+                    <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                    <td class="table-title" style="color: ${cColor}; font-weight: 500;">
+                      <div style="display: flex; align-items: flex-start; gap: 8px;">
+                        <i class="dot" style="background: ${cColor}; margin-top: 5px; flex-shrink: 0; display: inline-block;"></i>
+                        <span style="word-break: break-word;">${htmlEsc(x.title)}</span>
+                      </div>
+                    </td>
+                    <td style="white-space: nowrap;"><span class="state-badge">${htmlEsc(x.state)}</span></td>
+                    <td style="white-space: nowrap;">${htmlEsc(x.assigned || 'Unassigned')}</td>
                   </tr>
                 `;
               }).join('')}
@@ -1727,11 +1742,12 @@
             <table class="analytics-table">
               <thead>
                 <tr>
-                  <th>${L('analytics.table.id', 'ID')}</th>
+                  <th style="width: 75px;">${L('analytics.table.id', 'ID')}</th>
+                  <th style="width: 110px;">${L('analytics.table.type', 'Type')}</th>
                   <th>${L('analytics.table.title', 'Title')}</th>
-                  <th>${L('analytics.table.state', 'State')}</th>
-                  <th>${L('analytics.table.assigned', 'Assigned To')}</th>
-                  <th>${L('analytics.table.age', 'Age in State')}</th>
+                  <th style="width: 120px;">${L('analytics.table.state', 'State')}</th>
+                  <th style="width: 160px;">${L('analytics.table.assigned', 'Assigned To')}</th>
+                  <th style="width: 160px; text-align: right;">${L('analytics.table.age', 'Age in State')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1749,11 +1765,21 @@
                   return `
                     <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
                       <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                      <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
-                      <td class="table-title" style="color: ${cColor}; font-weight: 600;"><i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}</td>
-                      <td><span class="state-badge">${htmlEsc(x.state)}</span></td>
-                      <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
-                      <td class="${alertClass}" style="white-space: nowrap;"><div style="display: inline-flex; align-items: center; gap: 0.4rem;">${icon}<strong>${x.age}d</strong></div></td>
+                      <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                      <td class="table-title" style="color: ${cColor}; font-weight: 500;">
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                          <i class="dot" style="background: ${cColor}; margin-top: 5px; flex-shrink: 0; display: inline-block;"></i>
+                          <span style="word-break: break-word;">${htmlEsc(x.title)}</span>
+                        </div>
+                      </td>
+                      <td style="white-space: nowrap;"><span class="state-badge">${htmlEsc(x.state)}</span></td>
+                      <td style="white-space: nowrap;">${htmlEsc(x.assigned || 'Unassigned')}</td>
+                      <td class="${alertClass}" style="text-align: right; white-space: nowrap;">
+                        <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.4rem; width: 100%;">
+                          ${icon}
+                          <strong style="font-size: 0.85rem;">${x.age}d</strong>
+                        </div>
+                      </td>
                     </tr>
                   `;
                 }).join('')}
@@ -1819,11 +1845,12 @@
             <table class="analytics-table">
               <thead>
                 <tr>
-                  <th>${L('analytics.table.id', 'ID')}</th>
+                  <th style="width: 75px;">${L('analytics.table.id', 'ID')}</th>
+                  <th style="width: 110px;">${L('analytics.table.type', 'Type')}</th>
                   <th>${L('analytics.table.title', 'Title')}</th>
-                  <th>${L('analytics.table.state', 'State')}</th>
-                  <th>${L('analytics.table.assigned', 'Assigned To')}</th>
-                  <th>${L('analytics.table.inactive', 'Inactive For')}</th>
+                  <th style="width: 120px;">${L('analytics.table.state', 'State')}</th>
+                  <th style="width: 160px;">${L('analytics.table.assigned', 'Assigned To')}</th>
+                  <th style="width: 160px; text-align: right;">${L('analytics.table.inactive', 'Inactive For')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1832,11 +1859,21 @@
                   return `
                     <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
                       <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                      <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
-                      <td class="table-title" style="color: ${cColor}; font-weight: 600;"><i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}</td>
-                      <td><span class="state-badge">${htmlEsc(x.state)}</span></td>
-                      <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
-                      <td style="white-space: nowrap;"><div style="display: inline-flex; align-items: center; gap: 0.4rem;"><span class="rpg-badge ghost-tag">👻 Abandoned</span> <strong style="color: var(--danger);">${x.days}d</strong></div></td>
+                      <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                      <td class="table-title" style="color: ${cColor}; font-weight: 500;">
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                          <i class="dot" style="background: ${cColor}; margin-top: 5px; flex-shrink: 0; display: inline-block;"></i>
+                          <span style="word-break: break-word;">${htmlEsc(x.title)}</span>
+                        </div>
+                      </td>
+                      <td style="white-space: nowrap;"><span class="state-badge">${htmlEsc(x.state)}</span></td>
+                      <td style="white-space: nowrap;">${htmlEsc(x.assigned || 'Unassigned')}</td>
+                      <td style="text-align: right; white-space: nowrap;">
+                        <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.4rem; width: 100%;">
+                          <span class="rpg-badge ghost-tag">👻 Abandoned</span>
+                          <strong style="color: var(--danger); font-size: 0.85rem;">${x.days}d</strong>
+                        </div>
+                      </td>
                     </tr>
                   `;
                 }).join('')}
@@ -1905,12 +1942,12 @@
             <table class="analytics-table">
               <thead>
                 <tr>
-                  <th>${L('analytics.table.id', 'ID')}</th>
-                  <th>${L('analytics.table.type', 'Type')}</th>
+                  <th style="width: 75px;">${L('analytics.table.id', 'ID')}</th>
+                  <th style="width: 110px;">${L('analytics.table.type', 'Type')}</th>
                   <th>${L('analytics.table.title', 'Title')}</th>
-                  <th>${L('analytics.table.state', 'State')}</th>
-                  <th>${L('analytics.table.assigned', 'Assigned To')}</th>
-                  <th>${L('analytics.table.tags', 'Tags')}</th>
+                  <th style="width: 120px;">${L('analytics.table.state', 'State')}</th>
+                  <th style="width: 160px;">${L('analytics.table.assigned', 'Assigned To')}</th>
+                  <th style="width: 160px;">${L('analytics.table.tags', 'Tags')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1919,13 +1956,16 @@
                   return `
                     <tr onclick="App.sidePanel && App.sidePanel.openItem('${x.id}')">
                       <td style="font-family: var(--font-mono, monospace); font-weight: 600; color: var(--muted); white-space: nowrap;">#${App.backend ? App.backend.nid(x.id) : x.id}</td>
-                      <td><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
-                      <td class="table-title" style="color: ${cColor}; font-weight: 600;">
-                        <span class="rpg-badge stun-tag" style="margin-right: 6px;">🛑 Stunned</span>
-                        <i class="dot" style="background: ${cColor}; margin-right: 6px; display: inline-block;"></i>${htmlEsc(x.title)}
+                      <td style="white-space: nowrap;"><span class="wi-type" style="border-color: ${cColor}; color: ${cColor}; background: rgba(255,255,255,0.03); font-weight: 600;">${htmlEsc(x.type)}</span></td>
+                      <td class="table-title" style="color: ${cColor}; font-weight: 500;">
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                          <span class="rpg-badge stun-tag" style="flex-shrink: 0;">🛑 Stunned</span>
+                          <i class="dot" style="background: ${cColor}; margin-top: 5px; flex-shrink: 0; display: inline-block;"></i>
+                          <span style="word-break: break-word;">${htmlEsc(x.title)}</span>
+                        </div>
                       </td>
-                      <td><span class="state-badge">${htmlEsc(x.state)}</span></td>
-                      <td>${htmlEsc(x.assigned || 'Unassigned')}</td>
+                      <td style="white-space: nowrap;"><span class="state-badge">${htmlEsc(x.state)}</span></td>
+                      <td style="white-space: nowrap;">${htmlEsc(x.assigned || 'Unassigned')}</td>
                       <td class="table-tags">${htmlEsc(x.tags)}</td>
                     </tr>
                   `;

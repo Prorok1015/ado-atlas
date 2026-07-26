@@ -434,6 +434,9 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 0.769rem;
+  white-space: nowrap;
+  display: inline-block;
+  text-align: center;
 }
 .state-badge {
   background: var(--line);
@@ -441,6 +444,8 @@ ul.tree{list-style:none;margin:0;padding:0}ul.tree ul{list-style:none;margin:0;p
   padding: 2px 8px;
   font-size: 0.769rem;
   font-weight: 500;
+  white-space: nowrap;
+  display: inline-block;
 }
 .table-tags {
   color: var(--muted);
