@@ -507,7 +507,7 @@
       box.className = 'custom-dialog';
       box.setAttribute('role', 'dialog');
       box.setAttribute('aria-modal', 'true');
-      box.style.cssText = 'background: var(--panel); border: 1px solid var(--line); border-radius: 0.923rem; width: 650px; max-width: 90vw; max-height: 85vh; box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.6); padding: 1.5rem; display: flex; flex-direction: column; animation: confirmPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.15); outline: none;';
+      box.style.cssText = 'background: var(--panel); border: 1px solid var(--line); border-radius: 0.923rem; width: 750px; max-width: 92vw; max-height: 85vh; box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.6); padding: 1.5rem; display: flex; flex-direction: column; overflow: hidden; animation: confirmPop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.15); outline: none; z-index: 10000;';
       
       overlay.appendChild(box);
       document.body.appendChild(overlay);
@@ -546,25 +546,25 @@
           <p style="font-size: 0.85rem; color: var(--muted); margin: 0;">Party HP is calculated from target velocity fulfillment minus severe debuffs (-10% per blocked item, -5% per stale item).</p>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
-          <div style="background: rgba(235, 87, 87, 0.08); border: 1px solid rgba(235, 87, 87, 0.25); border-radius: 0.5rem; padding: 0.9rem;">
-            <div style="font-weight: 700; color: var(--danger); margin-bottom: 0.5rem; font-size: 0.9rem;">🛑 Blocked Debuffs (${blockedItems.length})</div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; margin-bottom: 1.2rem;">
+          <div style="min-width: 0; overflow: hidden; background: rgba(235, 87, 87, 0.08); border: 1px solid rgba(235, 87, 87, 0.25); border-radius: 0.5rem; padding: 0.9rem;">
+            <div style="font-weight: 700; color: var(--danger); margin-bottom: 0.5rem; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🛑 Blocked Debuffs (${blockedItems.length})</div>
             ${blockedItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No blocked items active.</div>` : blockedItems.slice(0, 6).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.3rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                <div style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.35rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')" title="${htmlEsc(it.title)}">
                   <i class="dot" style="background: ${cColor}; margin-right: 4px; display: inline-block;"></i>#${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
                 </div>
               `;
             }).join('')}
           </div>
 
-          <div style="background: rgba(155, 89, 182, 0.08); border: 1px solid rgba(155, 89, 182, 0.25); border-radius: 0.5rem; padding: 0.9rem;">
-            <div style="font-weight: 700; color: #9b59b6; margin-bottom: 0.5rem; font-size: 0.9rem;">👻 Stale Debuffs (${staleItems.length})</div>
+          <div style="min-width: 0; overflow: hidden; background: rgba(155, 89, 182, 0.08); border: 1px solid rgba(155, 89, 182, 0.25); border-radius: 0.5rem; padding: 0.9rem;">
+            <div style="font-weight: 700; color: #9b59b6; margin-bottom: 0.5rem; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">👻 Stale Debuffs (${staleItems.length})</div>
             ${staleItems.length === 0 ? `<div style="font-size:0.8rem; color:var(--muted);">No stale items active.</div>` : staleItems.slice(0, 6).map(it => {
               const cColor = typeof tyColor === 'function' ? tyColor(it.type) : 'var(--txt)';
               return `
-                <div style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.3rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')">
+                <div style="font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; margin-top:0.35rem; color: ${cColor}; font-weight: 500;" onclick="App.sidePanel && App.sidePanel.openItem('${it.id}')" title="${htmlEsc(it.title)}">
                   <i class="dot" style="background: ${cColor}; margin-right: 4px; display: inline-block;"></i>#${App.backend ? App.backend.nid(it.id) : it.id} - ${htmlEsc(it.title)}
                 </div>
               `;
