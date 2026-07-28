@@ -47,18 +47,24 @@
       $('oauth-status').textContent=window.i18n.t('setup.oauth.signInFailed', 'Sign-in failed: {error}', {error: e.message});
     }finally{ btn.disabled=false;btn.textContent=window.i18n.t('setup.oauth.signInWithMicrosoft', 'Sign in with Microsoft'); }
   }
-  function updateProviderPanes(){
-    const sel=$('setup-provider-select');if(!sel)return;
-    const p=sel.value;
-    const ado=$('setup-pane-ado');if(ado)ado.style.display=p==='ado'?'block':'none';
-    const lin=$('setup-pane-linear');if(lin)lin.style.display=p==='linear'?'block':'none';
+  let setupProviderMode = 'ado';
+  function setProviderPane(provider){
+    setupProviderMode = provider === 'linear' ? 'linear' : 'ado';
+    const ado = $('setup-pane-ado'); if (ado) ado.style.display = setupProviderMode === 'ado' ? 'block' : 'none';
+    const lin = $('setup-pane-linear'); if (lin) lin.style.display = setupProviderMode === 'linear' ? 'block' : 'none';
+    const bar = $('setup-provider-mode');
+    if (bar) {
+      bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.provider === setupProviderMode));
+    }
   }
   function showSetup(cancellable){
-    const sel=$('setup-provider-select');
-    if(sel){
-      sel.value=(App.backend&&App.backend.activeId)||'ado';
-      sel.onchange=updateProviderPanes;
-      updateProviderPanes();
+    const initialProvider = (App.backend && App.backend.activeId) || 'ado';
+    setProviderPane(initialProvider);
+    const bar = $('setup-provider-mode');
+    if (bar) {
+      bar.querySelectorAll('button').forEach(b => {
+        b.onclick = () => setProviderPane(b.dataset.provider);
+      });
     }
     if(window.LinearProvider){
       window.LinearProvider.getConfig().then(lcfg=>{
@@ -238,8 +244,7 @@
   }
 
   async function saveSetup(){
-    const sel=$('setup-provider-select');
-    const provider=(sel&&sel.value)||'ado';
+    const provider=setupProviderMode||'ado';
 
     if(provider==='linear'){
       const key=$('setup-linear-key')?$('setup-linear-key').value.trim():'';

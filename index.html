@@ -567,12 +567,9 @@
   <div id="setup-box">
     <h2 data-i18n="setup.title">Connect Tracker</h2>
 
-    <div style="margin-bottom:12px;">
-      <label style="font-weight:600; margin-bottom:4px; display:block;" data-i18n="setup.providerSelect">Tracker Provider</label>
-      <select id="setup-provider-select" style="width:100%; padding:6px 10px; font-size:0.95rem; border-radius:6px; background:var(--panel2); color:var(--txt); border:1px solid var(--line);">
-        <option value="ado">Azure DevOps</option>
-        <option value="linear">Linear (linear.app)</option>
-      </select>
+    <div class="seg" id="setup-provider-mode" style="display:flex; width:100%; margin-bottom:14px">
+      <button type="button" data-provider="ado" class="on" style="flex:1; text-align:center;" data-i18n="setup.provider.ado">Azure DevOps</button>
+      <button type="button" data-provider="linear" style="flex:1; text-align:center;" data-i18n="setup.provider.linear">Linear (linear.app)</button>
     </div>
 
     <div id="setup-pane-ado">
