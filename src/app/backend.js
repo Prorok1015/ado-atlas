@@ -39,7 +39,44 @@
     ids() { return Object.keys(_providers); },
     get active() { return _activeId ? _providers[_activeId] : null; },
     get activeId() { return _activeId; },
-    setActive(id) { if (_providers[id]) { _activeId = id; return true; } return false; },
+    setActive(id, options = {}) {
+      if (!_providers[id]) return false;
+      const changed = (_activeId !== id);
+      _activeId = id;
+
+      if (options.save !== false) {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ active_backend_provider: id });
+        }
+        if (App.prefs && typeof App.prefs.set === 'function') {
+          App.prefs.set('active_backend_provider', id);
+        }
+      }
+
+      if (changed || options.clearCache === true) {
+        if (App.cache && typeof App.cache.clearProject === 'function') {
+          App.cache.clearProject();
+        }
+        if (App.state) {
+          App.state.store = { nodes: {}, kids: {}, roots: [], expanded: new Set(), parent: {}, showAllKids: new Set() };
+          App.state.depCache = {};
+          App.state.cur = null;
+          App.state.orig = {};
+          App.state.selRow = null;
+          App.state.activeItemData = null;
+          App.state.bulkSel = new Set();
+          if (App.state.cy && typeof App.state.cy.destroy === 'function') {
+            try { App.state.cy.destroy(); } catch (_) {}
+            App.state.cy = null;
+          }
+        }
+        if (typeof global.renderBoard === 'function') try { global.renderBoard(); } catch (_) {}
+        if (typeof global.renderTree === 'function') try { global.renderTree(); } catch (_) {}
+        if (App.timeline && typeof App.timeline.render === 'function') try { App.timeline.render(); } catch (_) {}
+      }
+
+      return true;
+    },
 
     // Composite/global work-item id helpers (BACKEND_PROVIDER_SPEC §13.1), delegating to
     // the pure lib.js encoders. The app treats an item id as an OPAQUE STRING

@@ -93,6 +93,8 @@ async function initialBoot(postSetup){
   App.setup.updateProjectBadge();                  // reflect the active org/project in the title bar
   if(_booted){                           // settings re-save: just reload data
     iterCache=null;App.state.depCache={};assignees=[];projectStates=[];tagList=[];sprintPaths=[];sprintNames={};typeList=[];undoStack.length=0;redoStack.length=0;canCreateSprint=true;canEditSprint=true;canCreateItem=true;newSprints.clear();
+    if (App.state) { App.state.store = { nodes: {}, kids: {}, roots: [], expanded: new Set(), parent: {}, showAllKids: new Set() }; App.state.cur = null; App.state.orig = {}; App.state.selRow = null; App.state.bulkSel = new Set(); }
+    if (App.cache && typeof App.cache.clearProject === 'function') { App.cache.clearProject(); }
     updateUndoButtons();updateCreateButtons();
     if (window.FilterBuilderModal && typeof window.FilterBuilderModal.preLoad === 'function') {
       window.FilterBuilderModal.preLoad(true);

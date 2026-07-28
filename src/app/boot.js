@@ -102,6 +102,16 @@ window.checkAiCloudConsent = checkAiCloudConsent;
 
 window.addEventListener('DOMContentLoaded',async()=>{
   if(window.App&&App.prefs){try{await App.prefs.load();}catch(e){}}   // hydrate the prefs cache before anything reads it (i18n/setup/initialBoot)
+
+  // Restore saved active backend provider before checking authentication
+  let savedBackendId = App.prefs ? App.prefs.get('active_backend_provider') : null;
+  if (!savedBackendId && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    savedBackendId = await new Promise(r => chrome.storage.local.get(['active_backend_provider'], res => r(res && res.active_backend_provider)));
+  }
+  if (savedBackendId && App.backend && App.backend.get(savedBackendId)) {
+    App.backend.setActive(savedBackendId, { save: false, clearCache: false });
+  }
+
   if(window.i18n){try{await window.i18n.init();window.i18n.applyDOM();}catch(e){}}
   
   if (App.prefs && App.prefs.get('telemetry') === null) {
@@ -117,16 +127,29 @@ window.addEventListener('DOMContentLoaded',async()=>{
   FollowManager.init(openItem);
   if (window.EntitlementManager) await window.EntitlementManager.init();
   wirePremiumPlaceholders();
-  const cfg=await api.getConfig();
-  projectName=cfg.project;                  // "no sprint" root path fallback
-  const hasAuth=cfg.authMode==='oauth'?(!!cfg.oauthAccess||!!cfg.oauthRefresh):(!!cfg.pat&&!!cfg.org&&!!cfg.project);
+
+  const activeProvider = App.backend ? App.backend.active : null;
+  const cfg = (activeProvider && typeof activeProvider.getConfig === 'function') ? await activeProvider.getConfig() : await api.getConfig();
+  const activeId = App.backend ? App.backend.activeId : 'ado';
+
+  let hasAuth = false;
+  if (activeId === 'linear') {
+    hasAuth = cfg.authMode === 'oauth' ? !!cfg.oauthAccessToken : !!cfg.apiKey;
+    projectName = cfg.teamId || 'Linear';
+  } else if (activeId === 'github') {
+    hasAuth = cfg.authMode === 'oauth' ? !!cfg.oauthAccessToken : (!!cfg.token && !!cfg.owner && !!cfg.repo);
+    projectName = (cfg.owner && cfg.repo) ? `${cfg.owner}/${cfg.repo}` : 'GitHub';
+  } else {
+    projectName = cfg.project || 'Azure DevOps';
+    hasAuth = cfg.authMode === 'oauth' ? (!!cfg.oauthAccess || !!cfg.oauthRefresh) : (!!cfg.pat && !!cfg.org && !!cfg.project);
+  }
+
   if(!hasAuth){App.setup.showSetup(false);return;}    // first-run flow takes over
   // Validate the stored credentials before showing the UI: a stale token would
   // otherwise surface as a wall of 401s after the first refresh.
   try{
-    const name=await api.me();
-    if(!name)throw new Error('no display name');
-    currentUser=name;
+    const meRes = (activeProvider && typeof activeProvider.me === 'function') ? await activeProvider.me() : await api.me();
+    currentUser = (typeof meRes === 'object' ? (meRes.name || meRes.email) : meRes) || 'User';
   }catch(e){App.setup.showSetup(false);$('setup-err').textContent='Stored credentials are invalid: '+e.message;return;}
   initialBoot(false);
 });
