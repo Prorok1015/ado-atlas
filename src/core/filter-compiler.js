@@ -458,6 +458,52 @@
 
   // --- Exports ---
 
+  const LinearBackend = {
+    generate(irNode, fieldsMap) {
+      if (!irNode) return {};
+      if (irNode.type === 'logical') {
+        const clauses = (irNode.children || []).map(child => this.generate(child, fieldsMap)).filter(c => Object.keys(c).length > 0);
+        if (clauses.length === 0) return {};
+        if (irNode.op === 'AND') {
+          return clauses.reduce((acc, c) => ({ ...acc, ...c }), {});
+        }
+        if (irNode.op === 'OR') {
+          return { or: clauses };
+        }
+      }
+      if (irNode.type === 'comparison') {
+        const fieldName = (irNode.field || '').toLowerCase();
+        const op = (irNode.op || '=').toUpperCase();
+        const valObj = (irNode.values && irNode.values[0]) || {};
+        const val = valObj.value !== undefined ? valObj.value : valObj.raw;
+
+        if (fieldName === 'title' || fieldName === 'summary') {
+          if (op === 'CONTAINS') return { title: { containsIgnoreCase: String(val) } };
+          return { title: { eq: String(val) } };
+        }
+        if (fieldName === 'state' || fieldName === 'status') {
+          return { state: { name: { eq: String(val) } } };
+        }
+        if (fieldName === 'assignee' || fieldName === 'assignedto') {
+          return { assignee: { name: { containsIgnoreCase: String(val) } } };
+        }
+        if (fieldName === 'priority') {
+          return { priority: { eq: Number(val) } };
+        }
+        if (fieldName === 'estimate' || fieldName === 'points') {
+          return { estimate: { eq: Number(val) } };
+        }
+        if (fieldName === 'cycle' || fieldName === 'sprint' || fieldName === 'iteration') {
+          return { cycle: { name: { eq: String(val) } } };
+        }
+        if (fieldName === 'team' || fieldName === 'area') {
+          return { team: { name: { eq: String(val) } } };
+        }
+      }
+      return {};
+    }
+  };
+
   const FilterCompiler = {
     validateToken,
     getSupportedOperators,
@@ -490,13 +536,27 @@
       ir = EmptyValuePass(ir, fieldsMap);
       ir = ValidationPass(ir, fieldsMap);
       
-      // Backend Generation
-      if (backendType === 'WIQL') {
-        return WiqlBackend.generate(ir, fieldsMap);
+      // Backend Generation — delegate query compilation to the target backend provider
+      let provider = null;
+      if (typeof backendType === 'object' && backendType) {
+        provider = backendType;
+      } else if (typeof global !== 'undefined' && global.App && global.App.backend) {
+        provider = global.App.backend.get(backendType) || global.App.backend.active;
+      } else if (typeof window !== 'undefined' && window.App && window.App.backend) {
+        provider = window.App.backend.get(backendType) || window.App.backend.active;
       }
-      
-      throw new Error(`FilterCompiler: Unsupported backend type '${backendType}'`);
-    }
+
+      if (provider && typeof provider.compileFilter === 'function') {
+        return provider.compileFilter(ir, fieldsMap);
+      }
+
+      if (backendType === 'LinearGraphQL' || backendType === 'Linear') {
+        return LinearBackend.generate(ir, fieldsMap);
+      }
+      return WiqlBackend.generate(ir, fieldsMap);
+    },
+    WiqlBackend,
+    LinearBackend
   };
 
   // Export

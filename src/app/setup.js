@@ -47,7 +47,25 @@
       $('oauth-status').textContent=window.i18n.t('setup.oauth.signInFailed', 'Sign-in failed: {error}', {error: e.message});
     }finally{ btn.disabled=false;btn.textContent=window.i18n.t('setup.oauth.signInWithMicrosoft', 'Sign in with Microsoft'); }
   }
+  function updateProviderPanes(){
+    const sel=$('setup-provider-select');if(!sel)return;
+    const p=sel.value;
+    const ado=$('setup-pane-ado');if(ado)ado.style.display=p==='ado'?'block':'none';
+    const lin=$('setup-pane-linear');if(lin)lin.style.display=p==='linear'?'block':'none';
+  }
   function showSetup(cancellable){
+    const sel=$('setup-provider-select');
+    if(sel){
+      sel.value=(App.backend&&App.backend.activeId)||'ado';
+      sel.onchange=updateProviderPanes;
+      updateProviderPanes();
+    }
+    if(window.LinearProvider){
+      window.LinearProvider.getConfig().then(lcfg=>{
+        if($('setup-linear-key'))$('setup-linear-key').value=lcfg.apiKey||'';
+        if($('setup-linear-team'))$('setup-linear-team').value=lcfg.teamId||'';
+      });
+    }
     $('setup-load-hint').innerHTML=window.i18n.t('setup.hintHtml', 'Paste a PAT, then fill in your Organization and Project (both are in your dev.azure.com/&lt;org&gt;/&lt;project&gt; URL). The project list fills in automatically once the org is set.');
     try{$('oauth-redirect').value=api.oauthRedirectUri();}catch(e){$('oauth-redirect').value=window.i18n.t('setup.oauth.availableOnceLoaded', '(available once the extension is loaded)');}
     const cfg=api.getConfig();   // promise — fill async
@@ -220,6 +238,37 @@
   }
 
   async function saveSetup(){
+    const sel=$('setup-provider-select');
+    const provider=(sel&&sel.value)||'ado';
+
+    if(provider==='linear'){
+      const key=$('setup-linear-key')?$('setup-linear-key').value.trim():'';
+      const team=$('setup-linear-team')?$('setup-linear-team').value.trim():'';
+      if(!key){$('setup-err').textContent=window.i18n.t('setup.errLinearKeyRequired', 'Personal API Key is required for Linear.');return;}
+      const btn=$('setup-save');btn.disabled=true;btn.textContent=window.i18n.t('common.validating', 'Validating…');
+      $('setup-err').textContent='';
+      try{
+        if(window.LinearProvider){
+          await window.LinearProvider.setConfig({apiKey:key,teamId:team});
+        }
+        if(App.backend){
+          App.backend.setActive('linear');
+        }
+        const me=await window.LinearProvider.me();
+        currentUser=(me&&(me.name||me.email))||'Linear User';
+        projectName=team||'Linear';
+        hideSetup();
+        btn.disabled=false;btn.textContent=window.i18n.t('setup.saveAndConnect', 'Save & Connect');
+        await initialBoot(/*postSetup*/true);
+      }catch(e){
+        $('setup-err').textContent=window.i18n.t('setup.connectionFailed', 'Connection failed: {error}', {error: e.message});
+        btn.disabled=false;btn.textContent=window.i18n.t('setup.saveAndConnect', 'Save & Connect');
+      }
+      return;
+    }
+
+    // Azure DevOps Flow
+    if(App.backend) App.backend.setActive('ado');
     const org=$('setup-org').value.trim();
     const project=$('setup-project').value.trim();
     if(!org){$('setup-err').textContent=window.i18n.t('setup.errOrgRequired', 'Organization is required.');return;}

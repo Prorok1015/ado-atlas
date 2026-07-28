@@ -145,6 +145,13 @@
       Object.defineProperty(api, 'fieldSchema', { get() { return api.FIELD_REGISTRY; }, enumerable: false });
     }
 
+    if (!api.compileFilter) {
+      api.compileFilter = function (ir, fieldsMap) {
+        const FC = global.FilterCompiler || (global.window && global.window.FilterCompiler);
+        return (FC && FC.WiqlBackend) ? FC.WiqlBackend.generate(ir, fieldsMap) : [];
+      };
+    }
+
     Backend.register(api);
     Backend.setActive('ado');
   }

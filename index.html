@@ -565,8 +565,18 @@
      check passes (handled by app.js boot). -->
 <div id="setup-overlay">
   <div id="setup-box">
-    <h2 data-i18n="setup.title">Connect to Azure DevOps</h2>
-    <div class="seg" id="auth-mode" style="margin-bottom:10px">
+    <h2 data-i18n="setup.title">Connect Tracker</h2>
+
+    <div style="margin-bottom:12px;">
+      <label style="font-weight:600; margin-bottom:4px; display:block;" data-i18n="setup.providerSelect">Tracker Provider</label>
+      <select id="setup-provider-select" style="width:100%; padding:6px 10px; font-size:0.95rem; border-radius:6px; background:var(--panel2); color:var(--txt); border:1px solid var(--line);">
+        <option value="ado">Azure DevOps</option>
+        <option value="linear">Linear (linear.app)</option>
+      </select>
+    </div>
+
+    <div id="setup-pane-ado">
+      <div class="seg" id="auth-mode" style="margin-bottom:10px">
       <button data-am="pat" class="on" data-i18n="setup.authMode.token">Token</button>
       <button data-am="oauth" data-i18n="setup.authMode.oauth">Microsoft sign-in</button>
     </div>
@@ -621,6 +631,19 @@
       <div><label data-i18n="setup.org">Organization</label><input id="setup-org" list="setup-orglist" data-i18n-placeholder="setup.org.placeholder" placeholder="your-org" autocomplete="off"><datalist id="setup-orglist"></datalist></div>
       <div><label data-i18n="setup.project">Project</label><input id="setup-project" list="setup-projlist" data-i18n-placeholder="setup.project.placeholder" placeholder="your-project" autocomplete="off"><datalist id="setup-projlist"></datalist></div>
     </div>
+    </div> <!-- /setup-pane-ado -->
+
+    <div id="setup-pane-linear" style="display:none">
+      <p style="font-size:0.875rem; color:var(--muted); margin-bottom:10px;" data-i18n-html="setup.linear.intro">
+        Connect directly to Linear using a Personal API Key. Create one in
+        <b>Linear → Settings → Account → API → Personal API Keys</b>. Key is stored locally in <code>chrome.storage.local</code>.
+      </p>
+      <label data-i18n="setup.linear.keyLabel">Personal API Key</label>
+      <input id="setup-linear-key" type="password" placeholder="lin_api_..." style="width:100%" autocomplete="off">
+      <label style="margin-top:10px; display:block;" data-i18n="setup.linear.teamLabel">Default Team Key / ID <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <input id="setup-linear-team" type="text" placeholder="e.g. ENG" style="width:100%" autocomplete="off">
+    </div>
+
     <div id="setup-err"></div>
     <div id="setup-actions">
       <button class="btn save" id="setup-save" data-i18n="setup.saveConnect">Save &amp; Connect</button>
@@ -747,6 +770,7 @@
 <script src="src/app/state-globals.js"></script>
 <script src="src/app/prefs.js"></script>
 <script src="src/app/cache-manager.js"></script>
+<script src="src/core/api/linear-provider.js"></script>
 <script src="src/app/backend.js"></script>
 <script src="src/app/undo.js"></script>
 <script src="src/app/sprint-utils.js"></script>
