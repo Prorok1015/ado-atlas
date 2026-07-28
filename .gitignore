@@ -4,3 +4,4 @@ node_modules/
 .DS_Store
 scratch/
 .claude/settings.local.json
+src/app/oauth-config.local.js

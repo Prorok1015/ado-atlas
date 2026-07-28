@@ -10,11 +10,9 @@
   const OAUTH_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize';
   const OAUTH_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 
-  // Default official GitHub OAuth App Client ID (for 1-click sign-in).
-  // Register an OAuth App in GitHub → Settings → Developer settings → OAuth Apps
-  // Set Redirect URI to chrome.identity.getRedirectURL()
-  // Replace 'YOUR_GITHUB_CLIENT_ID' below with your Client ID.
-  const DEFAULT_GITHUB_CLIENT_ID = 'YOUR_GITHUB_CLIENT_ID';
+  function getDefaultClientId() {
+    return (App.OAUTH_CONFIG && App.OAUTH_CONFIG.github && App.OAUTH_CONFIG.github.clientId) || 'YOUR_GITHUB_CLIENT_ID';
+  }
 
   const CONFIG_KEY = 'github_provider_config';
 
@@ -322,10 +320,10 @@
     },
 
     async oauthSignIn(clientId = '', clientSecret = '') {
-      clientId = (clientId || '').trim() || DEFAULT_GITHUB_CLIENT_ID;
+      clientId = (clientId || '').trim() || getDefaultClientId();
       clientSecret = (clientSecret || '').trim();
       if (!clientId || clientId === 'YOUR_GITHUB_CLIENT_ID') {
-        throw new Error('Enter an OAuth Client ID or configure DEFAULT_GITHUB_CLIENT_ID in code.');
+        throw new Error('Enter an OAuth Client ID or configure App.OAUTH_CONFIG.github.clientId in src/app/oauth-config.js.');
       }
 
       const redirectUri = oauthRedirectUri();
