@@ -7,6 +7,7 @@ globalThis.stateCategories = {
   'active': 'InProgress'
 };
 const lib = require("../src/core/lib.js");
+require("../src/app/backend.js");
 const FilterManager = require("../src/components/filter-manager.js");
 
 let pass = 0, fail = 0;
