@@ -208,8 +208,24 @@
     return (App.OAUTH_CONFIG && App.OAUTH_CONFIG.ado && App.OAUTH_CONFIG.ado.clientId) || 'YOUR_ADO_CLIENT_ID';
   }
 
+  function getDefaultTenant() {
+    return (App.OAUTH_CONFIG && App.OAUTH_CONFIG.ado && App.OAUTH_CONFIG.ado.tenant) || 'organizations';
+  }
+
   function oauthRedirectUri() {
     return (typeof chrome !== 'undefined' && chrome.identity && chrome.identity.getRedirectURL) ? chrome.identity.getRedirectURL() : '';
+  }
+
+  async function oauthSignIn(clientId = '', tenant = '') {
+    clientId = (clientId || '').trim() || getDefaultClientId();
+    tenant = (tenant || '').trim() || getDefaultTenant();
+    if (!clientId || clientId === 'YOUR_ADO_CLIENT_ID') {
+      throw new Error('Application (client) ID is required. Configure App.OAUTH_CONFIG.ado.clientId in src/app/oauth-config.js.');
+    }
+    if (global.api && typeof global.api.oauthSignIn === 'function') {
+      return await global.api.oauthSignIn(clientId, tenant);
+    }
+    throw new Error('ADO OAuth API is not loaded.');
   }
 
   const AdoProvider = {
@@ -236,11 +252,21 @@
     nid,
     oauthRedirectUri,
     getDefaultClientId,
-    async oauthSignIn(clientId, tenant) {
-      if (global.api && global.api.oauthSignIn) {
-        return await global.api.oauthSignIn(clientId, tenant);
-      }
-      throw new Error('OAuth API is not loaded');
+    getDefaultTenant,
+    oauthSignIn,
+    async me() {
+      if (global.api && global.api.me) return await global.api.me();
+      return 'ADO User';
+    },
+    async getConfig() {
+      if (global.api && global.api.getConfig) return await global.api.getConfig();
+      return {};
+    },
+    async setConfig(cfg) {
+      if (global.api && global.api.setConfig) return await global.api.setConfig(cfg);
+    },
+    async clearConfig() {
+      if (global.api && global.api.clearConfig) return await global.api.clearConfig();
     },
     compileFilter(ir, fieldsMap) {
       return WiqlBackend.generate(ir, fieldsMap);
