@@ -813,6 +813,7 @@
   "setup.linear.signingIn": "Signing in to Linear…",
   "setup.linear.teamLabel": "Default Team Key / ID (optional)",
   "setup.noOrgs": "No organizations returned for this PAT — type the org name manually.",
+  "setup.oauth.advanced": "Advanced / Custom Application ID",
   "setup.oauth.availableOnceLoaded": "(available once the extension is loaded)",
   "setup.oauth.clientId": "Application (client) ID",
   "setup.oauth.copy.title": "Copy to clipboard",

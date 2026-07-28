@@ -10,6 +10,12 @@
   const OAUTH_AUTHORIZE_URL = 'https://linear.app/oauth/authorize';
   const OAUTH_TOKEN_URL = 'https://api.linear.app/oauth/token';
 
+  // Default official Linear OAuth App Client ID (for 1-click sign-in).
+  // Register an OAuth Application in Linear → Settings → API → OAuth Applications
+  // Set Redirect URI to chrome.identity.getRedirectURL()
+  // Replace 'YOUR_LINEAR_CLIENT_ID' below with your Client ID.
+  const DEFAULT_LINEAR_CLIENT_ID = 'YOUR_LINEAR_CLIENT_ID';
+
   // Config storage keys in chrome.storage.local
   const CONFIG_KEY = 'linear_provider_config';
 
@@ -359,11 +365,11 @@
     },
 
     // OAuth2 Interactive Sign-in
-    async oauthSignIn(clientId, clientSecret = '') {
-      clientId = (clientId || '').trim();
+    async oauthSignIn(clientId = '', clientSecret = '') {
+      clientId = (clientId || '').trim() || DEFAULT_LINEAR_CLIENT_ID;
       clientSecret = (clientSecret || '').trim();
-      if (!clientId) {
-        throw new Error('OAuth Client ID is required for Linear.');
+      if (!clientId || clientId === 'YOUR_LINEAR_CLIENT_ID') {
+        throw new Error('Enter an OAuth Client ID or configure DEFAULT_LINEAR_CLIENT_ID in code.');
       }
 
       const redirectUri = oauthRedirectUri();

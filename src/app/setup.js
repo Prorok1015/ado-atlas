@@ -390,9 +390,13 @@
         $('setup-err').textContent=window.i18n.t('setup.errLinearKeyRequired', 'Personal API Key is required for Linear.');
         return;
       }
-      if(linearAuthMode==='oauth' && !clientId){
-        $('setup-err').textContent=window.i18n.t('setup.linear.enterClientId', 'Enter the OAuth Client ID first.');
-        return;
+      if (linearAuthMode === 'oauth') {
+        const cfg = window.LinearProvider ? await window.LinearProvider.getConfig() : {};
+        if (!cfg.oauthAccessToken) {
+          await handleLinearOAuthSignIn();
+          const newCfg = window.LinearProvider ? await window.LinearProvider.getConfig() : {};
+          if (!newCfg.oauthAccessToken) return;
+        }
       }
 
       const btn=$('setup-save');btn.disabled=true;btn.textContent=window.i18n.t('common.validating', 'Validating…');
@@ -437,9 +441,13 @@
         $('setup-err').textContent = window.i18n.t('setup.github.errTokenRequired', 'Personal Access Token is required for GitHub.');
         return;
       }
-      if (githubAuthMode === 'oauth' && !clientId) {
-        $('setup-err').textContent = window.i18n.t('setup.github.enterClientId', 'Enter the OAuth Client ID first.');
-        return;
+      if (githubAuthMode === 'oauth') {
+        const cfg = window.GitHubProvider ? await window.GitHubProvider.getConfig() : {};
+        if (!cfg.oauthAccessToken) {
+          await handleGitHubOAuthSignIn();
+          const newCfg = window.GitHubProvider ? await window.GitHubProvider.getConfig() : {};
+          if (!newCfg.oauthAccessToken) return;
+        }
       }
 
       const btn = $('setup-save'); btn.disabled = true; btn.textContent = window.i18n.t('common.validating', 'Validating…');

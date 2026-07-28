@@ -648,22 +648,26 @@
 
       <div id="linear-auth-oauth" style="display:none">
         <p style="font-size:0.875rem; color:var(--muted); margin-bottom:10px;" data-i18n-html="setup.linear.oauthIntro">
-          Sign in using your Linear OAuth2 Application. Register one under
-          <b>Linear → Settings → API → OAuth Applications</b>.
+          Sign in using Linear OAuth2. Click the button below to authorize on Linear.
         </p>
-        <label data-i18n="setup.linear.clientId">OAuth Application Client ID</label>
-        <input id="linear-oauth-client" placeholder="e.g. 1a2b3c4d..." autocomplete="off">
-        <label data-i18n="setup.linear.clientSecret">OAuth Client Secret <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-        <input id="linear-oauth-secret" type="password" placeholder="e.g. secret..." autocomplete="off">
-        <label data-i18n-html="setup.linear.redirectLabel">Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact URI in Linear)</span></label>
-        <div style="display:flex;gap:6px">
-          <input id="linear-oauth-redirect" readonly style="flex:1">
-          <button type="button" class="btn" id="linear-oauth-copy" data-i18n-title="setup.oauth.copy.title" title="Copy to clipboard"><ui-icon name="copy"></ui-icon> <span data-i18n="common.copy">Copy</span></button>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
           <button type="button" class="btn save" id="linear-oauth-signin" data-i18n="setup.linear.signIn">Sign in with Linear</button>
           <span id="linear-oauth-status" style="color:var(--muted);font-size:12px"></span>
         </div>
+        <details style="margin-top:10px;font-size:12px;color:var(--muted)">
+          <summary style="cursor:pointer;user-select:none;font-weight:600" data-i18n="setup.oauth.advanced">Advanced / Custom Application ID</summary>
+          <div style="margin-top:8px">
+            <label data-i18n="setup.linear.clientId">OAuth Application Client ID</label>
+            <input id="linear-oauth-client" placeholder="e.g. 1a2b3c4d..." autocomplete="off">
+            <label data-i18n="setup.linear.clientSecret">OAuth Client Secret <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <input id="linear-oauth-secret" type="password" placeholder="e.g. secret..." autocomplete="off">
+            <label data-i18n-html="setup.linear.redirectLabel">Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact URI in Linear)</span></label>
+            <div style="display:flex;gap:6px">
+              <input id="linear-oauth-redirect" readonly style="flex:1">
+              <button type="button" class="btn" id="linear-oauth-copy" data-i18n-title="setup.oauth.copy.title" title="Copy to clipboard"><ui-icon name="copy"></ui-icon> <span data-i18n="common.copy">Copy</span></button>
+            </div>
+          </div>
+        </details>
       </div>
 
       <label style="margin-top:10px; display:block;" data-i18n="setup.linear.teamLabel">Default Team Key / ID <span style="color:var(--muted);font-weight:400">(optional)</span></label>
@@ -687,21 +691,26 @@
 
       <div id="github-auth-oauth" style="display:none">
         <p style="font-size:0.875rem; color:var(--muted); margin-bottom:10px;" data-i18n-html="setup.github.oauthIntro">
-          Sign in using your GitHub OAuth App. Register one in <b>GitHub → Settings → Developer settings → OAuth Apps</b>.
+          Sign in using GitHub OAuth2. Click the button below to authorize on GitHub.
         </p>
-        <label data-i18n="setup.github.clientId">OAuth Application Client ID</label>
-        <input id="github-oauth-client" placeholder="e.g. Ov23..." autocomplete="off">
-        <label data-i18n="setup.github.clientSecret">OAuth Client Secret <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-        <input id="github-oauth-secret" type="password" placeholder="e.g. secret..." autocomplete="off">
-        <label data-i18n-html="setup.github.redirectLabel">Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact URI in GitHub)</span></label>
-        <div style="display:flex;gap:6px">
-          <input id="github-oauth-redirect" readonly style="flex:1">
-          <button type="button" class="btn" id="github-oauth-copy" data-i18n-title="setup.oauth.copy.title" title="Copy to clipboard"><ui-icon name="copy"></ui-icon> <span data-i18n="common.copy">Copy</span></button>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
           <button type="button" class="btn save" id="github-oauth-signin" data-i18n="setup.github.signIn">Sign in with GitHub</button>
           <span id="github-oauth-status" style="color:var(--muted);font-size:12px"></span>
         </div>
+        <details style="margin-top:10px;font-size:12px;color:var(--muted)">
+          <summary style="cursor:pointer;user-select:none;font-weight:600" data-i18n="setup.oauth.advanced">Advanced / Custom Application ID</summary>
+          <div style="margin-top:8px">
+            <label data-i18n="setup.github.clientId">OAuth Application Client ID</label>
+            <input id="github-oauth-client" placeholder="e.g. Ov23..." autocomplete="off">
+            <label data-i18n="setup.github.clientSecret">OAuth Client Secret <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <input id="github-oauth-secret" type="password" placeholder="e.g. secret..." autocomplete="off">
+            <label data-i18n-html="setup.github.redirectLabel">Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact URI in GitHub)</span></label>
+            <div style="display:flex;gap:6px">
+              <input id="github-oauth-redirect" readonly style="flex:1">
+              <button type="button" class="btn" id="github-oauth-copy" data-i18n-title="setup.oauth.copy.title" title="Copy to clipboard"><ui-icon name="copy"></ui-icon> <span data-i18n="common.copy">Copy</span></button>
+            </div>
+          </div>
+        </details>
       </div>
 
       <div class="row" style="margin-top:10px;">
