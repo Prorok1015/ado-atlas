@@ -204,6 +204,14 @@
     return L ? L.gidNative(gidValue) : String(gidValue).replace(/^ado:/, '');
   }
 
+  function getDefaultClientId() {
+    return (App.OAUTH_CONFIG && App.OAUTH_CONFIG.ado && App.OAUTH_CONFIG.ado.clientId) || 'YOUR_ADO_CLIENT_ID';
+  }
+
+  function oauthRedirectUri() {
+    return (typeof chrome !== 'undefined' && chrome.identity && chrome.identity.getRedirectURL) ? chrome.identity.getRedirectURL() : '';
+  }
+
   const AdoProvider = {
     meta: {
       id: 'ado',
@@ -226,6 +234,14 @@
     ],
     gid,
     nid,
+    oauthRedirectUri,
+    getDefaultClientId,
+    async oauthSignIn(clientId, tenant) {
+      if (global.api && global.api.oauthSignIn) {
+        return await global.api.oauthSignIn(clientId, tenant);
+      }
+      throw new Error('OAuth API is not loaded');
+    },
     compileFilter(ir, fieldsMap) {
       return WiqlBackend.generate(ir, fieldsMap);
     },

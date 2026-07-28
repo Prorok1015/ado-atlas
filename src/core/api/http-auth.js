@@ -26,12 +26,24 @@ async function storeTokens(tok) {
   await setConfig(patch);
 }
 
+function getDefaultAdoClientId() {
+  const root = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+  const App = root.App || {};
+  return (App.OAUTH_CONFIG && App.OAUTH_CONFIG.ado && App.OAUTH_CONFIG.ado.clientId) || 'YOUR_ADO_CLIENT_ID';
+}
+
+function getDefaultAdoTenant() {
+  const root = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+  const App = root.App || {};
+  return (App.OAUTH_CONFIG && App.OAUTH_CONFIG.ado && App.OAUTH_CONFIG.ado.tenant) || 'organizations';
+}
+
 // Interactive sign-in: opens the Microsoft login, exchanges the code for tokens,
 // persists authMode=oauth + the app config. Returns the signed-in display name.
 async function oauthSignIn(clientId, tenant) {
-  clientId = (clientId || "").trim();
-  tenant = (tenant || "").trim() || "organizations";
-  if (!clientId) throw new Error("Application (client) ID is required");
+  clientId = (clientId || "").trim() || getDefaultAdoClientId();
+  tenant = (tenant || "").trim() || getDefaultAdoTenant();
+  if (!clientId || clientId === 'YOUR_ADO_CLIENT_ID') throw new Error("Application (client) ID is required (configure App.OAUTH_CONFIG.ado.clientId in src/app/oauth-config.js)");
   const redirectUri = oauthRedirectUri();
   const verifier = randB64Url(32);
   const challenge = await pkceChallenge(verifier);
