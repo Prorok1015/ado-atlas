@@ -21,12 +21,21 @@
   async function getScopedKey(key) {
     let org = 'default', project = 'default';
     try {
-      const api = g.api;
+      const activeProvider = (g.App && g.App.backend) ? g.App.backend.active : null;
+      const api = activeProvider || g.api;
       if (api && typeof api.getConfig === 'function') {
         const cfg = await api.getConfig();
         if (cfg) {
-          org = cfg.org || 'default';
-          project = cfg.project || 'default';
+          if (cfg.owner && cfg.repo) {
+            org = cfg.owner;
+            project = cfg.repo;
+          } else if (cfg.teamId) {
+            org = 'linear';
+            project = cfg.teamId;
+          } else {
+            org = cfg.org || 'default';
+            project = cfg.project || 'default';
+          }
         }
       }
     } catch (_) {}

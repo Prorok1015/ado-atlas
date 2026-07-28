@@ -401,6 +401,7 @@ async function refresh(){
 async function _refresh(){
   const items=await App.tree.currentItems();
   listCapped=!!items.truncated;          // list() hit LIST_CAP → status lines warn
+  App.state.store.nodes = {};                     // PURGE OLD NODES so items from previous backends/filters never leak!
   App.state.store.roots=items.map(n=>n.id);        // flat list — board uses this
   items.forEach(n=>{App.state.store.nodes[n.id]=n;delete n.via;});
   // RESET hierarchy caches — stale entries from a previous filter would leak via
