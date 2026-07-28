@@ -222,6 +222,10 @@
     if (!clientId || clientId === 'YOUR_ADO_CLIENT_ID') {
       throw new Error('Application (client) ID is required. Configure App.OAUTH_CONFIG.ado.clientId in src/app/oauth-config.js.');
     }
+    const fn = (typeof oauthSignIn === 'function') ? oauthSignIn : (global.oauthSignIn || null);
+    if (typeof fn === 'function' && fn !== AdoProvider.oauthSignIn) {
+      return await fn(clientId, tenant);
+    }
     if (global.api && typeof global.api.oauthSignIn === 'function') {
       return await global.api.oauthSignIn(clientId, tenant);
     }
@@ -255,18 +259,22 @@
     getDefaultTenant,
     oauthSignIn,
     async me() {
-      if (global.api && global.api.me) return await global.api.me();
+      const fn = (typeof me === 'function') ? me : (global.me || null);
+      if (typeof fn === 'function' && fn !== AdoProvider.me) return await fn();
       return 'ADO User';
     },
     async getConfig() {
-      if (global.api && global.api.getConfig) return await global.api.getConfig();
+      const fn = (typeof getConfig === 'function') ? getConfig : (global.getConfig || null);
+      if (typeof fn === 'function' && fn !== AdoProvider.getConfig) return await fn();
       return {};
     },
     async setConfig(cfg) {
-      if (global.api && global.api.setConfig) return await global.api.setConfig(cfg);
+      const fn = (typeof setConfig === 'function') ? setConfig : (global.setConfig || null);
+      if (typeof fn === 'function' && fn !== AdoProvider.setConfig) return await fn(cfg);
     },
     async clearConfig() {
-      if (global.api && global.api.clearConfig) return await global.api.clearConfig();
+      const fn = (typeof clearConfig === 'function') ? clearConfig : (global.clearConfig || null);
+      if (typeof fn === 'function' && fn !== AdoProvider.clearConfig) return await fn();
     },
     compileFilter(ir, fieldsMap) {
       return WiqlBackend.generate(ir, fieldsMap);
