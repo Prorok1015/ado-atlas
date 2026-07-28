@@ -206,6 +206,52 @@
     }
   `;
 
+  const LinearBackend = {
+    generate(irNode, fieldsMap) {
+      if (!irNode) return {};
+      if (irNode.type === 'logical') {
+        const clauses = (irNode.children || []).map(child => this.generate(child, fieldsMap)).filter(c => Object.keys(c).length > 0);
+        if (clauses.length === 0) return {};
+        if (irNode.op === 'AND') {
+          return clauses.reduce((acc, c) => ({ ...acc, ...c }), {});
+        }
+        if (irNode.op === 'OR') {
+          return { or: clauses };
+        }
+      }
+      if (irNode.type === 'comparison') {
+        const fieldName = (irNode.field || '').toLowerCase();
+        const op = (irNode.op || '=').toUpperCase();
+        const valObj = (irNode.values && irNode.values[0]) || {};
+        const val = valObj.value !== undefined ? valObj.value : valObj.raw;
+
+        if (fieldName === 'title' || fieldName === 'summary') {
+          if (op === 'CONTAINS') return { title: { containsIgnoreCase: String(val) } };
+          return { title: { eq: String(val) } };
+        }
+        if (fieldName === 'state' || fieldName === 'status') {
+          return { state: { name: { eq: String(val) } } };
+        }
+        if (fieldName === 'assignee' || fieldName === 'assignedto') {
+          return { assignee: { name: { containsIgnoreCase: String(val) } } };
+        }
+        if (fieldName === 'priority') {
+          return { priority: { eq: Number(val) } };
+        }
+        if (fieldName === 'estimate' || fieldName === 'points') {
+          return { estimate: { eq: Number(val) } };
+        }
+        if (fieldName === 'cycle' || fieldName === 'sprint' || fieldName === 'iteration') {
+          return { cycle: { name: { eq: String(val) } } };
+        }
+        if (fieldName === 'team' || fieldName === 'area') {
+          return { team: { name: { eq: String(val) } } };
+        }
+      }
+      return {};
+    }
+  };
+
   // Linear Provider definition
   const LinearProvider = {
     meta: {
@@ -385,8 +431,7 @@
 
     // Query Compilation
     compileFilter(ir, fieldsMap) {
-      const FC = global.FilterCompiler || (global.window && global.window.FilterCompiler);
-      return (FC && FC.LinearBackend) ? FC.LinearBackend.generate(ir, fieldsMap) : {};
+      return LinearBackend.generate(ir, fieldsMap);
     },
 
     // Authenticated user check

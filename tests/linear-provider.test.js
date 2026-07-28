@@ -96,12 +96,12 @@ const ast = {
   },
 };
 
-const filterObj = global.FilterCompiler.compile(ast, fieldsSpec, 'LinearGraphQL');
+const filterObj = global.FilterCompiler.compile(ast, fieldsSpec, LinearProvider);
 assert.deepStrictEqual(filterObj, {
   title: { containsIgnoreCase: 'auth' },
   priority: { eq: 1 },
 });
-console.log('  ok   FilterCompiler LinearGraphQL filter compilation verified');
+console.log('  ok   Polymorphic Linear filter compilation verified');
 
 // 6. Provider registration check
 assert.strictEqual(App.backend.get('linear'), LinearProvider);

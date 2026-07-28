@@ -172,6 +172,47 @@
     };
   }
 
+  const GitHubBackend = {
+    generate(irNode, fields) {
+      if (!irNode) return '';
+      if (irNode.type === 'logical' && irNode.children) {
+        return irNode.children.map(child => this.generate(child, fields)).filter(Boolean).join(' ');
+      }
+      if (irNode.type === 'comparison') {
+        const fieldName = (irNode.field || '').toLowerCase();
+        let val = '';
+        if (Array.isArray(irNode.values) && irNode.values.length > 0) {
+          val = irNode.values[0].value || irNode.values[0].raw || '';
+        } else if (irNode.value !== undefined) {
+          val = typeof irNode.value === 'object' ? (irNode.value.value || irNode.value.raw || '') : irNode.value;
+        }
+
+        if (fieldName === 'title' || fieldName === 'text') {
+          return String(val);
+        }
+        if (fieldName === 'state') {
+          const s = String(val).toLowerCase();
+          if (s === 'closed' || s === 'completed' || s === 'removed') return 'is:closed';
+          if (s === 'open' || s === 'inprogress' || s === 'proposed') return 'is:open';
+          return `state:${val}`;
+        }
+        if (fieldName === 'assignee' || fieldName === 'assigned') {
+          return `assignee:${val}`;
+        }
+        if (fieldName === 'type' || fieldName === 'tag' || fieldName === 'labels') {
+          return `label:"${val}"`;
+        }
+        if (fieldName === 'iteration' || fieldName === 'sprint' || fieldName === 'milestone') {
+          return `milestone:"${val}"`;
+        }
+        if (fieldName === 'area' || fieldName === 'repo' || fieldName === 'repository') {
+          return `repo:${val}`;
+        }
+      }
+      return '';
+    }
+  };
+
   const GitHubProvider = {
     meta: {
       id: 'github',
@@ -343,8 +384,7 @@
     },
 
     compileFilter(ir, fieldsMap) {
-      const FC = global.FilterCompiler || (global.window && global.window.FilterCompiler);
-      return (FC && FC.GitHubBackend) ? FC.GitHubBackend.generate(ir, fieldsMap) : '';
+      return GitHubBackend.generate(ir, fieldsMap);
     },
 
     async me() {

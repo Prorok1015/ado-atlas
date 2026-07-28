@@ -457,102 +457,15 @@
   }
 
   // --- Exports ---
-
-  const LinearBackend = {
-    generate(irNode, fieldsMap) {
-      if (!irNode) return {};
-      if (irNode.type === 'logical') {
-        const clauses = (irNode.children || []).map(child => this.generate(child, fieldsMap)).filter(c => Object.keys(c).length > 0);
-        if (clauses.length === 0) return {};
-        if (irNode.op === 'AND') {
-          return clauses.reduce((acc, c) => ({ ...acc, ...c }), {});
-        }
-        if (irNode.op === 'OR') {
-          return { or: clauses };
-        }
-      }
-      if (irNode.type === 'comparison') {
-        const fieldName = (irNode.field || '').toLowerCase();
-        const op = (irNode.op || '=').toUpperCase();
-        const valObj = (irNode.values && irNode.values[0]) || {};
-        const val = valObj.value !== undefined ? valObj.value : valObj.raw;
-
-        if (fieldName === 'title' || fieldName === 'summary') {
-          if (op === 'CONTAINS') return { title: { containsIgnoreCase: String(val) } };
-          return { title: { eq: String(val) } };
-        }
-        if (fieldName === 'state' || fieldName === 'status') {
-          return { state: { name: { eq: String(val) } } };
-        }
-        if (fieldName === 'assignee' || fieldName === 'assignedto') {
-          return { assignee: { name: { containsIgnoreCase: String(val) } } };
-        }
-        if (fieldName === 'priority') {
-          return { priority: { eq: Number(val) } };
-        }
-        if (fieldName === 'estimate' || fieldName === 'points') {
-          return { estimate: { eq: Number(val) } };
-        }
-        if (fieldName === 'cycle' || fieldName === 'sprint' || fieldName === 'iteration') {
-          return { cycle: { name: { eq: String(val) } } };
-        }
-        if (fieldName === 'team' || fieldName === 'area') {
-          return { team: { name: { eq: String(val) } } };
-        }
-      }
-      return {};
-    }
-  };
-
-  const GitHubBackend = {
-    generate(irNode, fields) {
-      if (!irNode) return '';
-      if (irNode.type === 'logical' && irNode.children) {
-        return irNode.children.map(child => this.generate(child, fields)).filter(Boolean).join(' ');
-      }
-      if (irNode.type === 'comparison') {
-        const fieldName = (irNode.field || '').toLowerCase();
-        let val = '';
-        if (Array.isArray(irNode.values) && irNode.values.length > 0) {
-          val = irNode.values[0].value || irNode.values[0].raw || '';
-        } else if (irNode.value !== undefined) {
-          val = typeof irNode.value === 'object' ? (irNode.value.value || irNode.value.raw || '') : irNode.value;
-        }
-
-        if (fieldName === 'title' || fieldName === 'text') {
-          return String(val);
-        }
-        if (fieldName === 'state') {
-          const s = String(val).toLowerCase();
-          if (s === 'closed' || s === 'completed' || s === 'removed') return 'is:closed';
-          if (s === 'open' || s === 'inprogress' || s === 'proposed') return 'is:open';
-          return `state:${val}`;
-        }
-        if (fieldName === 'assignee' || fieldName === 'assigned') {
-          return `assignee:${val}`;
-        }
-        if (fieldName === 'type' || fieldName === 'tag' || fieldName === 'labels') {
-          return `label:"${val}"`;
-        }
-        if (fieldName === 'iteration' || fieldName === 'sprint' || fieldName === 'milestone') {
-          return `milestone:"${val}"`;
-        }
-        if (fieldName === 'area' || fieldName === 'repo' || fieldName === 'repository') {
-          return `repo:${val}`;
-        }
-      }
-      return '';
-    }
-  };
-
   const FilterCompiler = {
     validateToken,
     getSupportedOperators,
     getSupportedMacros,
-    compile(ast, fields, backendType = 'WIQL') {
-      if (!ast || !ast.where) return [];
-      
-      // Index fields by both key/id and reference name / aliases for absolute lookup robustness
+
+    // Converts AST -> normalized vendor-neutral FilterIR
+    toIR(ast, fields) {
+      if (!ast || !ast.where) return { ir: null, fieldsMap: {} };
+
       const fieldsMap = {};
       const registerField = (key, f) => {
         if (!key || !f) return;
@@ -571,37 +484,39 @@
           registerField(key, val);
         }
       }
-      
-      // Middle-end Passes
+
       let ir = MacroNormalizationPass(ast.where, fieldsMap);
       ir = EmptyValuePass(ir, fieldsMap);
       ir = ValidationPass(ir, fieldsMap);
-      
-      // Backend Generation — delegate query compilation to the target backend provider
+      return { ir, fieldsMap };
+    },
+
+    // Pure polymorphic compilation: delegates to provider.compileFilter(ir, fieldsMap)
+    compile(ast, fields, target) {
+      if (!ast || !ast.where) return [];
+      const { ir, fieldsMap } = this.toIR(ast, fields);
+
       let provider = null;
-      if (typeof backendType === 'object' && backendType) {
-        provider = backendType;
-      } else if (typeof global !== 'undefined' && global.App && global.App.backend) {
-        provider = global.App.backend.get(backendType) || global.App.backend.active;
-      } else if (typeof window !== 'undefined' && window.App && window.App.backend) {
-        provider = window.App.backend.get(backendType) || window.App.backend.active;
+      if (typeof target === 'object' && target) {
+        provider = target;
+      } else if (typeof target === 'string' && target) {
+        const bg = typeof global !== 'undefined' && global.App && global.App.backend ? global.App.backend : (typeof window !== 'undefined' && window.App && window.App.backend ? window.App.backend : null);
+        if (bg) provider = bg.get(target);
+      }
+
+      if (!provider) {
+        const bg = typeof global !== 'undefined' && global.App && global.App.backend ? global.App.backend : (typeof window !== 'undefined' && window.App && window.App.backend ? window.App.backend : null);
+        if (bg) provider = bg.active;
       }
 
       if (provider && typeof provider.compileFilter === 'function') {
         return provider.compileFilter(ir, fieldsMap);
       }
 
-      if (backendType === 'GitHub') {
-        return GitHubBackend.generate(ir, fieldsMap);
-      }
-      if (backendType === 'LinearGraphQL' || backendType === 'Linear') {
-        return LinearBackend.generate(ir, fieldsMap);
-      }
+      // Default fallback (WIQL)
       return WiqlBackend.generate(ir, fieldsMap);
     },
-    WiqlBackend,
-    LinearBackend,
-    GitHubBackend
+    WiqlBackend
   };
 
   // Export

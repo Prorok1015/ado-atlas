@@ -88,9 +88,9 @@ const ast = {
   },
 };
 
-const filterQuery = global.FilterCompiler.compile(ast, fieldsSpec, 'GitHub');
+const filterQuery = global.FilterCompiler.compile(ast, fieldsSpec, GitHubProvider);
 assert.strictEqual(filterQuery, 'is:open assignee:octocat label:"bug"');
-console.log('  ok   FilterCompiler GitHub search query compilation verified');
+console.log('  ok   Polymorphic GitHub search query compilation verified');
 
 // 6. Provider registration check
 assert.strictEqual(App.backend.get('github'), GitHubProvider);
