@@ -7,13 +7,21 @@
   const App = global.App = global.App || {};
 
   const ENDPOINT = 'https://api.linear.app/graphql';
+  const OAUTH_AUTHORIZE_URL = 'https://linear.app/oauth/authorize';
+  const OAUTH_TOKEN_URL = 'https://api.linear.app/oauth/token';
 
   // Config storage keys in chrome.storage.local
   const CONFIG_KEY = 'linear_provider_config';
 
   let _config = {
+    authMode: 'api_key', // 'api_key' | 'oauth'
     apiKey: '',
     teamId: '',
+    oauthClientId: '',
+    oauthClientSecret: '',
+    oauthAccessToken: '',
+    oauthRefreshToken: '',
+    oauthExpiresAt: 0,
   };
 
   // Helper to get composite global ID and native ID
@@ -42,18 +50,48 @@
     return 'proposed';
   }
 
+  function oauthRedirectUri() {
+    if (typeof chrome !== 'undefined' && chrome.identity && chrome.identity.getRedirectURL) {
+      return chrome.identity.getRedirectURL();
+    }
+    return '';
+  }
+
+  // Generate random URL-safe base64 string
+  function randB64Url(len = 16) {
+    const arr = new Uint8Array(len);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(arr);
+    } else {
+      for (let i = 0; i < len; i++) arr[i] = Math.floor(Math.random() * 256);
+    }
+    let str = '';
+    for (let i = 0; i < len; i++) str += String.fromCharCode(arr[i]);
+    const b64 = typeof btoa === 'function' ? btoa(str) : Buffer.from(arr).toString('base64');
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
   // Execute raw GraphQL request to Linear API
   async function graphqlRequest(query, variables = {}, apiKeyOverride = null) {
-    const key = apiKeyOverride || _config.apiKey;
-    if (!key) {
-      throw new Error('Linear API key is not configured.');
+    let authHeader = '';
+
+    if (apiKeyOverride) {
+      authHeader = apiKeyOverride.trim();
+    } else if (_config.authMode === 'oauth' || _config.oauthAccessToken) {
+      authHeader = `Bearer ${_config.oauthAccessToken.trim()}`;
+    } else {
+      const key = _config.apiKey;
+      if (!key) {
+        throw new Error('Linear API key is not configured.');
+      }
+      authHeader = key.trim(); // Personal API key: NO 'Bearer' prefix
     }
 
     const response = await fetch(ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': key.trim(), // Personal API key: NO 'Bearer' prefix
+        'Authorization': authHeader,
       },
       body: JSON.stringify({ query, variables }),
     });
@@ -205,7 +243,10 @@
     },
 
     connectionSchema: [
-      { key: 'apiKey', type: 'string', label: 'Personal API Key', secret: true, required: true },
+      { key: 'authMode', type: 'enum', options: ['api_key', 'oauth'], label: 'Auth Mode', required: true },
+      { key: 'apiKey', type: 'string', label: 'Personal API Key', secret: true, required: false },
+      { key: 'oauthClientId', type: 'string', label: 'OAuth Client ID', secret: false, required: false },
+      { key: 'oauthClientSecret', type: 'string', label: 'OAuth Client Secret', secret: true, required: false },
       { key: 'teamId', type: 'string', label: 'Team Key / ID (Optional)', secret: false, required: false },
     ],
 
@@ -225,12 +266,7 @@
     nid(gidValue) { return nid(gidValue); },
     mapStateCategory(type) { return mapStateCategory(type); },
     mapLinearIssue(issue) { return mapLinearIssue(issue); },
-
-    // Query Compilation
-    compileFilter(ir, fieldsMap) {
-      const FC = global.FilterCompiler || (global.window && global.window.FilterCompiler);
-      return (FC && FC.LinearBackend) ? FC.LinearBackend.generate(ir, fieldsMap) : {};
-    },
+    oauthRedirectUri() { return oauthRedirectUri(); },
 
     // Configuration
     async getConfig() {
@@ -258,13 +294,99 @@
     },
 
     async clearConfig() {
-      _config = { apiKey: '', teamId: '' };
+      _config = {
+        authMode: 'api_key',
+        apiKey: '',
+        teamId: '',
+        oauthClientId: '',
+        oauthClientSecret: '',
+        oauthAccessToken: '',
+        oauthRefreshToken: '',
+        oauthExpiresAt: 0,
+      };
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         await new Promise((resolve) => {
           chrome.storage.local.remove([CONFIG_KEY], resolve);
         });
       }
       return true;
+    },
+
+    // OAuth2 Interactive Sign-in
+    async oauthSignIn(clientId, clientSecret = '') {
+      clientId = (clientId || '').trim();
+      clientSecret = (clientSecret || '').trim();
+      if (!clientId) {
+        throw new Error('OAuth Client ID is required for Linear.');
+      }
+
+      const redirectUri = oauthRedirectUri();
+      const state = randB64Url(16);
+
+      const authUrl = `${OAUTH_AUTHORIZE_URL}?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=read,write&state=${encodeURIComponent(state)}&prompt=consent`;
+
+      const redirect = await new Promise((resolve, reject) => {
+        if (typeof chrome === 'undefined' || !chrome.identity || !chrome.identity.launchWebAuthFlow) {
+          return reject(new Error('chrome.identity WebAuthFlow is not available.'));
+        }
+        chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, (redirectResult) => {
+          const err = chrome.runtime.lastError;
+          if (err || !redirectResult) {
+            return reject(new Error((err && err.message) ? err.message : 'Sign-in was cancelled'));
+          }
+          resolve(redirectResult);
+        });
+      });
+
+      // Parse code and state from redirect URL
+      const urlObj = new URL(redirect);
+      const code = urlObj.searchParams.get('code');
+      const returnedState = urlObj.searchParams.get('state');
+      const errorMsg = urlObj.searchParams.get('error_description') || urlObj.searchParams.get('error');
+
+      if (errorMsg) throw new Error(`Linear OAuth error: ${errorMsg}`);
+      if (!code || returnedState !== state) throw new Error('Linear OAuth failed (code missing or state mismatch).');
+
+      // Exchange code for token
+      const params = new URLSearchParams();
+      params.append('grant_type', 'authorization_code');
+      params.append('client_id', clientId);
+      if (clientSecret) params.append('client_secret', clientSecret);
+      params.append('code', code);
+      params.append('redirect_uri', redirectUri);
+
+      const tokenResp = await fetch(OAUTH_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      });
+
+      if (!tokenResp.ok) {
+        const text = await tokenResp.text();
+        throw new Error(`Linear token request failed (${tokenResp.status}): ${text.slice(0, 200)}`);
+      }
+
+      const tok = await tokenResp.json();
+      if (!tok.access_token) {
+        throw new Error('Linear OAuth token response contained no access_token.');
+      }
+
+      await this.setConfig({
+        authMode: 'oauth',
+        oauthClientId: clientId,
+        oauthClientSecret: clientSecret,
+        oauthAccessToken: tok.access_token,
+        oauthRefreshToken: tok.refresh_token || '',
+        oauthExpiresAt: Date.now() + ((tok.expires_in || 3600 * 24 * 30) * 1000),
+      });
+
+      return await this.me();
+    },
+
+    // Query Compilation
+    compileFilter(ir, fieldsMap) {
+      const FC = global.FilterCompiler || (global.window && global.window.FilterCompiler);
+      return (FC && FC.LinearBackend) ? FC.LinearBackend.generate(ir, fieldsMap) : {};
     },
 
     // Authenticated user check

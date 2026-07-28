@@ -116,4 +116,18 @@ assert.deepStrictEqual(delegatedFilterObj, {
 });
 console.log('  ok   FilterCompiler delegation to active provider compileFilter verified');
 
-console.log('LinearProvider tests completed: 7 passed, 0 failed');
+// 8. OAuth configuration and redirect URI
+(async () => {
+  await LinearProvider.setConfig({
+    authMode: 'oauth',
+    oauthClientId: 'client-123',
+    oauthAccessToken: 'access-abc',
+  });
+  const cfg = await LinearProvider.getConfig();
+  assert.strictEqual(cfg.authMode, 'oauth');
+  assert.strictEqual(cfg.oauthClientId, 'client-123');
+  assert.strictEqual(cfg.oauthAccessToken, 'access-abc');
+  assert.strictEqual(typeof LinearProvider.oauthRedirectUri(), 'string');
+  console.log('  ok   LinearProvider OAuth configuration and redirect URI verified');
+  console.log('LinearProvider tests completed: 8 passed, 0 failed');
+})();

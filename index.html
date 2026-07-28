@@ -631,12 +631,40 @@
     </div> <!-- /setup-pane-ado -->
 
     <div id="setup-pane-linear" style="display:none">
-      <p style="font-size:0.875rem; color:var(--muted); margin-bottom:10px;" data-i18n-html="setup.linear.intro">
-        Connect directly to Linear using a Personal API Key. Create one in
-        <b>Linear → Settings → Account → API → Personal API Keys</b>. Key is stored locally in <code>chrome.storage.local</code>.
-      </p>
-      <label data-i18n="setup.linear.keyLabel">Personal API Key</label>
-      <input id="setup-linear-key" type="password" placeholder="lin_api_..." style="width:100%" autocomplete="off">
+      <div class="seg" id="linear-auth-mode" style="margin-bottom:10px">
+        <button type="button" data-lam="api_key" class="on" data-i18n="setup.linear.authMode.key">API Key</button>
+        <button type="button" data-lam="oauth" data-i18n="setup.linear.authMode.oauth">OAuth2</button>
+      </div>
+
+      <div id="linear-auth-key">
+        <p style="font-size:0.875rem; color:var(--muted); margin-bottom:10px;" data-i18n-html="setup.linear.intro">
+          Connect directly to Linear using a Personal API Key. Create one in
+          <b>Linear → Settings → Account → API → Personal API Keys</b>. Key is stored in <code>chrome.storage.local</code>.
+        </p>
+        <label data-i18n="setup.linear.keyLabel">Personal API Key</label>
+        <input id="setup-linear-key" type="password" placeholder="lin_api_..." style="width:100%" autocomplete="off">
+      </div>
+
+      <div id="linear-auth-oauth" style="display:none">
+        <p style="font-size:0.875rem; color:var(--muted); margin-bottom:10px;" data-i18n-html="setup.linear.oauthIntro">
+          Sign in using your Linear OAuth2 Application. Register one under
+          <b>Linear → Settings → API → OAuth Applications</b>.
+        </p>
+        <label data-i18n="setup.linear.clientId">OAuth Application Client ID</label>
+        <input id="linear-oauth-client" placeholder="e.g. 1a2b3c4d..." autocomplete="off">
+        <label data-i18n="setup.linear.clientSecret">OAuth Client Secret <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+        <input id="linear-oauth-secret" type="password" placeholder="e.g. secret..." autocomplete="off">
+        <label data-i18n-html="setup.linear.redirectLabel">Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact URI in Linear)</span></label>
+        <div style="display:flex;gap:6px">
+          <input id="linear-oauth-redirect" readonly style="flex:1">
+          <button type="button" class="btn" id="linear-oauth-copy" data-i18n-title="setup.oauth.copy.title" title="Copy to clipboard"><ui-icon name="copy"></ui-icon> <span data-i18n="common.copy">Copy</span></button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+          <button type="button" class="btn save" id="linear-oauth-signin" data-i18n="setup.linear.signIn">Sign in with Linear</button>
+          <span id="linear-oauth-status" style="color:var(--muted);font-size:12px"></span>
+        </div>
+      </div>
+
       <label style="margin-top:10px; display:block;" data-i18n="setup.linear.teamLabel">Default Team Key / ID <span style="color:var(--muted);font-weight:400">(optional)</span></label>
       <input id="setup-linear-team" type="text" placeholder="e.g. ENG" style="width:100%" autocomplete="off">
     </div>

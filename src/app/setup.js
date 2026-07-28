@@ -48,6 +48,8 @@
     }finally{ btn.disabled=false;btn.textContent=window.i18n.t('setup.oauth.signInWithMicrosoft', 'Sign in with Microsoft'); }
   }
   let setupProviderMode = 'ado';
+  let linearAuthMode = 'api_key';
+
   function setProviderPane(provider){
     setupProviderMode = provider === 'linear' ? 'linear' : 'ado';
     const ado = $('setup-pane-ado'); if (ado) ado.style.display = setupProviderMode === 'ado' ? 'block' : 'none';
@@ -57,6 +59,41 @@
       bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.provider === setupProviderMode));
     }
   }
+
+  function setLinearAuthPane(mode) {
+    linearAuthMode = mode === 'oauth' ? 'oauth' : 'api_key';
+    const keyPane = $('linear-auth-key'); if (keyPane) keyPane.style.display = linearAuthMode === 'api_key' ? 'block' : 'none';
+    const oauthPane = $('linear-auth-oauth'); if (oauthPane) oauthPane.style.display = linearAuthMode === 'oauth' ? 'block' : 'none';
+    const bar = $('linear-auth-mode');
+    if (bar) {
+      bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lam === linearAuthMode));
+    }
+  }
+
+  async function handleLinearOAuthSignIn() {
+    const clientId = ($('linear-oauth-client') ? $('linear-oauth-client').value : '').trim();
+    const clientSecret = ($('linear-oauth-secret') ? $('linear-oauth-secret').value : '').trim();
+    if (!clientId) {
+      $('setup-err').textContent = window.i18n.t('setup.linear.enterClientId', 'Enter the OAuth Client ID first.');
+      return;
+    }
+    const btn = $('linear-oauth-signin');
+    btn.disabled = true;
+    btn.textContent = window.i18n.t('setup.linear.signingIn', 'Signing in to Linear…');
+    $('setup-err').textContent = '';
+    try {
+      if (!window.LinearProvider) throw new Error('LinearProvider is not available.');
+      const user = await window.LinearProvider.oauthSignIn(clientId, clientSecret);
+      currentUser = (user && (user.name || user.email)) || 'Linear User';
+      $('linear-oauth-status').innerHTML = '<ui-icon name="check"></ui-icon> ' + window.i18n.t('setup.linear.signedInAs', 'Signed in as {name}', { name: htmlEsc(currentUser) });
+    } catch (e) {
+      $('setup-err').textContent = e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = window.i18n.t('setup.linear.signIn', 'Sign in with Linear');
+    }
+  }
+
   function showSetup(cancellable){
     const initialProvider = (App.backend && App.backend.activeId) || 'ado';
     setProviderPane(initialProvider);
@@ -66,10 +103,37 @@
         b.onclick = () => setProviderPane(b.dataset.provider);
       });
     }
+
+    const lbar = $('linear-auth-mode');
+    if (lbar) {
+      lbar.querySelectorAll('button').forEach(b => {
+        b.onclick = () => setLinearAuthPane(b.dataset.lam);
+      });
+    }
+    if ($('linear-oauth-signin')) $('linear-oauth-signin').onclick = handleLinearOAuthSignIn;
+    if ($('linear-oauth-copy')) {
+      $('linear-oauth-copy').onclick = () => {
+        const input = $('linear-oauth-redirect');
+        if (input && input.value) {
+          navigator.clipboard.writeText(input.value);
+          if (window.toast) window.toast(window.i18n.t('common.copied', 'Copied!'));
+        }
+      };
+    }
+
     if(window.LinearProvider){
+      if ($('linear-oauth-redirect')) {
+        $('linear-oauth-redirect').value = window.LinearProvider.oauthRedirectUri() || window.i18n.t('setup.oauth.availableOnceLoaded', '(available once the extension is loaded)');
+      }
       window.LinearProvider.getConfig().then(lcfg=>{
         if($('setup-linear-key'))$('setup-linear-key').value=lcfg.apiKey||'';
         if($('setup-linear-team'))$('setup-linear-team').value=lcfg.teamId||'';
+        if($('linear-oauth-client'))$('linear-oauth-client').value=lcfg.oauthClientId||'';
+        if($('linear-oauth-secret'))$('linear-oauth-secret').value=lcfg.oauthClientSecret||'';
+        setLinearAuthPane(lcfg.authMode === 'oauth' ? 'oauth' : 'api_key');
+        if ($('linear-oauth-status')) {
+          $('linear-oauth-status').innerHTML = (lcfg.authMode === 'oauth' && lcfg.oauthAccessToken) ? ('<ui-icon name="check"></ui-icon> ' + window.i18n.t('setup.linear.signedIn', 'Signed in')) : '';
+        }
       });
     }
     $('setup-load-hint').innerHTML=window.i18n.t('setup.hintHtml', 'Paste a PAT, then fill in your Organization and Project (both are in your dev.azure.com/&lt;org&gt;/&lt;project&gt; URL). The project list fills in automatically once the org is set.');
@@ -249,12 +313,29 @@
     if(provider==='linear'){
       const key=$('setup-linear-key')?$('setup-linear-key').value.trim():'';
       const team=$('setup-linear-team')?$('setup-linear-team').value.trim():'';
-      if(!key){$('setup-err').textContent=window.i18n.t('setup.errLinearKeyRequired', 'Personal API Key is required for Linear.');return;}
+      const clientId=$('linear-oauth-client')?$('linear-oauth-client').value.trim():'';
+      const clientSecret=$('linear-oauth-secret')?$('linear-oauth-secret').value.trim():'';
+
+      if(linearAuthMode==='api_key' && !key){
+        $('setup-err').textContent=window.i18n.t('setup.errLinearKeyRequired', 'Personal API Key is required for Linear.');
+        return;
+      }
+      if(linearAuthMode==='oauth' && !clientId){
+        $('setup-err').textContent=window.i18n.t('setup.linear.enterClientId', 'Enter the OAuth Client ID first.');
+        return;
+      }
+
       const btn=$('setup-save');btn.disabled=true;btn.textContent=window.i18n.t('common.validating', 'Validating…');
       $('setup-err').textContent='';
       try{
         if(window.LinearProvider){
-          await window.LinearProvider.setConfig({apiKey:key,teamId:team});
+          await window.LinearProvider.setConfig({
+            authMode: linearAuthMode,
+            apiKey: key,
+            teamId: team,
+            oauthClientId: clientId,
+            oauthClientSecret: clientSecret,
+          });
         }
         if(App.backend){
           App.backend.setActive('linear');
@@ -263,11 +344,11 @@
         currentUser=(me&&(me.name||me.email))||'Linear User';
         projectName=team||'Linear';
         hideSetup();
-        btn.disabled=false;btn.textContent=window.i18n.t('setup.saveAndConnect', 'Save & Connect');
+        btn.disabled=false;btn.textContent=window.i18n.t('setup.saveConnect', 'Save & Connect');
         await initialBoot(/*postSetup*/true);
       }catch(e){
         $('setup-err').textContent=window.i18n.t('setup.connectionFailed', 'Connection failed: {error}', {error: e.message});
-        btn.disabled=false;btn.textContent=window.i18n.t('setup.saveAndConnect', 'Save & Connect');
+        btn.disabled=false;btn.textContent=window.i18n.t('setup.saveConnect', 'Save & Connect');
       }
       return;
     }
