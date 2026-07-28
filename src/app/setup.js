@@ -49,11 +49,13 @@
   }
   let setupProviderMode = 'ado';
   let linearAuthMode = 'api_key';
+  let githubAuthMode = 'token';
 
   function setProviderPane(provider){
-    setupProviderMode = provider === 'linear' ? 'linear' : 'ado';
+    setupProviderMode = (provider === 'linear' || provider === 'github') ? provider : 'ado';
     const ado = $('setup-pane-ado'); if (ado) ado.style.display = setupProviderMode === 'ado' ? 'block' : 'none';
     const lin = $('setup-pane-linear'); if (lin) lin.style.display = setupProviderMode === 'linear' ? 'block' : 'none';
+    const gh = $('setup-pane-github'); if (gh) gh.style.display = setupProviderMode === 'github' ? 'block' : 'none';
     const bar = $('setup-provider-mode');
     if (bar) {
       bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.provider === setupProviderMode));
@@ -67,6 +69,16 @@
     const bar = $('linear-auth-mode');
     if (bar) {
       bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lam === linearAuthMode));
+    }
+  }
+
+  function setGitHubAuthPane(mode) {
+    githubAuthMode = mode === 'oauth' ? 'oauth' : 'token';
+    const tokenPane = $('github-auth-token'); if (tokenPane) tokenPane.style.display = githubAuthMode === 'token' ? 'block' : 'none';
+    const oauthPane = $('github-auth-oauth'); if (oauthPane) oauthPane.style.display = githubAuthMode === 'oauth' ? 'block' : 'none';
+    const bar = $('github-auth-mode');
+    if (bar) {
+      bar.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.gam === githubAuthMode));
     }
   }
 
@@ -91,6 +103,30 @@
     } finally {
       btn.disabled = false;
       btn.textContent = window.i18n.t('setup.linear.signIn', 'Sign in with Linear');
+    }
+  }
+
+  async function handleGitHubOAuthSignIn() {
+    const clientId = ($('github-oauth-client') ? $('github-oauth-client').value : '').trim();
+    const clientSecret = ($('github-oauth-secret') ? $('github-oauth-secret').value : '').trim();
+    if (!clientId) {
+      $('setup-err').textContent = window.i18n.t('setup.github.enterClientId', 'Enter the OAuth Client ID first.');
+      return;
+    }
+    const btn = $('github-oauth-signin');
+    btn.disabled = true;
+    btn.textContent = window.i18n.t('setup.github.signingIn', 'Signing in to GitHub…');
+    $('setup-err').textContent = '';
+    try {
+      if (!window.GitHubProvider) throw new Error('GitHubProvider is not available.');
+      const user = await window.GitHubProvider.oauthSignIn(clientId, clientSecret);
+      currentUser = (user && (user.name || user.email)) || 'GitHub User';
+      $('github-oauth-status').innerHTML = '<ui-icon name="check"></ui-icon> ' + window.i18n.t('setup.github.signedInAs', 'Signed in as {name}', { name: htmlEsc(currentUser) });
+    } catch (e) {
+      $('setup-err').textContent = e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = window.i18n.t('setup.github.signIn', 'Sign in with GitHub');
     }
   }
 
@@ -121,6 +157,23 @@
       };
     }
 
+    const gbar = $('github-auth-mode');
+    if (gbar) {
+      gbar.querySelectorAll('button').forEach(b => {
+        b.onclick = () => setGitHubAuthPane(b.dataset.gam);
+      });
+    }
+    if ($('github-oauth-signin')) $('github-oauth-signin').onclick = handleGitHubOAuthSignIn;
+    if ($('github-oauth-copy')) {
+      $('github-oauth-copy').onclick = () => {
+        const input = $('github-oauth-redirect');
+        if (input && input.value) {
+          navigator.clipboard.writeText(input.value);
+          if (window.toast) window.toast(window.i18n.t('common.copied', 'Copied!'));
+        }
+      };
+    }
+
     if(window.LinearProvider){
       if ($('linear-oauth-redirect')) {
         $('linear-oauth-redirect').value = window.LinearProvider.oauthRedirectUri() || window.i18n.t('setup.oauth.availableOnceLoaded', '(available once the extension is loaded)');
@@ -133,6 +186,23 @@
         setLinearAuthPane(lcfg.authMode === 'oauth' ? 'oauth' : 'api_key');
         if ($('linear-oauth-status')) {
           $('linear-oauth-status').innerHTML = (lcfg.authMode === 'oauth' && lcfg.oauthAccessToken) ? ('<ui-icon name="check"></ui-icon> ' + window.i18n.t('setup.linear.signedIn', 'Signed in')) : '';
+        }
+      });
+    }
+
+    if(window.GitHubProvider){
+      if ($('github-oauth-redirect')) {
+        $('github-oauth-redirect').value = window.GitHubProvider.oauthRedirectUri() || window.i18n.t('setup.oauth.availableOnceLoaded', '(available once the extension is loaded)');
+      }
+      window.GitHubProvider.getConfig().then(gcfg=>{
+        if($('setup-github-token'))$('setup-github-token').value=gcfg.token||'';
+        if($('setup-github-owner'))$('setup-github-owner').value=gcfg.owner||'';
+        if($('setup-github-repo'))$('setup-github-repo').value=gcfg.repo||'';
+        if($('github-oauth-client'))$('github-oauth-client').value=gcfg.oauthClientId||'';
+        if($('github-oauth-secret'))$('github-oauth-secret').value=gcfg.oauthClientSecret||'';
+        setGitHubAuthPane(gcfg.authMode === 'oauth' ? 'oauth' : 'token');
+        if ($('github-oauth-status')) {
+          $('github-oauth-status').innerHTML = (gcfg.authMode === 'oauth' && gcfg.oauthAccessToken) ? ('<ui-icon name="check"></ui-icon> ' + window.i18n.t('setup.github.signedIn', 'Signed in')) : '';
         }
       });
     }
@@ -349,6 +419,54 @@
       }catch(e){
         $('setup-err').textContent=window.i18n.t('setup.connectionFailed', 'Connection failed: {error}', {error: e.message});
         btn.disabled=false;btn.textContent=window.i18n.t('setup.saveConnect', 'Save & Connect');
+      }
+      return;
+    }
+
+    if (provider === 'github') {
+      const token = $('setup-github-token') ? $('setup-github-token').value.trim() : '';
+      const owner = $('setup-github-owner') ? $('setup-github-owner').value.trim() : '';
+      const repo = $('setup-github-repo') ? $('setup-github-repo').value.trim() : '';
+      const clientId = $('github-oauth-client') ? $('github-oauth-client').value.trim() : '';
+      const clientSecret = $('github-oauth-secret') ? $('github-oauth-secret').value.trim() : '';
+
+      if (!owner) { $('setup-err').textContent = window.i18n.t('setup.github.errOwnerRequired', 'Owner / Organization is required.'); return; }
+      if (!repo) { $('setup-err').textContent = window.i18n.t('setup.github.errRepoRequired', 'Repository is required.'); return; }
+
+      if (githubAuthMode === 'token' && !token) {
+        $('setup-err').textContent = window.i18n.t('setup.github.errTokenRequired', 'Personal Access Token is required for GitHub.');
+        return;
+      }
+      if (githubAuthMode === 'oauth' && !clientId) {
+        $('setup-err').textContent = window.i18n.t('setup.github.enterClientId', 'Enter the OAuth Client ID first.');
+        return;
+      }
+
+      const btn = $('setup-save'); btn.disabled = true; btn.textContent = window.i18n.t('common.validating', 'Validating…');
+      $('setup-err').textContent = '';
+      try {
+        if (window.GitHubProvider) {
+          await window.GitHubProvider.setConfig({
+            authMode: githubAuthMode,
+            token,
+            owner,
+            repo,
+            oauthClientId: clientId,
+            oauthClientSecret: clientSecret,
+          });
+        }
+        if (App.backend) {
+          App.backend.setActive('github');
+        }
+        const me = await window.GitHubProvider.me();
+        currentUser = (me && (me.name || me.email)) || 'GitHub User';
+        projectName = `${owner}/${repo}`;
+        hideSetup();
+        btn.disabled = false; btn.textContent = window.i18n.t('setup.saveConnect', 'Save & Connect');
+        await initialBoot(/*postSetup*/true);
+      } catch (e) {
+        $('setup-err').textContent = window.i18n.t('setup.connectionFailed', 'Connection failed: {error}', { error: e.message });
+        btn.disabled = false; btn.textContent = window.i18n.t('setup.saveConnect', 'Save & Connect');
       }
       return;
     }

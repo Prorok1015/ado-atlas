@@ -569,7 +569,8 @@
 
     <div class="seg" id="setup-provider-mode" style="display:flex; width:100%; margin-bottom:14px">
       <button type="button" data-provider="ado" class="on" style="flex:1; text-align:center;" data-i18n="setup.provider.ado">Azure DevOps</button>
-      <button type="button" data-provider="linear" style="flex:1; text-align:center;" data-i18n="setup.provider.linear">Linear (linear.app)</button>
+      <button type="button" data-provider="linear" style="flex:1; text-align:center;" data-i18n="setup.provider.linear">Linear</button>
+      <button type="button" data-provider="github" style="flex:1; text-align:center;" data-i18n="setup.provider.github">GitHub Issues</button>
     </div>
 
     <div id="setup-pane-ado">
@@ -667,6 +668,46 @@
 
       <label style="margin-top:10px; display:block;" data-i18n="setup.linear.teamLabel">Default Team Key / ID <span style="color:var(--muted);font-weight:400">(optional)</span></label>
       <input id="setup-linear-team" type="text" placeholder="e.g. ENG" style="width:100%" autocomplete="off">
+    </div>
+
+    <div id="setup-pane-github" style="display:none">
+      <div class="seg" id="github-auth-mode" style="margin-bottom:10px">
+        <button type="button" data-gam="token" class="on" data-i18n="setup.github.authMode.token">Token</button>
+        <button type="button" data-gam="oauth" data-i18n="setup.github.authMode.oauth">OAuth2</button>
+      </div>
+
+      <div id="github-auth-token">
+        <p style="font-size:0.875rem; color:var(--muted); margin-bottom:10px;" data-i18n-html="setup.github.intro">
+          Connect to GitHub Issues using a Personal Access Token or Fine-Grained Token. Create one in
+          <b>GitHub → Settings → Developer settings → Personal access tokens</b> with <b>repo</b> scope.
+        </p>
+        <label data-i18n="setup.github.tokenLabel">Personal Access Token</label>
+        <input id="setup-github-token" type="password" placeholder="ghp_... or github_pat_..." style="width:100%" autocomplete="off">
+      </div>
+
+      <div id="github-auth-oauth" style="display:none">
+        <p style="font-size:0.875rem; color:var(--muted); margin-bottom:10px;" data-i18n-html="setup.github.oauthIntro">
+          Sign in using your GitHub OAuth App. Register one in <b>GitHub → Settings → Developer settings → OAuth Apps</b>.
+        </p>
+        <label data-i18n="setup.github.clientId">OAuth Application Client ID</label>
+        <input id="github-oauth-client" placeholder="e.g. Ov23..." autocomplete="off">
+        <label data-i18n="setup.github.clientSecret">OAuth Client Secret <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+        <input id="github-oauth-secret" type="password" placeholder="e.g. secret..." autocomplete="off">
+        <label data-i18n-html="setup.github.redirectLabel">Redirect URI <span style="color:var(--muted);font-weight:400">(register this exact URI in GitHub)</span></label>
+        <div style="display:flex;gap:6px">
+          <input id="github-oauth-redirect" readonly style="flex:1">
+          <button type="button" class="btn" id="github-oauth-copy" data-i18n-title="setup.oauth.copy.title" title="Copy to clipboard"><ui-icon name="copy"></ui-icon> <span data-i18n="common.copy">Copy</span></button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+          <button type="button" class="btn save" id="github-oauth-signin" data-i18n="setup.github.signIn">Sign in with GitHub</button>
+          <span id="github-oauth-status" style="color:var(--muted);font-size:12px"></span>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <div><label data-i18n="setup.github.owner">Owner / Organization</label><input id="setup-github-owner" placeholder="e.g. octocat" autocomplete="off"></div>
+        <div><label data-i18n="setup.github.repo">Repository</label><input id="setup-github-repo" placeholder="e.g. Hello-World" autocomplete="off"></div>
+      </div>
     </div>
 
     <div id="setup-err"></div>
@@ -796,6 +837,7 @@
 <script src="src/app/prefs.js"></script>
 <script src="src/app/cache-manager.js"></script>
 <script src="src/core/api/linear-provider.js"></script>
+<script src="src/core/api/github-provider.js"></script>
 <script src="src/app/backend.js"></script>
 <script src="src/app/undo.js"></script>
 <script src="src/app/sprint-utils.js"></script>
